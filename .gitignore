@@ -1,0 +1,28 @@
+# Temporary
+
+Temp/
+
+# Logs
+
+*.log
+
+# Windows
+
+Thumbs.db
+Desktop.ini
+
+# VS Code
+
+.vscode/
+
+# Node
+
+node_modules/
+
+# Build
+
+dist/
+
+# Environment
+
+.env

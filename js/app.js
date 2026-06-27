@@ -26,3 +26,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     });
 
 });
+
+setTimeout(()=>{
+
+Toast.show("🌾 Welcome to KrishiKendram");
+
+},1000);
