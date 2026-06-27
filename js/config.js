@@ -1,23 +1,26 @@
-/****************************************
-KrishiKendram Configuration
-****************************************/
+export const questionBank = {
+  farmerType: {
+    question: "What type of farming do you do?",
+    options: ["Crop", "Livestock", "Mixed"]
+  },
 
-const APP = {
+  landOwnership: {
+    question: "Do you own or lease your land?",
+    dependsOn: null
+  },
 
-    version : "1.1.0",
+  cropType: {
+    question: "What crop do you grow?",
+    dependsOn: ["Crop", "Mixed"]
+  },
 
-    name : "KrishiKendram",
+  livestockType: {
+    question: "What livestock do you have?",
+    dependsOn: ["Livestock", "Mixed"]
+  },
 
-    language : "English",
-
-    voice : true,
-
-    api : {
-
-        baseURL : ""
-
-    }
-
+  irrigation: {
+    question: "What irrigation method do you use?",
+    dependsOn: ["Crop", "Mixed"]
+  }
 };
-
-console.log(APP.name + " Config Loaded");
