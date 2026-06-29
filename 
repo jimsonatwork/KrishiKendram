@@ -1,0 +1,74 @@
+[1mdiff --git a/index.html b/index.html[m
+[1mindex 11f9698..83daac3 100644[m
+[1m--- a/index.html[m
+[1m+++ b/index.html[m
+[36m@@ -72,28 +72,38 @@[m [mKrishiKendram © 2026[m
+ Built with ❤️ for Farmers[m
+ [m
+ </footer>[m
+[32m+[m[32m<!-- Core -->[m
+[32m+[m[32m<script src="core/config.js"></script>[m
+[32m+[m[32m<script src="core/logger.js"></script>[m
+[32m+[m[32m<script src="core/session.js"></script>[m
+[32m+[m[32m<script src="core/errors.js"></script>[m
+[32m+[m[32m<script src="core/bootstrap.js"></script>[m
+ [m
+[32m+[m[32m<!-- Existing JS -->[m
+[32m+[m[32m<script src="js/config.js"></script>[m
+[32m+[m[32m<script src="js/storage.js"></script>[m
+[32m+[m[32m<script src="js/auth.js"></script>[m
+[32m+[m[32m<script src="js/router.js"></script>[m
+[32m+[m[32m<script src="js/ui.js"></script>[m
+[32m+[m[32m<script src="js/voice.js"></script>[m
+[32m+[m[32m<script src="js/app.js"></script>[m
+[32m+[m
+[32m+[m[32m<!-- Views -->[m
+ <script src="views/home.js"></script>[m
+[31m-<script src="views/register.js"></script>[m
+ <script src="views/login.js"></script>[m
+[32m+[m[32m<script src="views/register.js"></script>[m
+ <script src="views/dashboard.js"></script>[m
+ [m
+[31m-[m
+ <!-- Components -->[m
+ <script src="components/navbar.js"></script>[m
+ <script src="components/toast.js"></script>[m
+ <script src="components/loader.js"></script>[m
+ <script src="components/modal.js"></script>[m
+ [m
+[31m-<!-- Core -->[m
+[31m-<script src="js/config.js"></script>[m
+[31m-<script src="js/router.js"></script>[m
+[31m-<script src="js/storage.js"></script>[m
+[31m-<script src="js/auth.js"></script>[m
+[31m-<script src="js/ui.js"></script>[m
+[31m-<script src="js/voice.js"></script>[m
+[31m-<script src="js/app.js"></script>[m
+[31m-[m
+[32m+[m[32m<!-- Start Core -->[m
+[32m+[m[32m<script>[m
+[32m+[m[32mBootstrap.init();[m
+[32m+[m[32m</script>[m
+ </body>[m
+ [m
+ </html>[m
+[1mdiff --git a/js/config.js b/js/config.js[m
+[1mindex a65257c..f88c891 100644[m
+[1m--- a/js/config.js[m
+[1m+++ b/js/config.js[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-export const questionBank = {[m
+[32m+[m[32mconst questionBank = {[m
+   farmerType: {[m
+     question: "What type of farming do you do?",[m
+     options: ["Crop", "Livestock", "Mixed"][m
+[36m@@ -23,4 +23,6 @@[m [mexport const questionBank = {[m
+     question: "What irrigation method do you use?",[m
+     dependsOn: ["Crop", "Mixed"][m
+   }[m
+[31m-};[m
+\ No newline at end of file[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mwindow.questionBank = questionBank;[m
+\ No newline at end of file[m

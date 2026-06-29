@@ -1,4 +1,4 @@
-export const questionBank = {
+const questionBank = {
   farmerType: {
     question: "What type of farming do you do?",
     options: ["Crop", "Livestock", "Mixed"]
@@ -24,3 +24,5 @@ export const questionBank = {
     dependsOn: ["Crop", "Mixed"]
   }
 };
+
+window.questionBank = questionBank;

@@ -72,12 +72,27 @@ KrishiKendram © 2026
 Built with ❤️ for Farmers
 
 </footer>
+<!-- Core -->
+<script src="core/config.js"></script>
+<script src="core/logger.js"></script>
+<script src="core/session.js"></script>
+<script src="core/errors.js"></script>
+<script src="core/bootstrap.js"></script>
 
+<!-- Existing JS -->
+<script src="js/config.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/router.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/app.js"></script>
+
+<!-- Views -->
 <script src="views/home.js"></script>
-<script src="views/register.js"></script>
 <script src="views/login.js"></script>
+<script src="views/register.js"></script>
 <script src="views/dashboard.js"></script>
-
 
 <!-- Components -->
 <script src="components/navbar.js"></script>
@@ -85,15 +100,10 @@ Built with ❤️ for Farmers
 <script src="components/loader.js"></script>
 <script src="components/modal.js"></script>
 
-<!-- Core -->
-<script src="js/config.js"></script>
-<script src="js/router.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/voice.js"></script>
-<script src="js/app.js"></script>
-
+<!-- Start Core -->
+<script>
+Bootstrap.init();
+</script>
 </body>
 
 </html>
