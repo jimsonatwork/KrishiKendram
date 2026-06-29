@@ -1,34 +1,60 @@
-import { questionBank } from "./question-bank.js";
-import { getNextQuestion } from "./rules.js";
+// ===============================
+// 🌾 Adaptive Question Engine v1
+// ===============================
 
-export class AdaptiveQuestionEngine {
-  constructor() {
-    this.context = {};
-    this.asked = [];
-  }
+const AdaptiveQuestionEngine = (() => {
 
-  answer(questionKey, answer) {
-    this.context[questionKey] = answer;
-    this.asked.push(questionKey); // FIXED
-  }
+    function create() {
 
-  next() {
-    const nextKey = getNextQuestion(this.context, this.asked); // FIXED
+        const context = {};
+        const asked = [];
 
-    if (!nextKey) {
-      return { done: true, context: this.context };
+        function answer(questionKey, answer) {
+
+            context[questionKey] = answer;
+            asked.push(questionKey);
+
+        }
+
+        function next() {
+
+            const nextKey = getNextQuestion(context, asked);
+
+            if (!nextKey) {
+
+                return {
+                    done: true,
+                    context
+                };
+
+            }
+
+            return {
+                key: nextKey,
+                ...questionBank[nextKey]
+            };
+
+        }
+
+        function debug() {
+
+            return {
+                context,
+                asked
+            };
+
+        }
+
+        return {
+            answer,
+            next,
+            debug
+        };
+
     }
 
     return {
-      key: nextKey,
-      ...questionBank[nextKey]
+        create
     };
-  }
 
-  debug() {
-    return {
-      context: this.context,
-      asked: this.asked
-    };
-  }
-}
+})();

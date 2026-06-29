@@ -11,31 +11,35 @@ function navigate(page){
         case "home":
 
             app.innerHTML = HomeView();
-            bindHomeEvents();
+            initHomeView();
             break;
 
         case "register":
 
             app.innerHTML = RegisterView();
-            bindRegisterEvents();
+            initRegisterView();
             break;
 
         case "login":
 
             app.innerHTML = LoginView();
-            bindLoginEvents();
+            if (typeof bindLoginEvents === "function") {
+                bindLoginEvents();
+            }
             break;
 
         case "dashboard":
 
             app.innerHTML = DashboardView();
-            bindDashboardEvents();
+            if (typeof bindDashboardEvents === "function") {
+                bindDashboardEvents();
+            }
             break;
 
         default:
 
             app.innerHTML = HomeView();
-            bindHomeEvents();
+            initHomeView();
 
     }
 

@@ -1,6 +1,7 @@
 // ===============================
 // 🌾 KrishiKendram Onboarding v1
 // ===============================
+let engine = null;
 
 const Onboarding = (() => {
 
@@ -8,7 +9,7 @@ const Onboarding = (() => {
 
         Logger.info("ONBOARDING", "Rendering role selection");
 
-        document.body.innerHTML = `
+        document.getElementById("app").innerHTML = `
             <h2>🌾 Select Your Role</h2>
 
             <button id="farmer">Farmer</button>
@@ -36,6 +37,9 @@ const Onboarding = (() => {
             }
         });
 
+engine = AdaptiveQuestionEngine.create();
+engine.answer("role", role === "farmer" ? "Farmer" : role);
+
         renderBasicProfile(role);
     }
 
@@ -43,7 +47,7 @@ const Onboarding = (() => {
 
         Logger.info("ONBOARDING", "Collecting basic profile");
 
-        document.body.innerHTML = `
+        document.getElementById("app").innerHTML =`
             <h2>Basic Details</h2>
 
             <input id="name" placeholder="Enter your name" />
@@ -76,7 +80,7 @@ const Onboarding = (() => {
 
         Logger.info("ONBOARDING", "Collecting location");
 
-        document.body.innerHTML = `
+        document.getElementById("app").innerHTML =`
             <h2>Location</h2>
 
             <input id="location" placeholder="Village / District" />

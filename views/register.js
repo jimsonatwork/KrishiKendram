@@ -56,3 +56,13 @@ Create My Farmer ID
 </section>
 
 `;
+
+function initRegisterView() {
+
+    document.getElementById("saveUser").addEventListener("click", () => {
+
+        Onboarding.start();
+
+    });
+
+}

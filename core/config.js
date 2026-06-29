@@ -1,6 +1,6 @@
 
 // ===============================
-// 🌾 KrishiKendram Config v1
+// 🌾 KrishiKendram core/Config v1
 // ===============================
 
 const Config = (() => {

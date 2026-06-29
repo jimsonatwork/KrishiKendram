@@ -77,3 +77,15 @@ KrishiKendram builds your profile automatically.
 
 </section>
 `;
+
+function initHomeView() {
+
+    document.getElementById("goRegister").addEventListener("click", () => {
+
+        document.getElementById("app").innerHTML = RegisterView();
+
+        initRegisterView();
+
+    });
+
+}
