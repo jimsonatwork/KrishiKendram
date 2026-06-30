@@ -1,33 +1,44 @@
 // ===============================
-// 🌾 KrishiKendram Bootstrap v1
+// 🌾 KrishiKendram Bootstrap
 // ===============================
 
 const Bootstrap = (() => {
 
-   function validate() {
+    function validate() {
 
-    const modules = {
-        Config,
-        Logger,
-        Session,
-        ErrorHandler
-    };
+        const required = {
 
-    const missing = [];
+            Config,
 
-    for (const [name, obj] of Object.entries(modules)) {
-        if (typeof obj === "undefined") {
-            missing.push(name);
+            Logger,
+
+            Session,
+
+            ErrorHandler
+
+        };
+
+        const missing = [];
+
+        Object.entries(required).forEach(([name, value]) => {
+
+            if (typeof value === "undefined") {
+                missing.push(name);
+            }
+
+        });
+
+        if (missing.length) {
+
+            console.error("Missing Modules:", missing);
+
+            return false;
+
         }
-    }
 
-    if (missing.length) {
-        console.error("Missing core modules:", missing);
-        return false;
-    }
+        return true;
 
-    return true;
-}
+    }
 
     function init() {
 
@@ -35,21 +46,18 @@ const Bootstrap = (() => {
 
         Logger.info("BOOT", "Bootstrapping application");
 
-        // Create session if required
-        Session.getSession() || Session.createSession();
+        Session.get();
 
-        // Enable global error handling
         ErrorHandler.handleGlobalErrors();
 
-        Logger.success("BOOT", "Core initialized successfully");
-
-        // Existing application continues normally
-        // (No App.start() yet)
+        Logger.success("BOOT", "Core initialized");
 
     }
 
     return {
+
         init
+
     };
 
 })();

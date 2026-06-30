@@ -1,57 +1,43 @@
 /*=========================================
-UI Events
+ KrishiKendram UI
 =========================================*/
 
-function bindHomeEvents(){
+const UI = (() => {
 
-    const btn=document.getElementById("goRegister");
+    function showMessage(message) {
 
-    if(btn){
-
-        btn.onclick=()=>{
-
-            navigate("register");
-
-        }
+        Toast?.show?.(message);
 
     }
 
-}
+    function showLoader() {
 
-function bindRegisterEvents(){
-
-    const btn=document.getElementById("saveUser");
-
-    if(btn){
-
-        btn.onclick=()=>{
-
-            alert("Registration Module - Next Step");
-
-        }
+        Loader?.show?.();
 
     }
 
-}
+    function hideLoader() {
 
-function bindLoginEvents(){
-
-    const btn=document.getElementById("loginUser");
-
-    if(btn){
-
-        btn.onclick=()=>{
-
-            alert("Login Module - Next Step");
-
-        }
+        Loader?.hide?.();
 
     }
 
-}
+    function confirm(message) {
 
-function bindDashboardEvents(){
+        return window.confirm(message);
 
-    console.log("Dashboard Loaded");
+    }
 
-}
+    return {
+
+        showMessage,
+
+        showLoader,
+
+        hideLoader,
+
+        confirm
+
+    };
+
+})();

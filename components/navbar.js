@@ -1,47 +1,21 @@
-/*
-===========================================
-KrishiKendram Navbar Component
-Version : 1.1.0
-===========================================
-*/
+const Navbar = (() => {
 
-const Navbar = {
-
-    render(pageTitle = "") {
+    function render(title = "KrishiKendram") {
 
         return `
-
 <header class="kk-navbar">
 
-    <div class="kk-logo"
-         onclick="Router.navigate('home')">
-
-        🌾 <span>KrishiKendram</span>
-
-    </div>
-
-    <div class="kk-page-title">
-
-        ${pageTitle}
-
-    </div>
-
-    <div class="kk-nav-right">
-
-        <button
-            class="kk-home-btn"
-            onclick="Router.navigate('home')">
-
-            Home
-
-        </button>
-
+    <div class="kk-logo">
+        🌾 ${title}
     </div>
 
 </header>
-
 `;
 
     }
 
-};
+    return {
+        render
+    };
+
+})();

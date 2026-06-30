@@ -1,22 +1,19 @@
-/*
-=========================================
-KrishiKendram Modal Component
-Version : 1.1.0
-=========================================
-*/
+const Modal = (() => {
 
-const Modal = {
+    function open(title, message) {
 
-    open(title = "KrishiKendram", message = "") {
-
-        alert(title + "\n\n" + message);
-
-    },
-
-    close() {
-
-        console.log("Modal Closed");
+        alert(`${title}\n\n${message}`);
 
     }
 
-};
+    function close() {}
+
+    return {
+
+        open,
+
+        close
+
+    };
+
+})();

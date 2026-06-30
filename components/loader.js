@@ -1,18 +1,23 @@
-/*
-=========================================
-KrishiKendram Loader
-Version 1.1.0
-=========================================
-*/
+const Loader = (() => {
 
-const Loader = {
+    function show() {
 
-    show() {
-        console.log("Loader Show");
-    },
+        Logger.debug("UI", "Loader shown");
 
-    hide() {
-        console.log("Loader Hide");
     }
 
-};
+    function hide() {
+
+        Logger.debug("UI", "Loader hidden");
+
+    }
+
+    return {
+
+        show,
+
+        hide
+
+    };
+
+})();

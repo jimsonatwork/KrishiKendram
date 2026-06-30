@@ -2,45 +2,48 @@
  KrishiKendram Router
 =========================================*/
 
-const app = document.getElementById("app");
+const Router = (() => {
 
-function navigate(page){
+    function go(route) {
 
-    switch(page){
+        Logger.info("ROUTER", "Route change", { route });
 
-        case "home":
+        const app = document.getElementById("app");
 
-            app.innerHTML = HomeView();
-            initHomeView();
-            break;
+        switch (route) {
 
-        case "register":
+            case "dashboard":
+                Dashboard.init();
+                break;
 
-            app.innerHTML = RegisterView();
-            initRegisterView();
-            break;
+            case "crops":
+                Logger.info("ROUTER", "Loading Crops Module");
+                app.innerHTML = "<h2>🌱 Crops Module</h2>";
+                break;
 
-        case "login":
+            case "machinery":
+                Logger.info("ROUTER", "Loading Machinery Module");
+                app.innerHTML = "<h2>🚜 Machinery Module</h2>";
+                break;
 
-            app.innerHTML = LoginView();
-            if (typeof bindLoginEvents === "function") {
-                bindLoginEvents();
-            }
-            break;
+            case "livestock":
+                Logger.info("ROUTER", "Loading Livestock Module");
+                app.innerHTML = "<h2>🐄 Livestock Module</h2>";
+                break;
 
-        case "dashboard":
+            case "voice":
+                Logger.info("ROUTER", "Loading Voice Module");
+                app.innerHTML = "<h2>🎤 Voice Profile Module</h2>";
+                break;
 
-            app.innerHTML = DashboardView();
-            if (typeof bindDashboardEvents === "function") {
-                bindDashboardEvents();
-            }
-            break;
-
-        default:
-
-            app.innerHTML = HomeView();
-            initHomeView();
-
+            default:
+                Logger.warn("ROUTER", "Unknown route", { route });
+                break;
+        }
     }
 
-}
+    return {
+        go
+    };
+
+})();

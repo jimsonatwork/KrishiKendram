@@ -1,39 +1,43 @@
 // =======================================
-// 🌾 KrishiKendram Profile Manager v1
+// 🌾 KrishiKendram Profile Manager v2
 // =======================================
 
 const ProfileManager = (() => {
 
     function create() {
+        return structuredClone(ProfileSchema);
+    }
 
-        return {
+    function getValue(profile, path) {
 
-            identity: {
-                role: null
-            },
+        return path
+            .split(".")
+            .reduce((obj, key) => obj?.[key], profile);
 
-            farmer: {
-                ownership: null,
-                farmingType: [],
+    }
 
-                land: {
-                    acres: null,
-                    irrigation: null,
-                    soilType: null
-                },
+    function setValue(profile, path, value) {
 
-                livestock: {
-                    hasLivestock: false,
-                    animals: []
-                }
-            }
+        const keys = path.split(".");
 
-        };
+        let current = profile;
+
+        while (keys.length > 1) {
+
+            current = current[keys.shift()];
+
+        }
+
+        current[keys[0]] = value;
 
     }
 
     return {
-        create
+
+        create,
+        getValue,
+        setValue
+
     };
 
 })();

@@ -1,71 +1,104 @@
 // ===============================
-// 🌾 KrishiKendram Error System v1
+// 🌾 KrishiKendram Error System
 // ===============================
 
 const ErrorHandler = (() => {
 
-    function formatError(error, context = {}) {
+    function format(error, context = {}) {
+
         return {
+
             timestamp: new Date().toISOString(),
-            message: error.message || "Unknown error",
-            stack: error.stack || null,
-            name: error.name || "Error",
+
+            sessionId: Session?.getSessionId?.(),
+
+            name: error?.name || "Error",
+
+            message: error?.message || "Unknown Error",
+
+            stack: error?.stack || "",
+
             context
+
         };
+
     }
 
-    function logError(module, error, context = {}) {
+    function log(module, error, context = {}) {
 
-        const formatted = formatError(error, context);
+        const data = format(error, context);
 
-        if (window.Logger) {
-            Logger.error(module, "Unhandled Error", formatted);
-        } else {
-            console.error("LOGGER MISSING:", formatted);
-        }
+        Logger.error(module, data.message, data);
 
-        return formatted;
+        return data;
+
     }
 
     function handleGlobalErrors() {
 
-        // Catch normal JS runtime errors
-        window.onerror = function (message, source, lineno, colno, error) {
+        window.onerror = function (
+            message,
+            source,
+            line,
+            column,
+            error
+        ) {
 
-            logError("GLOBAL", error || new Error(message), {
-                source,
-                lineno,
-                colno
-            });
+            log(
+                "GLOBAL",
+                error || new Error(message),
+                {
+                    source,
+                    line,
+                    column
+                }
+            );
 
             return false;
+
         };
 
-        // Catch promise errors
         window.onunhandledrejection = function (event) {
 
-            logError("PROMISE", event.reason, {
-                type: "UnhandledPromiseRejection"
-            });
+            log(
+                "PROMISE",
+                event.reason || new Error("Unhandled Promise"),
+                {}
+            );
+
         };
 
-        Logger.info("ERROR_SYSTEM", "Global error handlers initialized");
+        Logger.success(
+            "ERROR_SYSTEM",
+            "Global error handlers initialized"
+        );
+
     }
 
-    function safeExecute(fn, module = "UNKNOWN", context = {}) {
+    function safe(fn, module = "SYSTEM") {
 
         try {
+
             return fn();
+
         } catch (error) {
-            logError(module, error, context);
+
+            log(module, error);
+
             return null;
+
         }
+
     }
 
     return {
+
         handleGlobalErrors,
-        logError,
-        safeExecute
+
+        log,
+
+        safe
+
     };
 
 })();

@@ -1,37 +1,22 @@
 /*=========================================
  KrishiKendram
-Application Entry
+ Application Entry
 =========================================*/
-const profile = ProfileManager.create();
 
-console.log(profile);
+document.addEventListener("DOMContentLoaded", () => {
 
-document.addEventListener("DOMContentLoaded",()=>{
+    Logger.info("BOOT", "Application Started");
 
-    console.log("🌾 KrishiKendram Started");
+    const session = Session.get?.();
 
-    navigate("home");
+    if (session?.user?.onboardingStep === "completed") {
+        Router.go("dashboard");
+    } else {
+        Onboarding.start();
+    }
 
-    document
-    .getElementById("btnLogin")
-    .addEventListener("click",()=>{
-
-        navigate("login");
-
-    });
-
-    document
-    .getElementById("btnRegister")
-    .addEventListener("click",()=>{
-
-        navigate("register");
-
-    });
+    setTimeout(() => {
+        Toast?.show?.("🌾 Welcome to KrishiKendram");
+    }, 1000);
 
 });
-
-setTimeout(()=>{
-
-Toast.show("🌾 Welcome to KrishiKendram");
-
-},1000);

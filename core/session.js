@@ -1,83 +1,143 @@
 // ===============================
-// 🌾 KrishiKendram Session v1
+// 🌾 KrishiKendram Session
 // ===============================
 
 const Session = (() => {
 
     const SESSION_KEY = "KK_SESSION";
 
+    function now() {
+        return new Date().toISOString();
+    }
+
     function generateSessionId() {
         return `SES-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     }
 
     function createSession() {
+
         const session = {
             sessionId: generateSessionId(),
-            createdAt: new Date().toISOString(),
-            lastActiveAt: new Date().toISOString(),
-            user: null
+            createdAt: now(),
+            lastActiveAt: now(),
+            history: [],
+            user: {}
         };
 
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
-        if (window.Logger) {
-            Logger.info("SESSION", "New session created", session);
-        }
+        Logger?.success?.("SESSION", "New session created", {
+            sessionId: session.sessionId
+        });
 
         return session;
     }
 
-    function getSession() {
+    function get() {
+
         const data = localStorage.getItem(SESSION_KEY);
-        if (!data) return null;
+
+        if (!data) {
+            return createSession();
+        }
 
         try {
+
             return JSON.parse(data);
+
         } catch (e) {
-            if (window.Logger) {
-                Logger.error("SESSION", "Session parse failed", { error: e.message });
-            }
-            return null;
+
+            Logger?.error?.("SESSION", "Session corrupted", {
+                error: e.message
+            });
+
+            return createSession();
+
         }
+
+    }
+
+    function save(session) {
+
+        session.lastActiveAt = now();
+
+        localStorage.setItem(
+            SESSION_KEY,
+            JSON.stringify(session)
+        );
+
+        return session;
+
     }
 
     function updateSession(updates = {}) {
-        const session = getSession() || createSession();
 
-        const updated = {
-            ...session,
-            ...updates,
-            lastActiveAt: new Date().toISOString()
-        };
+        const session = get();
 
-        localStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+        if (updates.user) {
 
-        if (window.Logger) {
-            Logger.debug("SESSION", "Session updated", updates);
+            session.user = {
+                ...session.user,
+                ...updates.user
+            };
+
+            delete updates.user;
+
         }
 
-        return updated;
+        Object.assign(session, updates);
+
+        session.lastActiveAt = now();
+
+        session.history.push({
+            time: now(),
+            action: "SESSION_UPDATED"
+        });
+
+        save(session);
+
+        Logger?.debug?.("SESSION", "Session updated");
+
+        return session;
+
     }
 
-    function clearSession() {
+    function clear() {
+
         localStorage.removeItem(SESSION_KEY);
 
-        if (window.Logger) {
-            Logger.warn("SESSION", "Session cleared");
-        }
+        Logger?.warn?.("SESSION", "Session cleared");
+
     }
 
     function getSessionId() {
-        const session = getSession();
-        return session ? session.sessionId : null;
+
+        return get().sessionId;
+
+    }
+
+    function history() {
+
+        return get().history;
+
     }
 
     return {
+
         createSession,
-        getSession,
+
+        get,
+
         updateSession,
-        clearSession,
+
+        save,
+
+        clear,
+
+        history,
+
         getSessionId
+
     };
 
 })();

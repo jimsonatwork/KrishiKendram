@@ -1,31 +1,40 @@
 // ===============================
-// 🌾 Adaptive Question Engine v1
-// engine.js
+// 🌾 Adaptive Question Engine v2
 // ===============================
 
 const AdaptiveQuestionEngine = (() => {
 
     function create() {
 
-        const context = {};
+        let profile = ProfileManager.create();
         const asked = [];
 
-        function answer(questionKey, answer) {
+function answer(questionKey, answer) {
 
-            context[questionKey] = answer;
-            asked.push(questionKey);
+    const question = questionBank[questionKey];
 
-        }
+    if (question?.stores) {
+
+        ProfileManager.setValue(
+            profile,
+            question.stores,
+            answer
+        );
+
+    }
+
+    asked.push(questionKey);
+}
 
         function next() {
 
-            const nextKey = getNextQuestion(context, asked);
+            const nextKey = getNextQuestion(profile, asked);
 
             if (!nextKey) {
 
                 return {
                     done: true,
-                    context
+                    profile
                 };
 
             }
@@ -40,16 +49,33 @@ const AdaptiveQuestionEngine = (() => {
         function debug() {
 
             return {
-                context,
+                profile,
                 asked
             };
 
         }
 
+        function getProfile() {
+
+            return profile;
+
+        }
+
+        function reset() {
+
+            asked.length = 0;
+            profile = ProfileManager.create();
+
+        }
+
         return {
+
             answer,
             next,
-            debug
+            debug,
+            getProfile,
+            reset
+
         };
 
     }
@@ -59,3 +85,6 @@ const AdaptiveQuestionEngine = (() => {
     };
 
 })();
+
+window.AdaptiveQuestionEngine = AdaptiveQuestionEngine;
+window.KKEngine = null;
