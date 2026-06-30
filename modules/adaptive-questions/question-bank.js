@@ -1,4 +1,4 @@
-export const questionBank = {
+	const questionBank = {
   role: {
     question: "What best describes you?",
     options: ["Farmer", "Trader", "Other"]

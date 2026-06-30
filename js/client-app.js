@@ -2,6 +2,9 @@
  KrishiKendram
 Application Entry
 =========================================*/
+const profile = ProfileManager.create();
+
+console.log(profile);
 
 document.addEventListener("DOMContentLoaded",()=>{
 
