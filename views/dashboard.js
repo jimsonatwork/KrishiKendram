@@ -1,4 +1,5 @@
 console.log("Dashboard.js loaded");
+
 /*=========================================
  KrishiKendram Dashboard
 =========================================*/
@@ -6,60 +7,74 @@ console.log("Dashboard.js loaded");
 const Dashboard = (() => {
 
     function init() {
-        Logger.info("DASHBOARD", "Initializing Dashboard");
+
+        Logger.info(
+            "DASHBOARD",
+            "Initializing Dashboard",
+            {}
+        );
+
         render();
         bindEvents();
+
     }
 
     function render() {
+
         document.getElementById("app").innerHTML = DashboardView();
+
     }
 
     function bindEvents() {
+
         document.querySelectorAll(".dash-card").forEach(card => {
+
             card.addEventListener("click", () => handleClick(card));
+
         });
-    }
-
- function handleClick(card) {
-
-    const title = card.querySelector("h3").innerText;
-
-    Logger.info(
-        "DASHBOARD",
-        "Card clicked",
-        { title }
-    );
-
-    switch (title) {
-
-        case "My Profile":
-            showProfile();
-            break;
-
-        default:
-            Toast.show(`${title} - Coming Soon`);
 
     }
 
-}
+    function handleClick(card) {
 
-function showProfile() {
+        const title = card.querySelector("h3").innerText;
 
-    const session = Session.get() || {};
-    const user = session.user || {};
+        Logger.info(
+            "DASHBOARD",
+            "Card clicked",
+            { title }
+        );
 
-    Logger.info(
-        "PROFILE",
-        "Profile viewed",
-        user
-    );
-	EventBus.emit(
-    "PROFILE_VIEWED",
-    user
-);
+        switch (title) {
 
-    document.getElementById("app").innerHTML = `
+            case "My Profile":
+                showProfile();
+                break;
+
+            default:
+                Toast.show(`${title} - Coming Soon`);
+
+        }
+
+    }
+
+    function showProfile() {
+
+        const session = Session.get() || {};
+        const user = session.user || {};
+
+        Logger.info(
+            "PROFILE",
+            "Profile viewed",
+            user
+        );
+
+        EventBus.emit(
+            "PROFILE_VIEWED",
+            user
+        );
+
+        document.getElementById("app").innerHTML = `
 
 <section class="dashboard">
 
@@ -81,23 +96,27 @@ function showProfile() {
 
 `;
 
-    document
-        .getElementById("backDashboard")
-        .onclick = () => {
+        document
+            .getElementById("backDashboard")
+            .onclick = () => {
 
-            Logger.info(
-                "PROFILE",
-                "Returning to dashboard",
-                {}
-            );
+                Logger.info(
+                    "PROFILE",
+                    "Returning to dashboard",
+                    {}
+                );
 
-            render();
-            bindEvents();
+                render();
+                bindEvents();
 
-        };
+            };
 
-}return {
+    }
+
+    return {
+
         init
+
     };
 
 })();
@@ -107,7 +126,16 @@ const DashboardView = () => {
     const session = Session.get() || {};
     const user = session.user || {};
 
+    let completed = 0;
+
+    if (user.name) completed++;
+    if (user.role) completed++;
+    if (user.location) completed++;
+
+    const completion = Math.round((completed / 3) * 100);
+
     return `
+
 <section class="dashboard">
 
     <h1>👋 Welcome ${user.name || "Farmer"}</h1>
@@ -120,6 +148,11 @@ const DashboardView = () => {
     <p>
         📍 Location :
         <strong>${user.location || "-"}</strong>
+    </p>
+
+    <p>
+        📊 Profile Completion :
+        <strong>${completion}%</strong>
     </p>
 
     <hr>
@@ -159,6 +192,7 @@ const DashboardView = () => {
     </div>
 
 </section>
+
 `;
 
 };
