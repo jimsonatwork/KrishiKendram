@@ -1,5 +1,5 @@
 // ===============================
-// 🌾 KrishiKendram Onboarding
+// 🌾 KrishiKendram Onboarding v3
 // ===============================
 
 let engine = null;
@@ -8,9 +8,15 @@ const Onboarding = (() => {
 
     function start() {
 
-        Logger.info("ONBOARDING", "Starting onboarding");
+        Logger.info(
+            "ONBOARDING",
+            "Starting onboarding",
+            {}
+        );
 
         engine = AdaptiveQuestionEngine.create();
+
+InputAdapter.initialize(engine);
 
         renderRoleSelection();
 
@@ -18,32 +24,35 @@ const Onboarding = (() => {
 
     function renderRoleSelection() {
 
-        Logger.info("ONBOARDING", "Rendering role selection");
+        InputAdapter.speak("Welcome. Please select your role.");
 
         document.getElementById("app").innerHTML = `
 <h2>🌾 Select Your Role</h2>
 
 <div class="role-grid">
-    <button class="role">🌾 Farmer</button>
-    <button class="role">🏪 Dealer</button>
-    <button class="role">🐄 Veterinarian</button>
-    <button class="role">🎓 Student</button>
-    <button class="role">🏛️ Agri Officer</button>
+
+<button class="role" data-role="Farmer">🌾 Farmer</button>
+
+<button class="role" data-role="Trader">🏪 Trader</button>
+
+<button class="role" data-role="Livestock Farmer">🐄 Livestock Farmer</button>
+
+<button class="role" data-role="Fisher">🐟 Fisher</button>
+
+<button class="role" data-role="Agriculture Officer">🏛 Agriculture Officer</button>
+
+<button class="role" data-role="Student">🎓 Student</button>
+
 </div>
 `;
 
-        document.querySelectorAll(".role").forEach(btn => {
+        document.querySelectorAll(".role").forEach(button => {
 
-            btn.onclick = () => {
+            button.onclick = () => {
 
-                const role =
-                    btn.textContent.includes("Farmer") ? "farmer" :
-                    btn.textContent.includes("Dealer") ? "dealer" :
-                    btn.textContent.includes("Veterinarian") ? "vet" :
-                    btn.textContent.includes("Student") ? "student" :
-                    "officer";
-
-                selectRole(role);
+                selectRole(
+                    button.dataset.role
+                );
 
             };
 
@@ -53,104 +62,306 @@ const Onboarding = (() => {
 
     function selectRole(role) {
 
-        Logger.success("ONBOARDING", "Role selected", { role });
+        Logger.success(
+            "ONBOARDING",
+            "Role selected",
+            { role }
+        );
+
+engine.answer("role", role);
 
         Session.updateSession({
+
             user: {
+
                 role,
+
                 onboardingStep: "role_selected"
+
             }
+
         });
 
-        engine.answer("role", role === "farmer" ? "Farmer" : role);
+        EventBus.emit(
+            "ROLE_SELECTED",
+            { role }
+        );
 
-        Logger.debug("ONBOARDING", "Next question", engine.next());
-
-        renderBasicProfile(role);
+        renderBasicProfile();
 
     }
 
-    function renderBasicProfile(role) {
+    function renderBasicProfile() {
 
-        Logger.info("ONBOARDING", "Collecting basic profile");
+        InputAdapter.speak("Please enter your name.");
 
         document.getElementById("app").innerHTML = `
 <h2>Basic Details</h2>
 
-<input id="name" placeholder="Enter your name">
-<button id="next">Next</button>
+<input
+id="name"
+placeholder="Enter your name">
+
+<div style="margin-top:15px;">
+
+<button id="voice">
+🎤 Speak
+</button>
+
+<button id="next">
+Next
+</button>
+
+</div>
 `;
+
+        document.getElementById("voice").onclick = () => {
+
+            Voice.listen(text => {
+
+                document.getElementById("name").value = text;
+
+            });
+
+        };
 
         document.getElementById("next").onclick = () => {
 
-            const name = document.getElementById("name").value.trim();
+            const name =
+                document
+                    .getElementById("name")
+                    .value
+                    .trim();
 
             if (!name) {
 
-                Logger.warn("ONBOARDING", "Name missing");
+                Toast.show(
+                    "Please enter your name."
+                );
 
                 return;
 
             }
-
-            Logger.success("ONBOARDING", "Name captured", { name });
+			
+	InputAdapter.submit(name);
 
             Session.updateSession({
+
                 user: {
+
                     name,
-                    role,
+
                     onboardingStep: "basic_done"
+
                 }
+
             });
 
-            renderLocationStep();
+            EventBus.emit(
+                "PROFILE_NAME_CAPTURED",
+                { name }
+            );
+
+			askNextAdaptiveQuestion();
 
         };
 
     }
+	
+	function askNextAdaptiveQuestion() {
 
-    function renderLocationStep() {
+    const next = engine.next();
 
-        Logger.info("ONBOARDING", "Collecting location");
+    if (next.done) {
 
-        document.getElementById("app").innerHTML = `
-<h2>Location</h2>
+        renderLocation();
 
-<input id="location" placeholder="Village / District">
-<button id="finish">Finish</button>
-`;
+        return;
 
-        document.getElementById("finish").onclick = () => {
+    }
 
-            const location = document.getElementById("location").value.trim();
+ QuestionRenderer.render(next, (answer) => {
 
-            if (!location) {
+InputAdapter.submit(answer);
 
-                Logger.warn("ONBOARDING", "Location missing");
+    Logger.info(
+        "ONBOARDING",
+        "Adaptive Answer",
+        {
+            question: next.key,
+            answer
+        }
+    );
+
+    askNextAdaptiveQuestion();
+
+});   
+
+    const container =
+        document.getElementById("options");
+
+document
+    .getElementById("voiceAnswer")
+    .onclick = () => {
+
+        Voice.listen(result => {
+
+            const matched =
+                next.options.find(option =>
+                    option.toLowerCase() ===
+                    result.toLowerCase()
+                );
+
+            if (!matched) {
+
+                Toast.show(
+                    "Please try again."
+                );
 
                 return;
 
             }
 
-            Logger.success("ONBOARDING", "Location captured", { location });
+InputAdapter.submit(matched);
 
-            Session.updateSession({
-                user: {
-                    location,
-                    onboardingStep: "completed"
+            Logger.success(
+                "VOICE",
+                "Voice answer captured",
+                {
+                    question: next.key,
+                    answer: matched
                 }
+            );
+
+            askNextAdaptiveQuestion();
+
+        });
+
+    };
+
+    next.options.forEach(option => {
+
+        const button =
+            document.createElement("button");
+
+        button.className = "role";
+
+        button.innerText = option;
+
+        button.onclick = () => {
+
+InputAdapter.submit(option);
+
+            Logger.info(
+                "ONBOARDING",
+                "Adaptive Answer",
+                {
+                    question: next.key,
+                    answer: option
+                }
+            );
+
+            askNextAdaptiveQuestion();
+
+        };
+
+        container.appendChild(button);
+
+    });
+
+}
+
+    function renderLocation() {
+
+InputAdapter.speak(
+    "Please tell us your village or district."
+);
+
+        document.getElementById("app").innerHTML = `
+<h2>Location</h2>
+
+<input
+id="location"
+placeholder="Village / District">
+
+<div style="margin-top:15px;">
+
+<button id="voice">
+🎤 Speak
+</button>
+
+<button id="finish">
+Finish
+</button>
+
+</div>
+`;
+
+        document.getElementById("voice").onclick = () => {
+
+            Voice.listen(text => {
+
+                document.getElementById("location").value = text;
+
             });
 
-            Logger.success("ONBOARDING", "Onboarding completed");
+        };
 
-            Router.go("dashboard");
+
+
+        document.getElementById("finish").onclick = () => {
+
+            const location =
+                document
+                    .getElementById("location")
+                    .value
+                    .trim();
+
+            if (!location) {
+
+                Toast.show(
+                    "Please enter your location."
+                );
+
+                return;
+
+            }
+InputAdapter.submit(location);
+            Session.updateSession({
+
+                user: {
+
+                    location,
+
+                    onboardingStep: "completed"
+
+                }
+
+            });
+
+            Logger.success(
+                "ONBOARDING",
+                "Completed",
+                {}
+            );
+
+            EventBus.emit(
+                "ONBOARDING_COMPLETED",
+                Session.get()
+            );
+
+            Router.go(
+                "dashboard"
+            );
 
         };
 
     }
 
     return {
+
         start
+
     };
 
 })();

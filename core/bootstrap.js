@@ -4,25 +4,25 @@
 
 const Bootstrap = (() => {
 
+    const REQUIRED_MODULES = {
+        Config,
+        Logger,
+        Session,
+        ErrorHandler,
+        EventBus,
+        Services,
+        State,
+        Device,
+        Voice
+    };
+
     function validate() {
-
-        const required = {
-
-            Config,
-
-            Logger,
-
-            Session,
-
-            ErrorHandler
-
-        };
 
         const missing = [];
 
-        Object.entries(required).forEach(([name, value]) => {
+        Object.entries(REQUIRED_MODULES).forEach(([name, module]) => {
 
-            if (typeof value === "undefined") {
+            if (typeof module === "undefined") {
                 missing.push(name);
             }
 
@@ -30,7 +30,7 @@ const Bootstrap = (() => {
 
         if (missing.length) {
 
-            console.error("Missing Modules:", missing);
+            console.error("❌ Missing Core Modules:", missing);
 
             return false;
 
@@ -40,17 +40,71 @@ const Bootstrap = (() => {
 
     }
 
-    function init() {
-
-        if (!validate()) return;
-
-        Logger.info("BOOT", "Bootstrapping application");
+    function initializeCore() {
 
         Session.get();
 
         ErrorHandler.handleGlobalErrors();
 
-        Logger.success("BOOT", "Core initialized");
+        Device.initialize();
+
+        Voice.initialize();
+
+        Logger.success(
+            "BOOT",
+            "Core initialized",
+            {}
+        );
+
+    }
+
+    function registerServices() {
+
+        Services.register("session", Session);
+
+        Services.register("voice", Voice);
+
+        Services.register("state", State);
+
+        Services.register("device", Device);
+
+        Logger.success(
+            "BOOT",
+            "Services registered",
+            {
+                total: Services.count()
+            }
+        );
+
+    }
+
+    function initializeEvents() {
+
+        EventBus.emit("BOOT_COMPLETED");
+
+    }
+
+    function init() {
+
+        if (!validate()) return;
+
+        Logger.info(
+            "BOOT",
+            "Bootstrapping application",
+            {}
+        );
+
+        initializeCore();
+
+        registerServices();
+
+        initializeEvents();
+
+        Logger.success(
+            "BOOT",
+            "Application Ready",
+            {}
+        );
 
     }
 
