@@ -1,13 +1,28 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
+
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const config = app.get(ConfigService);
+
   app.setGlobalPrefix('api');
 
-  app.enableCors();
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
+
+  app.use(helmet());
+
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -17,10 +32,12 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = config.get<number>('PORT') ?? 3000;
+
+  await app.listen(port);
 
   console.log(
-    `🚀 KrishiKendram API running at http://localhost:${process.env.PORT ?? 3000}/api`,
+    `🚀 KrishiKendram API running at http://localhost:${port}/api/v1`,
   );
 }
 
