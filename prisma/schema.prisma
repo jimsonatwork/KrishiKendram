@@ -7,31 +7,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                   String      @id @default(cuid())
+  name                 String
+  email                String?     @unique
+  mobile               String?     @unique
+  passwordHash         String
+  role                 UserRole    @default(FARMER)
+  status               UserStatus  @default(PENDING)
+  preferredLanguage    String?     @default("en")
+  preferredInputMethod InputMethod @default(MIXED)
+  profileCompletion    Int         @default(0)
+  isVerified           Boolean     @default(false)
+  lastLoginAt          DateTime?
+  refreshTokenHash     String?
+  failedLoginCount     Int         @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  farms                Farm[]
+}
+
+model Farm {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  area        Float?
+  unit        String?  @default("acre")
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
-
   FARMER
   FARM_WORKER
-
   AGRONOMIST
   VETERINARIAN
-
   BUYER
   MERCHANT
-
   FPO
   PARTNER
-
   FIELD_OFFICER
   DISTRICT_ADMIN
   STATE_ADMIN
-
   GOVERNMENT
   NGO
   BANK
   LOGISTICS
-
   AI_AGENT
 }
 
@@ -48,33 +77,4 @@ enum InputMethod {
   IMAGE
   VIDEO
   MIXED
-}
-
-model User {
-  id                    String       @id @default(cuid())
-
-  name                  String
-  email                 String?      @unique
-  mobile                String?      @unique
-
-  passwordHash          String
-
-  role                  UserRole     @default(FARMER)
-  status                UserStatus   @default(PENDING)
-
-  preferredLanguage     String?      @default("en")
-  preferredInputMethod  InputMethod  @default(MIXED)
-
-  profileCompletion     Int          @default(0)
-
-  isVerified            Boolean      @default(false)
-
-  lastLoginAt           DateTime?
-  
-  refreshTokenHash String?
-  failedLoginCount Int @default(0)
-  lockedUntil DateTime?
-
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
 }

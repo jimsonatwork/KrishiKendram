@@ -37,63 +37,68 @@ export class AuthService {
     return result;
   }
 
-  async login(dto: LoginDto) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: dto.identifier },
-          { mobile: dto.identifier },
-        ],
-      },
-    });
+async login(dto: LoginDto) {
+  const user = await this.prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: dto.identifier },
+        { mobile: dto.identifier },
+      ],
+    },
+  });
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const passwordValid = await bcrypt.compare(
-      dto.password,
-      user.passwordHash,
-    );
-
-    if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const payload = {
-      sub: user.id,
-      role: user.role,
-    };
-
-    const accessToken = await this.jwtService.signAsync(payload);
-
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
-    });
-
-    const refreshTokenHash = await bcrypt.hash(
-      refreshToken,
-      12,
-    );
-
-    await this.prisma.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        refreshTokenHash,
-      },
-    });
-
-    const { passwordHash, ...result } = user;
-
-    return {
-      accessToken,
-      refreshToken,
-      user: result,
-    };
+  if (!user) {
+    throw new UnauthorizedException('Invalid credentials');
   }
 
+  const passwordValid = await bcrypt.compare(
+    dto.password,
+    user.passwordHash,
+  );
+
+  if (!passwordValid) {
+    throw new UnauthorizedException('Invalid credentials');
+  }
+
+  const payload = {
+    sub: user.id,
+    role: user.role,
+  };
+
+  const accessToken = await this.jwtService.signAsync(payload);
+
+  const refreshToken = await this.jwtService.signAsync(payload, {
+    expiresIn: '7d',
+  });
+
+  const refreshTokenHash = await bcrypt.hash(
+    refreshToken,
+    12,
+  );
+
+  await this.prisma.user.update({
+    where: {
+      id: user.id,
+    },
+    data: {
+      refreshTokenHash,
+    },
+  });
+
+  const {
+    passwordHash,
+    refreshTokenHash: storedRefreshTokenHash,
+    failedLoginCount,
+    lockedUntil,
+    ...safeUser
+  } = user;
+
+  return {
+    accessToken,
+    refreshToken,
+    user: safeUser,
+  };
+}
   async refresh(dto: RefreshTokenDto) {
     const payload = await this.jwtService.verifyAsync(
       dto.refreshToken,

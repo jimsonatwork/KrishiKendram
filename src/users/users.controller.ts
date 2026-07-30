@@ -18,17 +18,19 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  @Post()
-  async create(
-    @Body()
-    body: {
-      name: string;
-      email: string;
-    },
-  ) {
-    return this.usersService.create({
-      ...body,
-      passwordHash: 'TEMP_HASH',
-    });
-  }
+@Post()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+async create(
+  @Body()
+  body: {
+    name: string;
+    email: string;
+  },
+) {
+  return this.usersService.create({
+    ...body,
+    passwordHash: 'TEMP_HASH',
+  });
+}
 }
