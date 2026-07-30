@@ -43,11 +43,19 @@ export class AuthController {
     return this.authService.refresh(dto);
   }
 
-@Get('me')
-@UseGuards(JwtAuthGuard)
-me(
-  @CurrentUser() user: any,
-) {
-  return user;
-}
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  logout(
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.authService.logout(user.userId);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  me(
+    @CurrentUser() user: any,
+  ) {
+    return user;
+  }
 }

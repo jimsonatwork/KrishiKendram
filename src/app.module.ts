@@ -16,6 +16,8 @@ import { CoreModule } from './core/core.module';
 import { RequestIdMiddleware } from './common/middleware/request-id/request-id.middleware';
 import { AuthModule } from './auth/auth.module';
 
+import { FarmsModule } from './farms/farms.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -27,6 +29,7 @@ import { AuthModule } from './auth/auth.module';
     HealthModule,
     UsersModule,
     AuthModule,
+	    FarmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

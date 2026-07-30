@@ -23,6 +23,9 @@ model User {
   refreshTokenHash     String?
   failedLoginCount     Int         @default(0)
   lockedUntil          DateTime?
+  deletionRequested    Boolean     @default(false)
+  deletionRequestedAt  DateTime?
+  deletedAt            DateTime?
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   farms                Farm[]
@@ -69,6 +72,8 @@ enum UserStatus {
   ACTIVE
   SUSPENDED
   BLOCKED
+  PENDING_DELETE
+  DELETED
 }
 
 enum InputMethod {

@@ -99,44 +99,69 @@ async login(dto: LoginDto) {
     user: safeUser,
   };
 }
-  async refresh(dto: RefreshTokenDto) {
-    const payload = await this.jwtService.verifyAsync(
-      dto.refreshToken,
-    );
 
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: payload.sub,
-      },
-    });
+async logout(userId: string) {
+  await this.prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      refreshTokenHash: null,
+    },
+  });
 
-    if (!user || !user.refreshTokenHash) {
-      throw new UnauthorizedException(
-        'Invalid refresh token',
-      );
-    }
+  return {
+    message: 'Logged out successfully',
+  };
+}
 
-    const valid = await bcrypt.compare(
-      dto.refreshToken,
-      user.refreshTokenHash,
-    );
+async refresh(dto: RefreshTokenDto) {
+  const payload = await this.jwtService.verifyAsync(dto.refreshToken);
 
-    if (!valid) {
-      throw new UnauthorizedException(
-        'Invalid refresh token',
-      );
-    }
+  const user = await this.prisma.user.findUnique({
+    where: {
+      id: payload.sub,
+    },
+  });
 
-    const newPayload = {
-      sub: user.id,
-      role: user.role,
-    };
-
-    const accessToken =
-      await this.jwtService.signAsync(newPayload);
-
-    return {
-      accessToken,
-    };
+  if (!user || !user.refreshTokenHash) {
+    throw new UnauthorizedException('Invalid refresh token');
   }
+
+  const valid = await bcrypt.compare(
+    dto.refreshToken,
+    user.refreshTokenHash,
+  );
+
+  if (!valid) {
+    throw new UnauthorizedException('Invalid refresh token');
+  }
+
+  const newPayload = {
+    sub: user.id,
+    role: user.role,
+  };
+
+  const accessToken = await this.jwtService.signAsync(newPayload);
+
+  const refreshToken = await this.jwtService.signAsync(newPayload, {
+    expiresIn: '7d',
+  });
+
+  const refreshTokenHash = await bcrypt.hash(refreshToken, 12);
+
+  await this.prisma.user.update({
+    where: {
+      id: user.id,
+    },
+    data: {
+      refreshTokenHash,
+    },
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+  };
+}
 }
