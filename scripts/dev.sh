@@ -1,33 +1,33 @@
 #!/bin/bash
 
-set -e
-
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "======================================="
+echo "KrishiKendram Backend Restart"
+echo "======================================="
 
 echo ""
-echo "======================================="
-echo "   KrishiKendram Developer Toolkit"
-echo "======================================="
+echo "[1/5] Stopping existing NestJS processes..."
+pkill -f "nest start" 2>/dev/null
+pkill -f "node.*dist" 2>/dev/null
+pkill -f "ts-node" 2>/dev/null
+
+sleep 2
+
 echo ""
+echo "[2/5] Updating project structure..."
+find . \
+  -path "./node_modules" -prune -o \
+  -path "./dist" -prune -o \
+  -path "./.git" -prune -o \
+  -print | sort > project-structure.txt
 
-echo "[1/6] Stopping old backend processes..."
-pkill -f "nest start" 2>/dev/null || true
-pkill -f "node.*dist/main" 2>/dev/null || true
-fuser -k 3000/tcp 2>/dev/null || true
+echo "project-structure.txt updated."
 
-echo "[2/6] Starting Docker services..."
-docker compose up -d
-
-echo "[3/6] Generating Prisma Client..."
+echo ""
+echo "[3/5] Checking Prisma schema..."
 npx prisma generate
 
-echo "[4/6] Generating reports..."
-bash scripts/reports.sh
-
-echo "[5/6] Running project analysis..."
-bash scripts/analyze.sh
-
-echo "[6/6] Starting NestJS..."
+echo ""
+echo "[4/5] Starting NestJS..."
 npm run start:dev
 
 #Then make it executable once:

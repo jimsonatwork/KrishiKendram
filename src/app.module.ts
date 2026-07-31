@@ -13,6 +13,8 @@ import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { CoreModule } from './core/core.module';
 
+import { PlatformModule } from './platform/platform.module';
+
 import { RequestIdMiddleware } from './common/middleware/request-id/request-id.middleware';
 import { AuthModule } from './auth/auth.module';
 
@@ -30,6 +32,7 @@ import { FarmsModule } from './farms/farms.module';
     UsersModule,
     AuthModule,
 	    FarmsModule,
+		PlatformModule,
   ],
   controllers: [AppController],
   providers: [AppService],

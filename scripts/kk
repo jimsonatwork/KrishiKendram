@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# ==========================================
+# KrishiKendram Developer CLI
+# ==========================================
+
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+show_help() {
+cat << EOF
+
+==========================================
+ KrishiKendram Developer CLI
+==========================================
+
+Usage:
+
+  ./scripts/kk <command>
+
+Available Commands
+
+  dev         Start development environment
+  reports     Generate project reports
+  analyze     Analyze project structure
+  prisma      Generate Prisma client
+  migrate     Run Prisma migrations
+  studio      Open Prisma Studio
+  status      Show project status
+  git         Show Git status
+  help        Show this help
+
+EOF
+}
+
+case "$1" in
+
+dev)
+    bash "$BASE_DIR/dev.sh"
+    ;;
+
+reports)
+    bash "$BASE_DIR/reports.sh"
+    ;;
+
+analyze)
+    bash "$BASE_DIR/analyze.sh"
+    ;;
+
+prisma)
+    npx prisma generate
+    ;;
+
+migrate)
+    npx prisma migrate dev
+    ;;
+
+studio)
+    npx prisma studio
+    ;;
+
+git)
+    git status
+    ;;
+
+status)
+
+echo ""
+echo "========== Project Status =========="
+
+echo ""
+echo "Git"
+git status --short
+
+echo ""
+echo "Node"
+node -v
+
+echo ""
+echo "npm"
+npm -v
+
+echo ""
+echo "Prisma"
+npx prisma --version
+
+echo ""
+echo "Docker"
+docker --version
+
+echo ""
+echo "Docker Compose"
+docker compose version
+
+;;
+
+help|"")
+    show_help
+    ;;
+
+*)
+
+echo ""
+echo "Unknown command: $1"
+echo ""
+show_help
+
+;;
+
+esac
