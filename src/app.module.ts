@@ -19,6 +19,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id/request-id.m
 import { AuthModule } from './auth/auth.module';
 
 import { FarmsModule } from './farms/farms.module';
+import { IntakeModule } from './intake/intake.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { FarmsModule } from './farms/farms.module';
     AuthModule,
 	    FarmsModule,
 		PlatformModule,
+		IntakeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
