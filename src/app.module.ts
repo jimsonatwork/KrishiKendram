@@ -20,6 +20,7 @@ import { AuthModule } from './auth/auth.module';
 
 import { FarmsModule } from './farms/farms.module';
 import { IntakeModule } from './intake/intake.module';
+import { RegistryModule } from './registry/registry.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { IntakeModule } from './intake/intake.module';
 	    FarmsModule,
 		PlatformModule,
 		IntakeModule,
+		RegistryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
