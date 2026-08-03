@@ -58,6 +58,7 @@ model Farm {
 
   assets  FarmAsset[]
   records FarmRecord[]
+crops Crop[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -100,6 +101,34 @@ model FarmRecord {
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 }
 
+model Crop {
+  id            String       @id @default(cuid())
+  farmId        String
+
+  name          String
+  variety       String?
+  season        CropSeason
+  status        CropStatus   @default(PLANNED)
+
+  sowingDate    DateTime?
+  harvestDate   DateTime?
+
+  area          Float?
+  unit          String?
+
+  notes         String?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+
+  farm          Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([status])
+  @@index([season])
+}
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
@@ -136,4 +165,24 @@ enum InputMethod {
   IMAGE
   VIDEO
   MIXED
+}
+
+enum CropSeason {
+  KHARIF
+  RABI
+  ZAID
+  PERENNIAL
+}
+
+enum CropStatus {
+  PLANNED
+  SOWN
+  GERMINATED
+  GROWING
+  FLOWERING
+  FRUITING
+  HARVEST_READY
+  HARVESTED
+  FAILED
+  ARCHIVED
 }
