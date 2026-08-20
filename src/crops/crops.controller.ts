@@ -31,7 +31,7 @@ export class CropsController {
     @Body() dto: CreateCropDto,
   ) {
     return this.cropsService.create(
-      req.user.id,
+      req.user.userId,
       dto,
     );
   }
@@ -41,7 +41,7 @@ export class CropsController {
     @Req() req: any,
   ) {
     return this.cropsService.findMyCrops(
-      req.user.id,
+      req.user.userId,
     );
   }
 
@@ -51,7 +51,7 @@ export class CropsController {
     @Param('id') id: string,
   ) {
     return this.cropsService.findOne(
-      req.user.id,
+      req.user.userId,
       id,
     );
   }
@@ -63,7 +63,7 @@ export class CropsController {
     @Body() dto: UpdateCropDto,
   ) {
     return this.cropsService.update(
-      req.user.id,
+      req.user.userId,
       id,
       dto,
     );
@@ -75,7 +75,7 @@ export class CropsController {
     @Param('id') id: string,
   ) {
     return this.cropsService.archive(
-      req.user.id,
+      req.user.userId,
       id,
     );
   }
