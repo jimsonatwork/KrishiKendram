@@ -1,4 +1,9 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+} from '@nestjs/common';
 
 import { RegistryService } from './registry.service';
 
@@ -15,6 +20,14 @@ export class RegistryController {
 
   @Get(':name')
   getOne(@Param('name') name: string) {
-    return this.registry.get(name);
+    const resource = this.registry.get(name);
+
+    if (!resource) {
+      throw new NotFoundException(
+        `Resource '${name}' not found`,
+      );
+    }
+
+    return resource;
   }
 }
