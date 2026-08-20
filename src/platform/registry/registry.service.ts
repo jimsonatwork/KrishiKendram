@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+
 import { ResourceDefinition } from './resource-definition.interface';
 
 @Injectable()
