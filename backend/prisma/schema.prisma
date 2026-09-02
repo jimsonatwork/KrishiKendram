@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String  @id @default(cuid())
+  name         String
+  email        String? @unique
+  mobile       String? @unique
+  passwordHash String
+
+  role   UserRole   @default(FARMER)
+  status UserStatus @default(PENDING)
+
+  preferredLanguage    String?     @default("en")
+  preferredInputMethod InputMethod @default(MIXED)
+
+  profileCompletion Int     @default(0)
+  isVerified        Boolean @default(false)
+
+  lastLoginAt      DateTime?
+  refreshTokenHash String?
+
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+
+  deletionRequested   Boolean   @default(false)
+  deletionRequestedAt DateTime?
+  deletedAt           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farms Farm[]
+}
+
+model Farm {
+  id String @id @default(cuid())
+
+  name        String
+  type        String?
+  description String?
+
+  location String?
+
+  latitude  Float?
+  longitude Float?
+
+  area Float?
+  unit String? @default("acre")
+
+  ownerId String
+
+  assets  FarmAsset[]
+  records FarmRecord[]
+crops Crop[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model FarmAsset {
+  id String @id @default(cuid())
+
+  farmId String
+
+  type String
+  name String?
+
+  quantity Float?
+  unit     String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+}
+
+model FarmRecord {
+  id String @id @default(cuid())
+
+  farmId String
+
+  category String
+  title    String?
+
+  inputMethod InputMethod
+
+  data Json
+
+  createdAt DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+}
+
+model Crop {
+  id            String       @id @default(cuid())
+  farmId        String
+
+  name          String
+  variety       String?
+  season        CropSeason
+  status        CropStatus   @default(PLANNED)
+
+  sowingDate    DateTime?
+  harvestDate   DateTime?
+
+  area          Float?
+  unit          String?
+
+  notes         String?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+
+  farm          Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([status])
+  @@index([season])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  FARMER
+  FARM_WORKER
+  AGRONOMIST
+  VETERINARIAN
+  BUYER
+  MERCHANT
+  FPO
+  PARTNER
+  FIELD_OFFICER
+  DISTRICT_ADMIN
+  STATE_ADMIN
+  GOVERNMENT
+  NGO
+  BANK
+  LOGISTICS
+  AI_AGENT
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+  PENDING_DELETE
+  DELETED
+}
+
+enum InputMethod {
+  VOICE
+  MANUAL
+  IMAGE
+  VIDEO
+  MIXED
+}
+
+enum CropSeason {
+  KHARIF
+  RABI
+  ZAID
+  PERENNIAL
+}
+
+enum CropStatus {
+  PLANNED
+  SOWN
+  GERMINATED
+  GROWING
+  FLOWERING
+  FRUITING
+  HARVEST_READY
+  HARVESTED
+  FAILED
+  ARCHIVED
+}
