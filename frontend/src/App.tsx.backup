@@ -1,0 +1,1147 @@
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  NavLink,
+  Route,
+  Routes,
+  useNavigate,
+} from 'react-router-dom'
+import { api } from './lib/api'
+
+function Landing() {
+  return (
+    <main className="min-h-screen bg-[#f5f7f2]">
+      <nav className="flex items-center justify-between border-b bg-white px-8 py-4">
+        <div className="text-2xl font-bold text-green-800">KrishiKendram</div>
+
+        <div className="flex gap-6 text-sm font-medium">
+          <Link to="/login" className="text-green-800">
+            Login
+          </Link>
+
+          <Link
+            to="/register"
+            className="rounded-lg bg-green-700 px-5 py-2 text-white"
+          >
+            Get Started
+          </Link>
+        </div>
+      </nav>
+
+      <section className="mx-auto max-w-6xl px-8 py-24">
+        <p className="font-semibold uppercase tracking-widest text-green-700">
+          Smart Farm Management
+        </p>
+
+        <h1 className="mt-4 text-5xl font-bold leading-tight text-gray-900 md:text-6xl">
+          Your farm.
+          <br />
+          Your data.
+          <br />
+          <span className="text-green-700">Your intelligence.</span>
+        </h1>
+
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-gray-600">
+          KrishiKendram brings your farm records, activities, assets and
+          intelligent assistance together in one place.
+        </p>
+
+        <div className="mt-10 flex gap-4">
+          <Link
+            to="/register"
+            className="rounded-xl bg-green-700 px-7 py-3 font-semibold text-white"
+          >
+            Start Your Farm
+          </Link>
+
+          <Link
+            to="/login"
+            className="rounded-xl border border-gray-300 bg-white px-7 py-3 font-semibold"
+          >
+            Sign In
+          </Link>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function Login() {
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      const result = await api.login({ identifier: email, password })
+
+      localStorage.setItem('accessToken', result.accessToken)
+      localStorage.setItem('refreshToken', result.refreshToken)
+
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f5f7f2] px-6">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+        <h1 className="text-3xl font-bold">Welcome back</h1>
+
+        <p className="mt-2 text-gray-500">
+          Sign in to your KrishiKendram account.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <input
+            className="w-full rounded-lg border p-3"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+
+          <input
+            className="w-full rounded-lg border p-3"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+
+          {error && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <button
+            disabled={loading}
+            className="w-full rounded-lg bg-green-700 p-3 font-semibold text-white disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          New to KrishiKendram?{' '}
+          <Link to="/register" className="text-green-700">
+            Create an account
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function Register() {
+  const navigate = useNavigate()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      await api.register({ name, email, password })
+      navigate('/login')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f5f7f2] px-6">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+        <h1 className="text-3xl font-bold">Create your account</h1>
+
+        <p className="mt-2 text-gray-500">
+          Let's get your farm started.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <input
+            className="w-full rounded-lg border p-3"
+            placeholder="Full name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
+
+          <input
+            className="w-full rounded-lg border p-3"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+
+          <input
+            className="w-full rounded-lg border p-3"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+
+          {error && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <button
+            disabled={loading}
+            className="w-full rounded-lg bg-green-700 p-3 font-semibold text-white disabled:opacity-50"
+          >
+            {loading ? 'Creating account...' : 'Create Account'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Already registered?{' '}
+          <Link to="/login" className="text-green-700">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+
+function PortalLayout() {
+  const navigate = useNavigate()
+  const token = localStorage.getItem('accessToken')
+
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+
+  function logout() {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    navigate('/login')
+  }
+
+  const navigation = [
+    ['Dashboard', '/app'],
+    ['My Farms', '/app/farms'],
+    ['Crops', '/app/crops'],
+    ['Activities', '/app/activities'],
+    ['History', '/app/history'],
+    ['AI Intake', '/app/intake'],
+  ]
+
+  const path = window.location.pathname
+
+  let content = <Dashboard />
+
+  if (path === '/app/farms') {
+    content = <FarmsPage />
+  } else if (path === '/app/crops') {
+    content = <CropsPage />
+  } else if (path === '/app/activities') {
+    content = <ComingSoon title="Activities" />
+  } else if (path === '/app/history') {
+    content = <ComingSoon title="Farm History" />
+  } else if (path === '/app/intake') {
+    content = <ComingSoon title="AI Intake" />
+  }
+
+  return (
+    <div className="flex min-h-screen bg-[#f5f7f2]">
+      <aside className="hidden w-64 border-r bg-white p-6 md:block">
+        <Link to="/app" className="text-2xl font-bold text-green-800">
+          KrishiKendram
+        </Link>
+
+        <nav className="mt-10 space-y-2">
+          {navigation.map(([label, href]) => (
+            <NavLink
+              key={href}
+              to={href}
+              end={href === '/app'}
+              className={({ isActive }) =>
+                `block rounded-lg px-4 py-3 text-sm font-medium ${
+                  isActive
+                    ? 'bg-green-50 text-green-800'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="mt-10 border-t pt-6">
+          <p className="text-sm font-semibold">Farmer Account</p>
+
+          <button
+            onClick={logout}
+            className="mt-4 text-sm font-medium text-red-600"
+          >
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1">
+        <header className="border-b bg-white px-6 py-4 md:hidden">
+          <Link to="/app" className="text-xl font-bold text-green-800">
+            KrishiKendram
+          </Link>
+        </header>
+
+        {content}
+      </main>
+    </div>
+  )
+}
+
+function FarmsPage() {
+  const [farms, setFarms] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [name, setName] = useState('')
+  const [type, setType] = useState('AGRICULTURE')
+  const [location, setLocation] = useState('')
+  const [area, setArea] = useState('')
+  const [unit, setUnit] = useState('acre')
+  const [saving, setSaving] = useState(false)
+  const [editingFarm, setEditingFarm] = useState<any | null>(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken')
+
+    if (!token) {
+      return
+    }
+
+    api.farms(token)
+      .then((data) => {
+        setFarms(Array.isArray(data) ? data : [])
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Unable to load farms')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [])
+
+  async function handleUpdateFarm(event: FormEvent) {
+    event.preventDefault()
+
+    const token = localStorage.getItem('accessToken')
+
+    if (!token || !editingFarm) {
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const updated = await api.updateFarm(token, editingFarm.id, {
+        name: editingFarm.name,
+        type: editingFarm.type,
+        location: editingFarm.location || undefined,
+        area:
+          editingFarm.area !== '' && editingFarm.area !== null
+            ? Number(editingFarm.area)
+            : undefined,
+        unit: editingFarm.unit || undefined,
+      })
+
+      setFarms((current) =>
+        current.map((farm) =>
+          farm.id === editingFarm.id ? updated : farm,
+        ),
+      )
+
+      setEditingFarm(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update farm')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDeleteFarm(farm: any) {
+    const token = localStorage.getItem('accessToken')
+
+    if (!token) {
+      setError('Please sign in again.')
+      return
+    }
+
+    if (!window.confirm(`Delete "${farm.name}"?`)) {
+      return
+    }
+
+    setError('')
+
+    try {
+      await api.deleteFarm(token, farm.id)
+
+      setFarms((current) =>
+        current.filter((item) => item.id !== farm.id),
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to delete farm')
+    }
+  }
+
+  async function handleCreateFarm(event: FormEvent) {
+    event.preventDefault()
+
+    const token = localStorage.getItem('accessToken')
+
+    if (!token) {
+      setError('Please sign in again.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const farm = await api.createFarm(token, {
+        name,
+        type,
+        location: location || undefined,
+        area: area ? Number(area) : undefined,
+        unit: unit || undefined,
+      })
+
+      setFarms((current) => [...current, farm])
+      setName('')
+      setLocation('')
+      setArea('')
+      setShowForm(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create farm')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="mx-auto max-w-7xl px-6 py-10 md:px-10">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wider text-green-700">
+            Farm Management
+          </p>
+          <h1 className="mt-2 text-4xl font-bold">My Farms</h1>
+          <p className="mt-3 text-gray-600">
+            Manage your farms, land, crops, assets and records.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowForm((value) => !value)}
+          className="rounded-xl bg-green-700 px-5 py-3 font-semibold text-white"
+        >
+          + Add Farm
+        </button>
+      </div>
+
+      {showForm && (
+        <form
+          onSubmit={handleCreateFarm}
+          className="mt-8 rounded-2xl bg-white p-6 shadow-sm"
+        >
+          <h2 className="text-xl font-bold">Create Farm</h2>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Farm name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+
+            <select
+              className="rounded-lg border p-3"
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+            >
+              <option value="AGRICULTURE">Agriculture</option>
+              <option value="AGRICULTURE_DAIRY">Agriculture + Dairy</option>
+              <option value="LIVESTOCK">Livestock</option>
+            </select>
+
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Location"
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+            />
+
+            <input
+              className="rounded-lg border p-3"
+              type="number"
+              step="0.01"
+              placeholder="Area"
+              value={area}
+              onChange={(event) => setArea(event.target.value)}
+            />
+
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Unit"
+              value={unit}
+              onChange={(event) => setUnit(event.target.value)}
+            />
+          </div>
+
+          <div className="mt-5 flex gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-green-700 px-6 py-3 font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? 'Creating...' : 'Create Farm'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="rounded-xl border px-6 py-3 font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading && (
+        <div className="mt-10 rounded-2xl bg-white p-8 shadow-sm">
+          Loading your farms...
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-10 rounded-2xl bg-red-50 p-6 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {editingFarm && (
+        <form
+          onSubmit={handleUpdateFarm}
+          className="mt-8 rounded-2xl bg-white p-6 shadow-sm"
+        >
+          <h2 className="text-xl font-bold">Edit Farm</h2>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Farm name"
+              value={editingFarm.name ?? ''}
+              onChange={(event) =>
+                setEditingFarm({
+                  ...editingFarm,
+                  name: event.target.value,
+                })
+              }
+              required
+            />
+
+            <select
+              className="rounded-lg border p-3"
+              value={editingFarm.type ?? ''}
+              onChange={(event) =>
+                setEditingFarm({
+                  ...editingFarm,
+                  type: event.target.value,
+                })
+              }
+            >
+              <option value="AGRICULTURE">Agriculture</option>
+              <option value="AGRICULTURE_DAIRY">
+                Agriculture + Dairy
+              </option>
+              <option value="LIVESTOCK">Livestock</option>
+            </select>
+
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Location"
+              value={editingFarm.location ?? ''}
+              onChange={(event) =>
+                setEditingFarm({
+                  ...editingFarm,
+                  location: event.target.value,
+                })
+              }
+            />
+
+            <input
+              className="rounded-lg border p-3"
+              type="number"
+              step="0.01"
+              placeholder="Area"
+              value={editingFarm.area ?? ''}
+              onChange={(event) =>
+                setEditingFarm({
+                  ...editingFarm,
+                  area: event.target.value,
+                })
+              }
+            />
+
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Unit"
+              value={editingFarm.unit ?? ''}
+              onChange={(event) =>
+                setEditingFarm({
+                  ...editingFarm,
+                  unit: event.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="mt-5 flex gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-green-700 px-6 py-3 font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setEditingFarm(null)}
+              className="rounded-xl border px-6 py-3 font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {!loading && !error && farms.length === 0 && (
+        <div className="mt-10 rounded-2xl bg-white p-10 text-center shadow-sm">
+          <h2 className="text-2xl font-semibold">No farms yet</h2>
+          <p className="mt-2 text-gray-500">
+            Create your first farm to start managing your agricultural data.
+          </p>
+
+          <button className="mt-6 rounded-xl bg-green-700 px-6 py-3 font-semibold text-white">
+            Create Your First Farm
+          </button>
+        </div>
+      )}
+
+      {!loading && farms.length > 0 && (
+        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {farms.map((farm) => (
+            <div
+              key={farm.id}
+              className="rounded-2xl bg-white p-6 shadow-sm"
+            >
+              <h2 className="text-xl font-bold">{farm.name}</h2>
+
+              <p className="mt-2 text-sm text-gray-500">
+                {farm.type}
+              </p>
+
+              {farm.location && (
+                <p className="mt-4 text-gray-600">
+                  {farm.location}
+                </p>
+              )}
+
+              {farm.area !== undefined && farm.area !== null && (
+                <p className="mt-2 text-sm text-gray-500">
+                  {farm.area} {farm.unit ?? ''}
+                </p>
+              )}
+
+              <div className="mt-5 flex gap-3">
+                <button
+                  onClick={() => setEditingFarm({ ...farm })}
+                  className="rounded-lg border px-4 py-2 text-sm font-medium"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() => handleDeleteFarm(farm)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+
+function CropsPage() {
+  const [crops, setCrops] = useState<any[]>([])
+  const [farms, setFarms] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [editingCrop, setEditingCrop] = useState<any | null>(null)
+
+  const [name, setName] = useState('')
+  const [variety, setVariety] = useState('')
+  const [farmId, setFarmId] = useState('')
+  const [season, setSeason] = useState('KHARIF')
+  const [status, setStatus] = useState('PLANNED')
+  const [area, setArea] = useState('')
+  const [unit, setUnit] = useState('acre')
+  const [notes, setNotes] = useState('')
+
+  const token = localStorage.getItem('accessToken')
+
+  async function loadData() {
+    if (!token) return
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const [cropData, farmData] = await Promise.all([
+        api.crops(token),
+        api.farms(token),
+      ])
+
+      setCrops(Array.isArray(cropData) ? cropData : [])
+      setFarms(Array.isArray(farmData) ? farmData : [])
+
+      if (!farmId && Array.isArray(farmData) && farmData.length > 0) {
+        setFarmId(farmData[0].id)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load crops')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  function resetForm() {
+    setName('')
+    setVariety('')
+    setFarmId(farms[0]?.id ?? '')
+    setSeason('KHARIF')
+    setStatus('PLANNED')
+    setArea('')
+    setUnit('acre')
+    setNotes('')
+    setEditingCrop(null)
+  }
+
+  function openCreate() {
+    resetForm()
+    setShowForm(true)
+  }
+
+  function openEdit(crop: any) {
+    setEditingCrop(crop)
+    setName(crop.name ?? '')
+    setVariety(crop.variety ?? '')
+    setFarmId(crop.farmId ?? '')
+    setSeason(crop.season ?? 'KHARIF')
+    setStatus(crop.status ?? 'PLANNED')
+    setArea(crop.area != null ? String(crop.area) : '')
+    setUnit(crop.unit ?? 'acre')
+    setNotes(crop.notes ?? '')
+    setShowForm(true)
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+
+    if (!token) return
+
+    setError('')
+
+    const data = {
+      farmId,
+      name,
+      variety: variety || undefined,
+      season,
+      status,
+      area: area ? Number(area) : undefined,
+      unit: unit || undefined,
+      notes: notes || undefined,
+    }
+
+    try {
+      if (editingCrop) {
+        await api.updateCrop(token, editingCrop.id, data)
+      } else {
+        await api.createCrop(token, data)
+      }
+
+      setShowForm(false)
+      resetForm()
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save crop')
+    }
+  }
+
+  async function handleDelete(crop: any) {
+    if (!token) return
+
+    if (!window.confirm(`Archive "${crop.name}"?`)) return
+
+    try {
+      await api.deleteCrop(token, crop.id)
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to archive crop')
+    }
+  }
+
+  function farmName(id: string) {
+    return farms.find((farm) => farm.id === id)?.name ?? 'Unknown farm'
+  }
+
+  return (
+    <section className="mx-auto max-w-7xl px-6 py-10 md:px-10">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wider text-green-700">
+            Crop Management
+          </p>
+          <h1 className="mt-2 text-4xl font-bold">My Crops</h1>
+          <p className="mt-3 text-gray-600">
+            Track crops, seasons, status and growing information.
+          </p>
+        </div>
+
+        <button
+          onClick={openCreate}
+          className="rounded-xl bg-green-700 px-5 py-3 font-semibold text-white"
+        >
+          + Add Crop
+        </button>
+      </div>
+
+      {error && (
+        <div className="mt-6 rounded-xl bg-red-50 p-4 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {showForm && (
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 rounded-2xl bg-white p-6 shadow-sm"
+        >
+          <h2 className="text-2xl font-bold">
+            {editingCrop ? 'Edit Crop' : 'Add Crop'}
+          </h2>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Crop name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Variety"
+              value={variety}
+              onChange={(e) => setVariety(e.target.value)}
+            />
+
+            <select
+              className="rounded-lg border p-3"
+              value={farmId}
+              onChange={(e) => setFarmId(e.target.value)}
+              required
+            >
+              <option value="">Select farm</option>
+              {farms.map((farm) => (
+                <option key={farm.id} value={farm.id}>
+                  {farm.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="rounded-lg border p-3"
+              value={season}
+              onChange={(e) => setSeason(e.target.value)}
+            >
+              <option value="KHARIF">Kharif</option>
+              <option value="RABI">Rabi</option>
+              <option value="ZAID">Zaid</option>
+              <option value="PERENNIAL">Perennial</option>
+            </select>
+
+            <select
+              className="rounded-lg border p-3"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="PLANNED">Planned</option>
+              <option value="SOWN">Sown</option>
+              <option value="GERMINATED">Germinated</option>
+              <option value="GROWING">Growing</option>
+              <option value="FLOWERING">Flowering</option>
+              <option value="FRUITING">Fruiting</option>
+              <option value="HARVEST_READY">Harvest Ready</option>
+              <option value="HARVESTED">Harvested</option>
+              <option value="FAILED">Failed</option>
+            </select>
+
+            <input
+              className="rounded-lg border p-3"
+              type="number"
+              min="0"
+              step="any"
+              placeholder="Area"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+            />
+
+            <input
+              className="rounded-lg border p-3"
+              placeholder="Unit"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+            />
+
+            <textarea
+              className="rounded-lg border p-3 md:col-span-2"
+              placeholder="Notes"
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button
+              type="submit"
+              className="rounded-xl bg-green-700 px-6 py-3 font-semibold text-white"
+            >
+              {editingCrop ? 'Save Changes' : 'Create Crop'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false)
+                resetForm()
+              }}
+              className="rounded-xl border px-6 py-3 font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading && (
+        <div className="mt-10 rounded-2xl bg-white p-8 shadow-sm">
+          Loading your crops...
+        </div>
+      )}
+
+      {!loading && !error && crops.length === 0 && (
+        <div className="mt-10 rounded-2xl bg-white p-10 text-center shadow-sm">
+          <h2 className="text-2xl font-semibold">No crops yet</h2>
+          <p className="mt-2 text-gray-500">
+            Add your first crop to start tracking production.
+          </p>
+
+          <button
+            onClick={openCreate}
+            className="mt-6 rounded-xl bg-green-700 px-6 py-3 font-semibold text-white"
+          >
+            Add Your First Crop
+          </button>
+        </div>
+      )}
+
+      {!loading && crops.length > 0 && (
+        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {crops.map((crop) => (
+            <div
+              key={crop.id}
+              className="rounded-2xl bg-white p-6 shadow-sm"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">{crop.name}</h2>
+                  {crop.variety && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      {crop.variety}
+                    </p>
+                  )}
+                </div>
+
+                <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                  {crop.status}
+                </span>
+              </div>
+
+              <p className="mt-5 text-sm text-gray-600">
+                Farm: {farmName(crop.farmId)}
+              </p>
+
+              <p className="mt-2 text-sm text-gray-600">
+                Season: {crop.season}
+              </p>
+
+              {crop.area != null && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Area: {crop.area} {crop.unit ?? ''}
+                </p>
+              )}
+
+              <div className="mt-6 flex gap-3 border-t pt-4">
+                <button
+                  onClick={() => openEdit(crop)}
+                  className="rounded-lg border px-4 py-2 text-sm font-medium"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() => handleDelete(crop)}
+                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600"
+                >
+                  Archive
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ComingSoon({ title }: { title: string }) {
+  return (
+    <section className="mx-auto max-w-7xl px-6 py-10 md:px-10">
+      <h1 className="text-4xl font-bold">{title}</h1>
+
+      <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
+        <p className="text-gray-500">
+          This workspace is being connected to the KrishiKendram backend.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+function Dashboard() {
+  const token = localStorage.getItem('accessToken')
+
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f5f7f2]">
+      <header className="border-b bg-white px-8 py-5">
+        <div className="text-2xl font-bold text-green-800">
+          KrishiKendram
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-8 py-10">
+        <p className="text-sm font-semibold uppercase tracking-wider text-green-700">
+          Farmer Dashboard
+        </p>
+
+        <h1 className="mt-2 text-4xl font-bold">
+          Welcome to your farm
+        </h1>
+
+        <div className="mt-10 grid gap-6 md:grid-cols-3">
+          {[
+            ['My Farms', '0', 'Manage your farms'],
+            ['Crops', '0', 'Track your crops'],
+            ['Recent Activity', '0', 'View farm history'],
+          ].map(([title, value, description]) => (
+            <div
+              key={title}
+              className="rounded-2xl bg-white p-6 shadow-sm"
+            >
+              <p className="text-gray-500">{title}</p>
+              <p className="mt-2 text-4xl font-bold">{value}</p>
+              <p className="mt-2 text-sm text-gray-500">{description}</p>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        <Route path="/app" element={<PortalLayout />} />
+        <Route path="/app/farms" element={<PortalLayout />} />
+        <Route path="/app/crops" element={<PortalLayout />} />
+        <Route path="/app/activities" element={<PortalLayout />} />
+        <Route path="/app/history" element={<PortalLayout />} />
+        <Route path="/app/intake" element={<PortalLayout />} />
+
+        <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+export default App
