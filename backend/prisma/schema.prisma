@@ -7,6 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Entity {
+  id        String    @id @default(cuid())
+  type      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([type])
+  @@index([deletedAt])
+}
+
 model User {
   id           String  @id @default(cuid())
   name         String
@@ -58,7 +69,7 @@ model Farm {
 
   assets  FarmAsset[]
   records FarmRecord[]
-crops Crop[]
+  crops   Crop[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -102,27 +113,27 @@ model FarmRecord {
 }
 
 model Crop {
-  id            String       @id @default(cuid())
-  farmId        String
+  id     String @id @default(cuid())
+  farmId String
 
-  name          String
-  variety       String?
-  season        CropSeason
-  status        CropStatus   @default(PLANNED)
+  name    String
+  variety String?
+  season  CropSeason
+  status  CropStatus @default(PLANNED)
 
-  sowingDate    DateTime?
-  harvestDate   DateTime?
+  sowingDate  DateTime?
+  harvestDate DateTime?
 
-  area          Float?
-  unit          String?
+  area Float?
+  unit String?
 
-  notes         String?
+  notes String?
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  deletedAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  farm          Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
   @@index([farmId])
   @@index([status])
