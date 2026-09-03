@@ -25,6 +25,21 @@ export class FarmsService {
     );
   }
 
+  private assertFarmAccess(
+    farmOwnerId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    if (
+      farmOwnerId !== userId &&
+      !this.isPrivileged(role)
+    ) {
+      throw new ForbiddenException(
+        'Access denied',
+      );
+    }
+  }
+
   async create(
     ownerId: string,
     dto: CreateFarmDto,
@@ -92,14 +107,11 @@ export class FarmsService {
       );
     }
 
-    if (
-      farm.ownerId !== userId &&
-      !this.isPrivileged(role)
-    ) {
-      throw new ForbiddenException(
-        'Access denied',
-      );
-    }
+    this.assertFarmAccess(
+      farm.ownerId,
+      userId,
+      role,
+    );
 
     return farm;
   }
@@ -143,14 +155,11 @@ export class FarmsService {
       );
     }
 
-    if (
-      farm.ownerId !== userId &&
-      !this.isPrivileged(role)
-    ) {
-      throw new ForbiddenException(
-        'Access denied',
-      );
-    }
+    this.assertFarmAccess(
+      farm.ownerId,
+      userId,
+      role,
+    );
 
     return this.prisma.farmAsset.create({
       data: {
@@ -189,14 +198,11 @@ export class FarmsService {
       );
     }
 
-    if (
-      asset.farm.ownerId !== userId &&
-      !this.isPrivileged(role)
-    ) {
-      throw new ForbiddenException(
-        'Access denied',
-      );
-    }
+    this.assertFarmAccess(
+      asset.farm.ownerId,
+      userId,
+      role,
+    );
 
     return this.prisma.farmAsset.update({
       where: {
@@ -236,14 +242,11 @@ export class FarmsService {
       );
     }
 
-    if (
-      asset.farm.ownerId !== userId &&
-      !this.isPrivileged(role)
-    ) {
-      throw new ForbiddenException(
-        'Access denied',
-      );
-    }
+    this.assertFarmAccess(
+      asset.farm.ownerId,
+      userId,
+      role,
+    );
 
     return this.prisma.farmAsset.delete({
       where: {
@@ -271,14 +274,11 @@ export class FarmsService {
       );
     }
 
-    if (
-      farm.ownerId !== userId &&
-      !this.isPrivileged(role)
-    ) {
-      throw new ForbiddenException(
-        'Access denied',
-      );
-    }
+    this.assertFarmAccess(
+      farm.ownerId,
+      userId,
+      role,
+    );
 
     return this.prisma.farmRecord.create({
       data: {
