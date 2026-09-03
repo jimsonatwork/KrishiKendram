@@ -1,0 +1,37 @@
+export enum AuthorizationAction {
+  READ = 'READ',
+  CREATE = 'CREATE',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+  ARCHIVE = 'ARCHIVE',
+  RESTORE = 'RESTORE',
+  SHARE = 'SHARE',
+  EXPORT = 'EXPORT',
+  IMPORT = 'IMPORT',
+  APPROVE = 'APPROVE',
+  REJECT = 'REJECT',
+  ASSIGN = 'ASSIGN',
+  TRANSFER = 'TRANSFER',
+  ANALYZE = 'ANALYZE',
+  RECOMMEND = 'RECOMMEND',
+  PUBLISH = 'PUBLISH',
+}
+
+export enum AuthorizationScope {
+  OWN = 'OWN',
+  FARM = 'FARM',
+  ASSIGNED = 'ASSIGNED',
+  ORGANIZATION = 'ORGANIZATION',
+  SHARED = 'SHARED',
+  PUBLIC = 'PUBLIC',
+  GLOBAL = 'GLOBAL',
+}
+
+export enum FieldAccessEffect {
+  ALLOW = 'ALLOW',
+  DENY = 'DENY',
+  MASK = 'MASK',
+  REDACT = 'REDACT',
+  AGGREGATE = 'AGGREGATE',
+  TRANSFORM = 'TRANSFORM',
+}

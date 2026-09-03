@@ -20,6 +20,78 @@ model Entity {
   @@index([deletedAt])
 }
 
+model Permission {
+  id       String  @id @default(cuid())
+  module   String
+  section  String?
+  resource String?
+  action   String
+  scope    String
+
+  inherited Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rolePermissions  RolePermission[]
+  accessGrants     AccessGrant[]
+  fieldPermissions FieldPermission[]
+
+  @@unique([module, section, resource, action, scope])
+  @@index([module])
+  @@index([resource])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  role         UserRole
+  permissionId String
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
+
+model AccessGrant {
+  id           String @id @default(cuid())
+  permissionId String
+
+  userId String?
+
+  subjectType String
+  subjectId   String
+
+  effect String @default("ALLOW")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([subjectType, subjectId])
+  @@index([permissionId])
+}
+
+model FieldPermission {
+  id           String @id @default(cuid())
+  permissionId String
+
+  field  String
+  effect String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([permissionId, field])
+  @@index([field])
+}
+
 model User {
   id           String  @id @default(cuid())
   name         String

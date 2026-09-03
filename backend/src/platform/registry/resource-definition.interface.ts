@@ -12,6 +12,8 @@ export interface ResourceDefinition {
 
   permissions?: string[];
 
+  scopes?: string[];
+
   features?: string[];
 
   softDelete?: boolean;
