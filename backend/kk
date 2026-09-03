@@ -7,34 +7,40 @@ case "${1:-restart}" in
   restart)
     "$ROOT/tools/kk-restart.sh"
     ;;
+
   doctor)
-    "$ROOT/tools/kk-doctor.sh"
+    "$ROOT/tools/kk-doctor.sh" "${2:-}"
     ;;
+
   build)
     source "$ROOT/tools/kk-lib.sh"
     build_project
     ;;
+
   clean)
     source "$ROOT/tools/kk-lib.sh"
     clean_project
     ;;
+
   status)
     source "$ROOT/tools/kk-lib.sh"
     docker_check
     postgres_check
     git_summary
     ;;
+
   *)
-    cat <<EOF
+    cat <<EOF2
 KK Dev Toolkit
 
 Usage:
   ./kk restart
   ./kk doctor
+  ./kk doctor --disk
   ./kk build
   ./kk clean
   ./kk status
-EOF
+EOF2
     exit 1
     ;;
 esac

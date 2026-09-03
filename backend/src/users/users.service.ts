@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -101,26 +107,62 @@ export class UsersService {
   }
   
   async update(
-  id: string,
-  data: {
-    role?: any;
-    status?: any;
-  },
-) {
-  return this.prisma.user.update({
-    where: {
-      id,
+    id: string,
+    data: {
+      role?: UserRole;
+      status?: UserStatus;
     },
-    data,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      status: true,
-      updatedAt: true,
-    },
-  });
-}
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const currentUser = await tx.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          role: true,
+          status: true,
+        },
+      });
+
+      if (!currentUser) {
+        throw new NotFoundException('User not found');
+      }
+
+      const isLastActiveSuperAdmin =
+        currentUser.role === UserRole.SUPER_ADMIN &&
+        currentUser.status === UserStatus.ACTIVE &&
+        ((data.role !== undefined && data.role !== UserRole.SUPER_ADMIN) ||
+          (data.status !== undefined && data.status !== UserStatus.ACTIVE));
+
+      if (isLastActiveSuperAdmin) {
+        const activeSuperAdminCount = await tx.user.count({
+          where: {
+            role: UserRole.SUPER_ADMIN,
+            status: UserStatus.ACTIVE,
+          },
+        });
+
+        if (activeSuperAdminCount <= 1) {
+          throw new BadRequestException(
+            'Cannot demote or disable the last active SUPER_ADMIN',
+          );
+        }
+      }
+
+      return tx.user.update({
+        where: {
+          id,
+        },
+        data,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          updatedAt: true,
+        },
+      });
+    });
+  }
   
 }
