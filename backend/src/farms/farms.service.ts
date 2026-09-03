@@ -29,11 +29,20 @@ export class FarmsService {
     ownerId: string,
     dto: CreateFarmDto,
   ) {
-    return this.prisma.farm.create({
-      data: {
-        ...dto,
-        ownerId,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const entity = await tx.entity.create({
+        data: {
+          type: 'FARM',
+        },
+      });
+
+      return tx.farm.create({
+        data: {
+          ...dto,
+          ownerId,
+          entityId: entity.id,
+        },
+      });
     });
   }
 
