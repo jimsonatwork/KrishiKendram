@@ -9,6 +9,7 @@ const resources = [
   'farm',
   'farmAsset',
   'farmRecord',
+  'crop',
 ];
 
 const actions = [

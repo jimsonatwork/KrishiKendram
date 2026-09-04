@@ -164,6 +164,37 @@ fi
 echo "✅ Asset B: $ASSET_B_ID"
 
 # ============================================================
+# CREATE CROP B
+# ============================================================
+
+echo ""
+echo "🌱 Creating crop under Farm B..."
+
+CROP_B=$(curl -s -X POST "$BASE_URL/crops" \
+  -H "Authorization: Bearer $TOKEN_B" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"farmId\":\"$FARM_B_ID\",
+    \"name\":\"Security Rice B\",
+    \"variety\":\"BPT 5204\",
+    \"season\":\"KHARIF\",
+    \"area\":2,
+    \"unit\":\"acre\",
+    \"notes\":\"Ownership security test\"
+  }")
+
+CROP_B_ID=$(echo "$CROP_B" | jq -r '.id')
+
+if [ -z "$CROP_B_ID" ] || [ "$CROP_B_ID" = "null" ]; then
+  echo "❌ Crop creation failed"
+  echo "$CROP_B" | jq
+  exit 1
+fi
+
+echo "✅ Crop B: $CROP_B_ID"
+
+
+# ============================================================
 # FARM OWNERSHIP TESTS
 # ============================================================
 
@@ -260,6 +291,62 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   }')
 
 check "Farmer A ADD record to Farm B" "403" "$STATUS"
+
+# ============================================================
+# CROP OWNERSHIP TESTS
+# ============================================================
+
+echo ""
+echo "🔒 Testing Crop ownership..."
+echo "----------------------------"
+
+# Farmer A CREATE crop on Farm B
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST "$BASE_URL/crops" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"farmId\":\"$FARM_B_ID\",
+    \"name\":\"Unauthorized Crop\",
+    \"variety\":\"Unauthorized\",
+    \"season\":\"KHARIF\",
+    \"area\":1,
+    \"unit\":\"acre\"
+  }")
+
+check "Farmer A CREATE crop on Farm B" "404" "$STATUS"
+
+# Farmer A GET Crop B
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  "$BASE_URL/crops/$CROP_B_ID" \
+  -H "Authorization: Bearer $TOKEN_A")
+
+check "Farmer A GET Crop B" "403" "$STATUS"
+
+# Farmer A PATCH Crop B
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X PATCH "$BASE_URL/crops/$CROP_B_ID" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"HACKED CROP"
+  }')
+
+check "Farmer A PATCH Crop B" "403" "$STATUS"
+
+# Farmer A DELETE Crop B
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X DELETE "$BASE_URL/crops/$CROP_B_ID" \
+  -H "Authorization: Bearer $TOKEN_A")
+
+check "Farmer A DELETE Crop B" "403" "$STATUS"
+
+# Farmer B GET own Crop
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  "$BASE_URL/crops/$CROP_B_ID" \
+  -H "Authorization: Bearer $TOKEN_B")
+
+check "Farmer B GET own Crop" "200" "$STATUS"
 
 # ============================================================
 # RESULT

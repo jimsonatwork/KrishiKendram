@@ -20,7 +20,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('crops')
 @UseGuards(JwtAuthGuard)
 export class CropsController {
-
   constructor(
     private readonly cropsService: CropsService,
   ) {}
@@ -32,6 +31,7 @@ export class CropsController {
   ) {
     return this.cropsService.create(
       req.user.userId,
+      req.user.role,
       dto,
     );
   }
@@ -42,6 +42,7 @@ export class CropsController {
   ) {
     return this.cropsService.findMyCrops(
       req.user.userId,
+      req.user.role,
     );
   }
 
@@ -52,6 +53,7 @@ export class CropsController {
   ) {
     return this.cropsService.findOne(
       req.user.userId,
+      req.user.role,
       id,
     );
   }
@@ -64,6 +66,7 @@ export class CropsController {
   ) {
     return this.cropsService.update(
       req.user.userId,
+      req.user.role,
       id,
       dto,
     );
@@ -76,6 +79,7 @@ export class CropsController {
   ) {
     return this.cropsService.archive(
       req.user.userId,
+      req.user.role,
       id,
     );
   }
