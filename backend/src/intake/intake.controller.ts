@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 
@@ -19,8 +20,13 @@ export class IntakeController {
 
   @Post()
   create(
+    @Req() req: any,
     @Body() dto: CreateIntakeDto,
   ) {
-    return this.intakeService.create(dto);
+    return this.intakeService.create(
+      req.user.userId,
+      req.user.role,
+      dto,
+    );
   }
 }
