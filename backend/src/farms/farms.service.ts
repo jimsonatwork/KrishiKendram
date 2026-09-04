@@ -4,8 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+
+import { AuthorizationService } from '../platform/authorization/authorization.service';
+import { PrismaService } from '../prisma/prisma.service';
+
+import { AuthorizationAction } from '../platform/authorization/authorization.types';
 
 import { CreateFarmDto } from './dto/create-farm.dto';
 import { UpdateFarmDto } from './dto/update-farm.dto';
@@ -16,6 +20,7 @@ import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
 export class FarmsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly authorization: AuthorizationService,
   ) {}
 
   private isPrivileged(role: UserRole) {
@@ -42,8 +47,20 @@ export class FarmsService {
 
   async create(
     ownerId: string,
+    role: UserRole,
     dto: CreateFarmDto,
   ) {
+    await this.authorization.assertCan({
+      user: {
+        userId: ownerId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.CREATE,
+      ownerId,
+    });
+
     return this.prisma.$transaction(async (tx) => {
       const entity = await tx.entity.create({
         data: {
@@ -107,6 +124,18 @@ export class FarmsService {
       );
     }
 
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      resourceId: id,
+      ownerId: farm.ownerId,
+    });
+
     this.assertFarmAccess(
       farm.ownerId,
       userId,
@@ -122,8 +151,33 @@ export class FarmsService {
     role: UserRole,
     dto: UpdateFarmDto,
   ) {
-    await this.findOne(
-      id,
+    const farm =
+      await this.prisma.farm.findUnique({
+        where: {
+          id,
+        },
+      });
+
+    if (!farm) {
+      throw new NotFoundException(
+        'Farm not found',
+      );
+    }
+
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.UPDATE,
+      resourceId: id,
+      ownerId: farm.ownerId,
+    });
+
+    this.assertFarmAccess(
+      farm.ownerId,
       userId,
       role,
     );
@@ -154,6 +208,18 @@ export class FarmsService {
         'Farm not found',
       );
     }
+
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.CREATE,
+      farmId,
+      ownerId: farm.ownerId,
+    });
 
     this.assertFarmAccess(
       farm.ownerId,
@@ -197,6 +263,19 @@ export class FarmsService {
         'Asset not found',
       );
     }
+
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.UPDATE,
+      resourceId: assetId,
+      farmId,
+      ownerId: asset.farm.ownerId,
+    });
 
     this.assertFarmAccess(
       asset.farm.ownerId,
@@ -242,6 +321,19 @@ export class FarmsService {
       );
     }
 
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.DELETE,
+      resourceId: assetId,
+      farmId,
+      ownerId: asset.farm.ownerId,
+    });
+
     this.assertFarmAccess(
       asset.farm.ownerId,
       userId,
@@ -274,6 +366,18 @@ export class FarmsService {
       );
     }
 
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farmRecord',
+      action: AuthorizationAction.CREATE,
+      farmId,
+      ownerId: farm.ownerId,
+    });
+
     this.assertFarmAccess(
       farm.ownerId,
       userId,
@@ -293,8 +397,33 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    await this.findOne(
-      id,
+    const farm =
+      await this.prisma.farm.findUnique({
+        where: {
+          id,
+        },
+      });
+
+    if (!farm) {
+      throw new NotFoundException(
+        'Farm not found',
+      );
+    }
+
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.DELETE,
+      resourceId: id,
+      ownerId: farm.ownerId,
+    });
+
+    this.assertFarmAccess(
+      farm.ownerId,
       userId,
       role,
     );

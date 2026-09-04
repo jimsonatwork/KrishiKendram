@@ -212,8 +212,8 @@ export class AuthorizationService {
           request.ownerId === request.user.userId
         );
 
-case AuthorizationScope.FARM:
-  return false;
+      case AuthorizationScope.FARM:
+        return !!request.farmId;
 
       case AuthorizationScope.ASSIGNED:
       case AuthorizationScope.ORGANIZATION:

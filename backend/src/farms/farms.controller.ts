@@ -29,15 +29,16 @@ export class FarmsController {
   ) {}
 
   @Post()
-  create(
-    @CurrentUser() user: any,
-    @Body() dto: CreateFarmDto,
-  ) {
-    return this.farmsService.create(
-      user.userId,
-      dto,
-    );
-  }
+create(
+  @CurrentUser() user: any,
+  @Body() dto: CreateFarmDto,
+) {
+  return this.farmsService.create(
+    user.userId,
+    user.role as UserRole,
+    dto,
+  );
+}
 
   @Get('my')
   myFarms(

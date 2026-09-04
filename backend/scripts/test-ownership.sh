@@ -1,7 +1,6 @@
 #!/bin/bash
 
 BASE_URL="http://localhost:3000/api/v1"
-
 PASS=0
 FAIL=0
 
@@ -22,85 +21,93 @@ check() {
 echo "🔐 KrishiKendram Ownership Security Test"
 echo "========================================"
 
-echo ""
-echo "👤 Creating Farmer A..."
-
 USER_A="security.a.$(date +%s)@example.com"
 USER_B="security.b.$(date +%s)@example.com"
 PASSWORD="Test@12345"
 
+# ============================================================
+# FARMER A
+# ============================================================
+
+echo ""
+echo "👤 Creating Farmer A..."
+
 REGISTER_A=$(curl -s -X POST "$BASE_URL/auth/register" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"name\":\"Security Farmer A\",
-    \"email\":\"$USER_A\",
-    \"password\":\"$PASSWORD\"
-  }")
+  -d "{\"name\":\"Security Farmer A\",\"email\":\"$USER_A\",\"password\":\"$PASSWORD\"}")
 
-TOKEN_A=$(curl -s -X POST "$BASE_URL/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"identifier\":\"$USER_A\",
-    \"password\":\"$PASSWORD\"
-  }" | jq -r '.accessToken')
+USER_A_ID=$(echo "$REGISTER_A" | jq -r '.id')
 
-if [ -z "$TOKEN_A" ] || [ "$TOKEN_A" = "null" ]; then
-  echo "❌ Farmer A authentication failed"
+if [ -z "$USER_A_ID" ] || [ "$USER_A_ID" = "null" ]; then
+  echo "❌ Farmer A registration failed"
   echo "$REGISTER_A" | jq
   exit 1
 fi
 
+# Activate Farmer A
+npx prisma db execute \
+  --schema prisma/schema.prisma \
+  --stdin <<SQL >/dev/null
+UPDATE "User"
+SET status = 'ACTIVE'
+WHERE id = '$USER_A_ID';
+SQL
+
+TOKEN_A=$(curl -s -X POST "$BASE_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"identifier\":\"$USER_A\",\"password\":\"$PASSWORD\"}" \
+  | jq -r '.accessToken')
+
+if [ -z "$TOKEN_A" ] || [ "$TOKEN_A" = "null" ]; then
+  echo "❌ Farmer A authentication failed"
+  exit 1
+fi
+
 echo "✅ Farmer A authenticated"
+
+# ============================================================
+# FARMER B
+# ============================================================
 
 echo ""
 echo "👤 Creating Farmer B..."
 
 REGISTER_B=$(curl -s -X POST "$BASE_URL/auth/register" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"name\":\"Security Farmer B\",
-    \"email\":\"$USER_B\",
-    \"password\":\"$PASSWORD\"
-  }")
+  -d "{\"name\":\"Security Farmer B\",\"email\":\"$USER_B\",\"password\":\"$PASSWORD\"}")
+
+USER_B_ID=$(echo "$REGISTER_B" | jq -r '.id')
+
+if [ -z "$USER_B_ID" ] || [ "$USER_B_ID" = "null" ]; then
+  echo "❌ Farmer B registration failed"
+  echo "$REGISTER_B" | jq
+  exit 1
+fi
+
+# Activate Farmer B
+npx prisma db execute \
+  --schema prisma/schema.prisma \
+  --stdin <<SQL >/dev/null
+UPDATE "User"
+SET status = 'ACTIVE'
+WHERE id = '$USER_B_ID';
+SQL
 
 TOKEN_B=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"identifier\":\"$USER_B\",
-    \"password\":\"$PASSWORD\"
-  }" | jq -r '.accessToken')
+  -d "{\"identifier\":\"$USER_B\",\"password\":\"$PASSWORD\"}" \
+  | jq -r '.accessToken')
 
 if [ -z "$TOKEN_B" ] || [ "$TOKEN_B" = "null" ]; then
   echo "❌ Farmer B authentication failed"
-  echo "$REGISTER_B" | jq
   exit 1
 fi
 
 echo "✅ Farmer B authenticated"
 
-echo ""
-echo "🌾 Creating Farm A..."
-
-FARM_A=$(curl -s -X POST "$BASE_URL/farms" \
-  -H "Authorization: Bearer $TOKEN_A" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name":"Security Farm A",
-    "type":"AGRICULTURE_DAIRY",
-    "location":"Hyderabad",
-    "area":5,
-    "unit":"acre"
-  }')
-
-FARM_A_ID=$(echo "$FARM_A" | jq -r '.id')
-
-if [ -z "$FARM_A_ID" ] || [ "$FARM_A_ID" = "null" ]; then
-  echo "❌ Farm A creation failed"
-  echo "$FARM_A" | jq
-  exit 1
-fi
-
-echo "✅ Farm A: $FARM_A_ID"
+# ============================================================
+# CREATE FARM B
+# ============================================================
 
 echo ""
 echo "🌾 Creating Farm B..."
@@ -125,6 +132,10 @@ if [ -z "$FARM_B_ID" ] || [ "$FARM_B_ID" = "null" ]; then
 fi
 
 echo "✅ Farm B: $FARM_B_ID"
+
+# ============================================================
+# CREATE ASSET B
+# ============================================================
 
 echo ""
 echo "🚜 Creating asset under Farm B..."
@@ -152,31 +163,46 @@ fi
 
 echo "✅ Asset B: $ASSET_B_ID"
 
+# ============================================================
+# FARM OWNERSHIP TESTS
+# ============================================================
+
 echo ""
 echo "🔒 Testing Farm ownership..."
 echo "----------------------------"
 
+# Farmer A GET Farm B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   "$BASE_URL/farms/$FARM_B_ID" \
   -H "Authorization: Bearer $TOKEN_A")
+
 check "Farmer A GET Farm B" "403" "$STATUS"
 
+# Farmer A PATCH Farm B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -X PATCH "$BASE_URL/farms/$FARM_B_ID" \
   -H "Authorization: Bearer $TOKEN_A" \
   -H "Content-Type: application/json" \
   -d '{"name":"HACKED FARM"}')
+
 check "Farmer A PATCH Farm B" "403" "$STATUS"
 
+# Farmer A DELETE Farm B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -X DELETE "$BASE_URL/farms/$FARM_B_ID" \
   -H "Authorization: Bearer $TOKEN_A")
+
 check "Farmer A DELETE Farm B" "403" "$STATUS"
+
+# ============================================================
+# ASSET OWNERSHIP TESTS
+# ============================================================
 
 echo ""
 echo "🔒 Testing Asset ownership..."
 echo "-----------------------------"
 
+# Farmer A ADD asset to Farm B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST "$BASE_URL/farms/$FARM_B_ID/assets" \
   -H "Authorization: Bearer $TOKEN_A" \
@@ -187,8 +213,10 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     "quantity":1,
     "unit":"count"
   }')
+
 check "Farmer A ADD asset to Farm B" "403" "$STATUS"
 
+# Farmer A PATCH Asset B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -X PATCH "$BASE_URL/farms/$FARM_B_ID/assets/$ASSET_B_ID" \
   -H "Authorization: Bearer $TOKEN_A" \
@@ -199,17 +227,25 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     "quantity":99,
     "unit":"count"
   }')
+
 check "Farmer A PATCH Asset B" "403" "$STATUS"
 
+# Farmer A DELETE Asset B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -X DELETE "$BASE_URL/farms/$FARM_B_ID/assets/$ASSET_B_ID" \
   -H "Authorization: Bearer $TOKEN_A")
+
 check "Farmer A DELETE Asset B" "403" "$STATUS"
+
+# ============================================================
+# RECORD OWNERSHIP TEST
+# ============================================================
 
 echo ""
 echo "🔒 Testing Record ownership..."
 echo "------------------------------"
 
+# Farmer A ADD record to Farm B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST "$BASE_URL/farms/$FARM_B_ID/records" \
   -H "Authorization: Bearer $TOKEN_A" \
@@ -222,7 +258,12 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
       "test":"ownership"
     }
   }')
+
 check "Farmer A ADD record to Farm B" "403" "$STATUS"
+
+# ============================================================
+# RESULT
+# ============================================================
 
 echo ""
 echo "========================================"
