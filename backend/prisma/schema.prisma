@@ -260,6 +260,7 @@ enum CropSeason {
   RABI
   ZAID
   PERENNIAL
+  UNKNOWN
 }
 
 enum CropStatus {

@@ -314,7 +314,7 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     \"unit\":\"acre\"
   }")
 
-check "Farmer A CREATE crop on Farm B" "404" "$STATUS"
+check "Farmer A CREATE crop on Farm B" "403" "$STATUS"
 
 # Farmer A GET Crop B
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
