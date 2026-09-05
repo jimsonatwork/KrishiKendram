@@ -37,6 +37,33 @@ type RecordData = {
   data?: Record<string, unknown>
 }
 
+export type AdminUser = {
+  id: string
+  name: string
+  email: string | null
+  mobile: string | null
+  role: string
+  status: string
+  preferredLanguage: string | null
+  preferredInputMethod: string
+  profileCompletion: number
+  isVerified: boolean
+  lastLoginAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateAdminUserData = {
+  name: string
+  email: string
+  password: string
+}
+
+export type UpdateAdminUserData = {
+  role?: string
+  status?: string
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -84,6 +111,38 @@ export const api = {
   }) =>
     request('/auth/register', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  users: (token: string) =>
+    request<AdminUser[]>('/users', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }),
+
+  createUser: (
+    data: CreateAdminUserData,
+    token: string,
+  ) =>
+    request<AdminUser>('/users', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    }),
+
+  updateUser: (
+    id: string,
+    data: UpdateAdminUserData,
+    token: string,
+  ) =>
+    request<AdminUser>(`/users/${id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(data),
     }),
 

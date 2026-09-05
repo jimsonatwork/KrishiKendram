@@ -1,3 +1,4 @@
+import { UsersPage } from '@/pages/admin/UsersPage'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -30,6 +31,9 @@ import {
   Package,
   Plus,
   Settings,
+  Sun,
+  Moon,
+  Palette,
   Shield,
   ShieldCheck,
   Sprout,
@@ -46,6 +50,7 @@ import {
   useAuthStore,
   type AuthUser,
 } from '@/stores/auth.store'
+import { useThemeStore } from '@/stores/theme.store'
 
 /* =========================================================
    TYPES
@@ -167,6 +172,121 @@ function Brand({
         </div>
       )}
     </Link>
+  )
+}
+
+/* =========================================================
+   APPEARANCE CONTROL
+========================================================= */
+
+function AppearanceControl() {
+  const [open, setOpen] = useState(false)
+
+  const mode = useThemeStore((state) => state.mode)
+  const colourTheme = useThemeStore(
+    (state) => state.colourTheme,
+  )
+  const setMode = useThemeStore(
+    (state) => state.setMode,
+  )
+  const setColourTheme = useThemeStore(
+    (state) => state.setColourTheme,
+  )
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className={`flex size-9 items-center justify-center rounded-lg border transition ${
+          open
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+        }`}
+        aria-label="Appearance settings"
+        aria-expanded={open}
+        title="Appearance"
+      >
+        <Palette className="size-5" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-11 z-50 w-72 rounded-xl border bg-background p-4 shadow-xl">
+          <div className="mb-4">
+            <div className="text-sm font-semibold">
+              Appearance
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Customize your workspace
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">
+                Mode
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                {(
+                  [
+                    ['system', 'System', Settings],
+                    ['light', 'Light', Sun],
+                    ['dark', 'Dark', Moon],
+                  ] as const
+                ).map(([value, label, Icon]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setMode(value)}
+                    className={`flex flex-col items-center gap-1 rounded-md px-2 py-2 text-xs transition ${
+                      mode === value
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Icon className="size-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Palette className="size-3.5" />
+                Colour theme
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ['krishi', 'Krishi'],
+                    ['ocean', 'Ocean'],
+                    ['harvest', 'Harvest'],
+                    ['midnight', 'Midnight'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setColourTheme(value)}
+                    className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      colourTheme === value
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'hover:bg-muted'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -819,7 +939,7 @@ function PortalLayout({
   ) {
     content = <ComingSoon title="AI Intake" />
   } else if (location.pathname === '/app/users') {
-    content = <ComingSoon title="Users" />
+  content = <UsersPage />
   } else if (location.pathname === '/app/roles') {
     content = <ComingSoon title="Roles" />
   } else if (
@@ -963,16 +1083,18 @@ function PortalLayout({
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Notifications"
-            >
-              <Bell />
-            </Button>
+<div className="ml-auto flex items-center gap-2">
+  <AppearanceControl />
 
-            <div className="hidden text-right sm:block">
+  <Button
+    variant="ghost"
+    size="icon"
+    aria-label="Notifications"
+  >
+    <Bell />
+  </Button>
+
+  <div className="hidden text-right sm:block">
               <div className="text-sm font-medium">
                 {user.name}
               </div>
@@ -1248,7 +1370,7 @@ function AdminDashboard({
       <PageHeader
         eyebrow="Platform control"
         title="Super Admin"
-        description={`Welcome, ${user.name}. Manage the KrishiKendram platform from one secure control surface.`}
+description={`Welcome, ${user.name}. Manage the KrishiKendram platform from one secure control surface.`}
       />
 
       <div className="rounded-2xl border bg-card p-6">
