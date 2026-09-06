@@ -4,18 +4,18 @@ import {
   Post,
   Body,
   UseGuards,
-} from '@nestjs/common'
+} from '@nestjs/common';
 
-import { AuthService } from './auth.service'
+import { AuthService } from './auth.service';
 
-import { RegisterDto } from './dto/register.dto'
-import { LoginDto } from './dto/login.dto'
-import { RefreshTokenDto } from './dto/refresh-token.dto'
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
-import { JwtAuthGuard } from './guards/jwt-auth.guard'
-import { CurrentUser } from './decorators/current-user.decorator'
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
 
-import { PrismaService } from '../prisma/prisma.service'
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('auth')
 export class AuthController {
@@ -26,17 +26,17 @@ export class AuthController {
 
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto)
+    return this.authService.register(dto);
   }
 
   @Post('login')
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto)
+    return this.authService.login(dto);
   }
 
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(dto)
+    return this.authService.refresh(dto);
   }
 
   @Post('logout')
@@ -44,7 +44,7 @@ export class AuthController {
   logout(
     @CurrentUser() user: { userId: string },
   ) {
-    return this.authService.logout(user.userId)
+    return this.authService.logout(user.userId);
   }
 
   @Get('me')
@@ -52,9 +52,12 @@ export class AuthController {
   async me(
     @CurrentUser() user: { userId: string },
   ) {
-    const dbUser = await this.prisma.user.findUnique({
+    const dbUser = await this.prisma.user.update({
       where: {
         id: user.userId,
+      },
+      data: {
+        lastSeenAt: new Date(),
       },
       select: {
         id: true,
@@ -63,9 +66,17 @@ export class AuthController {
         mobile: true,
         role: true,
         status: true,
+        preferredLanguage: true,
+        preferredInputMethod: true,
+        profileCompletion: true,
+        isVerified: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+        updatedAt: true,
       },
-    })
+    });
 
-    return dbUser
+    return dbUser;
   }
 }

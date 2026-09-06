@@ -18,6 +18,8 @@ import { PlatformModule } from './platform/platform.module';
 import { RequestIdMiddleware } from './common/middleware/request-id/request-id.middleware';
 import { AuthModule } from './auth/auth.module';
 
+import { AuditModule } from './platform/audit/audit.module';
+
 import { FarmsModule } from './farms/farms.module';
 import { IntakeModule } from './intake/intake.module';
 import { CropsModule } from './crops/crops.module';

@@ -49,6 +49,7 @@ export type AdminUser = {
   profileCompletion: number
   isVerified: boolean
   lastLoginAt: string | null
+  lastSeenAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -56,12 +57,48 @@ export type AdminUser = {
 export type CreateAdminUserData = {
   name: string
   email: string
+  mobile?: string
   password: string
-}
-
-export type UpdateAdminUserData = {
   role?: string
   status?: string
+}
+
+// ============================================================
+// ADMIN USER UPDATE DATA
+//
+// These fields mirror the backend UpdateUserDto.
+// Password is optional and represents a NEW password only.
+// Existing password credentials are never returned to the client.
+// ============================================================
+
+export type UpdateAdminUserData = {
+  name?: string
+  email?: string
+  mobile?: string
+  password?: string
+  role?: string
+  status?: string
+  preferredLanguage?: string
+  preferredInputMethod?: string
+  profileCompletion?: number
+  isVerified?: boolean
+}
+
+// ============================================================
+// ADMIN USER UPDATE DATA END
+// ============================================================
+
+export type AuditEvent = {
+  id: string
+  actorId: string | null
+  action: string
+  resourceType: string
+  resourceId: string | null
+  description: string | null
+  metadata: unknown
+  ipAddress: string | null
+  userAgent: string | null
+  createdAt: string
 }
 
 async function request<T>(
@@ -146,6 +183,51 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+	bulkDeleteUsers: (
+  userIds: string[],
+  token: string,
+) =>
+  request<{
+    message: string
+    count: number
+    userIds: string[]
+  }>('/users/bulk', {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      userIds,
+    }),
+  }),
+
+  userActivity: (
+    id: string,
+    token: string,
+    limit = 50,
+  ) =>
+    request<AuditEvent[]>(
+      `/users/${id}/activity?limit=${limit}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    ),
+
+  recentUserActivity: (
+    token: string,
+    limit = 50,
+  ) =>
+    request<AuditEvent[]>(
+      `/users/activity/recent?limit=${limit}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    ),
+
   login: (data: {
     identifier: string
     password: string
@@ -166,6 +248,7 @@ export const api = {
       mobile?: string
       role: string
       status: string
+      lastSeenAt?: string | null
     }>('/auth/me', {
       headers: {
         Authorization: `Bearer ${token}`,

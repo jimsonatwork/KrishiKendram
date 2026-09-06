@@ -37,3 +37,6 @@ backend/reports/
 
 # Frontend generated
 frontend/.vite/
+
+# Runtime data
+*.pid

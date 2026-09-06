@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================================
+// PART 01 - PLATFORM ENTITY
+// ============================================================
+
 model Entity {
   id        String    @id @default(cuid())
   type      String
@@ -19,6 +23,14 @@ model Entity {
   @@index([type])
   @@index([deletedAt])
 }
+
+// ============================================================
+// PART 01 END
+// ============================================================
+
+// ============================================================
+// PART 02 - PERMISSIONS
+// ============================================================
 
 model Permission {
   id       String  @id @default(cuid())
@@ -56,10 +68,10 @@ model RolePermission {
 }
 
 model AccessGrant {
-  id           String @id @default(cuid())
-  permissionId String
+  id String @id @default(cuid())
 
-  userId String?
+  permissionId String
+  userId       String?
 
   subjectType String
   subjectId   String
@@ -77,7 +89,8 @@ model AccessGrant {
 }
 
 model FieldPermission {
-  id           String @id @default(cuid())
+  id String @id @default(cuid())
+
   permissionId String
 
   field  String
@@ -91,6 +104,14 @@ model FieldPermission {
   @@unique([permissionId, field])
   @@index([field])
 }
+
+// ============================================================
+// PART 02 END
+// ============================================================
+
+// ============================================================
+// PART 03 - USER ACCOUNT
+// ============================================================
 
 model User {
   id           String  @id @default(cuid())
@@ -108,6 +129,7 @@ model User {
   profileCompletion Int     @default(0)
   isVerified        Boolean @default(false)
 
+  lastSeenAt       DateTime?
   lastLoginAt      DateTime?
   refreshTokenHash String?
 
@@ -121,8 +143,20 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  farms Farm[]
+  farms       Farm[]
+  auditEvents AuditEvent[] @relation("AuditActor")
+
+  userHistoryEntries UserHistory[] @relation("UserHistoryUser")
+  userHistoryActions UserHistory[] @relation("UserHistoryActor")
 }
+
+// ============================================================
+// PART 03 END
+// ============================================================
+
+// ============================================================
+// PART 04 - FARM
+// ============================================================
 
 model Farm {
   id String @id @default(cuid())
@@ -154,6 +188,14 @@ model Farm {
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
+// ============================================================
+// PART 04 END
+// ============================================================
+
+// ============================================================
+// PART 05 - FARM ASSETS
+// ============================================================
+
 model FarmAsset {
   id String @id @default(cuid())
 
@@ -172,6 +214,14 @@ model FarmAsset {
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 }
 
+// ============================================================
+// PART 05 END
+// ============================================================
+
+// ============================================================
+// PART 06 - FARM RECORDS
+// ============================================================
+
 model FarmRecord {
   id String @id @default(cuid())
 
@@ -188,6 +238,14 @@ model FarmRecord {
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 }
+
+// ============================================================
+// PART 06 END
+// ============================================================
+
+// ============================================================
+// PART 07 - CROPS
+// ============================================================
 
 model Crop {
   id     String @id @default(cuid())
@@ -217,6 +275,78 @@ model Crop {
   @@index([season])
 }
 
+// ============================================================
+// PART 07 END
+// ============================================================
+
+// ============================================================
+// PART 08 - SECURITY AUDIT
+// ============================================================
+
+model AuditEvent {
+  id String @id @default(cuid())
+
+  actorId String?
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  action       String
+  resourceType String
+  resourceId   String?
+  description  String?
+  metadata     Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([resourceType, resourceId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================================
+// PART 08 END
+// ============================================================
+
+// ============================================================
+// PART 09 - USER HISTORY & VERSIONING
+// ============================================================
+
+model UserHistory {
+  id String @id @default(cuid())
+
+  userId  String
+  version Int
+
+  action  String
+  actorId String?
+
+  user  User  @relation("UserHistoryUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("UserHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  beforeData Json?
+  afterData  Json?
+
+  changedFields Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, version])
+  @@index([userId, createdAt])
+  @@index([actorId])
+  @@index([action])
+}
+
+// ============================================================
+// PART 09 END
+// ============================================================
+
+// ============================================================
+// PART 10 - USER ROLES
+// ============================================================
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
@@ -238,6 +368,14 @@ enum UserRole {
   AI_AGENT
 }
 
+// ============================================================
+// PART 10 END
+// ============================================================
+
+// ============================================================
+// PART 11 - USER STATUS
+// ============================================================
+
 enum UserStatus {
   PENDING
   ACTIVE
@@ -247,6 +385,14 @@ enum UserStatus {
   DELETED
 }
 
+// ============================================================
+// PART 11 END
+// ============================================================
+
+// ============================================================
+// PART 12 - INPUT METHODS
+// ============================================================
+
 enum InputMethod {
   VOICE
   MANUAL
@@ -255,6 +401,14 @@ enum InputMethod {
   MIXED
 }
 
+// ============================================================
+// PART 12 END
+// ============================================================
+
+// ============================================================
+// PART 13 - CROP SEASONS
+// ============================================================
+
 enum CropSeason {
   KHARIF
   RABI
@@ -262,6 +416,14 @@ enum CropSeason {
   PERENNIAL
   UNKNOWN
 }
+
+// ============================================================
+// PART 13 END
+// ============================================================
+
+// ============================================================
+// PART 14 - CROP STATUS
+// ============================================================
 
 enum CropStatus {
   PLANNED
@@ -275,3 +437,7 @@ enum CropStatus {
   FAILED
   ARCHIVED
 }
+
+// ============================================================
+// PART 14 END
+// ============================================================
