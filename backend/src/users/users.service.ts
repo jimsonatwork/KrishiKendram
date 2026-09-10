@@ -356,7 +356,6 @@ export class UsersService {
         const beforeData =
           this.createUserSnapshot(
             currentUser,
-            true,
           )
 
         const updateData: Record<
@@ -461,7 +460,6 @@ export class UsersService {
         const afterData =
           this.createUserSnapshot(
             updatedUser,
-            true,
           )
 
         const changedFields =
@@ -719,7 +717,6 @@ export class UsersService {
         const beforeData =
           this.createUserSnapshot(
             current,
-            true,
           )
 
         const updateData: Record<
@@ -749,11 +746,10 @@ export class UsersService {
               : null,
         }
 
-        if (snapshot.passwordHash) {
-          updateData.passwordHash =
-            snapshot.passwordHash
-          updateData.refreshTokenHash = null
-        }
+// Passwords are intentionally excluded from
+// historical snapshots and can never be restored
+// from account history.
+updateData.refreshTokenHash = null
 
         const restored =
           await tx.user.update({
@@ -781,7 +777,6 @@ export class UsersService {
         const afterData =
           this.createUserSnapshot(
             restored,
-            true,
           )
 
         const changedFields =
@@ -971,7 +966,6 @@ export class UsersService {
           const beforeData =
             this.createUserSnapshot(
               user,
-              true,
             )
 
           const updated =
@@ -1011,7 +1005,6 @@ export class UsersService {
           const afterData =
             this.createUserSnapshot(
               updated,
-              true,
             )
 
           const changedFields =
@@ -1140,7 +1133,6 @@ export class UsersService {
         const beforeData =
           this.createUserSnapshot(
             current,
-            true,
           )
 
         const updated =
@@ -1179,7 +1171,6 @@ export class UsersService {
         const afterData =
           this.createUserSnapshot(
             updated,
-            true,
           )
 
         const changedFields =
@@ -1263,196 +1254,176 @@ export class UsersService {
   // ==========================================================
   // PART 09 END
   // ==========================================================
+// ==========================================================
+// PART 10 - HISTORY HELPERS
+// ==========================================================
 
+private createUserSnapshot(
+  user: {
+    id: string
+    name: string
+    email: string | null
+    mobile: string | null
+    role: UserRole
+    status: UserStatus
+    preferredLanguage: string | null
+    preferredInputMethod: InputMethod
+    profileCompletion: number
+    isVerified: boolean
+  },
+): UserSnapshot {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    mobile: user.mobile,
+    role: user.role,
+    status: user.status,
+    preferredLanguage:
+      user.preferredLanguage,
+    preferredInputMethod:
+      user.preferredInputMethod,
+    profileCompletion:
+      user.profileCompletion,
+    isVerified:
+      user.isVerified,
+  }
+}
 
-  // ==========================================================
-  // PART 10 - HISTORY HELPERS
-  // ==========================================================
+private getChangedFields(
+  beforeData: UserSnapshot,
+  afterData: UserSnapshot,
+) {
+  const fields = [
+    'name',
+    'email',
+    'mobile',
+    'role',
+    'status',
+    'preferredLanguage',
+    'preferredInputMethod',
+    'profileCompletion',
+    'isVerified',
+  ] as const
 
-  private createUserSnapshot(
-    user: {
-      id: string
-      name: string
-      email: string | null
-      mobile: string | null
-      role: UserRole
-      status: UserStatus
-      preferredLanguage: string | null
-      preferredInputMethod: InputMethod
-      profileCompletion: number
-      isVerified: boolean
-      passwordHash?: string
-    },
-    includePasswordHash = false,
-  ): UserSnapshot {
-    const snapshot: UserSnapshot = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      mobile: user.mobile,
-      role: user.role,
-      status: user.status,
-      preferredLanguage:
-        user.preferredLanguage,
-      preferredInputMethod:
-        user.preferredInputMethod,
-      profileCompletion:
-        user.profileCompletion,
-      isVerified:
-        user.isVerified,
-    }
+  return fields.filter(
+    (field) =>
+      JSON.stringify(
+        beforeData[field],
+      ) !==
+      JSON.stringify(
+        afterData[field],
+      ),
+  )
+}
 
-    if (
-      includePasswordHash &&
-      user.passwordHash
-    ) {
-      snapshot.passwordHash =
-        user.passwordHash
-    }
-
-    return snapshot
+private parseHistorySnapshot(
+  data: unknown,
+): UserSnapshot | null {
+  if (
+    !data ||
+    typeof data !== 'object'
+  ) {
+    return null
   }
 
-  private getChangedFields(
-    beforeData: UserSnapshot,
-    afterData: UserSnapshot,
-  ) {
-    const fields = [
-      'name',
-      'email',
-      'mobile',
-      'role',
-      'status',
-      'preferredLanguage',
-      'preferredInputMethod',
-      'profileCompletion',
-      'isVerified',
-      'passwordHash',
-    ] as const
+  const snapshot =
+    data as Record<
+      string,
+      unknown
+    >
 
-    return fields.filter(
-      (field) =>
-        JSON.stringify(
-          beforeData[field],
-        ) !==
-        JSON.stringify(
-          afterData[field],
-        ),
+  if (
+    typeof snapshot.id !== 'string' ||
+    typeof snapshot.name !== 'string' ||
+    !Object.values(UserRole).includes(
+      snapshot.role as UserRole,
+    ) ||
+    !Object.values(UserStatus).includes(
+      snapshot.status as UserStatus,
     )
-  }
-
-  private parseHistorySnapshot(
-    data: unknown,
-  ): UserSnapshot | null {
-    if (
-      !data ||
-      typeof data !== 'object'
-    ) {
-      return null
-    }
-
-    const snapshot =
-      data as Record<
-        string,
-        unknown
-      >
-
-    if (
-      typeof snapshot.id !== 'string' ||
-      typeof snapshot.name !== 'string' ||
-      !Object.values(UserRole).includes(
-        snapshot.role as UserRole,
-      ) ||
-      !Object.values(UserStatus).includes(
-        snapshot.status as UserStatus,
-      )
-    ) {
-      return null
-    }
-
-    return {
-      id: snapshot.id,
-      name: snapshot.name,
-      email:
-        snapshot.email === null
-          ? null
-          : String(snapshot.email),
-      mobile:
-        snapshot.mobile === null
-          ? null
-          : String(snapshot.mobile),
-      role:
-        snapshot.role as UserRole,
-      status:
-        snapshot.status as UserStatus,
-      preferredLanguage:
-        snapshot.preferredLanguage === null
-          ? null
-          : String(
-              snapshot.preferredLanguage,
-            ),
-      preferredInputMethod:
-        snapshot.preferredInputMethod as InputMethod,
-      profileCompletion:
-        Number(
-          snapshot.profileCompletion ?? 0,
-        ),
-      isVerified:
-        Boolean(
-          snapshot.isVerified,
-        ),
-      ...(typeof snapshot.passwordHash ===
-      'string'
-        ? {
-            passwordHash:
-              snapshot.passwordHash,
-          }
-        : {}),
-    }
-  }
-
-  private removeSensitiveHistoryData(
-    data: unknown,
   ) {
-    if (
-      !data ||
-      typeof data !== 'object'
-    ) {
-      return data
-    }
-
-    const sanitized = {
-      ...(data as Record<
-        string,
-        unknown
-      >),
-    }
-
-    delete sanitized.passwordHash
-
-    return sanitized
+    return null
   }
 
-  private toSafeUser(
-    user: UserSnapshot & {
-      lastLoginAt?: Date | null
-      lastSeenAt?: Date | null
-      createdAt?: Date
-      updatedAt?: Date
-    },
-  ): SafeUser {
-    const {
-      passwordHash: _passwordHash,
-      ...safeUser
-    } = user
+  return {
+    id: snapshot.id,
+    name: snapshot.name,
+    email:
+      snapshot.email === null
+        ? null
+        : String(snapshot.email),
+    mobile:
+      snapshot.mobile === null
+        ? null
+        : String(snapshot.mobile),
+    role:
+      snapshot.role as UserRole,
+    status:
+      snapshot.status as UserStatus,
+    preferredLanguage:
+      snapshot.preferredLanguage === null
+        ? null
+        : String(
+            snapshot.preferredLanguage,
+          ),
+    preferredInputMethod:
+      snapshot.preferredInputMethod as InputMethod,
+    profileCompletion:
+      Number(
+        snapshot.profileCompletion ?? 0,
+      ),
+    isVerified:
+      Boolean(
+        snapshot.isVerified,
+      ),
+  }
+}
 
-    return safeUser as SafeUser
+private removeSensitiveHistoryData(
+  data: unknown,
+) {
+  if (
+    !data ||
+    typeof data !== 'object'
+  ) {
+    return data
   }
 
-  // ==========================================================
-  // PART 10 END
-  // ==========================================================
+  const sanitized = {
+    ...(data as Record<
+      string,
+      unknown
+    >),
+  }
 
+  // Credential material must never be
+  // exposed through user history.
+  delete sanitized.passwordHash
+  delete sanitized.refreshTokenHash
+
+  return sanitized
+}
+
+private toSafeUser(
+  user: UserSnapshot & {
+    lastLoginAt?: Date | null
+    lastSeenAt?: Date | null
+    createdAt?: Date
+    updatedAt?: Date
+  },
+): SafeUser {
+  const {
+    passwordHash: _passwordHash,
+    ...safeUser
+  } = user
+
+  return safeUser as SafeUser
+}
+
+// ==========================================================
+// PART 10 END
+// ==========================================================
 
   // ==========================================================
   // PART 11 - HISTORY CREATION & RETENTION
