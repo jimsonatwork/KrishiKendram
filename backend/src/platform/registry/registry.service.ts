@@ -4,8 +4,10 @@ import {
   FieldDefinition,
   FieldReference,
 } from './field-definition.interface';
-import { FieldValidationResult } from './field-validation.service';
-import { FieldValidationService } from './field-validation.service';
+import {
+  FieldValidationResult,
+  FieldValidationService,
+} from './field-validation.service';
 import { ResourceDefinition } from './resource-definition.interface';
 
 @Injectable()
@@ -44,6 +46,28 @@ export class RegistryService {
 
   getAllFields(): FieldDefinition[] {
     return [...this.fields.values()];
+  }
+
+  validateField(
+    fieldName: string,
+    value: unknown,
+  ): FieldValidationResult {
+    const definition = this.getField(fieldName);
+
+    if (!definition) {
+      return {
+        valid: false,
+        value: undefined,
+        errors: [
+          `Field '${fieldName}' is not registered.`,
+        ],
+      };
+    }
+
+    return this.fieldValidation.validate(
+      definition,
+      value,
+    );
   }
 
   validateResourceField(

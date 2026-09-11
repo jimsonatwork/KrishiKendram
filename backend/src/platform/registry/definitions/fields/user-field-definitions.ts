@@ -28,6 +28,17 @@ export const userNameField: FieldDefinition = {
   ],
 };
 
+export const userPasswordField: FieldDefinition = {
+  name: 'userPassword',
+  type: 'string',
+  description: 'Canonical User password policy.',
+  validation: {
+    required: true,
+    minLength: 8,
+  },
+  overrideMode: 'FIXED',
+};
+
 export const userEmailField: FieldDefinition = {
   name: 'userEmail',
   type: 'string',
@@ -93,6 +104,7 @@ export const userProfileCompletionField: FieldDefinition = {
 };
 
 export const USER_FIELD_DEFINITIONS = [
+  userPasswordField,
   userNameField,
   userEmailField,
   userMobileField,

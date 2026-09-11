@@ -6,12 +6,18 @@ describe('UsersService - centralized field policy', () => {
   const prisma = {
     user: {
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
+    $transaction: jest.fn(async (callback) =>
+      callback(prisma),
+    ),
   } as any;
 
   const registry = {
     validateResourceField: jest.fn(),
+    validateField: jest.fn(),
   } as any;
 
   const auditService = {
@@ -22,6 +28,20 @@ describe('UsersService - centralized field policy', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-id',
+      name: 'Test User',
+      email: 'test@example.com',
+      status: 'ACTIVE',
+      role: 'FARMER',
+    });
+
+    registry.validateField.mockReturnValue({
+      valid: true,
+      value: 'password123',
+      errors: [],
+    });
 
     service = new UsersService(
       prisma,
@@ -142,4 +162,98 @@ describe('UsersService - centralized field policy', () => {
       prisma.user.create,
     ).not.toHaveBeenCalled();
   });
+
+  it('rejects a password shorter than the canonical minimum', async () => {
+    registry.validateResourceField
+      .mockReturnValueOnce({
+        valid: true,
+        value: 'Valid Name',
+        errors: [],
+      })
+      .mockReturnValueOnce({
+        valid: true,
+        value: 'valid@example.com',
+        errors: [],
+      });
+
+    registry.validateField.mockReturnValue({
+      valid: false,
+      value: '1234567',
+      errors: [
+        'Field must be at least 8 characters long.',
+      ],
+    });
+
+    await expect(
+      service.create({
+        name: 'Valid Name',
+        email: 'valid@example.com',
+        password: '1234567',
+      }),
+    ).rejects.toThrow(
+      'Field must be at least 8 characters long.',
+    );
+
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts a password that satisfies the canonical minimum', async () => {
+    registry.validateResourceField
+      .mockReturnValueOnce({
+        valid: true,
+        value: 'Valid Name',
+        errors: [],
+      })
+      .mockReturnValueOnce({
+        valid: true,
+        value: 'valid@example.com',
+        errors: [],
+      });
+
+    registry.validateField.mockReturnValue({
+      valid: true,
+      value: '12345678',
+      errors: [],
+    });
+
+    await service.create({
+      name: 'Valid Name',
+      email: 'valid@example.com',
+      password: '12345678',
+    });
+
+    expect(registry.validateField).toHaveBeenCalledWith(
+      'userPassword',
+      '12345678',
+    );
+
+    expect(prisma.user.create).toHaveBeenCalled();
+  });
+
+
+  it('rejects an invalid password during update', async () => {
+    registry.validateField.mockReturnValue({
+      valid: false,
+      value: '1234567',
+      errors: [
+        'Field must be at least 8 characters long.',
+      ],
+    });
+
+    await expect(
+      service.update(
+        'user-id',
+        {
+          password: '1234567',
+        },
+        'actor-id',
+      ),
+    ).rejects.toThrow(
+      'Field must be at least 8 characters long.',
+    );
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+
 });

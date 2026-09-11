@@ -208,6 +208,18 @@ export class UsersService {
       )
     }
 
+    const passwordResult =
+      this.registry.validateField(
+        'userPassword',
+        data.password,
+      )
+
+    if (!passwordResult.valid) {
+      throw new BadRequestException(
+        passwordResult.errors.join(' '),
+      )
+    }
+
     const passwordHash = await bcrypt.hash(
       data.password,
       12,
@@ -529,9 +541,15 @@ export class UsersService {
         }
 
         if (dto.password !== undefined) {
-          if (!dto.password.trim()) {
+          const passwordResult =
+            this.registry.validateField(
+              'userPassword',
+              dto.password,
+            )
+
+          if (!passwordResult.valid) {
             throw new BadRequestException(
-              'Password cannot be empty',
+              passwordResult.errors.join(' '),
             )
           }
 
