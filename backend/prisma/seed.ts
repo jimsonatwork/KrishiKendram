@@ -5,23 +5,18 @@ import {
 
 const prisma = new PrismaClient();
 
-const resources = [
+const farmResources = [
   'farm',
   'farmAsset',
   'farmRecord',
   'crop',
 ];
 
-const actions = [
+const farmActions = [
   'READ',
   'CREATE',
   'UPDATE',
   'DELETE',
-];
-
-const scopes = [
-  'OWN',
-  'GLOBAL',
 ];
 
 const allUserRoles = Object.values(UserRole);
@@ -91,57 +86,104 @@ const userPermissions = [
 ];
 
 async function main() {
-  for (const resource of resources) {
-    for (const action of actions) {
-      for (const scope of scopes) {
-        let permission =
-          await prisma.permission.findFirst({
-            where: {
+  const obsoleteFarmOwnedResources = [
+    'farmAsset',
+    'farmRecord',
+    'crop',
+  ];
+
+  for (const resource of obsoleteFarmOwnedResources) {
+    const permissions =
+      await prisma.permission.findMany({
+        where: {
+          module: 'farms',
+          section: null,
+          resource,
+          scope: 'OWN',
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    for (const permission of permissions) {
+      await prisma.permission.delete({
+        where: {
+          id: permission.id,
+        },
+      });
+    }
+  }
+
+  for (const resource of farmResources) {
+    for (const action of farmActions) {
+      const scope =
+        resource === 'farm'
+          ? 'OWN'
+          : 'FARM';
+
+      let permission =
+        await prisma.permission.findFirst({
+          where: {
+            module: 'farms',
+            section: null,
+            resource,
+            action,
+            scope,
+          },
+        });
+
+      if (!permission) {
+        permission =
+          await prisma.permission.create({
+            data: {
               module: 'farms',
-              section: null,
               resource,
               action,
               scope,
             },
           });
+      }
 
-        if (!permission) {
-          permission =
-            await prisma.permission.create({
-              data: {
-                module: 'farms',
-                resource,
-                action,
-                scope,
-              },
-            });
+      const desiredRoles: UserRole[] = [UserRole.FARMER];
+
+      const existingRolePermissions =
+        await prisma.rolePermission.findMany({
+          where: {
+            permissionId: permission.id,
+          },
+          select: {
+            id: true,
+            role: true,
+          },
+        });
+
+      for (const existing of existingRolePermissions) {
+        if (!desiredRoles.includes(existing.role)) {
+          await prisma.rolePermission.delete({
+            where: {
+              id: existing.id,
+            },
+          });
         }
+      }
 
-        const roles =
-          scope === 'OWN'
-            ? [UserRole.FARMER]
-            : [
-                UserRole.ADMIN,
-                UserRole.SUPER_ADMIN,
-              ];
+      for (const role of desiredRoles) {
+        const existing =
+          await prisma.rolePermission.findFirst({
+            where: {
+              role,
+              permissionId: permission.id,
+            },
+          });
 
-        for (const role of roles) {
-          const existing =
-            await prisma.rolePermission.findFirst({
-              where: {
-                role,
-                permissionId: permission.id,
-              },
-            });
-
-          if (!existing) {
-            await prisma.rolePermission.create({
-              data: {
-                role,
-                permissionId: permission.id,
-              },
-            });
-          }
+        if (!existing) {
+          await prisma.rolePermission.create({
+            data: {
+              role,
+              permissionId: permission.id,
+            },
+          });
         }
       }
     }
