@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { RegistryService } from '../platform/registry/registry.service';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,10 +25,110 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly registry: RegistryService,
     private readonly auditService: AuditService,
   ) {}
 
   async register(dto: RegisterDto) {
+    const nameResult =
+      this.registry.validateResourceField(
+        'user',
+        'name',
+        dto.name,
+      );
+
+    if (!nameResult.valid) {
+      throw new BadRequestException(
+        nameResult.errors.join(' '),
+      );
+    }
+
+    let normalizedEmail:
+      | string
+      | null
+      | undefined;
+
+    if (dto.email !== undefined) {
+      const emailResult =
+        this.registry.validateResourceField(
+          'user',
+          'email',
+          dto.email,
+        );
+
+      if (!emailResult.valid) {
+        throw new BadRequestException(
+          emailResult.errors.join(' '),
+        );
+      }
+
+      normalizedEmail =
+        emailResult.value === null ||
+        emailResult.value === undefined
+          ? null
+          : String(
+              emailResult.value,
+            );
+    }
+
+    let normalizedMobile:
+      | string
+      | null
+      | undefined;
+
+    if (dto.mobile !== undefined) {
+      const mobileResult =
+        this.registry.validateResourceField(
+          'user',
+          'mobile',
+          dto.mobile,
+        );
+
+      if (!mobileResult.valid) {
+        throw new BadRequestException(
+          mobileResult.errors.join(' '),
+        );
+      }
+
+      normalizedMobile =
+        mobileResult.value === null ||
+        mobileResult.value === undefined ||
+        mobileResult.value === ''
+          ? null
+          : String(
+              mobileResult.value,
+            );
+    }
+
+    let normalizedPreferredLanguage:
+      | string
+      | null
+      | undefined;
+
+    if (
+      dto.preferredLanguage !== undefined
+    ) {
+      const languageResult =
+        this.registry.validateResourceField(
+          'user',
+          'preferredLanguage',
+          dto.preferredLanguage,
+        );
+
+      if (!languageResult.valid) {
+        throw new BadRequestException(
+          languageResult.errors.join(' '),
+        );
+      }
+
+      normalizedPreferredLanguage =
+        languageResult.value === ''
+          ? null
+          : String(
+              languageResult.value,
+            );
+    }
+
     const passwordHash = await bcrypt.hash(
       dto.password,
       12,
@@ -34,9 +136,13 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        name: dto.name,
-        email: dto.email,
-        mobile: dto.mobile,
+        name: nameResult.value as string,
+        email: normalizedEmail,
+        mobile: normalizedMobile,
+        preferredLanguage:
+          normalizedPreferredLanguage,
+        preferredInputMethod:
+          dto.preferredInputMethod,
         passwordHash,
       },
     });

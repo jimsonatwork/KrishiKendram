@@ -37,6 +37,10 @@ import {
 } from './users.service'
 
 import {
+  CreateUserDto,
+} from './dto/create-user.dto'
+
+import {
   UpdateUserDto,
 } from './dto/update-user.dto'
 
@@ -191,12 +195,7 @@ export class UsersController {
     UserRole.SUPER_ADMIN,
   )
   async create(
-    @Body()
-    data: {
-      name: string
-      email: string
-      password: string
-    },
+    @Body() data: CreateUserDto,
     @Req() req: any,
   ) {
     return this.usersService.create(

@@ -19,6 +19,8 @@ import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../prisma/prisma.service'
 import { AuditService } from '../platform/audit/audit.service'
 
+import { RegistryService } from '../platform/registry/registry.service'
+
 import { UpdateUserDto } from './dto/update-user.dto'
 
 // ============================================================
@@ -65,6 +67,7 @@ const USER_HISTORY_RETENTION = 3
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly registry: RegistryService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -161,20 +164,34 @@ export class UsersService {
     },
     actorId?: string,
   ) {
-    const name = data.name.trim()
-    const email = data.email.trim().toLowerCase()
+    const nameResult =
+      this.registry.validateResourceField(
+        'user',
+        'name',
+        data.name,
+      )
 
-    if (!name) {
+    if (!nameResult.valid) {
       throw new BadRequestException(
-        'User name is required',
+        nameResult.errors.join(' '),
       )
     }
 
-    if (!email) {
+    const emailResult =
+      this.registry.validateResourceField(
+        'user',
+        'email',
+        data.email,
+      )
+
+    if (!emailResult.valid) {
       throw new BadRequestException(
-        'Email address is required',
+        emailResult.errors.join(' '),
       )
     }
+
+    const name = nameResult.value as string
+    const email = emailResult.value as string
 
     const existing = await this.prisma.user.findFirst({
       where: {
@@ -262,28 +279,130 @@ export class UsersService {
           )
         }
 
-        const normalizedEmail =
-          dto.email !== undefined
-            ? dto.email.trim().toLowerCase()
-            : undefined
+        let normalizedEmail:
+          | string
+          | null
+          | undefined
 
-        const normalizedMobile =
-          dto.mobile !== undefined
-            ? dto.mobile.trim() || null
-            : undefined
+        let normalizedMobile:
+          | string
+          | null
+          | undefined
 
-        const normalizedName =
-          dto.name !== undefined
-            ? dto.name.trim()
-            : undefined
+        let normalizedName:
+          | string
+          | undefined
+
+        let normalizedPreferredLanguage:
+          | string
+          | null
+          | undefined
+
+        let normalizedProfileCompletion:
+          | number
+          | undefined
+
+        if (dto.name !== undefined) {
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'name',
+              dto.name,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
+          normalizedName =
+            result.value as string
+        }
+
+        if (dto.email !== undefined) {
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'email',
+              dto.email,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
+          normalizedEmail =
+            result.value === null ||
+            result.value === undefined
+              ? null
+              : String(result.value)
+        }
+
+        if (dto.mobile !== undefined) {
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'mobile',
+              dto.mobile,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
+          normalizedMobile =
+            result.value === null ||
+            result.value === undefined ||
+            result.value === ''
+              ? null
+              : String(result.value)
+        }
 
         if (
-          dto.name !== undefined &&
-          !normalizedName
+          dto.preferredLanguage !== undefined
         ) {
-          throw new BadRequestException(
-            'User name cannot be empty',
-          )
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'preferredLanguage',
+              dto.preferredLanguage,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
+          normalizedPreferredLanguage =
+            result.value === ''
+              ? null
+              : String(result.value)
+        }
+
+        if (
+          dto.profileCompletion !== undefined
+        ) {
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'profileCompletion',
+              dto.profileCompletion,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
+          normalizedProfileCompletion =
+            result.value as number
         }
 
         if (
@@ -384,10 +503,10 @@ export class UsersService {
         }
 
         if (
-          dto.preferredLanguage !== undefined
+          normalizedPreferredLanguage !== undefined
         ) {
           updateData.preferredLanguage =
-            dto.preferredLanguage.trim() || null
+            normalizedPreferredLanguage
         }
 
         if (
@@ -398,19 +517,10 @@ export class UsersService {
         }
 
         if (
-          dto.profileCompletion !== undefined
+          normalizedProfileCompletion !== undefined
         ) {
-          if (
-            dto.profileCompletion < 0 ||
-            dto.profileCompletion > 100
-          ) {
-            throw new BadRequestException(
-              'Profile completion must be between 0 and 100',
-            )
-          }
-
           updateData.profileCompletion =
-            dto.profileCompletion
+            normalizedProfileCompletion
         }
 
         if (dto.isVerified !== undefined) {

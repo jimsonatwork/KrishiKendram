@@ -1,3 +1,5 @@
+import { FieldReference } from './field-definition.interface';
+
 export interface ResourceDefinition {
   name: string;
   model: string;
@@ -17,4 +19,6 @@ export interface ResourceDefinition {
   features?: string[];
 
   softDelete?: boolean;
+
+  fields?: Record<string, FieldReference>;
 }

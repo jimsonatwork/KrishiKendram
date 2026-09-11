@@ -12,6 +12,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 import { AuditModule } from '../platform/audit/audit.module';
+import { RegistryModule } from '../platform/registry/registry.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AuditModule } from '../platform/audit/audit.module';
     }),
 
     AuditModule,
+    RegistryModule,
   ],
 
   controllers: [AuthController],

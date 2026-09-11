@@ -1,23 +1,134 @@
 import { Global, Module } from '@nestjs/common';
 
+import { FieldValidationService } from './field-validation.service';
 import { RegistryController } from './registry.controller';
 import { RegistryService } from './registry.service';
+import { USER_FIELD_DEFINITIONS } from './user-field-definitions';
 
 @Global()
 @Module({
   controllers: [RegistryController],
-  providers: [RegistryService],
+  providers: [
+    FieldValidationService,
+    RegistryService,
+  ],
   exports: [RegistryService],
 })
 export class RegistryModule {
   constructor(private readonly registry: RegistryService) {
+    this.registerFields();
     this.registerResources();
+  }
+
+  private registerFields(): void {
+    this.registry.registerField({
+      name: 'name',
+      type: 'string',
+      description: 'Standard reusable human-readable name.',
+      validation: {
+        required: false,
+        minLength: 1,
+        maxLength: 200,
+      },
+      normalization: {
+        trim: true,
+      },
+      overrideMode: 'EXTENDABLE',
+      overridableValidation: [
+        'required',
+        'minLength',
+        'maxLength',
+      ],
+    });
+
+    for (const definition of USER_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
   }
 
   private registerResources(): void {
   this.registry.register({
+    name: 'user',
+    model: 'User',
+
+    fields: {
+      name: {
+        definition: 'userName',
+        override: {
+          validation: {
+            required: true,
+          },
+        },
+      },
+
+      email: {
+        definition: 'userEmail',
+        override: {
+          validation: {
+            required: false,
+          },
+        },
+      },
+
+      mobile: {
+        definition: 'userMobile',
+      },
+
+      preferredLanguage: {
+        definition: 'userPreferredLanguage',
+      },
+
+      profileCompletion: {
+        definition: 'userProfileCompletion',
+      },
+    },
+
+    ownerField: 'id',
+
+    searchableFields: [
+      'name',
+      'email',
+      'mobile',
+    ],
+
+    sortableFields: [
+      'name',
+      'email',
+      'createdAt',
+      'updatedAt',
+    ],
+
+    defaultSort: 'createdAt:desc',
+
+    permissions: [
+      'READ',
+      'CREATE',
+      'UPDATE',
+      'DELETE',
+    ],
+
+    scopes: [
+      'GLOBAL',
+    ],
+
+    softDelete: true,
+  });
+
+  this.registry.register({
     name: 'farm',
     model: 'Farm',
+
+    fields: {
+      name: {
+        definition: 'name',
+        override: {
+          validation: {
+            required: true,
+          },
+        },
+      },
+    },
+
     ownerField: 'ownerId',
 
     searchableFields: [
@@ -58,6 +169,18 @@ export class RegistryModule {
   this.registry.register({
     name: 'crop',
     model: 'Crop',
+
+    fields: {
+      name: {
+        definition: 'name',
+        override: {
+          validation: {
+            required: true,
+          },
+        },
+      },
+    },
+
     ownerField: 'farm.ownerId',
 
     searchableFields: [
@@ -101,6 +224,18 @@ export class RegistryModule {
   this.registry.register({
     name: 'farmAsset',
     model: 'FarmAsset',
+
+    fields: {
+      name: {
+        definition: 'name',
+        override: {
+          validation: {
+            maxLength: 100,
+          },
+        },
+      },
+    },
+
     ownerField: 'farm.ownerId',
 
     searchableFields: [
