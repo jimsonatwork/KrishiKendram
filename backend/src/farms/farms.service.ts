@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -7,6 +8,7 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { AuthorizationService } from '../platform/authorization/authorization.service';
+import { RegistryService } from '../platform/registry/registry.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
@@ -21,6 +23,7 @@ export class FarmsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
+    private readonly registry: RegistryService,
   ) {}
 
   private isPrivileged(role: UserRole) {
@@ -61,6 +64,19 @@ export class FarmsService {
       ownerId,
     });
 
+    const nameResult = this.registry.validateResourceField(
+      'farm',
+      'name',
+      dto.name,
+    );
+
+    if (!nameResult.valid) {
+      throw new BadRequestException({
+        message: 'Invalid farm name.',
+        errors: nameResult.errors,
+      });
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const entity = await tx.entity.create({
         data: {
@@ -71,6 +87,7 @@ export class FarmsService {
       return tx.farm.create({
         data: {
           ...dto,
+          name: nameResult.value as string,
           ownerId,
           entityId: entity.id,
         },
@@ -182,11 +199,33 @@ export class FarmsService {
       role,
     );
 
+    let updateData = dto;
+
+    if (dto.name !== undefined) {
+      const nameResult = this.registry.validateResourceField(
+        'farm',
+        'name',
+        dto.name,
+      );
+
+      if (!nameResult.valid) {
+        throw new BadRequestException({
+          message: 'Invalid farm name.',
+          errors: nameResult.errors,
+        });
+      }
+
+      updateData = {
+        ...dto,
+        name: nameResult.value as string,
+      };
+    }
+
     return this.prisma.farm.update({
       where: {
         id,
       },
-      data: dto,
+      data: updateData,
     });
   }
 
@@ -227,11 +266,33 @@ export class FarmsService {
       role,
     );
 
+    let assetData = {
+      farmId,
+      ...dto,
+    };
+
+    if (dto.name !== undefined) {
+      const nameResult = this.registry.validateResourceField(
+        'farmAsset',
+        'name',
+        dto.name,
+      );
+
+      if (!nameResult.valid) {
+        throw new BadRequestException({
+          message: 'Invalid farm asset name.',
+          errors: nameResult.errors,
+        });
+      }
+
+      assetData = {
+        ...assetData,
+        name: nameResult.value as string,
+      };
+    }
+
     return this.prisma.farmAsset.create({
-      data: {
-        farmId,
-        ...dto,
-      },
+      data: assetData,
     });
   }
 
@@ -283,13 +344,35 @@ export class FarmsService {
       role,
     );
 
+    let assetData = {
+      ...dto,
+    };
+
+    if (dto.name !== undefined) {
+      const nameResult = this.registry.validateResourceField(
+        'farmAsset',
+        'name',
+        dto.name,
+      );
+
+      if (!nameResult.valid) {
+        throw new BadRequestException({
+          message: 'Invalid farm asset name.',
+          errors: nameResult.errors,
+        });
+      }
+
+      assetData = {
+        ...assetData,
+        name: nameResult.value as string,
+      };
+    }
+
     return this.prisma.farmAsset.update({
       where: {
         id: assetId,
       },
-      data: {
-        ...dto,
-      },
+      data: assetData,
     });
   }
 

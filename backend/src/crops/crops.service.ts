@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -6,6 +7,7 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { RegistryService } from '../platform/registry/registry.service';
 
 import {
   AuthorizationAction,
@@ -22,6 +24,7 @@ export class CropsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
+    private readonly registry: RegistryService,
   ) {}
 
   async create(
@@ -55,10 +58,23 @@ export class CropsService {
       ownerId: farm.ownerId,
     });
 
+    const nameResult = this.registry.validateResourceField(
+      'crop',
+      'name',
+      dto.name,
+    );
+
+    if (!nameResult.valid) {
+      throw new BadRequestException({
+        message: 'Invalid crop name.',
+        errors: nameResult.errors,
+      });
+    }
+
     return this.prisma.crop.create({
       data: {
         farmId: dto.farmId,
-        name: dto.name,
+        name: nameResult.value as string,
         variety: dto.variety,
         season: dto.season,
         status: dto.status,
@@ -174,19 +190,41 @@ export class CropsService {
       ownerId: crop.farm.ownerId,
     });
 
+    let updateData = {
+      ...dto,
+      sowingDate: dto.sowingDate
+        ? new Date(dto.sowingDate)
+        : undefined,
+      harvestDate: dto.harvestDate
+        ? new Date(dto.harvestDate)
+        : undefined,
+    };
+
+    if (dto.name !== undefined) {
+      const nameResult = this.registry.validateResourceField(
+        'crop',
+        'name',
+        dto.name,
+      );
+
+      if (!nameResult.valid) {
+        throw new BadRequestException({
+          message: 'Invalid crop name.',
+          errors: nameResult.errors,
+        });
+      }
+
+      updateData = {
+        ...updateData,
+        name: nameResult.value as string,
+      };
+    }
+
     return this.prisma.crop.update({
       where: {
         id: cropId,
       },
-      data: {
-        ...dto,
-        sowingDate: dto.sowingDate
-          ? new Date(dto.sowingDate)
-          : undefined,
-        harvestDate: dto.harvestDate
-          ? new Date(dto.harvestDate)
-          : undefined,
-      },
+      data: updateData,
     });
   }
 

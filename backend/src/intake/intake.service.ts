@@ -20,6 +20,10 @@ import {
   AuthorizationService,
 } from '../platform/authorization/authorization.service';
 
+import {
+  RegistryService,
+} from '../platform/registry/registry.service';
+
 import { CreateIntakeDto } from './dto/create-intake.dto';
 import { IntakeExtractorService } from './extractor/intake-extractor.service';
 
@@ -29,6 +33,7 @@ export class IntakeService {
     private readonly prisma: PrismaService,
     private readonly extractor: IntakeExtractorService,
     private readonly authorization: AuthorizationService,
+    private readonly registry: RegistryService,
   ) {}
 
   async create(
@@ -113,10 +118,23 @@ export class IntakeService {
         });
 
       if (!existingCrop) {
+        const cropNameResult =
+          this.registry.validateResourceField(
+            'crop',
+            'name',
+            extracted.crop.name,
+          );
+
+        if (!cropNameResult.valid) {
+          throw new Error(
+            cropNameResult.errors.join(' '),
+          );
+        }
+
         await this.prisma.crop.create({
           data: {
             farmId: farm.id,
-            name: extracted.crop.name,
+            name: cropNameResult.value as string,
             season: CropSeason.UNKNOWN,
             status: CropStatus.SOWN,
             sowingDate,
