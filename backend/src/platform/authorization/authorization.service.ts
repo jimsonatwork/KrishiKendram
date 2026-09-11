@@ -8,10 +8,7 @@ import { UserRole, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 
-import {
-  AuthorizationAction,
-  AuthorizationScope,
-} from './authorization.types';
+import { AuthorizationAction, AuthorizationScope } from './authorization.types';
 
 export interface AuthorizationContext {
   userId: string;
@@ -35,13 +32,9 @@ export interface AuthorizationRequest {
 
 @Injectable()
 export class AuthorizationService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async can(
-    request: AuthorizationRequest,
-  ): Promise<boolean> {
+  async can(request: AuthorizationRequest): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
       where: {
         id: request.user.userId,
@@ -54,113 +47,97 @@ export class AuthorizationService {
     });
 
     if (!user) {
-      throw new UnauthorizedException(
-        'User not found.',
-      );
+      throw new UnauthorizedException('User not found.');
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException(
-        'User is not active.',
-      );
+      throw new UnauthorizedException('User is not active.');
     }
 
-    const permissions =
-      await this.prisma.permission.findMany({
-        where: {
-          action: request.action,
-          OR: [
-            {
-              module: request.module,
-              section: request.section ?? null,
-              resource: request.resource,
-            },
-            {
-              module: request.module,
-              section: request.section ?? null,
-              resource: null,
-            },
-            {
-              module: request.module,
-              section: null,
-              resource: null,
-            },
-          ],
-        },
-        include: {
-          rolePermissions: {
-            where: {
-              role: user.role,
-            },
+    const permissions = await this.prisma.permission.findMany({
+      where: {
+        action: request.action,
+        OR: [
+          {
+            module: request.module,
+            section: request.section ?? null,
+            resource: request.resource,
           },
-          accessGrants: {
-            where: {
-              OR: [
-                {
-                  userId: user.id,
-                },
-                {
-                  userId: null,
-                },
-              ],
-            },
+          {
+            module: request.module,
+            section: request.section ?? null,
+            resource: null,
+          },
+          {
+            module: request.module,
+            section: null,
+            resource: null,
+          },
+        ],
+      },
+      include: {
+        rolePermissions: {
+          where: {
+            role: user.role,
           },
         },
-      });
+        accessGrants: {
+          where: {
+            OR: [
+              {
+                userId: user.id,
+              },
+              {
+                userId: null,
+              },
+            ],
+          },
+        },
+      },
+    });
 
     if (permissions.length === 0) {
       return false;
     }
 
-    const matchingPermissions =
-      permissions
-        .filter(
-          (permission) =>
-            permission.rolePermissions.length > 0,
-        )
-        .sort(
-          (a, b) =>
-            this.permissionSpecificity(b) -
-            this.permissionSpecificity(a),
-        );
+    const matchingPermissions = permissions
+      .filter((permission) => permission.rolePermissions.length > 0)
+      .sort(
+        (a, b) => this.permissionSpecificity(b) - this.permissionSpecificity(a),
+      );
 
     for (const permission of matchingPermissions) {
-      const denyGrant =
-        permission.accessGrants.find(
-          (grant) =>
-            grant.effect === 'DENY' &&
-            this.grantMatches(
-              grant.subjectType,
-              grant.subjectId,
-              request,
-            ),
-        );
+      const denyGrant = permission.accessGrants.find(
+        (grant) =>
+          grant.effect === 'DENY' &&
+          this.grantMatches(
+            grant.subjectType,
+            grant.subjectId,
+            grant.userId,
+            request,
+          ),
+      );
 
       if (denyGrant) {
         return false;
       }
 
-      const allowGrant =
-        permission.accessGrants.find(
-          (grant) =>
-            grant.effect === 'ALLOW' &&
-            this.grantMatches(
-              grant.subjectType,
-              grant.subjectId,
-              request,
-            ),
-        );
+      const allowGrant = permission.accessGrants.find(
+        (grant) =>
+          grant.effect === 'ALLOW' &&
+          this.grantMatches(
+            grant.subjectType,
+            grant.subjectId,
+            grant.userId,
+            request,
+          ),
+      );
 
       if (allowGrant) {
         return true;
       }
 
-      if (
-        this.scopeMatches(
-          permission.scope,
-          request,
-        )
-      ) {
+      if (await this.scopeMatches(permission.scope, request)) {
         return true;
       }
     }
@@ -168,9 +145,7 @@ export class AuthorizationService {
     return false;
   }
 
-  async assertCan(
-    request: AuthorizationRequest,
-  ): Promise<void> {
+  async assertCan(request: AuthorizationRequest): Promise<void> {
     const allowed = await this.can(request);
 
     if (!allowed) {
@@ -198,22 +173,32 @@ export class AuthorizationService {
     return score;
   }
 
-  private scopeMatches(
+  private async scopeMatches(
     scope: string,
     request: AuthorizationRequest,
-  ): boolean {
+  ): Promise<boolean> {
     switch (scope) {
       case AuthorizationScope.GLOBAL:
         return true;
 
       case AuthorizationScope.OWN:
-        return (
-          !!request.ownerId &&
-          request.ownerId === request.user.userId
-        );
+        return !!request.ownerId && request.ownerId === request.user.userId;
 
       case AuthorizationScope.FARM:
-        return !!request.farmId;
+        if (!request.farmId) {
+          return false;
+        }
+
+        const farm = await this.prisma.farm.findUnique({
+          where: {
+            id: request.farmId,
+          },
+          select: {
+            ownerId: true,
+          },
+        });
+
+        return farm?.ownerId === request.user.userId;
 
       case AuthorizationScope.ASSIGNED:
       case AuthorizationScope.ORGANIZATION:
@@ -229,27 +214,22 @@ export class AuthorizationService {
   private grantMatches(
     subjectType: string,
     subjectId: string,
+    grantUserId: string | null,
     request: AuthorizationRequest,
   ): boolean {
     switch (subjectType) {
       case 'USER':
-        return (
-          subjectId === request.user.userId
-        );
+        return subjectId === request.user.userId;
 
       case 'ROLE':
-        return (
-          subjectId === request.user.role
-        );
+        return subjectId === request.user.role;
 
       case 'RESOURCE':
-        return (
-          subjectId === request.resourceId
-        );
+        return subjectId === request.resourceId;
 
       case 'FARM':
         return (
-          subjectId === request.farmId
+          grantUserId === request.user.userId && subjectId === request.farmId
         );
 
       default:
