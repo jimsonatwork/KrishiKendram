@@ -467,10 +467,51 @@ export class FarmsService {
       role,
     );
 
+    const categoryResult =
+      this.registry.validateResourceField(
+        'farmRecord',
+        'category',
+        dto.category,
+      );
+
+    if (!categoryResult.valid) {
+      throw new BadRequestException(
+        categoryResult.errors.join(' '),
+      );
+    }
+
+    let normalizedTitle:
+      | string
+      | null
+      | undefined;
+
+    if (dto.title !== undefined) {
+      const titleResult =
+        this.registry.validateResourceField(
+          'farmRecord',
+          'title',
+          dto.title,
+        );
+
+      if (!titleResult.valid) {
+        throw new BadRequestException(
+          titleResult.errors.join(' '),
+        );
+      }
+
+      normalizedTitle =
+        titleResult.value === ''
+          ? null
+          : String(titleResult.value);
+    }
+
     return this.prisma.farmRecord.create({
       data: {
         farmId,
-        ...dto,
+        category: categoryResult.value as string,
+        title: normalizedTitle,
+        inputMethod: dto.inputMethod,
+        data: dto.data,
       },
     });
   }

@@ -56,6 +56,19 @@ describe('IntakeService', () => {
       category: 'GENERAL',
     });
 
+    registry.validateResourceField
+      .mockImplementation(
+        (
+          resource: string,
+          field: string,
+          value: unknown,
+        ) => ({
+          valid: true,
+          value,
+          errors: [],
+        }),
+      );
+
     const record = {
       id: 'record-1',
       farmId: 'farm-1',

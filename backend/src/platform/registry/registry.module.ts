@@ -3,7 +3,11 @@ import { Global, Module } from '@nestjs/common';
 import { FieldValidationService } from './field-validation.service';
 import { RegistryController } from './registry.controller';
 import { RegistryService } from './registry.service';
-import { USER_FIELD_DEFINITIONS } from './user-field-definitions';
+import {
+  USER_FIELD_DEFINITIONS,
+  farmRecordCategoryField,
+  farmRecordTitleField,
+} from './user-field-definitions';
 
 @Global()
 @Module({
@@ -44,6 +48,14 @@ export class RegistryModule {
     for (const definition of USER_FIELD_DEFINITIONS) {
       this.registry.registerField(definition);
     }
+
+    this.registry.registerField(
+      farmRecordCategoryField,
+    );
+
+    this.registry.registerField(
+      farmRecordTitleField,
+    );
   }
 
   private registerResources(): void {
@@ -271,6 +283,16 @@ export class RegistryModule {
   this.registry.register({
     name: 'farmRecord',
     model: 'FarmRecord',
+
+    fields: {
+      category: {
+        definition: 'farmRecordCategory',
+      },
+      title: {
+        definition: 'farmRecordTitle',
+      },
+    },
+
     ownerField: 'farm.ownerId',
 
     searchableFields: [

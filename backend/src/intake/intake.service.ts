@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -126,7 +127,7 @@ export class IntakeService {
           );
 
         if (!cropNameResult.valid) {
-          throw new Error(
+          throw new BadRequestException(
             cropNameResult.errors.join(' '),
           );
         }
@@ -145,6 +146,32 @@ export class IntakeService {
       }
     }
 
+    const categoryResult =
+      this.registry.validateResourceField(
+        'farmRecord',
+        'category',
+        extracted.category,
+      );
+
+    if (!categoryResult.valid) {
+      throw new BadRequestException(
+        categoryResult.errors.join(' '),
+      );
+    }
+
+    const titleResult =
+      this.registry.validateResourceField(
+        'farmRecord',
+        'title',
+        'AI Intake Record',
+      );
+
+    if (!titleResult.valid) {
+      throw new BadRequestException(
+        titleResult.errors.join(' '),
+      );
+    }
+
     const jsonData =
       JSON.parse(
         JSON.stringify(extracted),
@@ -154,8 +181,11 @@ export class IntakeService {
       await this.prisma.farmRecord.create({
         data: {
           farmId: dto.farmId,
-          category: extracted.category,
-          title: 'AI Intake Record',
+          category: categoryResult.value as string,
+          title:
+            titleResult.value === ''
+              ? null
+              : String(titleResult.value),
           inputMethod: dto.inputMethod,
           data: jsonData,
         },

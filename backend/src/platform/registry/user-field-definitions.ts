@@ -99,3 +99,44 @@ export const USER_FIELD_DEFINITIONS = [
   userPreferredLanguageField,
   userProfileCompletionField,
 ];
+
+
+// ============================================================
+// FARM RECORD FIELD DEFINITIONS
+// ============================================================
+
+export const farmRecordCategoryField: FieldDefinition = {
+  name: 'farmRecordCategory',
+  type: 'string',
+  description: 'Canonical FarmRecord category field.',
+  validation: {
+    required: true,
+  },
+  normalization: {
+    trim: true,
+  },
+  overrideMode: 'EXTENDABLE',
+  overridableValidation: [
+    'required',
+  ],
+};
+
+export const farmRecordTitleField: FieldDefinition = {
+  name: 'farmRecordTitle',
+  type: 'string',
+  description: 'Canonical FarmRecord title field.',
+  validation: {
+    required: false,
+  },
+  normalization: {
+    trim: true,
+  },
+  overrideMode: 'EXTENDABLE',
+  overridableValidation: [
+    'required',
+  ],
+};
+
+// ============================================================
+// FARM RECORD FIELD DEFINITIONS END
+// ============================================================
