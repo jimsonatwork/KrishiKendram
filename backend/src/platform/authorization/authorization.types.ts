@@ -1,5 +1,7 @@
 export enum AuthorizationAction {
   READ = 'READ',
+  READ_ACTIVITY = 'READ_ACTIVITY',
+  READ_HISTORY = 'READ_HISTORY',
   CREATE = 'CREATE',
   UPDATE = 'UPDATE',
   DELETE = 'DELETE',

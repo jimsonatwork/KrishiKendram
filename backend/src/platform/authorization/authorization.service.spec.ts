@@ -231,4 +231,139 @@ describe('AuthorizationService', () => {
       ForbiddenException,
     );
   });
+
+  it('allows OWN user READ permission for the current user', async () => {
+    prisma.permission.findMany.mockResolvedValue([
+      {
+        module: 'platform',
+        section: null,
+        resource: 'user',
+        action: AuthorizationAction.READ,
+        scope: AuthorizationScope.OWN,
+        rolePermissions: [{ role: UserRole.FARMER }],
+        accessGrants: [],
+      },
+    ]);
+
+    await expect(
+      service.can({
+        user: {
+          userId: 'user-1',
+          role: UserRole.FARMER,
+        },
+        module: 'platform',
+        resource: 'user',
+        action: AuthorizationAction.READ,
+        ownerId: 'user-1',
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it('denies OWN user READ permission for another user', async () => {
+    prisma.permission.findMany.mockResolvedValue([
+      {
+        module: 'platform',
+        section: null,
+        resource: 'user',
+        action: AuthorizationAction.READ,
+        scope: AuthorizationScope.OWN,
+        rolePermissions: [{ role: UserRole.FARMER }],
+        accessGrants: [],
+      },
+    ]);
+
+    await expect(
+      service.can({
+        user: {
+          userId: 'user-1',
+          role: UserRole.FARMER,
+        },
+        module: 'platform',
+        resource: 'user',
+        action: AuthorizationAction.READ,
+        ownerId: 'user-2',
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it('allows GLOBAL user READ permission for ADMIN and SUPER_ADMIN only', async () => {
+    const globalUserReadPermission = {
+      module: 'platform',
+      section: null,
+      resource: 'user',
+      action: AuthorizationAction.READ,
+      scope: AuthorizationScope.GLOBAL,
+      accessGrants: [],
+    };
+
+    prisma.permission.findMany.mockResolvedValueOnce([
+      {
+        ...globalUserReadPermission,
+        rolePermissions: [{ role: UserRole.ADMIN }],
+      },
+    ]);
+
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'user-1',
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+    });
+
+    await expect(
+      service.can({
+        user: {
+          userId: 'user-1',
+          role: UserRole.ADMIN,
+        },
+        module: 'platform',
+        resource: 'user',
+        action: AuthorizationAction.READ,
+      }),
+    ).resolves.toBe(true);
+
+    prisma.permission.findMany.mockResolvedValueOnce([
+      {
+        ...globalUserReadPermission,
+        rolePermissions: [{ role: UserRole.SUPER_ADMIN }],
+      },
+    ]);
+
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'user-1',
+      role: UserRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+    });
+
+    await expect(
+      service.can({
+        user: {
+          userId: 'user-1',
+          role: UserRole.SUPER_ADMIN,
+        },
+        module: 'platform',
+        resource: 'user',
+        action: AuthorizationAction.READ,
+      }),
+    ).resolves.toBe(true);
+
+    prisma.permission.findMany.mockResolvedValueOnce([]);
+
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'user-1',
+      role: UserRole.FARMER,
+      status: UserStatus.ACTIVE,
+    });
+
+    await expect(
+      service.can({
+        user: {
+          userId: 'user-1',
+          role: UserRole.FARMER,
+        },
+        module: 'platform',
+        resource: 'user',
+        action: AuthorizationAction.READ,
+      }),
+    ).resolves.toBe(false);
+  });
 });

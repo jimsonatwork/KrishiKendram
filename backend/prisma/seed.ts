@@ -24,6 +24,72 @@ const scopes = [
   'GLOBAL',
 ];
 
+const allUserRoles = Object.values(UserRole);
+
+const administrativeUserRoles = [
+  UserRole.ADMIN,
+  UserRole.SUPER_ADMIN,
+];
+
+const userPermissions = [
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'READ',
+    scope: 'OWN',
+    roles: allUserRoles,
+  },
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'READ',
+    scope: 'GLOBAL',
+    roles: administrativeUserRoles,
+  },
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'CREATE',
+    scope: 'GLOBAL',
+    roles: administrativeUserRoles,
+  },
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'UPDATE',
+    scope: 'GLOBAL',
+    roles: administrativeUserRoles,
+  },
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'DELETE',
+    scope: 'GLOBAL',
+    roles: administrativeUserRoles,
+  },
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'READ_ACTIVITY',
+    scope: 'GLOBAL',
+    roles: administrativeUserRoles,
+  },
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'READ_HISTORY',
+    scope: 'GLOBAL',
+    roles: administrativeUserRoles,
+  },
+  {
+    module: 'platform',
+    resource: 'user',
+    action: 'RESTORE',
+    scope: 'GLOBAL',
+    roles: administrativeUserRoles,
+  },
+];
+
 async function main() {
   for (const resource of resources) {
     for (const action of actions) {
@@ -81,8 +147,52 @@ async function main() {
     }
   }
 
+  for (const definition of userPermissions) {
+    let permission =
+      await prisma.permission.findFirst({
+        where: {
+          module: definition.module,
+          section: null,
+          resource: definition.resource,
+          action: definition.action,
+          scope: definition.scope,
+        },
+      });
+
+    if (!permission) {
+      permission =
+        await prisma.permission.create({
+          data: {
+            module: definition.module,
+            resource: definition.resource,
+            action: definition.action,
+            scope: definition.scope,
+          },
+        });
+    }
+
+    for (const role of definition.roles) {
+      const existing =
+        await prisma.rolePermission.findFirst({
+          where: {
+            role,
+            permissionId: permission.id,
+          },
+        });
+
+      if (!existing) {
+        await prisma.rolePermission.create({
+          data: {
+            role,
+            permissionId: permission.id,
+          },
+        });
+      }
+    }
+  }
+
   console.log(
-    '✅ Farm authorization permissions seeded.',
+    '✅ Farm and user authorization permissions seeded.',
   );
 }
 

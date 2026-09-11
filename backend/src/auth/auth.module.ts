@@ -8,7 +8,6 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { RolesGuard } from './guards/roles.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 import { AuditModule } from '../platform/audit/audit.module';
@@ -28,7 +27,8 @@ import { RegistryModule } from '../platform/registry/registry.module';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET')!,
         signOptions: {
-          expiresIn: (config.get<string>('JWT_EXPIRES_IN') ?? '1d') as StringValue,
+          expiresIn: (config.get<string>('JWT_EXPIRES_IN') ??
+            '1d') as StringValue,
         },
       }),
     }),
@@ -39,19 +39,8 @@ import { RegistryModule } from '../platform/registry/registry.module';
 
   controllers: [AuthController],
 
-  providers: [
-    AuthService,
-    JwtStrategy,
-    JwtAuthGuard,
-    RolesGuard,
-  ],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard],
 
-  exports: [
-    AuthService,
-    JwtModule,
-    PassportModule,
-    JwtAuthGuard,
-    RolesGuard,
-  ],
+  exports: [AuthService, JwtModule, PassportModule, JwtAuthGuard],
 })
 export class AuthModule {}
