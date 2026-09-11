@@ -1,4 +1,4 @@
-import { FieldDefinition } from './field-definition.interface';
+import { FieldDefinition } from '../../field-definition.interface';
 
 /*
  * Canonical User field policies.
