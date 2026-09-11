@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -26,33 +25,7 @@ export class FarmsService {
     private readonly registry: RegistryService,
   ) {}
 
-  private isPrivileged(role: UserRole) {
-    return (
-      role === UserRole.ADMIN ||
-      role === UserRole.SUPER_ADMIN
-    );
-  }
-
-  private assertFarmAccess(
-    farmOwnerId: string,
-    userId: string,
-    role: UserRole,
-  ) {
-    if (
-      farmOwnerId !== userId &&
-      !this.isPrivileged(role)
-    ) {
-      throw new ForbiddenException(
-        'Access denied',
-      );
-    }
-  }
-
-  async create(
-    ownerId: string,
-    role: UserRole,
-    dto: CreateFarmDto,
-  ) {
+  async create(ownerId: string, role: UserRole, dto: CreateFarmDto) {
     await this.authorization.assertCan({
       user: {
         userId: ownerId,
@@ -95,9 +68,7 @@ export class FarmsService {
     });
   }
 
-  async findMyFarms(
-    ownerId: string,
-  ) {
+  async findMyFarms(ownerId: string) {
     return this.prisma.farm.findMany({
       where: {
         ownerId,
@@ -112,33 +83,26 @@ export class FarmsService {
     });
   }
 
-  async findOne(
-    id: string,
-    userId: string,
-    role: UserRole,
-  ) {
-    const farm =
-      await this.prisma.farm.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          assets: true,
-          records: true,
-          owner: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+  async findOne(id: string, userId: string, role: UserRole) {
+    const farm = await this.prisma.farm.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        assets: true,
+        records: true,
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-      });
+      },
+    });
 
     if (!farm) {
-      throw new NotFoundException(
-        'Farm not found',
-      );
+      throw new NotFoundException('Farm not found');
     }
 
     await this.authorization.assertCan({
@@ -153,32 +117,18 @@ export class FarmsService {
       ownerId: farm.ownerId,
     });
 
-    this.assertFarmAccess(
-      farm.ownerId,
-      userId,
-      role,
-    );
-
     return farm;
   }
 
-  async update(
-    id: string,
-    userId: string,
-    role: UserRole,
-    dto: UpdateFarmDto,
-  ) {
-    const farm =
-      await this.prisma.farm.findUnique({
-        where: {
-          id,
-        },
-      });
+  async update(id: string, userId: string, role: UserRole, dto: UpdateFarmDto) {
+    const farm = await this.prisma.farm.findUnique({
+      where: {
+        id,
+      },
+    });
 
     if (!farm) {
-      throw new NotFoundException(
-        'Farm not found',
-      );
+      throw new NotFoundException('Farm not found');
     }
 
     await this.authorization.assertCan({
@@ -192,12 +142,6 @@ export class FarmsService {
       resourceId: id,
       ownerId: farm.ownerId,
     });
-
-    this.assertFarmAccess(
-      farm.ownerId,
-      userId,
-      role,
-    );
 
     let updateData = dto;
 
@@ -235,17 +179,14 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    const farm =
-      await this.prisma.farm.findUnique({
-        where: {
-          id: farmId,
-        },
-      });
+    const farm = await this.prisma.farm.findUnique({
+      where: {
+        id: farmId,
+      },
+    });
 
     if (!farm) {
-      throw new NotFoundException(
-        'Farm not found',
-      );
+      throw new NotFoundException('Farm not found');
     }
 
     await this.authorization.assertCan({
@@ -259,12 +200,6 @@ export class FarmsService {
       farmId,
       ownerId: farm.ownerId,
     });
-
-    this.assertFarmAccess(
-      farm.ownerId,
-      userId,
-      role,
-    );
 
     let assetData = {
       farmId,
@@ -303,26 +238,21 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    const asset =
-      await this.prisma.farmAsset.findUnique({
-        where: {
-          id: assetId,
-        },
-        include: {
-          farm: true,
-        },
-      });
+    const asset = await this.prisma.farmAsset.findUnique({
+      where: {
+        id: assetId,
+      },
+      include: {
+        farm: true,
+      },
+    });
 
     if (!asset) {
-      throw new NotFoundException(
-        'Asset not found',
-      );
+      throw new NotFoundException('Asset not found');
     }
 
     if (asset.farmId !== farmId) {
-      throw new NotFoundException(
-        'Asset not found',
-      );
+      throw new NotFoundException('Asset not found');
     }
 
     await this.authorization.assertCan({
@@ -337,12 +267,6 @@ export class FarmsService {
       farmId,
       ownerId: asset.farm.ownerId,
     });
-
-    this.assertFarmAccess(
-      asset.farm.ownerId,
-      userId,
-      role,
-    );
 
     let assetData = {
       ...dto,
@@ -382,26 +306,21 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    const asset =
-      await this.prisma.farmAsset.findUnique({
-        where: {
-          id: assetId,
-        },
-        include: {
-          farm: true,
-        },
-      });
+    const asset = await this.prisma.farmAsset.findUnique({
+      where: {
+        id: assetId,
+      },
+      include: {
+        farm: true,
+      },
+    });
 
     if (!asset) {
-      throw new NotFoundException(
-        'Asset not found',
-      );
+      throw new NotFoundException('Asset not found');
     }
 
     if (asset.farmId !== farmId) {
-      throw new NotFoundException(
-        'Asset not found',
-      );
+      throw new NotFoundException('Asset not found');
     }
 
     await this.authorization.assertCan({
@@ -417,12 +336,6 @@ export class FarmsService {
       ownerId: asset.farm.ownerId,
     });
 
-    this.assertFarmAccess(
-      asset.farm.ownerId,
-      userId,
-      role,
-    );
-
     return this.prisma.farmAsset.delete({
       where: {
         id: assetId,
@@ -436,17 +349,14 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    const farm =
-      await this.prisma.farm.findUnique({
-        where: {
-          id: farmId,
-        },
-      });
+    const farm = await this.prisma.farm.findUnique({
+      where: {
+        id: farmId,
+      },
+    });
 
     if (!farm) {
-      throw new NotFoundException(
-        'Farm not found',
-      );
+      throw new NotFoundException('Farm not found');
     }
 
     await this.authorization.assertCan({
@@ -461,48 +371,31 @@ export class FarmsService {
       ownerId: farm.ownerId,
     });
 
-    this.assertFarmAccess(
-      farm.ownerId,
-      userId,
-      role,
+    const categoryResult = this.registry.validateResourceField(
+      'farmRecord',
+      'category',
+      dto.category,
     );
 
-    const categoryResult =
-      this.registry.validateResourceField(
-        'farmRecord',
-        'category',
-        dto.category,
-      );
-
     if (!categoryResult.valid) {
-      throw new BadRequestException(
-        categoryResult.errors.join(' '),
-      );
+      throw new BadRequestException(categoryResult.errors.join(' '));
     }
 
-    let normalizedTitle:
-      | string
-      | null
-      | undefined;
+    let normalizedTitle: string | null | undefined;
 
     if (dto.title !== undefined) {
-      const titleResult =
-        this.registry.validateResourceField(
-          'farmRecord',
-          'title',
-          dto.title,
-        );
+      const titleResult = this.registry.validateResourceField(
+        'farmRecord',
+        'title',
+        dto.title,
+      );
 
       if (!titleResult.valid) {
-        throw new BadRequestException(
-          titleResult.errors.join(' '),
-        );
+        throw new BadRequestException(titleResult.errors.join(' '));
       }
 
       normalizedTitle =
-        titleResult.value === ''
-          ? null
-          : String(titleResult.value);
+        titleResult.value === '' ? null : String(titleResult.value);
     }
 
     return this.prisma.farmRecord.create({
@@ -516,22 +409,15 @@ export class FarmsService {
     });
   }
 
-  async remove(
-    id: string,
-    userId: string,
-    role: UserRole,
-  ) {
-    const farm =
-      await this.prisma.farm.findUnique({
-        where: {
-          id,
-        },
-      });
+  async remove(id: string, userId: string, role: UserRole) {
+    const farm = await this.prisma.farm.findUnique({
+      where: {
+        id,
+      },
+    });
 
     if (!farm) {
-      throw new NotFoundException(
-        'Farm not found',
-      );
+      throw new NotFoundException('Farm not found');
     }
 
     await this.authorization.assertCan({
@@ -545,12 +431,6 @@ export class FarmsService {
       resourceId: id,
       ownerId: farm.ownerId,
     });
-
-    this.assertFarmAccess(
-      farm.ownerId,
-      userId,
-      role,
-    );
 
     return this.prisma.farm.delete({
       where: {
