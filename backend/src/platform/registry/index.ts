@@ -1,4 +1,5 @@
 export * from './registry.module';
+export * from './module-definition.interface';
 export * from './registry.service';
 export * from './resource-definition.interface';
 export * from './field-definition.interface';

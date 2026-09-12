@@ -599,3 +599,237 @@ describe('RegistryService controlled field overrides', () => {
     expect(base?.validation?.maxLength).toBe(200);
   });
 });
+
+describe('RegistryService - modules', () => {
+  let registry: RegistryService;
+
+  beforeEach(() => {
+    registry = new RegistryService(
+      new FieldValidationService(),
+    );
+  });
+
+  it('registers and retrieves a module', () => {
+    registry.registerModule({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+    });
+
+    expect(registry.getModule('farms')).toEqual({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+    });
+  });
+
+  it('lists registered modules', () => {
+    registry.registerModule({
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE',
+    });
+
+    registry.registerModule({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+    });
+
+    expect(registry.getAllModules()).toEqual([
+      {
+        id: 'platform',
+        name: 'Platform',
+        lifecycle: 'ACTIVE',
+      },
+      {
+        id: 'farms',
+        name: 'Farms',
+        lifecycle: 'ACTIVE',
+      },
+    ]);
+  });
+
+  it('reports whether a module is registered', () => {
+    registry.registerModule({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+    });
+
+    expect(registry.hasModule('farms')).toBe(true);
+    expect(registry.hasModule('unknown')).toBe(false);
+  });
+});
+
+describe('RegistryService - module integrity', () => {
+  let registry: RegistryService;
+
+  beforeEach(() => {
+    registry = new RegistryService(
+      new FieldValidationService(),
+    );
+  });
+
+  it('rejects duplicate module IDs', () => {
+    registry.registerModule({
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE',
+    });
+
+    expect(() =>
+      registry.registerModule({
+        id: 'platform',
+        name: 'Another Platform',
+        lifecycle: 'ACTIVE',
+      }),
+    ).toThrow(
+      "Module 'platform' is already registered.",
+    );
+  });
+
+  it('rejects duplicate module names', () => {
+    registry.registerModule({
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE',
+    });
+
+    expect(() =>
+      registry.registerModule({
+        id: 'core',
+        name: 'Platform',
+        lifecycle: 'ACTIVE',
+      }),
+    ).toThrow(
+      "Module name 'Platform' is already registered by 'platform'.",
+    );
+  });
+
+  it('rejects self-dependencies', () => {
+    expect(() =>
+      registry.registerModule({
+        id: 'farms',
+        name: 'Farms',
+        lifecycle: 'ACTIVE',
+        dependencies: ['farms'],
+      }),
+    ).toThrow(
+      "Module 'farms' cannot depend on itself.",
+    );
+  });
+
+  it('rejects dependencies on unregistered modules', () => {
+    expect(() =>
+      registry.registerModule({
+        id: 'farms',
+        name: 'Farms',
+        lifecycle: 'ACTIVE',
+        dependencies: ['platform'],
+      }),
+    ).toThrow(
+      "Module 'farms' depends on unregistered module 'platform'.",
+    );
+  });
+
+  it('accepts dependencies when the dependency is already registered', () => {
+    registry.registerModule({
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE',
+    });
+
+    expect(() =>
+      registry.registerModule({
+        id: 'farms',
+        name: 'Farms',
+        lifecycle: 'ACTIVE',
+        dependencies: ['platform'],
+      }),
+    ).not.toThrow();
+
+    expect(registry.getModule('farms')).toEqual({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+      dependencies: ['platform'],
+    });
+  });
+
+  it('accepts a valid dependency chain', () => {
+    registry.registerModule({
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE',
+    });
+
+    registry.registerModule({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+      dependencies: ['platform'],
+    });
+
+    expect(() =>
+      registry.registerModule({
+        id: 'crop',
+        name: 'Crop',
+        lifecycle: 'ACTIVE',
+        dependencies: ['farms'],
+      }),
+    ).not.toThrow();
+  });
+
+  it('isolates the original registration input from later mutation', () => {
+    const definition = {
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE' as const,
+      dependencies: [] as string[],
+    };
+
+    registry.registerModule(definition);
+
+    definition.name = 'Mutated Platform';
+    definition.dependencies.push('unexpected');
+
+    expect(registry.getModule('platform')).toEqual({
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE',
+      dependencies: [],
+    });
+  });
+
+  it('isolates registered module definitions from external mutation', () => {
+    registry.registerModule({
+      id: 'platform',
+      name: 'Platform',
+      lifecycle: 'ACTIVE',
+    });
+
+    registry.registerModule({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+      dependencies: ['platform'],
+    });
+
+    const firstRead = registry.getModule('farms');
+
+    expect(firstRead).toBeDefined();
+
+    firstRead!.name = 'Mutated Farms';
+    firstRead!.dependencies!.push('unexpected');
+
+    const secondRead = registry.getModule('farms');
+
+    expect(secondRead).toEqual({
+      id: 'farms',
+      name: 'Farms',
+      lifecycle: 'ACTIVE',
+      dependencies: ['platform'],
+    });
+  });
+});

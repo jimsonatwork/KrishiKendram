@@ -8,11 +8,14 @@ import {
   FieldValidationResult,
   FieldValidationService,
 } from './field-validation.service';
+import { ModuleDefinition } from './module-definition.interface';
 import { ResourceDefinition } from './resource-definition.interface';
 
 @Injectable()
 export class RegistryService {
   private readonly resources = new Map<string, ResourceDefinition>();
+
+  private readonly modules = new Map<string, ModuleDefinition>();
 
   private readonly fields = new Map<string, FieldDefinition>();
 
@@ -34,6 +37,118 @@ export class RegistryService {
 
   has(name: string): boolean {
     return this.resources.has(name);
+  }
+
+  registerModule(definition: ModuleDefinition): void {
+    if (this.modules.has(definition.id)) {
+      throw new Error(
+        `Module '${definition.id}' is already registered.`,
+      );
+    }
+
+    for (const existing of this.modules.values()) {
+      if (existing.name === definition.name) {
+        throw new Error(
+          `Module name '${definition.name}' is already registered by '${existing.id}'.`,
+        );
+      }
+    }
+
+    if (definition.dependencies?.includes(definition.id)) {
+      throw new Error(
+        `Module '${definition.id}' cannot depend on itself.`,
+      );
+    }
+
+    for (const dependency of definition.dependencies ?? []) {
+      if (!this.modules.has(dependency)) {
+        throw new Error(
+          `Module '${definition.id}' depends on unregistered module '${dependency}'.`,
+        );
+      }
+    }
+
+    this.modules.set(
+      definition.id,
+      this.cloneModuleDefinition(definition),
+    );
+
+    if (this.hasModuleDependencyCycle()) {
+      this.modules.delete(definition.id);
+
+      throw new Error(
+        `Module '${definition.id}' introduces a dependency cycle.`,
+      );
+    }
+  }
+
+  getModule(id: string): ModuleDefinition | undefined {
+    const definition = this.modules.get(id);
+
+    return definition
+      ? this.cloneModuleDefinition(definition)
+      : undefined;
+  }
+
+  getAllModules(): ModuleDefinition[] {
+    return [...this.modules.values()].map((definition) =>
+      this.cloneModuleDefinition(definition),
+    );
+  }
+
+  hasModule(id: string): boolean {
+    return this.modules.has(id);
+  }
+
+  // START: Module definition isolation
+  private cloneModuleDefinition(
+    definition: ModuleDefinition,
+  ): ModuleDefinition {
+    return {
+      ...definition,
+      dependencies: definition.dependencies
+        ? [...definition.dependencies]
+        : undefined,
+    };
+  }
+  // END: Module definition isolation
+
+  private hasModuleDependencyCycle(): boolean {
+    const visiting = new Set<string>();
+    const visited = new Set<string>();
+
+    const visit = (moduleId: string): boolean => {
+      if (visiting.has(moduleId)) {
+        return true;
+      }
+
+      if (visited.has(moduleId)) {
+        return false;
+      }
+
+      visiting.add(moduleId);
+
+      const module = this.modules.get(moduleId);
+
+      for (const dependency of module?.dependencies ?? []) {
+        if (visit(dependency)) {
+          return true;
+        }
+      }
+
+      visiting.delete(moduleId);
+      visited.add(moduleId);
+
+      return false;
+    };
+
+    for (const moduleId of this.modules.keys()) {
+      if (visit(moduleId)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   registerField(definition: FieldDefinition): void {

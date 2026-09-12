@@ -8,6 +8,7 @@ import { USER_FIELD_DEFINITIONS } from './definitions/fields/user-field-definiti
 import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definitions';
 import { FARM_ASSET_FIELD_DEFINITIONS } from './definitions/fields/farm-asset-field-definitions';
 
+import { MODULE_DEFINITIONS } from './definitions/modules';
 import { RESOURCE_DEFINITIONS } from './definitions/resources';
 
 import { FARM_RECORD_FIELD_DEFINITIONS } from './definitions/fields/farm-record-field-definitions';
@@ -20,13 +21,28 @@ import { FARM_RECORD_FIELD_DEFINITIONS } from './definitions/fields/farm-record-
 })
 export class RegistryModule {
   constructor(private readonly registry: RegistryService) {
+    this.registerModules();
     this.registerResources();
     this.registerFields();
   }
 
+  // START: Module registration
+  private registerModules(): void {
+    for (const definition of MODULE_DEFINITIONS) {
+      this.registry.registerModule(definition);
+    }
+  }
+  // END: Module registration
+
   // START: Resource registration
   private registerResources(): void {
     for (const definition of RESOURCE_DEFINITIONS) {
+      if (!this.registry.hasModule(definition.module)) {
+        throw new Error(
+          `Resource '${definition.name}' references unregistered module '${definition.module}'.`,
+        );
+      }
+
       this.registry.register(definition);
     }
   }
