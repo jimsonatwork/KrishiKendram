@@ -5,7 +5,4 @@ export * from './field-definition.interface';
 export * from './field-validation.service';
 export * from './definitions/fields/user-field-definitions';
 
-export {
-  farmRecordCategoryField,
-  farmRecordTitleField,
-} from './definitions/fields/user-field-definitions';
+export * from './definitions/fields/farm-record-field-definitions';

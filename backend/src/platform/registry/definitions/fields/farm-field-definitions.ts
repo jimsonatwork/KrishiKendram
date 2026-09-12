@@ -23,9 +23,12 @@ export const FARM_FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   {
     name: 'farmType',
     type: 'string',
-    description: 'Farm type or classification.',
+    description: 'Canonical Farm type.',
     validation: {
       required: false,
+    },
+    normalization: {
+      trim: true,
     },
     overrideMode: 'EXTENDABLE',
     overridableValidation: [
@@ -39,9 +42,12 @@ export const FARM_FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   {
     name: 'farmDescription',
     type: 'string',
-    description: 'Farm description.',
+    description: 'Canonical Farm description.',
     validation: {
       required: false,
+    },
+    normalization: {
+      trim: true,
     },
     overrideMode: 'EXTENDABLE',
     overridableValidation: [
@@ -55,9 +61,12 @@ export const FARM_FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   {
     name: 'farmLocation',
     type: 'string',
-    description: 'Farm location description.',
+    description: 'Canonical Farm location.',
     validation: {
       required: false,
+    },
+    normalization: {
+      trim: true,
     },
     overrideMode: 'EXTENDABLE',
     overridableValidation: [
@@ -101,7 +110,7 @@ export const FARM_FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   {
     name: 'farmArea',
     type: 'number',
-    description: 'Farm area measurement.',
+    description: 'Farm area.',
     validation: {
       required: false,
     },
@@ -119,6 +128,9 @@ export const FARM_FIELD_DEFINITIONS: readonly FieldDefinition[] = [
     description: 'Farm area unit.',
     validation: {
       required: false,
+    },
+    normalization: {
+      trim: true,
     },
     overrideMode: 'EXTENDABLE',
     overridableValidation: [

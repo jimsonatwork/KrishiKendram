@@ -12,6 +12,14 @@ export const farmRecordResource: ResourceDefinition = {
     title: {
       definition: 'farmRecordTitle',
     },
+
+    inputMethod: {
+      definition: 'farmRecordInputMethod',
+    },
+
+    data: {
+      definition: 'farmRecordData',
+    },
   },
 
   ownerField: 'farm.ownerId',

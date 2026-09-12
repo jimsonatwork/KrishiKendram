@@ -234,10 +234,15 @@ describe('FarmsService', () => {
     expect(result).toEqual(updatedFarm);
   });
 
-  it('uses the central Registry value when creating a farm asset', async () => {
+  it('uses central Registry values for all farm asset fields when creating an asset', async () => {
     const farm = {
       id: 'farm-1',
       ownerId: 'user-1',
+    };
+
+    const metadata = {
+      year: 2025,
+      model: '575 DI',
     };
 
     const createdAsset = {
@@ -245,25 +250,54 @@ describe('FarmsService', () => {
       farmId: 'farm-1',
       type: 'TRACTOR',
       name: 'Main Tractor',
+      quantity: 1,
+      unit: 'count',
+      metadata,
     };
 
     prisma.farm.findUnique.mockResolvedValue(farm);
     prisma.farmAsset.create.mockResolvedValue(createdAsset);
 
-    registry.validateResourceField.mockReturnValue({
-      valid: true,
-      value: 'Main Tractor',
-      errors: [],
-    });
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => ({
+        valid: true,
+        value:
+          field === 'type'
+            ? 'TRACTOR'
+            : field === 'name'
+              ? 'Main Tractor'
+              : field === 'quantity'
+                ? 1
+                : field === 'unit'
+                  ? 'count'
+                  : metadata,
+        errors: [],
+      }),
+    );
 
     const result = await service.addAsset(
       'farm-1',
       {
-        type: 'TRACTOR',
+        type: '  TRACTOR  ',
         name: '  Main Tractor  ',
+        quantity: 1,
+        unit: '  count  ',
+        metadata,
       },
       'user-1',
       UserRole.FARMER,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'type',
+      '  TRACTOR  ',
     );
 
     expect(
@@ -274,28 +308,62 @@ describe('FarmsService', () => {
       '  Main Tractor  ',
     );
 
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'quantity',
+      1,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'unit',
+      '  count  ',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'metadata',
+      metadata,
+    );
+
     expect(prisma.farmAsset.create).toHaveBeenCalledWith({
       data: {
         farmId: 'farm-1',
         type: 'TRACTOR',
         name: 'Main Tractor',
+        quantity: 1,
+        unit: 'count',
+        metadata,
       },
     });
 
     expect(result).toEqual(createdAsset);
   });
 
-  it('allows a farm asset without a name', async () => {
+  it('allows a farm asset without optional fields', async () => {
     const farm = {
       id: 'farm-1',
       ownerId: 'user-1',
     };
 
     prisma.farm.findUnique.mockResolvedValue(farm);
+
     prisma.farmAsset.create.mockResolvedValue({
       id: 'asset-1',
       farmId: 'farm-1',
       type: 'TRACTOR',
+    });
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'TRACTOR',
+      errors: [],
     });
 
     await service.addAsset(
@@ -309,7 +377,15 @@ describe('FarmsService', () => {
 
     expect(
       registry.validateResourceField,
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledTimes(1);
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'type',
+      'TRACTOR',
+    );
 
     expect(prisma.farmAsset.create).toHaveBeenCalledWith({
       data: {
@@ -319,7 +395,7 @@ describe('FarmsService', () => {
     });
   });
 
-  it('rejects a farm asset name when the central Registry rejects it', async () => {
+  it('rejects a farm asset when the central Registry rejects a field', async () => {
     const farm = {
       id: 'farm-1',
       ownerId: 'user-1',
@@ -327,20 +403,36 @@ describe('FarmsService', () => {
 
     prisma.farm.findUnique.mockResolvedValue(farm);
 
-    registry.validateResourceField.mockReturnValue({
-      valid: false,
-      value: 'x'.repeat(101),
-      errors: [
-        'Field must be at most 100 characters long.',
-      ],
-    });
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => {
+        if (field === 'quantity') {
+          return {
+            valid: false,
+            value,
+            errors: [
+              'Field must be a valid number.',
+            ],
+          };
+        }
+
+        return {
+          valid: true,
+          value,
+          errors: [],
+        };
+      },
+    );
 
     await expect(
       service.addAsset(
         'farm-1',
         {
           type: 'TRACTOR',
-          name: 'x'.repeat(101),
+          quantity: Number.NaN,
         },
         'user-1',
         UserRole.FARMER,
@@ -348,39 +440,80 @@ describe('FarmsService', () => {
     ).rejects.toThrow(BadRequestException);
 
     expect(prisma.farmAsset.create).not.toHaveBeenCalled();
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'quantity',
+      Number.NaN,
+    );
   });
 
-  it('uses the central Registry value when updating a farm asset name', async () => {
+  it('uses central Registry values for farm asset fields when updating an asset', async () => {
     const asset = {
       id: 'asset-1',
       farmId: 'farm-1',
+      type: 'TRACTOR',
       name: 'Old Tractor',
+      quantity: 1,
+      unit: 'count',
+      metadata: {
+        year: 2024,
+      },
       farm: {
         id: 'farm-1',
         ownerId: 'user-1',
       },
     };
 
+    const metadata = {
+      year: 2025,
+      model: '575 DI',
+    };
+
     const updatedAsset = {
       ...asset,
+      type: 'TRACTOR',
       name: 'Main Tractor',
+      quantity: 2,
+      unit: 'count',
+      metadata,
     };
 
     prisma.farmAsset.findUnique.mockResolvedValue(asset);
     prisma.farmAsset.update.mockResolvedValue(updatedAsset);
 
-    registry.validateResourceField.mockReturnValue({
-      valid: true,
-      value: 'Main Tractor',
-      errors: [],
-    });
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => ({
+        valid: true,
+        value:
+          field === 'type'
+            ? 'TRACTOR'
+            : field === 'name'
+              ? 'Main Tractor'
+              : field === 'quantity'
+                ? 2
+                : field === 'unit'
+                  ? 'count'
+                  : metadata,
+        errors: [],
+      }),
+    );
 
     const result = await service.updateAsset(
       'farm-1',
       'asset-1',
       {
-        type: 'TRACTOR',
+        type: '  TRACTOR  ',
         name: '  Main Tractor  ',
+        quantity: 2,
+        unit: '  count  ',
+        metadata,
       },
       'user-1',
       UserRole.FARMER,
@@ -390,8 +523,40 @@ describe('FarmsService', () => {
       registry.validateResourceField,
     ).toHaveBeenCalledWith(
       'farmAsset',
+      'type',
+      '  TRACTOR  ',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
       'name',
       '  Main Tractor  ',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'quantity',
+      2,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'unit',
+      '  count  ',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmAsset',
+      'metadata',
+      metadata,
     );
 
     expect(prisma.farmAsset.update).toHaveBeenCalledWith({
@@ -401,13 +566,16 @@ describe('FarmsService', () => {
       data: {
         type: 'TRACTOR',
         name: 'Main Tractor',
+        quantity: 2,
+        unit: 'count',
+        metadata,
       },
     });
 
     expect(result).toEqual(updatedAsset);
   });
 
-  it('keeps authorization before farm asset name validation', async () => {
+  it('keeps authorization before farm asset validation', async () => {
     const farm = {
       id: 'farm-1',
       ownerId: 'user-1',
@@ -429,6 +597,11 @@ describe('FarmsService', () => {
       {
         type: 'TRACTOR',
         name: '  Main Tractor  ',
+        quantity: 1,
+        unit: 'count',
+        metadata: {
+          year: 2025,
+        },
       },
       'user-1',
       UserRole.FARMER,
@@ -438,7 +611,8 @@ describe('FarmsService', () => {
       authorization.assertCan.mock.invocationCallOrder[0];
 
     const registryOrder =
-      registry.validateResourceField.mock.invocationCallOrder[0];
+      registry.validateResourceField.mock
+        .invocationCallOrder[0];
 
     expect(authorizationOrder).toBeLessThan(
       registryOrder,
@@ -453,6 +627,334 @@ describe('FarmsService', () => {
       },
       module: 'farms',
       resource: 'farmAsset',
+      action: AuthorizationAction.CREATE,
+      farmId: 'farm-1',
+      ownerId: 'user-1',
+    });
+  });
+
+
+  it('uses central Registry values for all farm record fields when creating a record', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    const inputMethod = 'MANUAL' as any;
+
+    const inputData = {
+      source: 'field observation',
+      moisture: 42,
+    };
+
+    const normalizedData = {
+      source: 'field observation',
+      moisture: 42,
+    };
+
+    const createdRecord = {
+      id: 'record-1',
+      farmId: 'farm-1',
+      category: 'OBSERVATION',
+      title: 'Soil Check',
+      inputMethod,
+      data: normalizedData,
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+    prisma.farmRecord = {
+      create: jest.fn().mockResolvedValue(createdRecord),
+    };
+
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => ({
+        valid: true,
+        value:
+          field === 'category'
+            ? 'OBSERVATION'
+            : field === 'title'
+              ? 'Soil Check'
+              : field === 'inputMethod'
+                ? inputMethod
+                : normalizedData,
+        errors: [],
+      }),
+    );
+
+    const result = await service.addRecord(
+      'farm-1',
+      {
+        category: '  OBSERVATION  ',
+        title: '  Soil Check  ',
+        inputMethod,
+        data: inputData,
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'category',
+      '  OBSERVATION  ',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'title',
+      '  Soil Check  ',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'inputMethod',
+      inputMethod,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'data',
+      inputData,
+    );
+
+    expect(
+      prisma.farmRecord.create,
+    ).toHaveBeenCalledWith({
+      data: {
+        farmId: 'farm-1',
+        category: 'OBSERVATION',
+        title: 'Soil Check',
+        inputMethod,
+        data: normalizedData,
+      },
+    });
+
+    expect(result).toEqual(createdRecord);
+  });
+
+  it('allows a farm record with an optional title omitted', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    const inputMethod = 'MANUAL' as any;
+    const inputData = {
+      note: 'No title',
+    };
+
+    const createdRecord = {
+      id: 'record-1',
+      farmId: 'farm-1',
+      category: 'OBSERVATION',
+      inputMethod,
+      data: inputData,
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+    prisma.farmRecord = {
+      create: jest.fn().mockResolvedValue(createdRecord),
+    };
+
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => ({
+        valid: true,
+        value,
+        errors: [],
+      }),
+    );
+
+    const result = await service.addRecord(
+      'farm-1',
+      {
+        category: 'OBSERVATION',
+        inputMethod,
+        data: inputData,
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledTimes(3);
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'category',
+      'OBSERVATION',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'inputMethod',
+      inputMethod,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'data',
+      inputData,
+    );
+
+    expect(
+      prisma.farmRecord.create,
+    ).toHaveBeenCalledWith({
+      data: {
+        farmId: 'farm-1',
+        category: 'OBSERVATION',
+        title: undefined,
+        inputMethod,
+        data: inputData,
+      },
+    });
+
+    expect(result).toEqual(createdRecord);
+  });
+
+  it('rejects a farm record when the central Registry rejects a field', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    const inputMethod = 'MANUAL' as any;
+    const inputData = {
+      note: 'Invalid record',
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+    prisma.farmRecord = {
+      create: jest.fn(),
+    };
+
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => {
+        if (field === 'data') {
+          return {
+            valid: false,
+            value,
+            errors: [
+              'Field must be a valid object.',
+            ],
+          };
+        }
+
+        return {
+          valid: true,
+          value,
+          errors: [],
+        };
+      },
+    );
+
+    await expect(
+      service.addRecord(
+        'farm-1',
+        {
+          category: 'OBSERVATION',
+          inputMethod,
+          data: inputData,
+        },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(
+      prisma.farmRecord.create,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'farmRecord',
+      'data',
+      inputData,
+    );
+  });
+
+  it('keeps authorization before farm record validation', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    const inputMethod = 'MANUAL' as any;
+    const inputData = {
+      note: 'Observation',
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+    prisma.farmRecord = {
+      create: jest.fn().mockResolvedValue({
+        id: 'record-1',
+      }),
+    };
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'OBSERVATION',
+      errors: [],
+    });
+
+    await service.addRecord(
+      'farm-1',
+      {
+        category: 'OBSERVATION',
+        inputMethod,
+        data: inputData,
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    const authorizationOrder =
+      authorization.assertCan.mock.invocationCallOrder[0];
+
+    const registryOrder =
+      registry.validateResourceField.mock
+        .invocationCallOrder[0];
+
+    expect(authorizationOrder).toBeLessThan(
+      registryOrder,
+    );
+
+    expect(
+      authorization.assertCan,
+    ).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farmRecord',
       action: AuthorizationAction.CREATE,
       farmId: 'farm-1',
       ownerId: 'user-1',

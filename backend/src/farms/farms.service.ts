@@ -126,6 +126,122 @@ export class FarmsService {
     return validated;
   }
 
+
+  private validateFarmRecordFields(
+    data: Partial<CreateFarmRecordDto>,
+  ): Partial<CreateFarmRecordDto> {
+    const fields: Array<{
+      key: keyof CreateFarmRecordDto;
+      label: string;
+    }> = [
+      {
+        key: 'category',
+        label: 'farm record category',
+      },
+      {
+        key: 'title',
+        label: 'farm record title',
+      },
+      {
+        key: 'inputMethod',
+        label: 'farm record input method',
+      },
+      {
+        key: 'data',
+        label: 'farm record data',
+      },
+    ];
+
+    const validated: Partial<CreateFarmRecordDto> = {};
+
+    for (const field of fields) {
+      const value = data[field.key];
+
+      /*
+       * Optional FarmRecord fields retain the existing service behavior:
+       * undefined means the field was omitted and should not be sent through
+       * Registry validation. Required fields are guaranteed by the DTO layer.
+       */
+      if (value === undefined) {
+        continue;
+      }
+
+      const result = this.registry.validateResourceField(
+        'farmRecord',
+        field.key,
+        value,
+      );
+
+      if (!result.valid) {
+        throw new BadRequestException({
+          message: `Invalid ${field.label}.`,
+          errors: result.errors,
+        });
+      }
+
+      validated[field.key] = result.value as never;
+    }
+
+    return validated;
+  }
+
+  private validateFarmAssetFields(
+    data: Partial<CreateFarmAssetDto>,
+  ): Partial<CreateFarmAssetDto> {
+    const fields: Array<{
+      key: keyof CreateFarmAssetDto;
+      label: string;
+    }> = [
+      {
+        key: 'type',
+        label: 'farm asset type',
+      },
+      {
+        key: 'name',
+        label: 'farm asset name',
+      },
+      {
+        key: 'quantity',
+        label: 'farm asset quantity',
+      },
+      {
+        key: 'unit',
+        label: 'farm asset unit',
+      },
+      {
+        key: 'metadata',
+        label: 'farm asset metadata',
+      },
+    ];
+
+    const validated: Partial<CreateFarmAssetDto> = {};
+
+    for (const field of fields) {
+      const value = data[field.key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      const result = this.registry.validateResourceField(
+        'farmAsset',
+        field.key,
+        value,
+      );
+
+      if (!result.valid) {
+        throw new BadRequestException({
+          message: `Invalid ${field.label}.`,
+          errors: result.errors,
+        });
+      }
+
+      validated[field.key] = result.value as never;
+    }
+
+    return validated;
+  }
+
   async findMyFarms(ownerId: string) {
     return this.prisma.farm.findMany({
       where: {
@@ -178,7 +294,12 @@ export class FarmsService {
     return farm;
   }
 
-  async update(id: string, userId: string, role: UserRole, dto: UpdateFarmDto) {
+  async update(
+    id: string,
+    userId: string,
+    role: UserRole,
+    dto: UpdateFarmDto,
+  ) {
     const farm = await this.prisma.farm.findUnique({
       where: {
         id,
@@ -239,33 +360,14 @@ export class FarmsService {
       ownerId: farm.ownerId,
     });
 
-    let assetData = {
-      farmId,
-      ...dto,
-    };
-
-    if (dto.name !== undefined) {
-      const nameResult = this.registry.validateResourceField(
-        'farmAsset',
-        'name',
-        dto.name,
-      );
-
-      if (!nameResult.valid) {
-        throw new BadRequestException({
-          message: 'Invalid farm asset name.',
-          errors: nameResult.errors,
-        });
-      }
-
-      assetData = {
-        ...assetData,
-        name: nameResult.value as string,
-      };
-    }
+    const validatedData = this.validateFarmAssetFields(dto);
 
     return this.prisma.farmAsset.create({
-      data: assetData,
+      data: {
+        farmId,
+        ...validatedData,
+        type: validatedData.type as string,
+      },
     });
   }
 
@@ -306,35 +408,13 @@ export class FarmsService {
       ownerId: asset.farm.ownerId,
     });
 
-    let assetData = {
-      ...dto,
-    };
-
-    if (dto.name !== undefined) {
-      const nameResult = this.registry.validateResourceField(
-        'farmAsset',
-        'name',
-        dto.name,
-      );
-
-      if (!nameResult.valid) {
-        throw new BadRequestException({
-          message: 'Invalid farm asset name.',
-          errors: nameResult.errors,
-        });
-      }
-
-      assetData = {
-        ...assetData,
-        name: nameResult.value as string,
-      };
-    }
+    const validatedData = this.validateFarmAssetFields(dto);
 
     return this.prisma.farmAsset.update({
       where: {
         id: assetId,
       },
-      data: assetData,
+      data: validatedData,
     });
   }
 
@@ -397,6 +477,11 @@ export class FarmsService {
       throw new NotFoundException('Farm not found');
     }
 
+    /*
+     * Authorization must remain before Registry validation.
+     * Validation must never become a resource-existence or data-disclosure
+     * oracle for callers who are not authorized to access this farm.
+     */
     await this.authorization.assertCan({
       user: {
         userId,
@@ -409,40 +494,40 @@ export class FarmsService {
       ownerId: farm.ownerId,
     });
 
-    const categoryResult = this.registry.validateResourceField(
-      'farmRecord',
-      'category',
-      dto.category,
-    );
+    const validatedData = this.validateFarmRecordFields(dto);
 
-    if (!categoryResult.valid) {
-      throw new BadRequestException(categoryResult.errors.join(' '));
-    }
-
-    let normalizedTitle: string | null | undefined;
-
-    if (dto.title !== undefined) {
-      const titleResult = this.registry.validateResourceField(
-        'farmRecord',
-        'title',
-        dto.title,
+    /*
+     * These fields are required by the FarmRecord business contract.
+     * Registry validation has already validated and normalized them.
+     * The explicit checks below narrow the Partial DTO type before Prisma
+     * receives the data; they do not introduce a second validation policy.
+     */
+    if (
+      validatedData.category === undefined ||
+      validatedData.inputMethod === undefined ||
+      validatedData.data === undefined
+    ) {
+      throw new BadRequestException(
+        'Invalid FarmRecord data.',
       );
-
-      if (!titleResult.valid) {
-        throw new BadRequestException(titleResult.errors.join(' '));
-      }
-
-      normalizedTitle =
-        titleResult.value === '' ? null : String(titleResult.value);
     }
+
+    /*
+     * Preserve the existing FarmRecord title semantics:
+     * an explicitly supplied empty/whitespace title is normalized to null.
+     */
+    const normalizedTitle =
+      validatedData.title === ''
+        ? null
+        : validatedData.title;
 
     return this.prisma.farmRecord.create({
       data: {
         farmId,
-        category: categoryResult.value as string,
+        category: validatedData.category,
+        inputMethod: validatedData.inputMethod,
+        data: validatedData.data,
         title: normalizedTitle,
-        inputMethod: dto.inputMethod,
-        data: dto.data,
       },
     });
   }

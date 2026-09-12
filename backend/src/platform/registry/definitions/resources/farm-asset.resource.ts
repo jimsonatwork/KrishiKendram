@@ -5,13 +5,24 @@ export const farmAssetResource: ResourceDefinition = {
   model: 'FarmAsset',
 
   fields: {
+    type: {
+      definition: 'farmAssetType',
+    },
+
     name: {
-      definition: 'name',
-      override: {
-        validation: {
-          maxLength: 100,
-        },
-      },
+      definition: 'farmAssetName',
+    },
+
+    quantity: {
+      definition: 'farmAssetQuantity',
+    },
+
+    unit: {
+      definition: 'farmAssetUnit',
+    },
+
+    metadata: {
+      definition: 'farmAssetMetadata',
     },
   },
 
