@@ -3,6 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { FieldValidationService } from './field-validation.service';
 import { RegistryController } from './registry.controller';
 import { RegistryService } from './registry.service';
+import { ModuleLifecycleService } from './module-lifecycle.service';
 
 import { USER_FIELD_DEFINITIONS } from './definitions/fields/user-field-definitions';
 import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definitions';
@@ -16,8 +17,16 @@ import { FARM_RECORD_FIELD_DEFINITIONS } from './definitions/fields/farm-record-
 @Global()
 @Module({
   controllers: [RegistryController],
-  providers: [RegistryService, FieldValidationService],
-  exports: [RegistryService, FieldValidationService],
+  providers: [
+    RegistryService,
+    FieldValidationService,
+    ModuleLifecycleService,
+  ],
+  exports: [
+    RegistryService,
+    FieldValidationService,
+    ModuleLifecycleService,
+  ],
 })
 export class RegistryModule {
   constructor(private readonly registry: RegistryService) {
