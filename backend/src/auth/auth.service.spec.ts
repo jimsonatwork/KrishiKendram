@@ -6,6 +6,7 @@ describe('AuthService - centralized field policy', () => {
   const prisma = {
     user: {
       create: jest.fn(),
+      update: jest.fn(),
     },
   } as any;
 
@@ -179,4 +180,60 @@ describe('AuthService - centralized field policy', () => {
       prisma.user.create,
     ).not.toHaveBeenCalled();
   });
+  it('updates lastSeenAt and returns the safe current user profile', async () => {
+    const lastSeenAt = new Date();
+
+    prisma.user.update.mockResolvedValue({
+      id: 'user-1',
+      name: 'Jimson',
+      email: 'jimson@example.com',
+      mobile: '+919999999999',
+      role: 'FARMER',
+      status: 'ACTIVE',
+      preferredLanguage: 'en',
+      preferredInputMethod: 'MIXED',
+      profileCompletion: 80,
+      isVerified: true,
+      lastLoginAt: lastSeenAt,
+      lastSeenAt,
+      createdAt: lastSeenAt,
+      updatedAt: lastSeenAt,
+    });
+
+    const result = await service.me('user-1');
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: {
+        id: 'user-1',
+      },
+      data: {
+        lastSeenAt: expect.any(Date),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        role: true,
+        status: true,
+        preferredLanguage: true,
+        preferredInputMethod: true,
+        profileCompletion: true,
+        isVerified: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        name: 'Jimson',
+        email: 'jimson@example.com',
+      }),
+    );
+  });
+
 });

@@ -15,13 +15,10 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 
-import { PrismaService } from '../prisma/prisma.service';
-
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly prisma: PrismaService,
   ) {}
 
   @Post('register')
@@ -49,34 +46,9 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async me(
+  me(
     @CurrentUser() user: { userId: string },
   ) {
-    const dbUser = await this.prisma.user.update({
-      where: {
-        id: user.userId,
-      },
-      data: {
-        lastSeenAt: new Date(),
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        mobile: true,
-        role: true,
-        status: true,
-        preferredLanguage: true,
-        preferredInputMethod: true,
-        profileCompletion: true,
-        isVerified: true,
-        lastLoginAt: true,
-        lastSeenAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    return dbUser;
+    return this.authService.me(user.userId);
   }
 }

@@ -311,6 +311,35 @@ export class AuthService {
     };
   }
 
+  async me(userId: string) {
+    const dbUser = await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lastSeenAt: new Date(),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        role: true,
+        status: true,
+        preferredLanguage: true,
+        preferredInputMethod: true,
+        profileCompletion: true,
+        isVerified: true,
+        lastLoginAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return dbUser;
+  }
+
   async logout(userId: string) {
     const now = new Date();
 
