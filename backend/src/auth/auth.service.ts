@@ -100,6 +100,18 @@ export class AuthService {
             );
     }
 
+    const passwordResult =
+      this.registry.validateField(
+        'userPassword',
+        dto.password,
+      );
+
+    if (!passwordResult.valid) {
+      throw new BadRequestException(
+        passwordResult.errors.join(' '),
+      );
+    }
+
     let normalizedPreferredLanguage:
       | string
       | null

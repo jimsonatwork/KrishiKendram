@@ -231,6 +231,145 @@ describe('UsersService - centralized field policy', () => {
   });
 
 
+  it('rejects an invalid role during update', async () => {
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+      ) => {
+        if (resource === 'user' && field === 'role') {
+          return {
+            valid: false,
+            value: undefined,
+            errors: ['Invalid User role'],
+          }
+        }
+
+        return {
+          valid: true,
+          value: undefined,
+          errors: [],
+        }
+      },
+    )
+
+    await expect(
+      service.update(
+        'user-id',
+        {
+          role: 'INVALID_ROLE' as any,
+        },
+      ),
+    ).rejects.toThrow(
+      BadRequestException,
+    )
+  })
+
+  it('rejects an invalid status during update', async () => {
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+      ) => {
+        if (resource === 'user' && field === 'status') {
+          return {
+            valid: false,
+            value: undefined,
+            errors: ['Invalid User status'],
+          }
+        }
+
+        return {
+          valid: true,
+          value: undefined,
+          errors: [],
+        }
+      },
+    )
+
+    await expect(
+      service.update(
+        'user-id',
+        {
+          status: 'INVALID_STATUS' as any,
+        },
+      ),
+    ).rejects.toThrow(
+      BadRequestException,
+    )
+  })
+
+  it('rejects an invalid preferred input method during update', async () => {
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+      ) => {
+        if (
+          resource === 'user' &&
+          field === 'preferredInputMethod'
+        ) {
+          return {
+            valid: false,
+            value: undefined,
+            errors: ['Invalid User preferred input method'],
+          }
+        }
+
+        return {
+          valid: true,
+          value: undefined,
+          errors: [],
+        }
+      },
+    )
+
+    await expect(
+      service.update(
+        'user-id',
+        {
+          preferredInputMethod: 'INVALID_METHOD' as any,
+        },
+      ),
+    ).rejects.toThrow(
+      BadRequestException,
+    )
+  })
+
+  it('rejects an invalid verification flag during update', async () => {
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+      ) => {
+        if (resource === 'user' && field === 'isVerified') {
+          return {
+            valid: false,
+            value: undefined,
+            errors: ['Invalid User verification flag'],
+          }
+        }
+
+        return {
+          valid: true,
+          value: undefined,
+          errors: [],
+        }
+      },
+    )
+
+    await expect(
+      service.update(
+        'user-id',
+        {
+          isVerified: 'invalid' as any,
+        },
+      ),
+    ).rejects.toThrow(
+      BadRequestException,
+    )
+  })
+
   it('rejects an invalid password during update', async () => {
     registry.validateField.mockReturnValue({
       valid: false,

@@ -13,6 +13,11 @@ describe('AuthService - centralized field policy', () => {
 
   const registry = {
     validateResourceField: jest.fn(),
+      validateField: jest.fn().mockReturnValue({
+        valid: true,
+        value: undefined,
+        errors: [],
+      }),
   } as any;
 
   const auditService = {

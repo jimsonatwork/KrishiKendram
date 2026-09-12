@@ -34,6 +34,22 @@ export const userResource: ResourceDefinition = {
     profileCompletion: {
       definition: 'userProfileCompletion',
     },
+
+    role: {
+      definition: 'userRole',
+    },
+
+    status: {
+      definition: 'userStatus',
+    },
+
+    preferredInputMethod: {
+      definition: 'userPreferredInputMethod',
+    },
+
+    isVerified: {
+      definition: 'userVerified',
+    },
   },
 
   ownerField: 'id',

@@ -22,6 +22,20 @@ export interface FieldValidationDefinition {
   max?: number;
 
   pattern?: string;
+
+  /**
+   * Requires a numeric value to be an integer.
+   */
+  integer?: boolean;
+
+  /**
+   * Allowed values for enum fields.
+   *
+   * The Registry owns the validation contract while the
+   * source of the values may come from Prisma or another
+   * backend enum definition.
+   */
+  enumValues?: readonly string[];
 }
 
 export interface FieldNormalizationDefinition {

@@ -225,6 +225,18 @@ export class UsersService {
       12,
     )
 
+    const defaultRoleResult =
+      this.registry.validateField(
+        'userRole',
+        UserRole.FARMER,
+      )
+
+    if (!defaultRoleResult.valid) {
+      throw new BadRequestException(
+        defaultRoleResult.errors.join(' '),
+      )
+    }
+
     const user = await this.prisma.user.create({
       data: {
         name,
@@ -507,11 +519,39 @@ export class UsersService {
         }
 
         if (dto.role !== undefined) {
-          updateData.role = dto.role
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'role',
+              dto.role,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
+          updateData.role =
+            result.value as UserRole
         }
 
         if (dto.status !== undefined) {
-          updateData.status = dto.status
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'status',
+              dto.status,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
+          updateData.status =
+            result.value as UserStatus
         }
 
         if (
@@ -524,8 +564,21 @@ export class UsersService {
         if (
           dto.preferredInputMethod !== undefined
         ) {
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'preferredInputMethod',
+              dto.preferredInputMethod,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
           updateData.preferredInputMethod =
-            dto.preferredInputMethod
+            result.value as InputMethod
         }
 
         if (
@@ -536,8 +589,21 @@ export class UsersService {
         }
 
         if (dto.isVerified !== undefined) {
+          const result =
+            this.registry.validateResourceField(
+              'user',
+              'isVerified',
+              dto.isVerified,
+            )
+
+          if (!result.valid) {
+            throw new BadRequestException(
+              result.errors.join(' '),
+            )
+          }
+
           updateData.isVerified =
-            dto.isVerified
+            result.value as boolean
         }
 
         if (dto.password !== undefined) {

@@ -185,6 +185,17 @@ export class RegistryService {
     );
   }
 
+  private areEnumValuesCompatible(
+    base: readonly string[],
+    override: readonly string[],
+  ): boolean {
+    const allowed = new Set(base);
+
+    return override.every(
+      (value) => allowed.has(value),
+    );
+  }
+
   private isValidationExtensionAllowed(
     base: FieldDefinition['validation'],
     override: FieldDefinition['validation'],
@@ -236,6 +247,25 @@ export class RegistryService {
       override.pattern !== undefined &&
       base.pattern !== undefined &&
       override.pattern !== base.pattern
+    ) {
+      return false;
+    }
+
+    if (
+      override.integer !== undefined &&
+      base.integer !== undefined &&
+      override.integer !== base.integer
+    ) {
+      return false;
+    }
+
+    if (
+      override.enumValues !== undefined &&
+      base.enumValues !== undefined &&
+      !this.areEnumValuesCompatible(
+        base.enumValues,
+        override.enumValues,
+      )
     ) {
       return false;
     }

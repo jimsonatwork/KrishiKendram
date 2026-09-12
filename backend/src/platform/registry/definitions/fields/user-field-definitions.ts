@@ -92,15 +92,96 @@ export const userPreferredLanguageField: FieldDefinition = {
   },
 };
 
+// ============================================================
+// USER ENUM / SYSTEM FIELD DEFINITIONS
+// ============================================================
+
+export const userRoleField: FieldDefinition = {
+  name: 'userRole',
+  type: 'enum',
+  description: 'Canonical User role policy.',
+  validation: {
+    required: true,
+    enumValues: [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'FARMER',
+      'FARM_WORKER',
+      'AGRONOMIST',
+      'VETERINARIAN',
+      'BUYER',
+      'MERCHANT',
+      'FPO',
+      'PARTNER',
+      'FIELD_OFFICER',
+      'DISTRICT_ADMIN',
+      'STATE_ADMIN',
+      'GOVERNMENT',
+      'NGO',
+      'BANK',
+      'LOGISTICS',
+      'AI_AGENT',
+    ],
+  },
+  overrideMode: 'FIXED',
+};
+
+export const userStatusField: FieldDefinition = {
+  name: 'userStatus',
+  type: 'enum',
+  description: 'Canonical User status policy.',
+  validation: {
+    required: true,
+    enumValues: [
+      'PENDING',
+      'ACTIVE',
+      'SUSPENDED',
+      'BLOCKED',
+      'PENDING_DELETE',
+      'DELETED',
+    ],
+  },
+  overrideMode: 'FIXED',
+};
+
+export const userPreferredInputMethodField: FieldDefinition = {
+  name: 'userPreferredInputMethod',
+  type: 'enum',
+  description: 'Canonical User preferred input method policy.',
+  validation: {
+    required: false,
+    enumValues: [
+      'VOICE',
+      'MANUAL',
+      'IMAGE',
+      'VIDEO',
+      'MIXED',
+    ],
+  },
+  overrideMode: 'FIXED',
+};
+
+export const userVerifiedField: FieldDefinition = {
+  name: 'userVerified',
+  type: 'boolean',
+  description: 'Canonical User verification flag policy.',
+  validation: {
+    required: true,
+  },
+  overrideMode: 'FIXED',
+};
+
 export const userProfileCompletionField: FieldDefinition = {
   name: 'userProfileCompletion',
   type: 'number',
   description: 'Canonical User profile completion percentage.',
   validation: {
     required: false,
+    integer: true,
     min: 0,
     max: 100,
   },
+  overrideMode: 'FIXED',
 };
 
 export const USER_FIELD_DEFINITIONS = [
@@ -110,6 +191,10 @@ export const USER_FIELD_DEFINITIONS = [
   userMobileField,
   userPreferredLanguageField,
   userProfileCompletionField,
+  userRoleField,
+  userStatusField,
+  userPreferredInputMethodField,
+  userVerifiedField,
 ];
 
 
