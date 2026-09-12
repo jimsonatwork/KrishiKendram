@@ -185,30 +185,42 @@ describe('FarmsService', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('does not validate the name when updating unrelated farm fields', async () => {
+  it('uses the central Registry value when updating a farm location', async () => {
     const existingFarm = {
       id: 'farm-1',
       ownerId: 'user-1',
     };
 
-    prisma.farm.findUnique.mockResolvedValue(existingFarm);
-    prisma.farm.update.mockResolvedValue({
+    const updatedFarm = {
       ...existingFarm,
       location: 'Hyderabad',
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(existingFarm);
+    prisma.farm.update.mockResolvedValue(updatedFarm);
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'Hyderabad',
+      errors: [],
     });
 
-    await service.update(
+    const result = await service.update(
       'farm-1',
       'user-1',
       UserRole.FARMER,
       {
-        location: 'Hyderabad',
+        location: '  Hyderabad  ',
       },
     );
 
     expect(
       registry.validateResourceField,
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledWith(
+      'farm',
+      'location',
+      '  Hyderabad  ',
+    );
 
     expect(prisma.farm.update).toHaveBeenCalledWith({
       where: {
@@ -218,6 +230,8 @@ describe('FarmsService', () => {
         location: 'Hyderabad',
       },
     });
+
+    expect(result).toEqual(updatedFarm);
   });
 
   it('uses the central Registry value when creating a farm asset', async () => {

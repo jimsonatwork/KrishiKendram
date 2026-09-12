@@ -37,18 +37,7 @@ export class FarmsService {
       ownerId,
     });
 
-    const nameResult = this.registry.validateResourceField(
-      'farm',
-      'name',
-      dto.name,
-    );
-
-    if (!nameResult.valid) {
-      throw new BadRequestException({
-        message: 'Invalid farm name.',
-        errors: nameResult.errors,
-      });
-    }
+    const validatedData = this.validateFarmFields(dto);
 
     return this.prisma.$transaction(async (tx) => {
       const entity = await tx.entity.create({
@@ -59,13 +48,82 @@ export class FarmsService {
 
       return tx.farm.create({
         data: {
-          ...dto,
-          name: nameResult.value as string,
+          ...validatedData,
+          name: validatedData.name as string,
           ownerId,
           entityId: entity.id,
         },
       });
     });
+  }
+
+  private validateFarmFields(
+    data: Partial<CreateFarmDto>,
+  ): Partial<CreateFarmDto> {
+    const fields: Array<{
+      key: keyof CreateFarmDto;
+      label: string;
+    }> = [
+      {
+        key: 'name',
+        label: 'farm name',
+      },
+      {
+        key: 'type',
+        label: 'farm type',
+      },
+      {
+        key: 'description',
+        label: 'farm description',
+      },
+      {
+        key: 'location',
+        label: 'farm location',
+      },
+      {
+        key: 'latitude',
+        label: 'farm latitude',
+      },
+      {
+        key: 'longitude',
+        label: 'farm longitude',
+      },
+      {
+        key: 'area',
+        label: 'farm area',
+      },
+      {
+        key: 'unit',
+        label: 'farm unit',
+      },
+    ];
+
+    const validated: Partial<CreateFarmDto> = {};
+
+    for (const field of fields) {
+      const value = data[field.key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      const result = this.registry.validateResourceField(
+        'farm',
+        field.key,
+        value,
+      );
+
+      if (!result.valid) {
+        throw new BadRequestException({
+          message: `Invalid ${field.label}.`,
+          errors: result.errors,
+        });
+      }
+
+      validated[field.key] = result.value as never;
+    }
+
+    return validated;
   }
 
   async findMyFarms(ownerId: string) {
@@ -143,27 +201,7 @@ export class FarmsService {
       ownerId: farm.ownerId,
     });
 
-    let updateData = dto;
-
-    if (dto.name !== undefined) {
-      const nameResult = this.registry.validateResourceField(
-        'farm',
-        'name',
-        dto.name,
-      );
-
-      if (!nameResult.valid) {
-        throw new BadRequestException({
-          message: 'Invalid farm name.',
-          errors: nameResult.errors,
-        });
-      }
-
-      updateData = {
-        ...dto,
-        name: nameResult.value as string,
-      };
-    }
+    const updateData = this.validateFarmFields(dto);
 
     return this.prisma.farm.update({
       where: {

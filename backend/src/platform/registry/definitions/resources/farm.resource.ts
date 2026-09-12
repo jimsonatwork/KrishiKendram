@@ -6,12 +6,35 @@ export const farmResource: ResourceDefinition = {
 
   fields: {
     name: {
-      definition: 'name',
-      override: {
-        validation: {
-          required: true,
-        },
-      },
+      definition: 'farmName',
+    },
+
+    type: {
+      definition: 'farmType',
+    },
+
+    description: {
+      definition: 'farmDescription',
+    },
+
+    location: {
+      definition: 'farmLocation',
+    },
+
+    latitude: {
+      definition: 'farmLatitude',
+    },
+
+    longitude: {
+      definition: 'farmLongitude',
+    },
+
+    area: {
+      definition: 'farmArea',
+    },
+
+    unit: {
+      definition: 'farmUnit',
     },
   },
 

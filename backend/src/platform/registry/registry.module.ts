@@ -8,6 +8,7 @@ import {
   farmRecordCategoryField,
   farmRecordTitleField,
 } from './definitions/fields/user-field-definitions';
+import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definitions';
 import { userResource } from './definitions/resources/user.resource';
 import { farmResource } from './definitions/resources/farm.resource';
 import { cropResource } from './definitions/resources/crop.resource';
@@ -51,6 +52,10 @@ export class RegistryModule {
     });
 
     for (const definition of USER_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
+
+    for (const definition of FARM_FIELD_DEFINITIONS) {
       this.registry.registerField(definition);
     }
 
