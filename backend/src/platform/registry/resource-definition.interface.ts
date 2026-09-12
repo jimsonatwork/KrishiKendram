@@ -1,6 +1,7 @@
 import { FieldReference } from './field-definition.interface';
 
 export interface ResourceDefinition {
+  module: string;
   name: string;
   model: string;
 

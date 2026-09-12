@@ -2,6 +2,7 @@ import { ResourceDefinition } from '../../resource-definition.interface';
 
 export const userResource: ResourceDefinition = {
   name: 'user',
+  module: 'platform',
   model: 'User',
 
   fields: {

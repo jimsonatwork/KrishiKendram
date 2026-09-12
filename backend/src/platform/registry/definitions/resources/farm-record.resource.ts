@@ -2,6 +2,7 @@ import { ResourceDefinition } from '../../resource-definition.interface';
 
 export const farmRecordResource: ResourceDefinition = {
   name: 'farmRecord',
+  module: 'farms',
   model: 'FarmRecord',
 
   fields: {

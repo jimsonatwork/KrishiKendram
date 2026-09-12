@@ -8,11 +8,7 @@ import { USER_FIELD_DEFINITIONS } from './definitions/fields/user-field-definiti
 import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definitions';
 import { FARM_ASSET_FIELD_DEFINITIONS } from './definitions/fields/farm-asset-field-definitions';
 
-import { userResource } from './definitions/resources/user.resource';
-import { farmResource } from './definitions/resources/farm.resource';
-import { cropResource } from './definitions/resources/crop.resource';
-import { farmAssetResource } from './definitions/resources/farm-asset.resource';
-import { farmRecordResource } from './definitions/resources/farm-record.resource';
+import { RESOURCE_DEFINITIONS } from './definitions/resources';
 
 import { FARM_RECORD_FIELD_DEFINITIONS } from './definitions/fields/farm-record-field-definitions';
 
@@ -30,11 +26,9 @@ export class RegistryModule {
 
   // START: Resource registration
   private registerResources(): void {
-    this.registry.register(userResource);
-    this.registry.register(farmResource);
-    this.registry.register(cropResource);
-    this.registry.register(farmAssetResource);
-    this.registry.register(farmRecordResource);
+    for (const definition of RESOURCE_DEFINITIONS) {
+      this.registry.register(definition);
+    }
   }
   // END: Resource registration
 

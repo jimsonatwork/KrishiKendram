@@ -201,6 +201,7 @@ describe('RegistryService - resource field references', () => {
 
     registry.register({
       name: 'farm',
+      module: 'farms',
       model: 'Farm',
       fields: {
         name: {
@@ -211,6 +212,7 @@ describe('RegistryService - resource field references', () => {
 
     registry.register({
       name: 'crop',
+      module: 'farms',
       model: 'Crop',
       fields: {
         name: {
@@ -221,6 +223,7 @@ describe('RegistryService - resource field references', () => {
 
     registry.register({
       name: 'farmAsset',
+      module: 'farms',
       model: 'FarmAsset',
       fields: {
         name: {
@@ -312,6 +315,7 @@ describe('RegistryService - central resource field resolver', () => {
 
     registry.register({
       name: 'farm',
+      module: 'farms',
       model: 'Farm',
       fields: {
         name: {
@@ -322,6 +326,7 @@ describe('RegistryService - central resource field resolver', () => {
 
     registry.register({
       name: 'crop',
+      module: 'farms',
       model: 'Crop',
       fields: {
         name: {
@@ -332,6 +337,7 @@ describe('RegistryService - central resource field resolver', () => {
 
     registry.register({
       name: 'farmAsset',
+      module: 'farms',
       model: 'FarmAsset',
       fields: {
         name: {
@@ -408,6 +414,7 @@ describe('RegistryService field validation integration', () => {
 
     registry.register({
       name: 'farm',
+      module: 'farms',
       model: 'Farm',
       fields: {
         name: {
@@ -418,6 +425,7 @@ describe('RegistryService field validation integration', () => {
 
     registry.register({
       name: 'farmAsset',
+      module: 'farms',
       model: 'FarmAsset',
       fields: {
         name: {

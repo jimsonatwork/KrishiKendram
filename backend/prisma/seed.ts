@@ -5,26 +5,22 @@ import {
 
 const prisma = new PrismaClient();
 
-const farmResources = [
-  'farm',
-  'farmAsset',
-  'farmRecord',
-  'crop',
-];
+import { RESOURCE_DEFINITIONS } from '../src/platform/registry/definitions/resources';
+import { ResourceDefinition } from '../src/platform/registry/resource-definition.interface';
 
-const farmActions = [
+const CRUD_ACTIONS = [
   'READ',
   'CREATE',
   'UPDATE',
   'DELETE',
-];
+] as const;
 
-const allUserRoles = Object.values(UserRole);
-
-const administrativeUserRoles = [
+const ADMINISTRATIVE_ROLES: UserRole[] = [
   UserRole.ADMIN,
   UserRole.SUPER_ADMIN,
 ];
+
+const ALL_USER_ROLES: UserRole[] = Object.values(UserRole);
 
 const userPermissions = [
   {
@@ -32,209 +28,202 @@ const userPermissions = [
     resource: 'user',
     action: 'READ',
     scope: 'OWN',
-    roles: allUserRoles,
+    roles: ALL_USER_ROLES,
   },
   {
     module: 'platform',
     resource: 'user',
     action: 'READ',
     scope: 'GLOBAL',
-    roles: administrativeUserRoles,
+    roles: ADMINISTRATIVE_ROLES,
   },
   {
     module: 'platform',
     resource: 'user',
     action: 'CREATE',
     scope: 'GLOBAL',
-    roles: administrativeUserRoles,
+    roles: ADMINISTRATIVE_ROLES,
   },
   {
     module: 'platform',
     resource: 'user',
     action: 'UPDATE',
     scope: 'GLOBAL',
-    roles: administrativeUserRoles,
+    roles: ADMINISTRATIVE_ROLES,
   },
   {
     module: 'platform',
     resource: 'user',
     action: 'DELETE',
     scope: 'GLOBAL',
-    roles: administrativeUserRoles,
+    roles: ADMINISTRATIVE_ROLES,
   },
   {
     module: 'platform',
     resource: 'user',
     action: 'READ_ACTIVITY',
     scope: 'GLOBAL',
-    roles: administrativeUserRoles,
+    roles: ADMINISTRATIVE_ROLES,
   },
   {
     module: 'platform',
     resource: 'user',
     action: 'READ_HISTORY',
     scope: 'GLOBAL',
-    roles: administrativeUserRoles,
+    roles: ADMINISTRATIVE_ROLES,
   },
   {
     module: 'platform',
     resource: 'user',
     action: 'RESTORE',
     scope: 'GLOBAL',
-    roles: administrativeUserRoles,
+    roles: ADMINISTRATIVE_ROLES,
   },
 ];
 
-async function main() {
-  const obsoleteFarmOwnedResources = [
-    'farmAsset',
-    'farmRecord',
-    'crop',
-  ];
+function getResourceModule(resource: ResourceDefinition): string {
+  return resource.module;
+}
 
-  for (const resource of obsoleteFarmOwnedResources) {
-    const permissions =
-      await prisma.permission.findMany({
+// FARMER authorization remains explicit.
+// Registry scopes describe what a resource supports; they do NOT grant
+// FARMER capabilities automatically. This prevents a future resource from
+// gaining FARMER CRUD merely by declaring OWN/FARM in its registry metadata.
+const FARMER_RESOURCE_SCOPES: Record<string, string> = {
+  farm: 'OWN',
+  farmAsset: 'FARM',
+  farmRecord: 'FARM',
+  crop: 'FARM',
+};
+
+function getFarmerScope(resource: ResourceDefinition): string | null {
+  return FARMER_RESOURCE_SCOPES[resource.name] ?? null;
+}
+
+async function ensurePermission(
+  module: string,
+  resource: string,
+  action: string,
+  scope: string,
+) {
+  let permission = await prisma.permission.findFirst({
+    where: {
+      module,
+      section: null,
+      resource,
+      action,
+      scope,
+    },
+  });
+
+  if (!permission) {
+    permission = await prisma.permission.create({
+      data: {
+        module,
+        resource,
+        action,
+        scope,
+      },
+    });
+  }
+
+  return permission;
+}
+
+// Seed reconciliation is intentionally additive.
+// It ensures required inherited capabilities exist without deleting
+// existing role assignments that may have been granted separately.
+// Destructive capability cleanup requires an explicit source-of-truth
+// mechanism and must not happen implicitly during a seed.
+async function reconcileRolePermissions(
+  permissionId: string,
+  desiredRoles: UserRole[],
+) {
+  for (const role of desiredRoles) {
+    const existingRolePermission =
+      await prisma.rolePermission.findFirst({
         where: {
-          module: 'farms',
-          section: null,
-          resource,
-          scope: 'OWN',
-        },
-        select: {
-          id: true,
+          role,
+          permissionId,
         },
       });
 
-    for (const permission of permissions) {
-      await prisma.permission.delete({
-        where: {
-          id: permission.id,
+    if (!existingRolePermission) {
+      await prisma.rolePermission.create({
+        data: {
+          role,
+          permissionId,
         },
       });
     }
   }
+}
 
-  for (const resource of farmResources) {
-    for (const action of farmActions) {
-      const scope =
-        resource === 'farm'
-          ? 'OWN'
-          : 'FARM';
+async function seedResourceCrudCapabilities() {
+  for (const resource of RESOURCE_DEFINITIONS) {
+    const module = getResourceModule(resource);
 
-      let permission =
-        await prisma.permission.findFirst({
-          where: {
-            module: 'farms',
-            section: null,
-            resource,
-            action,
-            scope,
-          },
-        });
-
-      if (!permission) {
-        permission =
-          await prisma.permission.create({
-            data: {
-              module: 'farms',
-              resource,
-              action,
-              scope,
-            },
-          });
+    for (const action of CRUD_ACTIONS) {
+      if (!resource.permissions?.includes(action)) {
+        continue;
       }
 
-      const desiredRoles: UserRole[] = [UserRole.FARMER];
+      // ADMIN and SUPER_ADMIN receive automatic GLOBAL CRUD
+      // for every registered resource that declares the action.
+      const globalPermission = await ensurePermission(
+        module,
+        resource.name,
+        action,
+        'GLOBAL',
+      );
 
-      const existingRolePermissions =
-        await prisma.rolePermission.findMany({
-          where: {
-            permissionId: permission.id,
-          },
-          select: {
-            id: true,
-            role: true,
-          },
-        });
+      await reconcileRolePermissions(
+        globalPermission.id,
+        ADMINISTRATIVE_ROLES,
+      );
 
-      for (const existing of existingRolePermissions) {
-        if (!desiredRoles.includes(existing.role)) {
-          await prisma.rolePermission.delete({
-            where: {
-              id: existing.id,
-            },
-          });
-        }
-      }
+      // FARMER receives the resource's declared ownership scope.
+      const farmerScope = getFarmerScope(resource);
 
-      for (const role of desiredRoles) {
-        const existing =
-          await prisma.rolePermission.findFirst({
-            where: {
-              role,
-              permissionId: permission.id,
-            },
-          });
+      if (farmerScope) {
+        const farmerPermission = await ensurePermission(
+          module,
+          resource.name,
+          action,
+          farmerScope,
+        );
 
-        if (!existing) {
-          await prisma.rolePermission.create({
-            data: {
-              role,
-              permissionId: permission.id,
-            },
-          });
-        }
+        await reconcileRolePermissions(
+          farmerPermission.id,
+          [UserRole.FARMER],
+        );
       }
     }
   }
+}
 
+async function seedUserPlatformCapabilities() {
   for (const definition of userPermissions) {
-    let permission =
-      await prisma.permission.findFirst({
-        where: {
-          module: definition.module,
-          section: null,
-          resource: definition.resource,
-          action: definition.action,
-          scope: definition.scope,
-        },
-      });
+    const permission = await ensurePermission(
+      definition.module,
+      definition.resource,
+      definition.action,
+      definition.scope,
+    );
 
-    if (!permission) {
-      permission =
-        await prisma.permission.create({
-          data: {
-            module: definition.module,
-            resource: definition.resource,
-            action: definition.action,
-            scope: definition.scope,
-          },
-        });
-    }
-
-    for (const role of definition.roles) {
-      const existing =
-        await prisma.rolePermission.findFirst({
-          where: {
-            role,
-            permissionId: permission.id,
-          },
-        });
-
-      if (!existing) {
-        await prisma.rolePermission.create({
-          data: {
-            role,
-            permissionId: permission.id,
-          },
-        });
-      }
-    }
+    await reconcileRolePermissions(
+      permission.id,
+      definition.roles,
+    );
   }
+}
+
+async function main() {
+  await seedResourceCrudCapabilities();
+  await seedUserPlatformCapabilities();
 
   console.log(
-    '✅ Farm and user authorization permissions seeded.',
+    '✅ Resource and user authorization capabilities seeded.',
   );
 }
 
