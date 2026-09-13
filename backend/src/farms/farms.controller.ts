@@ -46,6 +46,7 @@ create(
   ) {
     return this.farmsService.findMyFarms(
       user.userId,
+      user.role as UserRole,
     );
   }
 

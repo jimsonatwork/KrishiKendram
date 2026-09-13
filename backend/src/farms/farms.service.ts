@@ -242,7 +242,18 @@ export class FarmsService {
     return validated;
   }
 
-  async findMyFarms(ownerId: string) {
+  async findMyFarms(ownerId: string, role: UserRole) {
+    await this.authorization.assertCan({
+      user: {
+        userId: ownerId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      ownerId,
+    });
+
     return this.prisma.farm.findMany({
       where: {
         ownerId,

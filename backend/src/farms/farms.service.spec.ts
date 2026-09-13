@@ -11,6 +11,7 @@ describe('FarmsService', () => {
   const prisma = {
     $transaction: jest.fn(),
     farm: {
+      findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -41,6 +42,84 @@ describe('FarmsService', () => {
       authorization,
       registry,
     );
+  });
+
+  it('authorizes before reading the current user farms', async () => {
+    prisma.farm.findMany.mockResolvedValue([]);
+
+    await service.findMyFarms(
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    const authorizationOrder =
+      authorization.assertCan.mock.invocationCallOrder[0];
+
+    const queryOrder =
+      prisma.farm.findMany.mock.invocationCallOrder[0];
+
+    expect(authorizationOrder).toBeLessThan(queryOrder);
+
+    expect(
+      authorization.assertCan,
+    ).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      ownerId: 'user-1',
+    });
+  });
+
+  it('preserves the owner filter and farm response shape', async () => {
+    const farms = [
+      {
+        id: 'farm-1',
+        ownerId: 'user-1',
+        assets: [],
+        records: [],
+      },
+    ];
+
+    prisma.farm.findMany.mockResolvedValue(farms);
+
+    const result = await service.findMyFarms(
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.farm.findMany).toHaveBeenCalledWith({
+      where: {
+        ownerId: 'user-1',
+      },
+      include: {
+        assets: true,
+        records: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    expect(result).toEqual(farms);
+  });
+
+  it('does not query farms when authorization denies access', async () => {
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.findMyFarms(
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(prisma.farm.findMany).not.toHaveBeenCalled();
   });
 
   it('uses the central Registry value when creating a farm', async () => {
