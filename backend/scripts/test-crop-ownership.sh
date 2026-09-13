@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BASE_URL="http://localhost:3000/api/v1"
 
 PASS=0
@@ -29,22 +31,56 @@ PASSWORD="Test@12345"
 echo ""
 echo "👤 Creating Farmer A..."
 
-curl -s -X POST "$BASE_URL/auth/register" \
+ADMIN_TOKEN=$( "$SCRIPT_DIR/get-token.sh" )
+
+if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
+  echo "❌ Admin authentication failed"
+  exit 1
+fi
+
+echo "✅ Admin authenticated"
+
+REGISTER_A_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/register" \
   -H "Content-Type: application/json" \
   -d "{
     \"name\":\"Crop Security Farmer A\",
     \"email\":\"$USER_A\",
     \"password\":\"$PASSWORD\"
-  }" > /dev/null
+  }")
+
+USER_A_ID=$(echo "$REGISTER_A_RESPONSE" | jq -r '.id // empty')
+
+if [ -z "$USER_A_ID" ]; then
+  echo "❌ Farmer A registration failed"
+  echo "$REGISTER_A_RESPONSE" | jq .
+  exit 1
+fi
+
+echo "✅ Farmer A registered: $USER_A_ID"
+
+ACTIVATE_A_RESPONSE=$(curl -s -X PATCH "$BASE_URL/users/$USER_A_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"ACTIVE"}')
+
+ACTIVATE_A_STATUS=$(echo "$ACTIVATE_A_RESPONSE" | jq -r '.status // empty')
+
+if [ "$ACTIVATE_A_STATUS" != "ACTIVE" ]; then
+  echo "❌ Farmer A activation failed"
+  echo "$ACTIVATE_A_RESPONSE" | jq .
+  exit 1
+fi
+
+echo "✅ Farmer A activated"
 
 TOKEN_A=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d "{
     \"identifier\":\"$USER_A\",
     \"password\":\"$PASSWORD\"
-  }" | jq -r '.accessToken')
+  }" | jq -r '.accessToken // empty')
 
-if [ -z "$TOKEN_A" ] || [ "$TOKEN_A" = "null" ]; then
+if [ -z "$TOKEN_A" ]; then
   echo "❌ Farmer A authentication failed"
   exit 1
 fi
@@ -54,22 +90,47 @@ echo "✅ Farmer A authenticated"
 echo ""
 echo "👤 Creating Farmer B..."
 
-curl -s -X POST "$BASE_URL/auth/register" \
+REGISTER_B_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/register" \
   -H "Content-Type: application/json" \
   -d "{
     \"name\":\"Crop Security Farmer B\",
     \"email\":\"$USER_B\",
     \"password\":\"$PASSWORD\"
-  }" > /dev/null
+  }")
+
+USER_B_ID=$(echo "$REGISTER_B_RESPONSE" | jq -r '.id // empty')
+
+if [ -z "$USER_B_ID" ]; then
+  echo "❌ Farmer B registration failed"
+  echo "$REGISTER_B_RESPONSE" | jq .
+  exit 1
+fi
+
+echo "✅ Farmer B registered: $USER_B_ID"
+
+ACTIVATE_B_RESPONSE=$(curl -s -X PATCH "$BASE_URL/users/$USER_B_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"ACTIVE"}')
+
+ACTIVATE_B_STATUS=$(echo "$ACTIVATE_B_RESPONSE" | jq -r '.status // empty')
+
+if [ "$ACTIVATE_B_STATUS" != "ACTIVE" ]; then
+  echo "❌ Farmer B activation failed"
+  echo "$ACTIVATE_B_RESPONSE" | jq .
+  exit 1
+fi
+
+echo "✅ Farmer B activated"
 
 TOKEN_B=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d "{
     \"identifier\":\"$USER_B\",
     \"password\":\"$PASSWORD\"
-  }" | jq -r '.accessToken')
+  }" | jq -r '.accessToken // empty')
 
-if [ -z "$TOKEN_B" ] || [ "$TOKEN_B" = "null" ]; then
+if [ -z "$TOKEN_B" ]; then
   echo "❌ Farmer B authentication failed"
   exit 1
 fi
@@ -94,6 +155,7 @@ FARM_A_ID=$(echo "$FARM_A" | jq -r '.id')
 
 if [ -z "$FARM_A_ID" ] || [ "$FARM_A_ID" = "null" ]; then
   echo "❌ Farm A creation failed"
+  echo "$FARM_A" | jq .
   exit 1
 fi
 
@@ -117,6 +179,7 @@ FARM_B_ID=$(echo "$FARM_B" | jq -r '.id')
 
 if [ -z "$FARM_B_ID" ] || [ "$FARM_B_ID" = "null" ]; then
   echo "❌ Farm B creation failed"
+  echo "$FARM_B" | jq .
   exit 1
 fi
 
@@ -143,7 +206,7 @@ CROP_B_ID=$(echo "$CROP_B" | jq -r '.id')
 
 if [ -z "$CROP_B_ID" ] || [ "$CROP_B_ID" = "null" ]; then
   echo "❌ Crop B creation failed"
-  echo "$CROP_B" | jq
+  echo "$CROP_B" | jq .
   exit 1
 fi
 
@@ -187,21 +250,34 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
     \"area\":1,
     \"unit\":\"acre\"
   }")
-check "Farmer A CREATE crop on Farm B" "404" "$STATUS"
+check "Farmer A CREATE crop on Farm B" "403" "$STATUS"
 
 echo ""
 echo "🔒 Testing crop listing isolation..."
 echo "-------------------------------------"
 
-CROPS_A=$(curl -s \
+CROPS_A_RESPONSE=$(curl -sS -w '\n%{http_code}' \
   "$BASE_URL/crops" \
   -H "Authorization: Bearer $TOKEN_A")
 
-if echo "$CROPS_A" | jq -e --arg id "$CROP_B_ID" '.[] | select(.id == $id)' > /dev/null; then
+CROPS_A_STATUS=$(echo "$CROPS_A_RESPONSE" | tail -n 1)
+CROPS_A_BODY=$(echo "$CROPS_A_RESPONSE" | sed '$d')
+
+if [ "$CROPS_A_STATUS" != "200" ]; then
+  echo "❌ Farmer A crop listing failed → expected 200, got $CROPS_A_STATUS"
+  echo "Response:"
+  echo "$CROPS_A_BODY" | jq . 2>/dev/null || echo "$CROPS_A_BODY"
+  FAIL=$((FAIL + 1))
+elif ! echo "$CROPS_A_BODY" | jq -e 'type == "array"' > /dev/null; then
+  echo "❌ Farmer A crop listing returned a non-array response"
+  echo "Response:"
+  echo "$CROPS_A_BODY" | jq . 2>/dev/null || echo "$CROPS_A_BODY"
+  FAIL=$((FAIL + 1))
+elif echo "$CROPS_A_BODY" | jq -e --arg id "$CROP_B_ID" '.[] | select(.id == $id)' > /dev/null; then
   echo "❌ Farmer A can see Farmer B's Crop"
   FAIL=$((FAIL + 1))
 else
-  echo "✅ Farmer A cannot see Farmer B's Crop"
+  echo "✅ Farmer A crop listing is isolated"
   PASS=$((PASS + 1))
 fi
 

@@ -93,7 +93,7 @@ const FARMER_RESOURCE_SCOPES: Record<string, string> = {
   farm: 'OWN',
   farmAsset: 'FARM',
   farmRecord: 'FARM',
-  crop: 'FARM',
+  crop: 'OWN',
 };
 
 function getFarmerScope(resource: ResourceDefinition): string | null {

@@ -23,6 +23,44 @@ export class ModuleLifecycleService {
     return this.registry.getModule(moduleId)?.lifecycle;
   }
 
+  // START: Lifecycle transition policy
+  canTransition(
+    from: ModuleLifecycleState,
+    to: ModuleLifecycleState,
+  ): boolean {
+    if (from === to) {
+      return false;
+    }
+
+    if (from === 'ACTIVE') {
+      return to === 'DISABLED' || to === 'DEPRECATED';
+    }
+
+    if (from === 'DISABLED') {
+      return to === 'ACTIVE';
+    }
+
+    if (from === 'DEPRECATED') {
+      return to === 'ACTIVE' || to === 'DISABLED';
+    }
+
+    return false;
+  }
+
+  assertTransitionAllowed(
+    from: ModuleLifecycleState,
+    to: ModuleLifecycleState,
+  ): void {
+    if (this.canTransition(from, to)) {
+      return;
+    }
+
+    throw new Error(
+      `Invalid module lifecycle transition: ${from} -> ${to}.`,
+    );
+  }
+  // END: Lifecycle transition policy
+
   isActive(moduleId: string): boolean {
     return this.getState(moduleId) === 'ACTIVE';
   }

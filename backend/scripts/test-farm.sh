@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BASE_URL="http://localhost:3000/api/v1"
 
 
@@ -9,7 +11,7 @@ echo "🌱 KrishiKendram Farm API Test"
 echo ""
 echo "🔐 Getting authentication token..."
 
-TOKEN=$(./scripts/get-token.sh)
+TOKEN=$( "$SCRIPT_DIR/get-token.sh" )
 
 
 if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then

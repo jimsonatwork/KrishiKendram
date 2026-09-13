@@ -1,5 +1,19 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PRISMA_BIN="$BACKEND_DIR/node_modules/.bin/prisma"
+
+if [ ! -x "$PRISMA_BIN" ]; then
+  echo "❌ Prisma binary not found: $PRISMA_BIN"
+  echo "Run: cd "$BACKEND_DIR" && npm install"
+  exit 1
+fi
+
+# Run Prisma commands from backend so prisma/schema.prisma resolves correctly.
+cd "$BACKEND_DIR"
+
+
 BASE_URL="http://localhost:3000/api/v1"
 PASS=0
 FAIL=0
@@ -45,7 +59,7 @@ if [ -z "$USER_A_ID" ] || [ "$USER_A_ID" = "null" ]; then
 fi
 
 # Activate Farmer A
-npx prisma db execute \
+"$PRISMA_BIN" db execute \
   --schema prisma/schema.prisma \
   --stdin <<SQL >/dev/null
 UPDATE "User"
@@ -85,7 +99,7 @@ if [ -z "$USER_B_ID" ] || [ "$USER_B_ID" = "null" ]; then
 fi
 
 # Activate Farmer B
-npx prisma db execute \
+"$PRISMA_BIN" db execute \
   --schema prisma/schema.prisma \
   --stdin <<SQL >/dev/null
 UPDATE "User"

@@ -1,10 +1,12 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BASE_URL="http://localhost:3000/api/v1"
 
 echo "🌱 KrishiKendram Crop API Test"
 
-TOKEN=$(./scripts/get-token.sh)
+TOKEN=$("$SCRIPT_DIR/get-token.sh")
 
 echo "Token received"
 
@@ -14,7 +16,6 @@ FARM_ID=$(curl -s \
   jq -r '.[0].id')
 
 echo "Farm ID: $FARM_ID"
-
 
 echo "Creating crop..."
 
@@ -31,7 +32,6 @@ curl -X POST \
   \"unit\":\"acre\",
   \"notes\":\"First crop test\"
 }" | jq
-
 
 echo ""
 echo "Listing crops..."
