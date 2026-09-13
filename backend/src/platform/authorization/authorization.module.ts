@@ -1,10 +1,14 @@
 import { Global, Module } from '@nestjs/common';
 
+import { PrismaModule } from '../../prisma/prisma.module';
+
 import { AuthorizationService } from './authorization.service';
+import { FieldPolicyService } from './field-policy.service';
 
 @Global()
 @Module({
-  providers: [AuthorizationService],
-  exports: [AuthorizationService],
+  imports: [PrismaModule],
+  providers: [AuthorizationService, FieldPolicyService],
+  exports: [AuthorizationService, FieldPolicyService],
 })
 export class AuthorizationModule {}
