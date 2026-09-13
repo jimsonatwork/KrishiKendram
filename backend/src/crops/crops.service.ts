@@ -127,17 +127,29 @@ export class CropsService {
     role: UserRole,
     cropId: string,
   ) {
-    const crop = await this.prisma.crop.findFirst({
+    /*
+     * First retrieve only the minimum resource context required to authorize
+     * access. The protected crop payload must not be loaded until READ access
+     * has been granted.
+     */
+    const cropContext = await this.prisma.crop.findFirst({
       where: {
         id: cropId,
         deletedAt: null,
       },
-      include: {
-        farm: true,
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
       },
     });
 
-    if (!crop) {
+    if (!cropContext) {
       throw new NotFoundException('Crop not found.');
     }
 
@@ -149,20 +161,15 @@ export class CropsService {
       module: 'farms',
       resource: 'crop',
       action: AuthorizationAction.READ,
-      resourceId: crop.id,
-      farmId: crop.farmId,
-      ownerId: crop.farm.ownerId,
+      resourceId: cropContext.id,
+      farmId: cropContext.farmId,
+      ownerId: cropContext.farm.ownerId,
     });
 
-    return crop;
-  }
-
-  async update(
-    userId: string,
-    role: UserRole,
-    cropId: string,
-    dto: UpdateCropDto,
-  ) {
+    /*
+     * Preserve the existing response shape, but only retrieve the protected
+     * crop payload after successful authorization.
+     */
     const crop = await this.prisma.crop.findFirst({
       where: {
         id: cropId,
@@ -177,6 +184,41 @@ export class CropsService {
       throw new NotFoundException('Crop not found.');
     }
 
+    return crop;
+  }
+
+  async update(
+    userId: string,
+    role: UserRole,
+    cropId: string,
+    dto: UpdateCropDto,
+  ) {
+    /*
+     * Only load the minimum Crop/Farm context needed to authorize the update.
+     * Full protected Crop data is unnecessary because the mutation operates
+     * directly on the supplied resource ID and update DTO.
+     */
+    const cropContext = await this.prisma.crop.findFirst({
+      where: {
+        id: cropId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (!cropContext) {
+      throw new NotFoundException('Crop not found.');
+    }
+
     await this.authorization.assertCan({
       user: {
         userId,
@@ -185,9 +227,9 @@ export class CropsService {
       module: 'farms',
       resource: 'crop',
       action: AuthorizationAction.UPDATE,
-      resourceId: crop.id,
-      farmId: crop.farmId,
-      ownerId: crop.farm.ownerId,
+      resourceId: cropContext.id,
+      farmId: cropContext.farmId,
+      ownerId: cropContext.farm.ownerId,
     });
 
     let updateData = {
@@ -233,17 +275,28 @@ export class CropsService {
     role: UserRole,
     cropId: string,
   ) {
-    const crop = await this.prisma.crop.findFirst({
+    /*
+     * Archive is a destructive lifecycle action, so authorization must happen
+     * before the mutation. Only the minimum Crop/Farm context is required.
+     */
+    const cropContext = await this.prisma.crop.findFirst({
       where: {
         id: cropId,
         deletedAt: null,
       },
-      include: {
-        farm: true,
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
       },
     });
 
-    if (!crop) {
+    if (!cropContext) {
       throw new NotFoundException('Crop not found.');
     }
 
@@ -255,9 +308,9 @@ export class CropsService {
       module: 'farms',
       resource: 'crop',
       action: AuthorizationAction.DELETE,
-      resourceId: crop.id,
-      farmId: crop.farmId,
-      ownerId: crop.farm.ownerId,
+      resourceId: cropContext.id,
+      farmId: cropContext.farmId,
+      ownerId: cropContext.farm.ownerId,
     });
 
     return this.prisma.crop.update({
