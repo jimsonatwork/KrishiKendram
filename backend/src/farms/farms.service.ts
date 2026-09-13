@@ -413,20 +413,31 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    const asset = await this.prisma.farmAsset.findUnique({
+    /*
+     * Retrieve only the minimum asset/farm context required for authorization.
+     * Protected farm payload data must not be loaded before authorization.
+     */
+    const assetContext = await this.prisma.farmAsset.findUnique({
       where: {
         id: assetId,
       },
-      include: {
-        farm: true,
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
       },
     });
 
-    if (!asset) {
+    if (!assetContext) {
       throw new NotFoundException('Asset not found');
     }
 
-    if (asset.farmId !== farmId) {
+    if (assetContext.farmId !== farmId) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -438,9 +449,9 @@ export class FarmsService {
       module: 'farms',
       resource: 'farmAsset',
       action: AuthorizationAction.UPDATE,
-      resourceId: assetId,
-      farmId,
-      ownerId: asset.farm.ownerId,
+      resourceId: assetContext.id,
+      farmId: assetContext.farmId,
+      ownerId: assetContext.farm.ownerId,
     });
 
     const validatedData = this.validateFarmAssetFields(dto);
@@ -459,20 +470,31 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    const asset = await this.prisma.farmAsset.findUnique({
+    /*
+     * Retrieve only the minimum asset/farm context required for authorization.
+     * The protected asset/farm payload is not loaded until authorization succeeds.
+     */
+    const assetContext = await this.prisma.farmAsset.findUnique({
       where: {
         id: assetId,
       },
-      include: {
-        farm: true,
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
       },
     });
 
-    if (!asset) {
+    if (!assetContext) {
       throw new NotFoundException('Asset not found');
     }
 
-    if (asset.farmId !== farmId) {
+    if (assetContext.farmId !== farmId) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -484,9 +506,9 @@ export class FarmsService {
       module: 'farms',
       resource: 'farmAsset',
       action: AuthorizationAction.DELETE,
-      resourceId: assetId,
-      farmId,
-      ownerId: asset.farm.ownerId,
+      resourceId: assetContext.id,
+      farmId: assetContext.farmId,
+      ownerId: assetContext.farm.ownerId,
     });
 
     return this.prisma.farmAsset.delete({

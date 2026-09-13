@@ -20,6 +20,7 @@ describe('FarmsService', () => {
       create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     entity: {
       create: jest.fn(),
@@ -654,6 +655,233 @@ describe('FarmsService', () => {
       'quantity',
       Number.NaN,
     );
+  });
+
+
+  it('authorizes farm asset update using minimal context before validation and mutation', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      farm: {
+        id: 'farm-1',
+        ownerId: 'user-1',
+      },
+    });
+
+    prisma.farmAsset.update.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+    });
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'TRACTOR',
+      errors: [],
+    });
+
+    await service.updateAsset(
+      'farm-1',
+      'asset-1',
+      { type: 'TRACTOR' },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.farmAsset.findUnique).toHaveBeenCalledWith({
+      where: { id: 'asset-1' },
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.UPDATE,
+      resourceId: 'asset-1',
+      farmId: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    expect(
+      authorization.assertCan.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    );
+
+    expect(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      prisma.farmAsset.update.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not validate or mutate a farm asset when update authorization is denied', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      farm: {
+        id: 'farm-1',
+        ownerId: 'user-1',
+      },
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.updateAsset(
+        'farm-1',
+        'asset-1',
+        { type: 'TRACTOR' },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farmAsset.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects cross-farm asset update before authorization or mutation', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-2',
+      farm: {
+        id: 'farm-2',
+        ownerId: 'user-2',
+      },
+    });
+
+    await expect(
+      service.updateAsset(
+        'farm-1',
+        'asset-1',
+        { type: 'TRACTOR' },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Asset not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farmAsset.update).not.toHaveBeenCalled();
+  });
+
+  it('authorizes farm asset removal using minimal context before deletion', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      farm: {
+        id: 'farm-1',
+        ownerId: 'user-1',
+      },
+    });
+
+    prisma.farmAsset.delete.mockResolvedValue({
+      id: 'asset-1',
+    });
+
+    await service.removeAsset(
+      'farm-1',
+      'asset-1',
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.farmAsset.findUnique).toHaveBeenCalledWith({
+      where: { id: 'asset-1' },
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.DELETE,
+      resourceId: 'asset-1',
+      farmId: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    expect(
+      authorization.assertCan.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      prisma.farmAsset.delete.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not delete a farm asset when removal authorization is denied', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      farm: {
+        id: 'farm-1',
+        ownerId: 'user-1',
+      },
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.removeAsset(
+        'farm-1',
+        'asset-1',
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(prisma.farmAsset.delete).not.toHaveBeenCalled();
+  });
+
+  it('rejects cross-farm asset removal before authorization or deletion', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-2',
+      farm: {
+        id: 'farm-2',
+        ownerId: 'user-2',
+      },
+    });
+
+    await expect(
+      service.removeAsset(
+        'farm-1',
+        'asset-1',
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Asset not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(prisma.farmAsset.delete).not.toHaveBeenCalled();
   });
 
   it('uses central Registry values for farm asset fields when updating an asset', async () => {
