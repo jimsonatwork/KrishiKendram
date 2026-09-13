@@ -269,6 +269,42 @@ export class FarmsService {
   }
 
   async findOne(id: string, userId: string, role: UserRole) {
+    /*
+     * First retrieve only the minimum resource context required to authorize
+     * access. Protected farm relations and owner identity fields must not be
+     * loaded until AuthorizationService has granted READ access.
+     */
+    const farmContext = await this.prisma.farm.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+
+    if (!farmContext) {
+      throw new NotFoundException('Farm not found');
+    }
+
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      resourceId: id,
+      ownerId: farmContext.ownerId,
+    });
+
+    /*
+     * The full farm payload is intentionally retrieved only after successful
+     * authorization. This preserves the existing response shape while keeping
+     * protected relations outside the pre-authorization boundary.
+     */
     const farm = await this.prisma.farm.findUnique({
       where: {
         id,
@@ -289,18 +325,6 @@ export class FarmsService {
     if (!farm) {
       throw new NotFoundException('Farm not found');
     }
-
-    await this.authorization.assertCan({
-      user: {
-        userId,
-        role,
-      },
-      module: 'farms',
-      resource: 'farm',
-      action: AuthorizationAction.READ,
-      resourceId: id,
-      ownerId: farm.ownerId,
-    });
 
     return farm;
   }

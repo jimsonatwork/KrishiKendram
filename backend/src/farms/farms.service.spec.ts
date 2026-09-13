@@ -44,6 +44,133 @@ describe('FarmsService', () => {
     );
   });
 
+  it('authorizes before reading the protected farm payload', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+      name: 'Green Valley',
+      assets: [],
+      records: [],
+      owner: {
+        id: 'user-1',
+        name: 'Jimson',
+        email: 'farmer@example.com',
+      },
+    };
+
+    prisma.farm.findUnique
+      .mockResolvedValueOnce({
+        id: 'farm-1',
+        ownerId: 'user-1',
+      })
+      .mockResolvedValueOnce(farm);
+
+    const result = await service.findOne(
+      'farm-1',
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledTimes(2);
+
+    expect(prisma.farm.findUnique.mock.calls[0][0]).toEqual({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      resourceId: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    expect(prisma.farm.findUnique.mock.calls[1][0]).toEqual({
+      where: {
+        id: 'farm-1',
+      },
+      include: {
+        assets: true,
+        records: true,
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    expect(result).toEqual(farm);
+  });
+
+  it('does not load the protected farm payload when authorization is denied', async () => {
+    prisma.farm.findUnique.mockResolvedValueOnce({
+      id: 'farm-1',
+      ownerId: 'owner-1',
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.findOne(
+        'farm-1',
+        'user-2',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledTimes(1);
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+  });
+
+  it('does not authorize or load a protected payload when the farm does not exist', async () => {
+    prisma.farm.findUnique.mockResolvedValueOnce(null);
+
+    await expect(
+      service.findOne(
+        'missing-farm',
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Farm not found');
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledTimes(1);
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'missing-farm',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+  });
+
   it('authorizes before reading the current user farms', async () => {
     prisma.farm.findMany.mockResolvedValue([]);
 
