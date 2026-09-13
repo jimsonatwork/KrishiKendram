@@ -19,6 +19,10 @@ describe('AuthorizationService', () => {
     },
   } as any;
 
+  const fieldPolicyEvaluationService = {
+    evaluate: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -28,7 +32,10 @@ describe('AuthorizationService', () => {
       status: UserStatus.ACTIVE,
     });
 
-    service = new AuthorizationService(prisma);
+    service = new AuthorizationService(
+      prisma,
+      fieldPolicyEvaluationService as any,
+    );
   });
 
   const request = {
@@ -366,4 +373,270 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(false);
   });
+
+  describe('authorization decisions', () => {
+    it('returns the exact permissionId that grants access', async () => {
+      const permission = {
+        id: 'permission-resource',
+        module: 'farm',
+        section: 'production',
+        resource: 'crop',
+        action: AuthorizationAction.READ,
+        scope: AuthorizationScope.OWN,
+        rolePermissions: [{ role: UserRole.FARMER }],
+        accessGrants: [],
+      };
+
+      prisma.permission.findMany.mockResolvedValue([permission] as never);
+
+      await expect(
+        service.authorize({
+          ...request,
+          section: 'production',
+          ownerId: 'user-1',
+        }),
+      ).resolves.toMatchObject({
+        allowed: true,
+        permissionId: 'permission-resource',
+        metadata: {
+          module: 'farm',
+          section: 'production',
+          resource: 'crop',
+          action: AuthorizationAction.READ,
+          scope: AuthorizationScope.OWN,
+        },
+      });
+    });
+
+    it('does not expose a permissionId when authorization is denied', async () => {
+      const permission = {
+        id: 'permission-resource',
+        module: 'farm',
+        section: 'production',
+        resource: 'crop',
+        action: AuthorizationAction.READ,
+        scope: AuthorizationScope.OWN,
+        rolePermissions: [{ role: UserRole.FARMER }],
+        accessGrants: [],
+      };
+
+      prisma.permission.findMany.mockResolvedValue([permission] as never);
+
+      await expect(
+        service.authorize({
+          ...request,
+          section: 'production',
+          ownerId: 'another-user',
+        }),
+      ).resolves.toEqual({
+        allowed: false,
+      });
+    });
+
+    it('returns no permissionId when no permission matches', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.authorize(request),
+      ).resolves.toEqual({
+        allowed: false,
+      });
+    });
+
+    it('uses the same authorization decision path for can()', async () => {
+      const permission = {
+        id: 'permission-global',
+        module: 'farm',
+        section: null,
+        resource: null,
+        action: AuthorizationAction.READ,
+        scope: AuthorizationScope.GLOBAL,
+        rolePermissions: [{ role: UserRole.FARMER }],
+        accessGrants: [],
+      };
+
+      prisma.permission.findMany.mockResolvedValue([permission] as never);
+
+      await expect(service.can(request)).resolves.toBe(true);
+    });
+  });
+
+
+  describe('authorizeFields()', () => {
+    it('passes the exact successful permissionId to field-policy evaluation', async () => {
+      const authorizedPermission = {
+        ...permission(AuthorizationScope.GLOBAL),
+        id: 'permission-exact',
+      };
+
+      prisma.permission.findMany.mockResolvedValue([
+        authorizedPermission,
+      ]);
+
+      fieldPolicyEvaluationService.evaluate.mockResolvedValue({
+        allowed: true,
+        decisions: [
+          {
+            field: 'name',
+            allowed: true,
+            effect: 'ALLOW',
+          },
+        ],
+      });
+
+      const result = await service.authorizeFields(
+        request,
+        ['name'],
+        'READ',
+      );
+
+      expect(result.allowed).toBe(true);
+      expect(result.decision.allowed).toBe(true);
+      expect(result.decision.permissionId).toBe('permission-exact');
+
+      expect(
+        fieldPolicyEvaluationService.evaluate,
+      ).toHaveBeenCalledTimes(1);
+
+      expect(
+        fieldPolicyEvaluationService.evaluate,
+      ).toHaveBeenCalledWith(
+        'permission-exact',
+        ['name'],
+        'READ',
+      );
+    });
+
+    it('does not evaluate fields when resource authorization is denied', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      const result = await service.authorizeFields(
+        request,
+        ['name'],
+        'READ',
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.decision.allowed).toBe(false);
+      expect(result.decision.permissionId).toBeUndefined();
+
+      expect(
+        fieldPolicyEvaluationService.evaluate,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does not evaluate fields when resource scope does not match', async () => {
+      const ownPermission = {
+        ...permission(AuthorizationScope.OWN),
+        id: 'permission-own',
+      };
+
+      prisma.permission.findMany.mockResolvedValue([
+        ownPermission,
+      ]);
+
+      const result = await service.authorizeFields(
+        {
+          ...request,
+          ownerId: 'different-user',
+        },
+        ['name'],
+        'READ',
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.decision.allowed).toBe(false);
+      expect(result.decision.permissionId).toBeUndefined();
+
+      expect(
+        fieldPolicyEvaluationService.evaluate,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('propagates field-policy denial after resource authorization succeeds', async () => {
+      const authorizedPermission = {
+        ...permission(AuthorizationScope.GLOBAL),
+        id: 'permission-field-deny',
+      };
+
+      prisma.permission.findMany.mockResolvedValue([
+        authorizedPermission,
+      ]);
+
+      fieldPolicyEvaluationService.evaluate.mockResolvedValue({
+        allowed: false,
+        decisions: [
+          {
+            field: 'secretValue',
+            allowed: false,
+            effect: 'DENY',
+          },
+        ],
+      });
+
+      const result = await service.authorizeFields(
+        request,
+        ['secretValue'],
+        'READ',
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.decision.allowed).toBe(true);
+      expect(result.decision.permissionId).toBe(
+        'permission-field-deny',
+      );
+      expect(result.fieldPolicy?.allowed).toBe(false);
+
+      expect(
+        fieldPolicyEvaluationService.evaluate,
+      ).toHaveBeenCalledWith(
+        'permission-field-deny',
+        ['secretValue'],
+        'READ',
+      );
+    });
+
+    it('preserves WRITE operation for field-policy evaluation', async () => {
+      const authorizedPermission = {
+        ...permission(AuthorizationScope.GLOBAL),
+        id: 'permission-write',
+        action: AuthorizationAction.UPDATE,
+      };
+
+      prisma.permission.findMany.mockResolvedValue([
+        authorizedPermission,
+      ]);
+
+      fieldPolicyEvaluationService.evaluate.mockResolvedValue({
+        allowed: true,
+        decisions: [
+          {
+            field: 'name',
+            allowed: true,
+            effect: 'ALLOW',
+          },
+        ],
+      });
+
+      const result = await service.authorizeFields(
+        {
+          ...request,
+          action: AuthorizationAction.UPDATE,
+        },
+        ['name'],
+        'WRITE',
+      );
+
+      expect(result.allowed).toBe(true);
+
+      expect(
+        fieldPolicyEvaluationService.evaluate,
+      ).toHaveBeenCalledWith(
+        'permission-write',
+        ['name'],
+        'WRITE',
+      );
+    });
+  });
+
 });
