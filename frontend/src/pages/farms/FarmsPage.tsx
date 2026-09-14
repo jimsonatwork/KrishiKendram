@@ -11,6 +11,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Search,
   Sprout,
   Trash2,
 } from 'lucide-react'
@@ -599,6 +600,7 @@ function FarmLoadingState() {
 export function FarmsPage() {
   const [farms, setFarms] = useState<Farm[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [form, setForm] = useState<FarmFormData>(EMPTY_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -649,6 +651,28 @@ export function FarmsPage() {
     () => farms.find((farm) => farm.id === selectedFarmId) || null,
     [farms, selectedFarmId],
   )
+
+  const filteredFarms = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    if (!query) {
+      return farms
+    }
+
+    return farms.filter((farm) => {
+      const searchableText = [
+        farm.name,
+        farm.type,
+        farm.location,
+        farm.unit,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return searchableText.includes(query)
+    })
+  }, [farms, searchQuery])
 
   const assetCount = useMemo(
     () =>
@@ -785,45 +809,135 @@ export function FarmsPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="min-w-0">
-          {loading ? (
-            <FarmLoadingState />
-          ) : farms.length === 0 ? (
-            <EmptyState onCreate={beginCreate} />
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2">
-              {farms.map((farm) => (
-                <FarmCard
-                  key={farm.id}
-                  farm={farm}
-                  selected={farm.id === selectedFarmId}
-                  onSelect={() => setSelectedFarmId(farm.id)}
-                  onEdit={() => beginEdit(farm)}
-                  onDelete={() => void handleDelete(farm)}
-                />
-              ))}
+      <div className="space-y-6">
+        {selectedFarm && !loading && (
+          <section className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm dark:border-emerald-950 dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-400">
+                  Active farm
+                </p>
+
+                <h2 className="mt-2 truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
+                  {selectedFarm.name}
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  {selectedFarm.type || 'Farm'}
+                  {selectedFarm.location
+                    ? ` · ${selectedFarm.location}`
+                    : ''}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => beginEdit(selectedFarm)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit farm
+                </Button>
+
+                <Button onClick={beginCreate}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add farm
+                </Button>
+              </div>
             </div>
-          )}
-        </section>
 
-        <aside className="space-y-6">
-          <FarmForm
-            form={form}
-            editing={Boolean(editingId)}
-            saving={saving}
-            onChange={(patch) =>
-              setForm((current) => ({
-                ...current,
-                ...patch,
-              }))
-            }
-            onSubmit={handleSubmit}
-            onCancel={resetForm}
-          />
+            <div className="mt-6">
+              <FarmSubsection farm={selectedFarm} />
+            </div>
+          </section>
+        )}
 
-          {selectedFarm && <FarmSubsection farm={selectedFarm} />}
-        </aside>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <section className="min-w-0">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">
+                  Your farms
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {filteredFarms.length} of {farms.length}{' '}
+                  {farms.length === 1 ? 'farm' : 'farms'}
+                </p>
+              </div>
+
+              {!loading && farms.length > 0 && (
+                <label className="relative block w-full sm:max-w-xs">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search farms..."
+                    aria-label="Search farms"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  />
+                </label>
+              )}
+            </div>
+
+            {loading ? (
+              <FarmLoadingState />
+            ) : farms.length === 0 ? (
+              <EmptyState onCreate={beginCreate} />
+            ) : filteredFarms.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+                <Search className="mx-auto h-8 w-8 text-slate-400" />
+
+                <h3 className="mt-4 font-semibold text-slate-950 dark:text-white">
+                  No matching farms
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  Try a different farm name, type or location.
+                </p>
+
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  onClick={() => setSearchQuery('')}
+                >
+                  Clear search
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2">
+                {filteredFarms.map((farm) => (
+                  <FarmCard
+                    key={farm.id}
+                    farm={farm}
+                    selected={farm.id === selectedFarmId}
+                    onSelect={() => setSelectedFarmId(farm.id)}
+                    onEdit={() => beginEdit(farm)}
+                    onDelete={() => void handleDelete(farm)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <aside>
+            <FarmForm
+              form={form}
+              editing={Boolean(editingId)}
+              saving={saving}
+              onChange={(patch) =>
+                setForm((current) => ({
+                  ...current,
+                  ...patch,
+                }))
+              }
+              onSubmit={handleSubmit}
+              onCancel={resetForm}
+            />
+          </aside>
+        </div>
       </div>
     </div>
   )
