@@ -351,6 +351,54 @@ describe('UsersController authorization ordering', () => {
   // PART 02B END
   // ==========================================================
 
+  it('uses JWT userId as the current-user identity', async () => {
+    await controller.getMe({
+      user,
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user,
+      module: 'platform',
+      resource: 'user',
+      action: 'READ',
+      ownerId: 'user-1',
+    });
+
+    expect(usersService.findById).toHaveBeenCalledWith(
+      'user-1',
+    );
+  });
+
+  it('passes JWT userId as the actor for user creation', async () => {
+    await controller.create(
+      {
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'Password123!',
+      } as any,
+      { user },
+    );
+
+    expect(usersService.create).toHaveBeenCalledWith(
+      expect.anything(),
+      'user-1',
+    );
+  });
+
+  it('passes JWT userId as the actor for user update', async () => {
+    await controller.update(
+      'user-2',
+      {} as any,
+      { user },
+    );
+
+    expect(usersService.update).toHaveBeenCalledWith(
+      'user-2',
+      expect.anything(),
+      'user-1',
+    );
+  });
+
   // ==========================================================
   // PART 03 - DENIAL MUST STOP SERVICE
   // ==========================================================

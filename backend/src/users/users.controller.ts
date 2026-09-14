@@ -55,10 +55,10 @@ export class UsersController {
       module: 'platform',
       resource: 'user',
       action: AuthorizationAction.READ,
-      ownerId: req.user.id,
+      ownerId: req.user.userId,
     });
 
-    return this.usersService.findById(req.user.id);
+    return this.usersService.findById(req.user.userId);
   }
 
   // ==========================================================
@@ -176,7 +176,7 @@ export class UsersController {
       action: AuthorizationAction.CREATE,
     });
 
-    return this.usersService.create(data, req.user.id);
+    return this.usersService.create(data, req.user.userId);
   }
 
   // ==========================================================
@@ -200,7 +200,7 @@ export class UsersController {
       action: AuthorizationAction.UPDATE,
     });
 
-    return this.usersService.update(id, dto, req.user.id);
+    return this.usersService.update(id, dto, req.user.userId);
   }
 
   // ==========================================================
@@ -241,7 +241,7 @@ export class UsersController {
       action: AuthorizationAction.RESTORE,
     });
 
-    return this.usersService.restoreVersion(id, version, req.user.id);
+    return this.usersService.restoreVersion(id, version, req.user.userId);
   }
 
   // ==========================================================
@@ -261,7 +261,7 @@ export class UsersController {
       action: AuthorizationAction.RESTORE,
     });
 
-    return this.usersService.restore(id, req.user.id);
+    return this.usersService.restore(id, req.user.userId);
   }
 
   // ==========================================================
@@ -287,7 +287,7 @@ export class UsersController {
       action: AuthorizationAction.DELETE,
     });
 
-    return this.usersService.bulkDelete(body.userIds, req.user.id);
+    return this.usersService.bulkDelete(body.userIds, req.user.userId);
   }
 
   // ==========================================================
