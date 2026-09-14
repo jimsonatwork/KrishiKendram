@@ -335,13 +335,21 @@ export class FarmsService {
     role: UserRole,
     dto: UpdateFarmDto,
   ) {
-    const farm = await this.prisma.farm.findUnique({
+    /*
+     * Retrieve only the minimum farm context required for authorization.
+     * Protected farm fields must not be loaded before authorization.
+     */
+    const farmContext = await this.prisma.farm.findUnique({
       where: {
         id,
       },
+      select: {
+        id: true,
+        ownerId: true,
+      },
     });
 
-    if (!farm) {
+    if (!farmContext) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -353,8 +361,8 @@ export class FarmsService {
       module: 'farms',
       resource: 'farm',
       action: AuthorizationAction.UPDATE,
-      resourceId: id,
-      ownerId: farm.ownerId,
+      resourceId: farmContext.id,
+      ownerId: farmContext.ownerId,
     });
 
     const updateData = this.validateFarmFields(dto);
@@ -590,13 +598,21 @@ export class FarmsService {
   }
 
   async remove(id: string, userId: string, role: UserRole) {
-    const farm = await this.prisma.farm.findUnique({
+    /*
+     * Retrieve only the minimum farm context required for authorization.
+     * Protected farm fields must not be loaded before authorization.
+     */
+    const farmContext = await this.prisma.farm.findUnique({
       where: {
         id,
       },
+      select: {
+        id: true,
+        ownerId: true,
+      },
     });
 
-    if (!farm) {
+    if (!farmContext) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -608,8 +624,8 @@ export class FarmsService {
       module: 'farms',
       resource: 'farm',
       action: AuthorizationAction.DELETE,
-      resourceId: id,
-      ownerId: farm.ownerId,
+      resourceId: farmContext.id,
+      ownerId: farmContext.ownerId,
     });
 
     return this.prisma.farm.delete({

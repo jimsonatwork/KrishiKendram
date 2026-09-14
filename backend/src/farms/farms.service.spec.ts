@@ -15,6 +15,7 @@ describe('FarmsService', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     farmAsset: {
       create: jest.fn(),
@@ -439,6 +440,192 @@ describe('FarmsService', () => {
     });
 
     expect(result).toEqual(updatedFarm);
+  });
+
+  it('authorizes farm update using minimal context before validation and mutation', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    prisma.farm.update.mockResolvedValue({
+      id: 'farm-1',
+      name: 'Green Valley',
+    });
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'Green Valley',
+      errors: [],
+    });
+
+    await service.update(
+      'farm-1',
+      'user-1',
+      UserRole.FARMER,
+      {
+        name: 'Green Valley',
+      },
+    );
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.UPDATE,
+      resourceId: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    expect(
+      authorization.assertCan.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    );
+
+    expect(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      prisma.farm.update.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not validate or mutate a farm when update authorization is denied', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'owner-1',
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.update(
+        'farm-1',
+        'user-2',
+        UserRole.FARMER,
+        {
+          name: 'Unauthorized Farm',
+        },
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farm.update).not.toHaveBeenCalled();
+  });
+
+  it('does not authorize or mutate when the farm does not exist during update', async () => {
+    prisma.farm.findUnique.mockResolvedValueOnce(null);
+
+    await expect(
+      service.update(
+        'missing-farm',
+        'user-1',
+        UserRole.FARMER,
+        {
+          name: 'Missing Farm',
+        },
+      ),
+    ).rejects.toThrow('Farm not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farm.update).not.toHaveBeenCalled();
+  });
+
+  it('authorizes farm removal using minimal context before deletion', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    prisma.farm.delete.mockResolvedValue({
+      id: 'farm-1',
+    });
+
+    await service.remove(
+      'farm-1',
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.DELETE,
+      resourceId: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    expect(
+      authorization.assertCan.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      prisma.farm.delete.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not delete a farm when removal authorization is denied', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'owner-1',
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.remove(
+        'farm-1',
+        'user-2',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(prisma.farm.delete).not.toHaveBeenCalled();
+  });
+
+  it('does not authorize or delete when the farm does not exist during removal', async () => {
+    prisma.farm.findUnique.mockResolvedValueOnce(null);
+
+    await expect(
+      service.remove(
+        'missing-farm',
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Farm not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(prisma.farm.delete).not.toHaveBeenCalled();
   });
 
   it('uses central Registry values for all farm asset fields when creating an asset', async () => {
