@@ -845,6 +845,150 @@ describe('FarmsService', () => {
   });
 
 
+  it('authorizes farm asset creation using minimal farm context before validation and creation', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => ({
+        valid: true,
+        value,
+        errors: [],
+      }),
+    );
+
+    prisma.farmAsset.create.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      type: 'TRACTOR',
+      name: 'John Deere',
+    });
+
+    await service.addAsset(
+      'farm-1',
+      {
+        type: 'TRACTOR',
+        name: 'John Deere',
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.CREATE,
+      farmId: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    expect(
+      authorization.assertCan.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    );
+
+    expect(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      prisma.farmAsset.create.mock.invocationCallOrder[0],
+    );
+
+    expect(prisma.farmAsset.create).toHaveBeenCalledWith({
+      data: {
+        farmId: 'farm-1',
+        type: 'TRACTOR',
+        name: 'John Deere',
+      },
+    });
+  });
+
+  it('does not validate or create a farm asset when authorization denies access', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'owner-1',
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.addAsset(
+        'farm-1',
+        {
+          type: 'TRACTOR',
+          name: 'John Deere',
+        },
+        'user-2',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farmAsset.create).not.toHaveBeenCalled();
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+  });
+
+  it('does not authorize, validate, or create a farm asset when the farm does not exist', async () => {
+    prisma.farm.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.addAsset(
+        'missing-farm',
+        {
+          type: 'TRACTOR',
+          name: 'John Deere',
+        },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Farm not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farmAsset.create).not.toHaveBeenCalled();
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'missing-farm',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+  });
+
   it('authorizes farm asset update using minimal context before validation and mutation', async () => {
     prisma.farmAsset.findUnique.mockResolvedValue({
       id: 'asset-1',
