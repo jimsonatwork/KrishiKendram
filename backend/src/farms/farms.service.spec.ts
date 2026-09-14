@@ -26,6 +26,9 @@ describe('FarmsService', () => {
     entity: {
       create: jest.fn(),
     },
+    farmRecord: {
+      create: jest.fn(),
+    },
   } as any;
 
   const authorization = {
@@ -1663,6 +1666,160 @@ describe('FarmsService', () => {
       'data',
       inputData,
     );
+  });
+
+  it('authorizes farm record creation using minimal farm context before validation and creation', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => ({
+        valid: true,
+        value,
+        errors: [],
+      }),
+    );
+
+    prisma.farmRecord.create.mockResolvedValue({
+      id: 'record-1',
+      farmId: 'farm-1',
+      category: 'ACTIVITY',
+      inputMethod: 'MANUAL',
+      data: { note: 'Irrigation completed' },
+      title: 'Irrigation',
+    });
+
+    await service.addRecord(
+      'farm-1',
+      {
+        category: 'ACTIVITY',
+        inputMethod: 'MANUAL',
+        data: { note: 'Irrigation completed' },
+        title: 'Irrigation',
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farmRecord',
+      action: AuthorizationAction.CREATE,
+      farmId: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    expect(
+      authorization.assertCan.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    );
+
+    expect(
+      registry.validateResourceField.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      prisma.farmRecord.create.mock.invocationCallOrder[0],
+    );
+
+    expect(prisma.farmRecord.create).toHaveBeenCalledWith({
+      data: {
+        farmId: 'farm-1',
+        category: 'ACTIVITY',
+        inputMethod: 'MANUAL',
+        data: { note: 'Irrigation completed' },
+        title: 'Irrigation',
+      },
+    });
+  });
+
+  it('does not validate or create a farm record when authorization denies access', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'owner-1',
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.addRecord(
+        'farm-1',
+        {
+          category: 'ACTIVITY',
+          inputMethod: 'MANUAL',
+          data: { note: 'Unauthorized record' },
+          title: 'Unauthorized',
+        },
+        'user-2',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farmRecord.create).not.toHaveBeenCalled();
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'farm-1',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+  });
+
+  it('does not authorize, validate, or create a farm record when the farm does not exist', async () => {
+    prisma.farm.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.addRecord(
+        'missing-farm',
+        {
+          category: 'ACTIVITY',
+          inputMethod: 'MANUAL',
+          data: { note: 'Missing farm' },
+          title: 'Missing',
+        },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Farm not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farmRecord.create).not.toHaveBeenCalled();
+
+    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
+      where: {
+        id: 'missing-farm',
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
   });
 
   it('keeps authorization before farm record validation', async () => {

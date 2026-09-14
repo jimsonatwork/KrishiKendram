@@ -540,13 +540,21 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
-    const farm = await this.prisma.farm.findUnique({
+    /*
+     * Retrieve only the minimum farm context required for authorization.
+     * Protected farm fields must not be loaded before authorization.
+     */
+    const farmContext = await this.prisma.farm.findUnique({
       where: {
         id: farmId,
       },
+      select: {
+        id: true,
+        ownerId: true,
+      },
     });
 
-    if (!farm) {
+    if (!farmContext) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -563,8 +571,8 @@ export class FarmsService {
       module: 'farms',
       resource: 'farmRecord',
       action: AuthorizationAction.CREATE,
-      farmId,
-      ownerId: farm.ownerId,
+      farmId: farmContext.id,
+      ownerId: farmContext.ownerId,
     });
 
     const validatedData = this.validateFarmRecordFields(dto);
