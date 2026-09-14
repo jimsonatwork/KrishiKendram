@@ -24,16 +24,35 @@ type FarmAsset = {
   id: string
   name?: string
   type?: string
-  category?: string
-  status?: string
+  quantity?: number
+  unit?: string
+  metadata?: Record<string, unknown>
 }
 
 type FarmRecord = {
   id: string
-  type?: string
+  category?: string
   title?: string
   description?: string
+  inputMethod?: string
+  data?: Record<string, unknown>
   createdAt?: string
+}
+
+type AssetFormData = {
+  type: string
+  name: string
+  quantity: string
+  unit: string
+  metadata: string
+}
+
+type RecordFormData = {
+  category: string
+  title: string
+  description: string
+  inputMethod: string
+  data: string
 }
 
 type Farm = {
@@ -72,6 +91,22 @@ const EMPTY_FORM: FarmFormData = {
   location: '',
   area: '',
   unit: 'acres',
+}
+
+const EMPTY_ASSET_FORM: AssetFormData = {
+  type: '',
+  name: '',
+  quantity: '',
+  unit: 'count',
+  metadata: '',
+}
+
+const EMPTY_RECORD_FORM: RecordFormData = {
+  category: '',
+  title: '',
+  description: '',
+  inputMethod: 'MANUAL',
+  data: '',
 }
 
 function PageHeader({
@@ -319,8 +354,32 @@ function InfoItem({
 
 function FarmSubsection({
   farm,
+  assetForm,
+  editingAssetId,
+  savingAsset,
+  recordForm,
+  savingRecord,
+  onAssetChange,
+  onAssetSubmit,
+  onAssetCancel,
+  onAssetEdit,
+  onAssetDelete,
+  onRecordChange,
+  onRecordSubmit,
 }: {
   farm: Farm
+  assetForm: AssetFormData
+  editingAssetId: string | null
+  savingAsset: boolean
+  recordForm: RecordFormData
+  savingRecord: boolean
+  onAssetChange: (patch: Partial<AssetFormData>) => void
+  onAssetSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onAssetCancel: () => void
+  onAssetEdit: (asset: FarmAsset) => void
+  onAssetDelete: (asset: FarmAsset) => void
+  onRecordChange: (patch: Partial<RecordFormData>) => void
+  onRecordSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
   const assets = Array.isArray(farm.assets) ? farm.assets : []
   const records = Array.isArray(farm.records) ? farm.records : []
@@ -343,7 +402,6 @@ function FarmSubsection({
             <Package className="h-4 w-4" />
             Assets
           </div>
-
           <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
             {assets.length}
           </p>
@@ -354,7 +412,6 @@ function FarmSubsection({
             <FileText className="h-4 w-4" />
             Records
           </div>
-
           <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
             {records.length}
           </p>
@@ -365,65 +422,316 @@ function FarmSubsection({
             <Sprout className="h-4 w-4" />
             Type
           </div>
-
           <p className="mt-2 truncate text-sm font-semibold text-slate-950 dark:text-white">
             {farm.type || 'Not specified'}
           </p>
         </div>
       </div>
 
-      {assets.length > 0 && (
-        <div className="mt-6">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">
+      {/* START: Farm asset form */}
+      <div className="mt-6 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            {editingAssetId ? 'Edit asset' : 'Add asset'}
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Track equipment, livestock and other farm resources.
+          </p>
+        </div>
+
+        <form onSubmit={onAssetSubmit} className="grid gap-3 md:grid-cols-2">
+          <Field
+            label="Asset type"
+            value={assetForm.type}
+            placeholder="e.g. CATTLE, TRACTOR"
+            onChange={(value) => onAssetChange({ type: value })}
+          />
+
+          <Field
+            label="Asset name"
+            value={assetForm.name}
+            placeholder="e.g. HF Cow"
+            onChange={(value) => onAssetChange({ name: value })}
+          />
+
+          <Field
+            label="Quantity"
+            value={assetForm.quantity}
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0"
+            onChange={(value) => onAssetChange({ quantity: value })}
+          />
+
+          <Field
+            label="Unit"
+            value={assetForm.unit}
+            placeholder="e.g. count, kg"
+            onChange={(value) => onAssetChange({ unit: value })}
+          />
+
+          <label className="block md:col-span-2">
+            <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Metadata JSON (optional)
+            </span>
+
+            <textarea
+              value={assetForm.metadata}
+              onChange={(event) =>
+                onAssetChange({ metadata: event.target.value })
+              }
+              placeholder={'{"breed":"Holstein Friesian"}'}
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            />
+          </label>
+
+          <div className="md:col-span-2 flex flex-wrap justify-end gap-2">
+            {editingAssetId && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onAssetCancel}
+                disabled={savingAsset}
+              >
+                Cancel
+              </Button>
+            )}
+
+            <Button
+              type="submit"
+              disabled={savingAsset || !assetForm.type.trim()}
+            >
+              {savingAsset
+                ? 'Saving…'
+                : editingAssetId
+                  ? 'Save asset'
+                  : 'Add asset'}
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* START: Farm asset list */}
+      <div className="mt-6">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
             Farm assets
           </h3>
 
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {assets.length} {assets.length === 1 ? 'asset' : 'assets'}
+          </span>
+        </div>
+
+        {assets.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            No assets yet. Add the first farm asset above.
+          </div>
+        ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {assets.map((asset) => (
               <div
                 key={asset.id}
                 className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"
               >
-                <p className="font-medium text-slate-900 dark:text-white">
-                  {asset.name || asset.type || 'Unnamed asset'}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-900 dark:text-white">
+                      {asset.name || asset.type || 'Unnamed asset'}
+                    </p>
 
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {asset.category || asset.type || 'Asset'}
-                  {asset.status ? ` · ${asset.status}` : ''}
-                </p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {asset.type || 'Asset'}
+                      {asset.quantity !== undefined
+                        ? ` · ${asset.quantity}`
+                        : ''}
+                      {asset.unit ? ` ${asset.unit}` : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onAssetEdit(asset)}
+                      title={`Edit ${asset.name || asset.type || 'asset'}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void onAssetDelete(asset)}
+                      title={`Delete ${asset.name || asset.type || 'asset'}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+
+                {asset.metadata &&
+                  Object.keys(asset.metadata).length > 0 && (
+                    <p className="mt-3 truncate text-xs text-slate-500 dark:text-slate-400">
+                      {Object.entries(asset.metadata)
+                        .map(
+                          ([key, value]) =>
+                            `${key}: ${String(value)}`,
+                        )
+                        .join(' · ')}
+                    </p>
+                  )}
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {records.length > 0 && (
-        <div className="mt-6">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">
+      {/* START: Farm record form */}
+      <div className="mt-8 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            Add farm record
+          </h3>
+
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Records are operational history. Add a new record instead of
+            editing historical entries in place.
+          </p>
+        </div>
+
+        <form onSubmit={onRecordSubmit} className="grid gap-3 md:grid-cols-2">
+          <Field
+            label="Category"
+            value={recordForm.category}
+            placeholder="e.g. OBSERVATION, EXPENSE"
+            onChange={(value) => onRecordChange({ category: value })}
+          />
+
+          <Field
+            label="Title"
+            value={recordForm.title}
+            placeholder="Record title"
+            onChange={(value) => onRecordChange({ title: value })}
+          />
+
+          <SelectField
+            label="Input method"
+            value={recordForm.inputMethod}
+            options={[
+              'MANUAL',
+              'IMPORT',
+              'API',
+              'VOICE',
+              'PHOTO',
+              'DOCUMENT',
+              'AI',
+            ]}
+            onChange={(value) =>
+              onRecordChange({ inputMethod: value })
+            }
+          />
+
+          <label className="block md:col-span-2">
+            <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Description
+            </span>
+
+            <textarea
+              value={recordForm.description}
+              onChange={(event) =>
+                onRecordChange({ description: event.target.value })
+              }
+              placeholder="What happened or was observed?"
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            />
+          </label>
+
+          <label className="block md:col-span-2">
+            <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Data JSON (optional)
+            </span>
+
+            <textarea
+              value={recordForm.data}
+              onChange={(event) =>
+                onRecordChange({ data: event.target.value })
+              }
+              placeholder={'{"amount":1200,"note":"Diesel"}'}
+              rows={3}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            />
+          </label>
+
+          <div className="md:col-span-2 flex justify-end">
+            <Button
+              type="submit"
+              disabled={
+                savingRecord || !recordForm.category.trim()
+              }
+            >
+              {savingRecord ? 'Saving…' : 'Add record'}
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* START: Farm record list */}
+      <div className="mt-6">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
             Farm records
           </h3>
 
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {records.length} {records.length === 1 ? 'record' : 'records'}
+          </span>
+        </div>
+
+        {records.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            No records yet. Add the first operational record above.
+          </div>
+        ) : (
           <div className="space-y-3">
             {records.map((record) => (
               <div
                 key={record.id}
                 className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"
               >
-                <p className="font-medium text-slate-900 dark:text-white">
-                  {record.title || record.type || 'Farm record'}
+                <p className="truncate font-medium text-slate-900 dark:text-white">
+                  {record.title ||
+                    record.category ||
+                    'Farm record'}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {record.category || 'Record'}
+                  {record.inputMethod
+                    ? ` · ${record.inputMethod}`
+                    : ''}
+                  {record.createdAt
+                    ? ` · ${new Date(
+                        record.createdAt,
+                      ).toLocaleDateString()}`
+                    : ''}
                 </p>
 
                 {record.description && (
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     {record.description}
                   </p>
                 )}
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -602,6 +910,16 @@ export function FarmsPage() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
+  const [assetForm, setAssetForm] =
+    useState<AssetFormData>(EMPTY_ASSET_FORM)
+  const [editingAssetId, setEditingAssetId] =
+    useState<string | null>(null)
+  const [savingAsset, setSavingAsset] = useState(false)
+
+  const [recordForm, setRecordForm] =
+    useState<RecordFormData>(EMPTY_RECORD_FORM)
+  const [savingRecord, setSavingRecord] = useState(false)
+
   const [form, setForm] = useState<FarmFormData>(EMPTY_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -697,6 +1015,199 @@ export function FarmsPage() {
   const resetForm = () => {
     setForm(EMPTY_FORM)
     setEditingId(null)
+  }
+
+  const resetAssetForm = () => {
+    setAssetForm(EMPTY_ASSET_FORM)
+    setEditingAssetId(null)
+  }
+
+  const resetRecordForm = () => {
+    setRecordForm(EMPTY_RECORD_FORM)
+  }
+
+  const handleAssetSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault()
+
+    if (!selectedFarmId || !assetForm.type.trim()) {
+      return
+    }
+
+    setSavingAsset(true)
+    setError('')
+
+    try {
+      let metadata: Record<string, unknown> | undefined
+
+      if (assetForm.metadata.trim()) {
+        const parsed = JSON.parse(
+          assetForm.metadata,
+        ) as unknown
+
+        if (
+          !parsed ||
+          typeof parsed !== 'object' ||
+          Array.isArray(parsed)
+        ) {
+          throw new Error(
+            'Asset metadata must be a JSON object.',
+          )
+        }
+
+        metadata = parsed as Record<string, unknown>
+      }
+
+      const payload = {
+        type: assetForm.type.trim(),
+        name: assetForm.name.trim() || undefined,
+        quantity: assetForm.quantity
+          ? Number(assetForm.quantity)
+          : undefined,
+        unit: assetForm.unit.trim() || undefined,
+        metadata,
+      }
+
+      if (editingAssetId) {
+        await api.updateFarmAsset(
+          selectedFarmId,
+          editingAssetId,
+          payload,
+          token,
+        )
+      } else {
+        await api.addFarmAsset(
+          selectedFarmId,
+          payload,
+          token,
+        )
+      }
+
+      resetAssetForm()
+      await loadFarms()
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to save the farm asset.',
+      )
+    } finally {
+      setSavingAsset(false)
+    }
+  }
+
+  const handleAssetEdit = (asset: FarmAsset) => {
+    setEditingAssetId(asset.id)
+
+    setAssetForm({
+      type: asset.type || '',
+      name: asset.name || '',
+      quantity:
+        asset.quantity !== undefined &&
+        asset.quantity !== null
+          ? String(asset.quantity)
+          : '',
+      unit: asset.unit || 'count',
+      metadata: asset.metadata
+        ? JSON.stringify(asset.metadata, null, 2)
+        : '',
+    })
+  }
+
+  const handleAssetDelete = async (asset: FarmAsset) => {
+    if (!selectedFarmId) {
+      return
+    }
+
+    const label =
+      asset.name || asset.type || 'this asset'
+
+    if (!window.confirm(`Delete ${label}?`)) {
+      return
+    }
+
+    setError('')
+
+    try {
+      await api.deleteFarmAsset(
+        selectedFarmId,
+        asset.id,
+        token,
+      )
+
+      if (editingAssetId === asset.id) {
+        resetAssetForm()
+      }
+
+      await loadFarms()
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to delete the farm asset.',
+      )
+    }
+  }
+
+  const handleRecordSubmit = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault()
+
+    if (!selectedFarmId || !recordForm.category.trim()) {
+      return
+    }
+
+    setSavingRecord(true)
+    setError('')
+
+    try {
+      let data: Record<string, unknown> | undefined
+
+      if (recordForm.data.trim()) {
+        const parsed = JSON.parse(
+          recordForm.data,
+        ) as unknown
+
+        if (
+          !parsed ||
+          typeof parsed !== 'object' ||
+          Array.isArray(parsed)
+        ) {
+          throw new Error(
+            'Record data must be a JSON object.',
+          )
+        }
+
+        data = parsed as Record<string, unknown>
+      }
+
+      await api.addFarmRecord(
+        selectedFarmId,
+        {
+          category: recordForm.category.trim(),
+          title:
+            recordForm.title.trim() || undefined,
+          description:
+            recordForm.description.trim() || undefined,
+          inputMethod: recordForm.inputMethod,
+          data,
+        },
+        token,
+      )
+
+      resetRecordForm()
+      await loadFarms()
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to add the farm record.',
+      )
+    } finally {
+      setSavingRecord(false)
+    }
   }
 
   const beginCreate = () => {
@@ -847,7 +1358,31 @@ export function FarmsPage() {
             </div>
 
             <div className="mt-6">
-              <FarmSubsection farm={selectedFarm} />
+              <FarmSubsection
+                farm={selectedFarm}
+                assetForm={assetForm}
+                editingAssetId={editingAssetId}
+                savingAsset={savingAsset}
+                recordForm={recordForm}
+                savingRecord={savingRecord}
+                onAssetChange={(patch) =>
+                  setAssetForm((current) => ({
+                    ...current,
+                    ...patch,
+                  }))
+                }
+                onAssetSubmit={handleAssetSubmit}
+                onAssetCancel={resetAssetForm}
+                onAssetEdit={handleAssetEdit}
+                onAssetDelete={handleAssetDelete}
+                onRecordChange={(patch) =>
+                  setRecordForm((current) => ({
+                    ...current,
+                    ...patch,
+                  }))
+                }
+                onRecordSubmit={handleRecordSubmit}
+              />
             </div>
           </section>
         )}
