@@ -56,10 +56,11 @@ export class IntakeService {
       throw new NotFoundException('Farm not found.');
     }
 
-    const extracted = await this.extractor.extract(
-      dto.content,
-    );
-
+    /*
+     * Authorize the farm-record creation before processing the supplied intake
+     * content. The extractor is an AI/data-processing boundary and must not
+     * receive unauthorized farm content.
+     */
     await this.authorization.assertCan({
       user: {
         userId,
@@ -71,6 +72,10 @@ export class IntakeService {
       farmId: farm.id,
       ownerId: farm.ownerId,
     });
+
+    const extracted = await this.extractor.extract(
+      dto.content,
+    );
 
     if (
       extracted.category === 'PLANTING' &&

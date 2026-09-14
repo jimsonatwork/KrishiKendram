@@ -281,6 +281,91 @@ describe('IntakeService', () => {
     expect(prisma.crop.create).not.toHaveBeenCalled();
   });
 
+  it('authorizes farm-record creation before extracting intake content', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    authorization.assertCan.mockImplementationOnce(async (request: any) => {
+      expect(request).toEqual({
+        user: {
+          userId: 'user-1',
+          role: UserRole.FARMER,
+        },
+        module: 'farms',
+        resource: 'farmRecord',
+        action: AuthorizationAction.CREATE,
+        farmId: 'farm-1',
+        ownerId: 'user-1',
+      });
+
+      expect(extractor.extract).not.toHaveBeenCalled();
+    });
+
+    extractor.extract.mockResolvedValue({
+      raw: 'general farm observation',
+      category: 'GENERAL',
+    });
+
+    registry.validateResourceField.mockImplementation(
+      (
+        resource: string,
+        field: string,
+        value: unknown,
+      ) => ({
+        valid: true,
+        value,
+        errors: [],
+      }),
+    );
+
+    prisma.farmRecord.create.mockResolvedValue({
+      id: 'record-1',
+    });
+
+    await service.create(
+      'user-1',
+      UserRole.FARMER,
+      {
+        farmId: 'farm-1',
+        inputMethod: InputMethod.MANUAL,
+        content: 'general farm observation',
+      },
+    );
+
+    expect(extractor.extract).toHaveBeenCalledWith(
+      'general farm observation',
+    );
+  });
+
+  it('does not extract intake content when farm-record authorization is denied', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    authorization.assertCan.mockRejectedValueOnce(
+      new Error('Forbidden'),
+    );
+
+    await expect(
+      service.create(
+        'user-1',
+        UserRole.FARMER,
+        {
+          farmId: 'farm-1',
+          inputMethod: InputMethod.MANUAL,
+          content: 'sensitive farm content',
+        },
+      ),
+    ).rejects.toThrow('Forbidden');
+
+    expect(extractor.extract).not.toHaveBeenCalled();
+    expect(prisma.farmRecord.create).not.toHaveBeenCalled();
+    expect(prisma.crop.create).not.toHaveBeenCalled();
+  });
+
   it('authorizes Crop creation before Registry validation', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
