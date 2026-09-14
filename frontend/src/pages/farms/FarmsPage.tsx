@@ -1062,8 +1062,27 @@ export function FarmsPage() {
       setFarms(nextFarms)
       setCrops(nextCrops)
 
+      const requestedFarmId =
+        new URLSearchParams(window.location.search).get(
+          'farmId',
+        )
+
       setSelectedFarmId((current) => {
-        if (current && nextFarms.some((farm) => farm.id === current)) {
+        if (
+          requestedFarmId &&
+          nextFarms.some(
+            (farm) => farm.id === requestedFarmId,
+          )
+        ) {
+          return requestedFarmId
+        }
+
+        if (
+          current &&
+          nextFarms.some(
+            (farm) => farm.id === current,
+          )
+        ) {
           return current
         }
 

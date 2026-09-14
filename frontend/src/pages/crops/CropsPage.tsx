@@ -409,6 +409,21 @@ export function CropsPage() {
     [crops, selectedCropId],
   )
 
+  const selectedCropFarmId = useMemo(() => {
+    if (!selectedCrop) {
+      return ''
+    }
+
+    return (
+      selectedCrop.farm?.id ||
+      selectedCrop.farmId ||
+      farms.find(
+        (farm) => farm.id === selectedCrop.farmId,
+      )?.id ||
+      ''
+    )
+  }, [farms, selectedCrop])
+
   const resetForm = () => {
     setFarmId('')
     setName('')
@@ -1009,6 +1024,25 @@ export function CropsPage() {
                       }
                     >
                       Edit crop
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!selectedCropFarmId}
+                      onClick={() => {
+                        if (!selectedCropFarmId) {
+                          return
+                        }
+
+                        window.location.assign(
+                          `/app/farms?farmId=${encodeURIComponent(
+                            selectedCropFarmId,
+                          )}`,
+                        )
+                      }}
+                    >
+                      View farm
                     </Button>
 
                     <Button
