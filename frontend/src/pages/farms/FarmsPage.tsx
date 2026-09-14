@@ -39,6 +39,21 @@ type FarmRecord = {
   createdAt?: string
 }
 
+type CropSummary = {
+  id: string
+  farmId?: string
+  name?: string
+  variety?: string
+  season?: string
+  status?: string
+  area?: number | null
+  unit?: string
+  farm?: {
+    id: string
+    name?: string
+  }
+}
+
 type AssetFormData = {
   type: string
   name: string
@@ -354,6 +369,7 @@ function InfoItem({
 
 function FarmSubsection({
   farm,
+  crops,
   assetForm,
   editingAssetId,
   savingAsset,
@@ -368,6 +384,7 @@ function FarmSubsection({
   onRecordSubmit,
 }: {
   farm: Farm
+  crops: CropSummary[]
   assetForm: AssetFormData
   editingAssetId: string | null
   savingAsset: boolean
@@ -384,6 +401,12 @@ function FarmSubsection({
   const assets = Array.isArray(farm.assets) ? farm.assets : []
   const records = Array.isArray(farm.records) ? farm.records : []
 
+  const farmCrops = crops.filter(
+    (crop) =>
+      crop.farmId === farm.id ||
+      crop.farm?.id === farm.id,
+  )
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-5">
@@ -396,7 +419,17 @@ function FarmSubsection({
         </h2>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <Sprout className="h-4 w-4" />
+            Crops
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+            {farmCrops.length}
+          </p>
+        </div>
+
         <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
           <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
             <Package className="h-4 w-4" />
@@ -426,6 +459,79 @@ function FarmSubsection({
             {farm.type || 'Not specified'}
           </p>
         </div>
+      </div>
+
+      {/* START: Farm crop workspace */}
+      <div className="mt-6 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Crops on this farm
+            </h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Cultivation currently linked to {farm.name}.
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              window.location.assign('/app/crops')
+            }}
+          >
+            View all crops
+          </Button>
+        </div>
+
+        {farmCrops.length === 0 ? (
+          <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center dark:border-slate-700 dark:bg-slate-950">
+            <Sprout className="mx-auto h-7 w-7 text-slate-400" />
+            <p className="mt-3 text-sm font-medium text-slate-800 dark:text-slate-200">
+              No crops linked to this farm
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Create a crop from the Crop workspace and select this farm.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {farmCrops.map((crop) => (
+              <div
+                key={crop.id}
+                className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                      {crop.name || 'Unnamed crop'}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {crop.variety || 'Variety not specified'}
+                      {crop.season ? ` · ${crop.season}` : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {crop.status && (
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        {crop.status}
+                      </span>
+                    )}
+
+                    {crop.area !== null &&
+                      crop.area !== undefined && (
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {crop.area} {crop.unit || ''}
+                        </span>
+                      )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* START: Farm asset form */}
@@ -907,6 +1013,7 @@ function FarmLoadingState() {
 
 export function FarmsPage() {
   const [farms, setFarms] = useState<Farm[]>([])
+  const [crops, setCrops] = useState<CropSummary[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -939,11 +1046,21 @@ export function FarmsPage() {
     setError('')
 
     try {
-      const data = await api.farms(token)
+      const [farmData, cropData] = await Promise.all([
+        api.farms(token),
+        api.crops(token),
+      ])
 
-      const nextFarms = Array.isArray(data) ? (data as Farm[]) : []
+      const nextFarms = Array.isArray(farmData)
+        ? (farmData as Farm[])
+        : []
+
+      const nextCrops = Array.isArray(cropData)
+        ? (cropData as CropSummary[])
+        : []
 
       setFarms(nextFarms)
+      setCrops(nextCrops)
 
       setSelectedFarmId((current) => {
         if (current && nextFarms.some((farm) => farm.id === current)) {
@@ -1360,6 +1477,7 @@ export function FarmsPage() {
             <div className="mt-6">
               <FarmSubsection
                 farm={selectedFarm}
+                crops={crops}
                 assetForm={assetForm}
                 editingAssetId={editingAssetId}
                 savingAsset={savingAsset}
