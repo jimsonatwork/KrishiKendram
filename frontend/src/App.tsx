@@ -53,6 +53,8 @@ import { useThemeStore } from '@/stores/theme.store'
 import { FarmsPage } from '@/pages/farms/FarmsPage'
 
 import { CropsPage } from '@/pages/crops/CropsPage'
+import { ActivitiesPage } from '@/pages/activity/ActivitiesPage'
+import { HistoryPage } from '@/pages/activity/HistoryPage'
 /* =========================================================
    TYPES
 ========================================================= */
@@ -909,11 +911,11 @@ function PortalLayout({
   } else if (
     location.pathname === '/app/activities'
   ) {
-    content = <ComingSoon title="Activities" />
+    content = <ActivitiesPage />
   } else if (
     location.pathname === '/app/history'
   ) {
-    content = <ComingSoon title="Farm History" />
+    content = <HistoryPage />
   } else if (
     location.pathname === '/app/intake'
   ) {

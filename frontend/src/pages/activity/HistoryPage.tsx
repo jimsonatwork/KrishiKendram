@@ -1,0 +1,380 @@
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Clock3,
+  FileText,
+  Sprout,
+  Wheat,
+} from 'lucide-react'
+import { motion } from 'motion/react'
+
+import { api } from '@/lib/api'
+
+type FarmRecord = {
+  id: string
+  category?: string
+  title?: string
+  description?: string
+  inputMethod?: string
+  createdAt?: string
+}
+
+type Farm = {
+  id: string
+  name: string
+  location?: string
+  createdAt?: string
+  updatedAt?: string
+  records?: FarmRecord[]
+}
+
+type Crop = {
+  id: string
+  farmId?: string
+  name: string
+  variety?: string
+  season?: string
+  status?: string
+  sowingDate?: string
+  harvestDate?: string
+  createdAt?: string
+  updatedAt?: string
+  farm?: {
+    id: string
+    name: string
+  }
+}
+
+type HistoryItem = {
+  id: string
+  timestamp: string
+  title: string
+  description: string
+  context: string
+  kind: 'farm' | 'crop' | 'record'
+}
+
+function formatEnum(value?: string) {
+  if (!value) return '—'
+
+  return value
+    .toLowerCase()
+    .split('_')
+    .map(
+      (part) =>
+        part.charAt(0).toUpperCase() + part.slice(1),
+    )
+    .join(' ')
+}
+
+function formatDate(value?: string) {
+  if (!value) return 'Unknown time'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown time'
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
+
+function iconFor(kind: HistoryItem['kind']) {
+  if (kind === 'crop') {
+    return <Wheat className="size-4" />
+  }
+
+  if (kind === 'record') {
+    return <FileText className="size-4" />
+  }
+
+  return <Sprout className="size-4" />
+}
+
+export function HistoryPage() {
+  const [farms, setFarms] = useState<Farm[]>([])
+  const [crops, setCrops] = useState<Crop[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const token = localStorage.getItem('accessToken')
+
+      if (!token) {
+        setError('Your session has expired.')
+        setLoading(false)
+        return
+      }
+
+      try {
+        setLoading(true)
+        setError('')
+
+        const [farmResult, cropResult] =
+          await Promise.all([
+            api.farms(token),
+            api.crops(token),
+          ])
+
+        if (cancelled) return
+
+        setFarms(
+          Array.isArray(farmResult)
+            ? (farmResult as Farm[])
+            : [],
+        )
+
+        setCrops(
+          Array.isArray(cropResult)
+            ? (cropResult as Crop[])
+            : [],
+        )
+      } catch (err) {
+        if (cancelled) return
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load history.',
+        )
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const history = useMemo<HistoryItem[]>(() => {
+    const items: HistoryItem[] = []
+
+    for (const farm of farms) {
+      if (farm.createdAt) {
+        items.push({
+          id: `farm-created-${farm.id}`,
+          timestamp: farm.createdAt,
+          title: `Farm created: ${farm.name}`,
+          description:
+            farm.location
+              ? `Farm workspace created for ${farm.location}.`
+              : 'Farm workspace created.',
+          context: 'Farm',
+          kind: 'farm',
+        })
+      }
+
+      if (
+        farm.updatedAt &&
+        farm.createdAt &&
+        farm.updatedAt !== farm.createdAt
+      ) {
+        items.push({
+          id: `farm-updated-${farm.id}`,
+          timestamp: farm.updatedAt,
+          title: `Farm updated: ${farm.name}`,
+          description:
+            'The farm configuration was updated.',
+          context: 'Farm',
+          kind: 'farm',
+        })
+      }
+
+      for (const record of farm.records ?? []) {
+        if (!record.createdAt) continue
+
+        items.push({
+          id: `record-${record.id}`,
+          timestamp: record.createdAt,
+          title:
+            record.title ||
+            `${formatEnum(record.category)} record`,
+          description:
+            record.description ||
+            'Operational information recorded against the farm.',
+          context: farm.name,
+          kind: 'record',
+        })
+      }
+    }
+
+    for (const crop of crops) {
+      const farmName =
+        crop.farm?.name ||
+        farms.find((farm) => farm.id === crop.farmId)?.name
+
+      if (crop.createdAt) {
+        items.push({
+          id: `crop-created-${crop.id}`,
+          timestamp: crop.createdAt,
+          title: `Crop added: ${crop.name}`,
+          description:
+            crop.variety
+              ? `${crop.variety} added to the crop workspace.`
+              : 'Crop added to the crop workspace.',
+          context: farmName || 'Crop',
+          kind: 'crop',
+        })
+      }
+
+      if (
+        crop.sowingDate &&
+        (!crop.createdAt ||
+          crop.sowingDate !== crop.createdAt)
+      ) {
+        items.push({
+          id: `crop-sown-${crop.id}`,
+          timestamp: crop.sowingDate,
+          title: `Sowing date: ${crop.name}`,
+          description:
+            'The crop has a recorded sowing date.',
+          context: farmName || 'Crop',
+          kind: 'crop',
+        })
+      }
+
+      if (crop.harvestDate) {
+        items.push({
+          id: `crop-harvest-${crop.id}`,
+          timestamp: crop.harvestDate,
+          title: `Harvest date: ${crop.name}`,
+          description:
+            'The crop has a recorded harvest date.',
+          context: farmName || 'Crop',
+          kind: 'crop',
+        })
+      }
+
+      if (
+        crop.updatedAt &&
+        crop.createdAt &&
+        crop.updatedAt !== crop.createdAt
+      ) {
+        items.push({
+          id: `crop-updated-${crop.id}`,
+          timestamp: crop.updatedAt,
+          title: `Crop updated: ${crop.name}`,
+          description: crop.status
+            ? `Current status: ${formatEnum(crop.status)}.`
+            : 'Crop information was updated.',
+          context: farmName || 'Crop',
+          kind: 'crop',
+        })
+      }
+    }
+
+    return items.sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() -
+        new Date(a.timestamp).getTime(),
+    )
+  }, [crops, farms])
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <Clock3 className="size-4" />
+          History
+        </div>
+
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          Farm history
+        </h1>
+
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+          Follow the operational timeline across farms, crops and
+          recorded events.
+        </p>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="rounded-2xl border bg-card p-5">
+        {loading ? (
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            Loading history...
+          </div>
+        ) : history.length === 0 ? (
+          <div className="py-12 text-center">
+            <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Clock3 className="size-5" />
+            </div>
+
+            <div className="mt-4 font-medium">
+              No history yet
+            </div>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your farm timeline will appear here as operational
+              data is added.
+            </p>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="absolute bottom-4 left-[17px] top-4 w-px bg-border" />
+
+            <div className="space-y-7">
+              {history.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{
+                    opacity: 0,
+                    x: -5,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    x: 0,
+                  }}
+                  transition={{
+                    duration: 0.2,
+                    delay: Math.min(index, 8) * 0.025,
+                  }}
+                  className="relative flex gap-4"
+                >
+                  <div className="relative z-10 flex size-[35px] shrink-0 items-center justify-center rounded-full border bg-background text-primary shadow-sm">
+                    {iconFor(item.kind)}
+                  </div>
+
+                  <div className="min-w-0 flex-1 pb-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="font-medium">
+                        {item.title}
+                      </div>
+
+                      <div className="shrink-0 text-xs text-muted-foreground">
+                        {formatDate(item.timestamp)}
+                      </div>
+                    </div>
+
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {item.description}
+                    </p>
+
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {item.context}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
