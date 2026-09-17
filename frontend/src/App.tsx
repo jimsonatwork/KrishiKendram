@@ -55,6 +55,7 @@ import { FarmsPage } from '@/pages/farms/FarmsPage'
 import { CropsPage } from '@/pages/crops/CropsPage'
 import { ActivitiesPage } from '@/pages/activity/ActivitiesPage'
 import { HistoryPage } from '@/pages/activity/HistoryPage'
+import { AIIntakePage } from '@/pages/intake/AIIntakePage'
 /* =========================================================
    TYPES
 ========================================================= */
@@ -919,7 +920,7 @@ function PortalLayout({
   } else if (
     location.pathname === '/app/intake'
   ) {
-    content = <ComingSoon title="AI Intake" />
+    content = <AIIntakePage />
   } else if (location.pathname === '/app/users') {
   content = <UsersPage />
   } else if (location.pathname === '/app/roles') {

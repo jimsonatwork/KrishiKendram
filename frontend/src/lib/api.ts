@@ -409,4 +409,23 @@ export const api = {
         body: JSON.stringify(data),
       },
     ),
+
+  createIntake: (
+    data: {
+      farmId: string
+      inputMethod: string
+      content: string
+    },
+    token: string,
+  ) =>
+    request(
+      '/intake',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      },
+    ),
 }
