@@ -10,6 +10,7 @@ import {
 
 import { PrismaService } from '../prisma/prisma.service';
 import { FarmsService } from '../farms/farms.service';
+import { CropsService } from '../crops/crops.service';
 
 import {
   AuthorizationAction,
@@ -29,6 +30,7 @@ export class IntakeService {
     private readonly extractor: IntakeExtractorService,
     private readonly authorization: AuthorizationService,
     private readonly farmsService: FarmsService,
+    private readonly cropsService: CropsService,
   ) {}
 
   async create(
@@ -79,9 +81,9 @@ export class IntakeService {
        * Keep the Crop authorization at the Intake boundary before passing
        * extracted farm data into the canonical Crop mutation service.
        *
-       * FarmsService.addCrop() performs the same authorization again as its
-       * own mandatory mutation boundary. This protects the service if it is
-       * ever called from another entry point.
+       * CropsService.createFromIntake() performs the same authorization
+       * again as its own mandatory mutation boundary. This protects the
+       * service if it is ever called from another entry point.
        */
       await this.authorization.assertCan({
         user: {
@@ -98,13 +100,13 @@ export class IntakeService {
       const sowingDate = new Date();
 
       /*
-       * Crop persistence belongs to FarmsService.
+       * Crop persistence belongs to CropsService.
        *
        * Intake owns interpretation of the supplied content, but it must not
        * maintain a second Crop validation, duplicate-check, or Prisma
        * persistence path.
        */
-      await this.farmsService.addCrop(
+      await this.cropsService.createFromIntake(
         dto.farmId,
         {
           name: extracted.crop.name,

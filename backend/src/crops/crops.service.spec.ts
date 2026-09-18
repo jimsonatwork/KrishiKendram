@@ -86,6 +86,213 @@ describe('CropsService', () => {
     expect(result).toEqual(createdCrop);
   });
 
+  it('creates a crop through the canonical Intake mutation boundary', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    const createdCrop = {
+      id: 'crop-1',
+      farmId: 'farm-1',
+      name: 'Rice',
+      season: 'UNKNOWN',
+      status: 'SOWN',
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+    prisma.crop.findFirst.mockResolvedValue(null);
+    prisma.crop.create.mockResolvedValue(createdCrop);
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'Rice',
+      errors: [],
+    });
+
+    const sowingDate = new Date('2026-09-18T10:30:00.000Z');
+
+    const result = await service.createFromIntake(
+      'farm-1',
+      {
+        name: '  Rice  ',
+        sowingDate,
+        area: 2,
+        unit: 'acres',
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenCalledWith(
+      'crop',
+      'name',
+      '  Rice  ',
+    );
+
+    expect(prisma.crop.findFirst).toHaveBeenCalledWith({
+      where: {
+        farmId: 'farm-1',
+        deletedAt: null,
+        name: {
+          equals: 'Rice',
+          mode: 'insensitive',
+        },
+        sowingDate: {
+          gte: expect.any(Date),
+          lt: expect.any(Date),
+        },
+      },
+    });
+
+    expect(prisma.crop.create).toHaveBeenCalledWith({
+      data: {
+        farmId: 'farm-1',
+        name: 'Rice',
+        variety: undefined,
+        season: expect.anything(),
+        status: expect.anything(),
+        sowingDate,
+        harvestDate: undefined,
+        area: 2,
+        unit: 'acres',
+        notes: undefined,
+      },
+    });
+
+    expect(result).toEqual(createdCrop);
+  });
+
+  it('rejects an Intake crop when the central Registry rejects its name', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+
+    registry.validateResourceField.mockReturnValue({
+      valid: false,
+      value: '',
+      errors: [
+        'Field must be at least 1 characters long.',
+      ],
+    });
+
+    await expect(
+      service.createFromIntake(
+        'farm-1',
+        {
+          name: '   ',
+        },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.crop.findFirst).not.toHaveBeenCalled();
+    expect(prisma.crop.create).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing same-day Intake crop without creating a duplicate', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    const existingCrop = {
+      id: 'crop-existing',
+      farmId: 'farm-1',
+      name: 'Rice',
+      sowingDate: new Date('2026-09-18T08:00:00.000Z'),
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+    prisma.crop.findFirst.mockResolvedValue(existingCrop);
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'Rice',
+      errors: [],
+    });
+
+    const sowingDate = new Date('2026-09-18T10:30:00.000Z');
+
+    const result = await service.createFromIntake(
+      'farm-1',
+      {
+        name: 'Rice',
+        sowingDate,
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(prisma.crop.findFirst).toHaveBeenCalled();
+
+    expect(prisma.crop.create).not.toHaveBeenCalled();
+
+    expect(result).toEqual(existingCrop);
+  });
+
+  it('authorizes Intake crop creation before Registry validation and mutation', async () => {
+    const farm = {
+      id: 'farm-1',
+      ownerId: 'user-1',
+    };
+
+    prisma.farm.findUnique.mockResolvedValue(farm);
+
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'Rice',
+      errors: [],
+    });
+
+    prisma.crop.findFirst.mockResolvedValue(null);
+    prisma.crop.create.mockResolvedValue({
+      id: 'crop-1',
+      name: 'Rice',
+    });
+
+    await service.createFromIntake(
+      'farm-1',
+      {
+        name: 'Rice',
+      },
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    const authorizationOrder =
+      authorization.assertCan.mock.invocationCallOrder[0];
+
+    const registryOrder =
+      registry.validateResourceField.mock.invocationCallOrder[0];
+
+    const createOrder =
+      prisma.crop.create.mock.invocationCallOrder[0];
+
+    expect(authorizationOrder).toBeLessThan(registryOrder);
+    expect(authorizationOrder).toBeLessThan(createOrder);
+
+    expect(
+      authorization.assertCan,
+    ).toHaveBeenCalledWith({
+      user: {
+        userId: 'user-1',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'crop',
+      action: AuthorizationAction.CREATE,
+      farmId: 'farm-1',
+      ownerId: 'user-1',
+    });
+  });
+
   it('uses the central Registry value when updating a crop name', async () => {
     const crop = {
       id: 'crop-1',

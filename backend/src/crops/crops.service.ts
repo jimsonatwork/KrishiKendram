@@ -4,7 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { UserRole } from '@prisma/client';
+import {
+  CropSeason,
+  CropStatus,
+  UserRole,
+} from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { RegistryService } from '../platform/registry/registry.service';
@@ -32,9 +36,112 @@ export class CropsService {
     role: UserRole,
     dto: CreateCropDto,
   ) {
+    return this.createCanonical(
+      dto.farmId,
+      {
+        name: dto.name,
+        variety: dto.variety,
+        season: dto.season,
+        status: dto.status,
+        sowingDate: dto.sowingDate
+          ? new Date(dto.sowingDate)
+          : undefined,
+        harvestDate: dto.harvestDate
+          ? new Date(dto.harvestDate)
+          : undefined,
+        area: dto.area,
+        unit: dto.unit,
+        notes: dto.notes,
+      },
+      userId,
+      role,
+      {
+        defaultSeason: dto.season,
+        defaultStatus: undefined,
+        defaultSowingDate: undefined,
+        preventSameDayDuplicate: false,
+        preserveNullDates: true,
+      },
+    );
+  }
+
+  /*
+   * Canonical internal Crop creation boundary for interpretation-driven
+   * workflows such as AI Intake.
+   *
+   * Intake owns interpretation. CropsService owns Crop authorization,
+   * Registry normalization, duplicate protection, defaults, and persistence.
+   */
+  async createFromIntake(
+    farmId: string,
+    input: {
+      name: string;
+      variety?: string;
+      season?: CropSeason;
+      status?: CropStatus;
+      sowingDate?: Date;
+      harvestDate?: Date;
+      area?: number;
+      unit?: string;
+      notes?: string;
+    },
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.createCanonical(
+      farmId,
+      {
+        name: input.name,
+        variety: input.variety,
+        season: input.season,
+        status: input.status,
+        sowingDate: input.sowingDate,
+        harvestDate: input.harvestDate,
+        area: input.area,
+        unit: input.unit,
+        notes: input.notes,
+      },
+      userId,
+      role,
+      {
+        defaultSeason: CropSeason.UNKNOWN,
+        defaultStatus: CropStatus.SOWN,
+        defaultSowingDate: new Date(),
+        preventSameDayDuplicate: true,
+      },
+    );
+  }
+
+  private async createCanonical(
+    farmId: string,
+    input: {
+      name: string;
+      variety?: string;
+      season?: CropSeason;
+      status?: CropStatus;
+      sowingDate?: Date;
+      harvestDate?: Date;
+      area?: number;
+      unit?: string;
+      notes?: string;
+    },
+    userId: string,
+    role: UserRole,
+    options: {
+      defaultSeason: CropSeason;
+      defaultStatus?: CropStatus;
+      defaultSowingDate?: Date;
+      preventSameDayDuplicate: boolean;
+      preserveNullDates?: boolean;
+    },
+  ) {
+    /*
+     * Retrieve only the minimum farm context required for authorization.
+     * Protected farm fields must not be loaded before authorization.
+     */
     const farm = await this.prisma.farm.findUnique({
       where: {
-        id: dto.farmId,
+        id: farmId,
       },
       select: {
         id: true,
@@ -46,6 +153,11 @@ export class CropsService {
       throw new NotFoundException('Farm not found.');
     }
 
+    /*
+     * Authorization must remain before Registry validation.
+     * Validation must never become a resource-existence or data-disclosure
+     * oracle for callers who are not authorized to access this farm.
+     */
     await this.authorization.assertCan({
       user: {
         userId,
@@ -61,7 +173,7 @@ export class CropsService {
     const nameResult = this.registry.validateResourceField(
       'crop',
       'name',
-      dto.name,
+      input.name,
     );
 
     if (!nameResult.valid) {
@@ -71,22 +183,73 @@ export class CropsService {
       });
     }
 
+    const normalizedName = nameResult.value as string;
+    const sowingDate =
+      input.sowingDate ??
+      options.defaultSowingDate;
+
+    /*
+     * Intake historically prevented duplicate same-day Crop creation.
+     * Keep that rule inside the canonical Crop owner so it cannot be bypassed
+     * by moving the workflow to another entry point.
+     */
+    if (
+      options.preventSameDayDuplicate &&
+      sowingDate
+    ) {
+      const startOfDay = new Date(
+        sowingDate.getFullYear(),
+        sowingDate.getMonth(),
+        sowingDate.getDate(),
+      );
+
+      const startOfNextDay = new Date(
+        sowingDate.getFullYear(),
+        sowingDate.getMonth(),
+        sowingDate.getDate() + 1,
+      );
+
+      const existingCrop =
+        await this.prisma.crop.findFirst({
+          where: {
+            farmId: farm.id,
+            deletedAt: null,
+            name: {
+              equals: normalizedName,
+              mode: 'insensitive',
+            },
+            sowingDate: {
+              gte: startOfDay,
+              lt: startOfNextDay,
+            },
+          },
+        });
+
+      if (existingCrop) {
+        return existingCrop;
+      }
+    }
+
     return this.prisma.crop.create({
       data: {
-        farmId: dto.farmId,
-        name: nameResult.value as string,
-        variety: dto.variety,
-        season: dto.season,
-        status: dto.status,
-        sowingDate: dto.sowingDate
-          ? new Date(dto.sowingDate)
-          : null,
-        harvestDate: dto.harvestDate
-          ? new Date(dto.harvestDate)
-          : null,
-        area: dto.area,
-        unit: dto.unit,
-        notes: dto.notes,
+        farmId: farm.id,
+        name: normalizedName,
+        variety: input.variety,
+        season:
+          input.season ??
+          options.defaultSeason,
+        status:
+          input.status ??
+          options.defaultStatus,
+        sowingDate:
+          sowingDate ??
+          (options.preserveNullDates ? null : undefined),
+        harvestDate:
+          input.harvestDate ??
+          (options.preserveNullDates ? null : undefined),
+        area: input.area,
+        unit: input.unit,
+        notes: input.notes,
       },
     });
   }
