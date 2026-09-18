@@ -60,104 +60,41 @@ export class FarmsService {
   private validateFarmFields(
     data: Partial<CreateFarmDto>,
   ): Partial<CreateFarmDto> {
-    const fields: Array<{
-      key: keyof CreateFarmDto;
-      label: string;
-    }> = [
-      {
-        key: 'name',
-        label: 'farm name',
-      },
-      {
-        key: 'type',
-        label: 'farm type',
-      },
-      {
-        key: 'description',
-        label: 'farm description',
-      },
-      {
-        key: 'location',
-        label: 'farm location',
-      },
-      {
-        key: 'latitude',
-        label: 'farm latitude',
-      },
-      {
-        key: 'longitude',
-        label: 'farm longitude',
-      },
-      {
-        key: 'area',
-        label: 'farm area',
-      },
-      {
-        key: 'unit',
-        label: 'farm unit',
-      },
-    ];
-
-    const validated: Partial<CreateFarmDto> = {};
-
-    for (const field of fields) {
-      const value = data[field.key];
-
-      if (value === undefined) {
-        continue;
-      }
-
-      const result = this.registry.validateResourceField(
-        'farm',
-        field.key,
-        value,
-      );
-
-      if (!result.valid) {
-        throw new BadRequestException({
-          message: `Invalid ${field.label}.`,
-          errors: result.errors,
-        });
-      }
-
-      validated[field.key] = result.value as never;
-    }
-
-    return validated;
+    return this.validateResourceFields(
+      'farm',
+      data,
+    );
   }
 
   private validateFarmRecordFields(
     data: Partial<CreateFarmRecordDto>,
   ): Partial<CreateFarmRecordDto> {
-    const fields: Array<{
-      key: keyof CreateFarmRecordDto;
-      label: string;
-    }> = [
-      {
-        key: 'category',
-        label: 'farm record category',
-      },
-      {
-        key: 'title',
-        label: 'farm record title',
-      },
-      {
-        key: 'inputMethod',
-        label: 'farm record input method',
-      },
-      {
-        key: 'data',
-        label: 'farm record data',
-      },
-    ];
+    return this.validateResourceFields(
+      'farmRecord',
+      data,
+    );
+  }
 
-    const validated: Partial<CreateFarmRecordDto> = {};
+  private validateFarmAssetFields(
+    data: Partial<CreateFarmAssetDto>,
+  ): Partial<CreateFarmAssetDto> {
+    return this.validateResourceFields(
+      'farmAsset',
+      data,
+    );
+  }
 
-    for (const field of fields) {
-      const value = data[field.key];
+  private validateResourceFields<T extends object>(
+    resourceName: string,
+    data: Partial<T>,
+  ): Partial<T> {
+    const validated: Partial<T> = {};
+
+    for (const fieldName of Object.keys(data) as Array<keyof T>) {
+      const value = data[fieldName];
 
       /*
-       * Optional FarmRecord fields retain the existing service behavior:
+       * Optional fields retain the existing service behavior:
        * undefined means the field was omitted and should not be sent through
        * Registry validation. Required fields are guaranteed by the DTO layer.
        */
@@ -166,79 +103,41 @@ export class FarmsService {
       }
 
       const result = this.registry.validateResourceField(
-        'farmRecord',
-        field.key,
+        resourceName,
+        String(fieldName),
         value,
       );
 
       if (!result.valid) {
         throw new BadRequestException({
-          message: `Invalid ${field.label}.`,
+          message: `Invalid ${this.formatResourceFieldLabel(
+            resourceName,
+            String(fieldName),
+          )}.`,
           errors: result.errors,
         });
       }
 
-      validated[field.key] = result.value as never;
+      validated[fieldName] = result.value as never;
     }
 
     return validated;
   }
 
-  private validateFarmAssetFields(
-    data: Partial<CreateFarmAssetDto>,
-  ): Partial<CreateFarmAssetDto> {
-    const fields: Array<{
-      key: keyof CreateFarmAssetDto;
-      label: string;
-    }> = [
-      {
-        key: 'type',
-        label: 'farm asset type',
-      },
-      {
-        key: 'name',
-        label: 'farm asset name',
-      },
-      {
-        key: 'quantity',
-        label: 'farm asset quantity',
-      },
-      {
-        key: 'unit',
-        label: 'farm asset unit',
-      },
-      {
-        key: 'metadata',
-        label: 'farm asset metadata',
-      },
-    ];
+  private formatResourceFieldLabel(
+    resourceName: string,
+    fieldName: string,
+  ): string {
+    return `${this.humanizeIdentifier(
+      resourceName,
+    )} ${this.humanizeIdentifier(fieldName)}`;
+  }
 
-    const validated: Partial<CreateFarmAssetDto> = {};
-
-    for (const field of fields) {
-      const value = data[field.key];
-
-      if (value === undefined) {
-        continue;
-      }
-
-      const result = this.registry.validateResourceField(
-        'farmAsset',
-        field.key,
-        value,
-      );
-
-      if (!result.valid) {
-        throw new BadRequestException({
-          message: `Invalid ${field.label}.`,
-          errors: result.errors,
-        });
-      }
-
-      validated[field.key] = result.value as never;
-    }
-
-    return validated;
+  private humanizeIdentifier(value: string): string {
+    return value
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .toLowerCase();
   }
 
   async findMyFarms(ownerId: string, role: UserRole) {
