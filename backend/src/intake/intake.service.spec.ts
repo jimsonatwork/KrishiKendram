@@ -13,13 +13,6 @@ describe('IntakeService', () => {
     farm: {
       findUnique: jest.fn(),
     },
-    crop: {
-      findFirst: jest.fn(),
-      create: jest.fn(),
-    },
-    farmRecord: {
-      create: jest.fn(),
-    },
   } as any;
 
   const extractor = {
@@ -30,11 +23,8 @@ describe('IntakeService', () => {
     assertCan: jest.fn(),
   } as any;
 
-  const registry = {
-    validateResourceField: jest.fn(),
-  } as any;
-
   const farmsService = {
+    addCrop: jest.fn(),
     addRecord: jest.fn(),
   } as any;
 
@@ -45,7 +35,6 @@ describe('IntakeService', () => {
       prisma,
       extractor,
       authorization,
-      registry,
       farmsService,
     );
   });
@@ -60,19 +49,6 @@ describe('IntakeService', () => {
       raw: 'general farm observation',
       category: 'GENERAL',
     });
-
-    registry.validateResourceField
-      .mockImplementation(
-        (
-          resource: string,
-          field: string,
-          value: unknown,
-        ) => ({
-          valid: true,
-          value,
-          errors: [],
-        }),
-      );
 
     const record = {
       id: 'record-1',
@@ -125,7 +101,7 @@ describe('IntakeService', () => {
     );
   });
 
-  it('creates a Crop from a planting intake', async () => {
+  it('delegates a planting Crop to the canonical FarmsService mutation boundary', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
       ownerId: 'user-1',
@@ -144,15 +120,7 @@ describe('IntakeService', () => {
       },
     });
 
-    prisma.crop.findFirst.mockResolvedValue(null);
-
-    registry.validateResourceField.mockReturnValue({
-      valid: true,
-      value: 'Rice',
-      errors: [],
-    });
-
-    prisma.crop.create.mockResolvedValue({
+    farmsService.addCrop.mockResolvedValue({
       id: 'crop-1',
       name: 'Rice',
     });
@@ -171,22 +139,17 @@ describe('IntakeService', () => {
       },
     );
 
-    expect(
-      registry.validateResourceField,
-    ).toHaveBeenCalledWith(
-      'crop',
-      'name',
-      'Rice',
-    );
-
-    expect(prisma.crop.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        farmId: 'farm-1',
+    expect(farmsService.addCrop).toHaveBeenCalledWith(
+      'farm-1',
+      expect.objectContaining({
         name: 'Rice',
         area: 2,
         unit: 'acres',
+        sowingDate: expect.any(Date),
       }),
-    });
+      'user-1',
+      UserRole.FARMER,
+    );
 
     expect(
       authorization.assertCan,
@@ -203,7 +166,7 @@ describe('IntakeService', () => {
     });
   });
 
-  it('persists the normalized Crop name returned by Registry', async () => {
+  it('passes the extracted Crop name unchanged to FarmsService', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
       ownerId: 'user-1',
@@ -217,15 +180,7 @@ describe('IntakeService', () => {
       },
     });
 
-    prisma.crop.findFirst.mockResolvedValue(null);
-
-    registry.validateResourceField.mockReturnValue({
-      valid: true,
-      value: 'Rice',
-      errors: [],
-    });
-
-    prisma.crop.create.mockResolvedValue({
+    farmsService.addCrop.mockResolvedValue({
       id: 'crop-1',
       name: 'Rice',
     });
@@ -244,14 +199,21 @@ describe('IntakeService', () => {
       },
     );
 
-    expect(prisma.crop.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        name: 'Rice',
+    /*
+     * Intake owns interpretation only.
+     * Registry normalization belongs to FarmsService.addCrop().
+     */
+    expect(farmsService.addCrop).toHaveBeenCalledWith(
+      'farm-1',
+      expect.objectContaining({
+        name: '  Rice  ',
       }),
-    });
+      'user-1',
+      UserRole.FARMER,
+    );
   });
 
-  it('rejects an AI-created Crop when Registry rejects the name', async () => {
+  it('propagates Crop validation errors from FarmsService', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
       ownerId: 'user-1',
@@ -265,13 +227,9 @@ describe('IntakeService', () => {
       },
     });
 
-    prisma.crop.findFirst.mockResolvedValue(null);
-
-    registry.validateResourceField.mockReturnValue({
-      valid: false,
-      value: 'Rice',
-      errors: ['Field is invalid.'],
-    });
+    farmsService.addCrop.mockRejectedValue(
+      new Error('Field is invalid.'),
+    );
 
     await expect(
       service.create(
@@ -285,7 +243,7 @@ describe('IntakeService', () => {
       ),
     ).rejects.toThrow('Field is invalid.');
 
-    expect(prisma.crop.create).not.toHaveBeenCalled();
+    expect(farmsService.addCrop).toHaveBeenCalled();
   });
 
   it('authorizes farm-record creation before extracting intake content', async () => {
@@ -294,38 +252,28 @@ describe('IntakeService', () => {
       ownerId: 'user-1',
     });
 
-    authorization.assertCan.mockImplementationOnce(async (request: any) => {
-      expect(request).toEqual({
-        user: {
-          userId: 'user-1',
-          role: UserRole.FARMER,
-        },
-        module: 'farms',
-        resource: 'farmRecord',
-        action: AuthorizationAction.CREATE,
-        farmId: 'farm-1',
-        ownerId: 'user-1',
-      });
+    authorization.assertCan.mockImplementationOnce(
+      async (request: any) => {
+        expect(request).toEqual({
+          user: {
+            userId: 'user-1',
+            role: UserRole.FARMER,
+          },
+          module: 'farms',
+          resource: 'farmRecord',
+          action: AuthorizationAction.CREATE,
+          farmId: 'farm-1',
+          ownerId: 'user-1',
+        });
 
-      expect(extractor.extract).not.toHaveBeenCalled();
-    });
+        expect(extractor.extract).not.toHaveBeenCalled();
+      },
+    );
 
     extractor.extract.mockResolvedValue({
       raw: 'general farm observation',
       category: 'GENERAL',
     });
-
-    registry.validateResourceField.mockImplementation(
-      (
-        resource: string,
-        field: string,
-        value: unknown,
-      ) => ({
-        valid: true,
-        value,
-        errors: [],
-      }),
-    );
 
     farmsService.addRecord.mockResolvedValue({
       id: 'record-1',
@@ -370,10 +318,10 @@ describe('IntakeService', () => {
 
     expect(extractor.extract).not.toHaveBeenCalled();
     expect(farmsService.addRecord).not.toHaveBeenCalled();
-    expect(prisma.crop.create).not.toHaveBeenCalled();
+    expect(farmsService.addCrop).not.toHaveBeenCalled();
   });
 
-  it('authorizes Crop creation before Registry validation', async () => {
+  it('authorizes Crop creation before delegating to FarmsService', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
       ownerId: 'user-1',
@@ -387,26 +335,25 @@ describe('IntakeService', () => {
       },
     });
 
-    prisma.crop.findFirst.mockResolvedValue(null);
-
-    registry.validateResourceField.mockImplementation(() => {
-      expect(authorization.assertCan).toHaveBeenCalledWith(
-        expect.objectContaining({
-          resource: 'crop',
-          action: AuthorizationAction.CREATE,
-        }),
-      );
+    farmsService.addCrop.mockImplementation(async () => {
+      expect(
+        authorization.assertCan,
+      ).toHaveBeenCalledWith({
+        user: {
+          userId: 'user-1',
+          role: UserRole.FARMER,
+        },
+        module: 'farms',
+        resource: 'crop',
+        action: AuthorizationAction.CREATE,
+        farmId: 'farm-1',
+        ownerId: 'user-1',
+      });
 
       return {
-        valid: true,
-        value: 'Rice',
-        errors: [],
+        id: 'crop-1',
+        name: 'Rice',
       };
-    });
-
-    prisma.crop.create.mockResolvedValue({
-      id: 'crop-1',
-      name: 'Rice',
     });
 
     farmsService.addRecord.mockResolvedValue({
@@ -422,9 +369,11 @@ describe('IntakeService', () => {
         content: 'planted rice',
       },
     );
+
+    expect(farmsService.addCrop).toHaveBeenCalled();
   });
 
-  it('does not create a duplicate Crop for the same planting day', async () => {
+  it('delegates duplicate Crop handling to FarmsService', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
       ownerId: 'user-1',
@@ -438,7 +387,7 @@ describe('IntakeService', () => {
       },
     });
 
-    prisma.crop.findFirst.mockResolvedValue({
+    farmsService.addCrop.mockResolvedValue({
       id: 'existing-crop',
       name: 'Rice',
     });
@@ -457,6 +406,13 @@ describe('IntakeService', () => {
       },
     );
 
-    expect(prisma.crop.create).not.toHaveBeenCalled();
+    expect(farmsService.addCrop).toHaveBeenCalledWith(
+      'farm-1',
+      expect.objectContaining({
+        name: 'Rice',
+      }),
+      'user-1',
+      UserRole.FARMER,
+    );
   });
 });

@@ -1,12 +1,9 @@
 import {
-  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
 import {
-  CropSeason,
-  CropStatus,
   Prisma,
   UserRole,
 } from '@prisma/client';
@@ -22,10 +19,6 @@ import {
   AuthorizationService,
 } from '../platform/authorization/authorization.service';
 
-import {
-  RegistryService,
-} from '../platform/registry/registry.service';
-
 import { CreateIntakeDto } from './dto/create-intake.dto';
 import { IntakeExtractorService } from './extractor/intake-extractor.service';
 
@@ -35,7 +28,6 @@ export class IntakeService {
     private readonly prisma: PrismaService,
     private readonly extractor: IntakeExtractorService,
     private readonly authorization: AuthorizationService,
-    private readonly registry: RegistryService,
     private readonly farmsService: FarmsService,
   ) {}
 
@@ -83,6 +75,14 @@ export class IntakeService {
       extracted.category === 'PLANTING' &&
       extracted.crop
     ) {
+      /*
+       * Keep the Crop authorization at the Intake boundary before passing
+       * extracted farm data into the canonical Crop mutation service.
+       *
+       * FarmsService.addCrop() performs the same authorization again as its
+       * own mandatory mutation boundary. This protects the service if it is
+       * ever called from another entry point.
+       */
       await this.authorization.assertCan({
         user: {
           userId,
@@ -97,60 +97,24 @@ export class IntakeService {
 
       const sowingDate = new Date();
 
-      const startOfDay = new Date(
-        sowingDate.getFullYear(),
-        sowingDate.getMonth(),
-        sowingDate.getDate(),
+      /*
+       * Crop persistence belongs to FarmsService.
+       *
+       * Intake owns interpretation of the supplied content, but it must not
+       * maintain a second Crop validation, duplicate-check, or Prisma
+       * persistence path.
+       */
+      await this.farmsService.addCrop(
+        dto.farmId,
+        {
+          name: extracted.crop.name,
+          sowingDate,
+          area: extracted.activity?.area,
+          unit: extracted.activity?.unit,
+        },
+        userId,
+        role,
       );
-
-      const startOfNextDay = new Date(
-        sowingDate.getFullYear(),
-        sowingDate.getMonth(),
-        sowingDate.getDate() + 1,
-      );
-
-      const existingCrop =
-        await this.prisma.crop.findFirst({
-          where: {
-            farmId: farm.id,
-            deletedAt: null,
-            name: {
-              equals: extracted.crop.name,
-              mode: 'insensitive',
-            },
-            sowingDate: {
-              gte: startOfDay,
-              lt: startOfNextDay,
-            },
-          },
-        });
-
-      if (!existingCrop) {
-        const cropNameResult =
-          this.registry.validateResourceField(
-            'crop',
-            'name',
-            extracted.crop.name,
-          );
-
-        if (!cropNameResult.valid) {
-          throw new BadRequestException(
-            cropNameResult.errors.join(' '),
-          );
-        }
-
-        await this.prisma.crop.create({
-          data: {
-            farmId: farm.id,
-            name: cropNameResult.value as string,
-            season: CropSeason.UNKNOWN,
-            status: CropStatus.SOWN,
-            sowingDate,
-            area: extracted.activity?.area,
-            unit: extracted.activity?.unit,
-          },
-        });
-      }
     }
 
     /*

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { UserRole } from '@prisma/client';
+import { CropSeason, CropStatus, UserRole } from '@prisma/client';
 
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { RegistryService } from '../platform/registry/registry.service';
@@ -125,7 +125,6 @@ export class FarmsService {
 
     return validated;
   }
-
 
   private validateFarmRecordFields(
     data: Partial<CreateFarmRecordDto>,
@@ -530,6 +529,129 @@ export class FarmsService {
     return this.prisma.farmAsset.delete({
       where: {
         id: assetId,
+      },
+    });
+  }
+
+  async addCrop(
+    farmId: string,
+    input: {
+      name: string;
+      variety?: string;
+      season?: CropSeason;
+      status?: CropStatus;
+      sowingDate?: Date;
+      harvestDate?: Date;
+      area?: number;
+      unit?: string;
+      notes?: string;
+    },
+    userId: string,
+    role: UserRole,
+  ) {
+    /*
+     * Retrieve only the minimum farm context required for authorization.
+     * Protected farm fields must not be loaded before authorization.
+     */
+    const farmContext = await this.prisma.farm.findUnique({
+      where: {
+        id: farmId,
+      },
+      select: {
+        id: true,
+        ownerId: true,
+      },
+    });
+
+    if (!farmContext) {
+      throw new NotFoundException('Farm not found');
+    }
+
+    /*
+     * Authorization must remain before Registry validation.
+     * Validation must never become a resource-existence or data-disclosure
+     * oracle for callers who are not authorized to access this farm.
+     */
+    await this.authorization.assertCan({
+      user: {
+        userId,
+        role,
+      },
+      module: 'farms',
+      resource: 'crop',
+      action: AuthorizationAction.CREATE,
+      farmId: farmContext.id,
+      ownerId: farmContext.ownerId,
+    });
+
+    const nameResult = this.registry.validateResourceField(
+      'crop',
+      'name',
+      input.name,
+    );
+
+    if (!nameResult.valid) {
+      throw new BadRequestException({
+        message: 'Invalid crop name.',
+        errors: nameResult.errors,
+      });
+    }
+
+    const normalizedName = nameResult.value as string;
+    const sowingDate = input.sowingDate ?? new Date();
+
+    /*
+     * Preserve the existing Intake duplicate rule:
+     * a Crop with the same name on the same calendar day is not created twice.
+     *
+     * The duplicate check intentionally uses the Registry-normalized name so
+     * equivalent user/AI input cannot bypass duplicate protection through
+     * formatting differences.
+     */
+    const startOfDay = new Date(
+      sowingDate.getFullYear(),
+      sowingDate.getMonth(),
+      sowingDate.getDate(),
+    );
+
+    const startOfNextDay = new Date(
+      sowingDate.getFullYear(),
+      sowingDate.getMonth(),
+      sowingDate.getDate() + 1,
+    );
+
+    const existingCrop =
+      await this.prisma.crop.findFirst({
+        where: {
+          farmId: farmContext.id,
+          deletedAt: null,
+          name: {
+            equals: normalizedName,
+            mode: 'insensitive',
+          },
+          sowingDate: {
+            gte: startOfDay,
+            lt: startOfNextDay,
+          },
+        },
+      });
+
+    if (existingCrop) {
+      return existingCrop;
+    }
+
+    return this.prisma.crop.create({
+      data: {
+        farmId: farmContext.id,
+        name: normalizedName,
+        variety: input.variety,
+        season: input.season ?? CropSeason.UNKNOWN,
+        status: input.status ?? CropStatus.SOWN,
+        sowingDate,
+        harvestDate: input.harvestDate,
+        area: input.area,
+        unit: input.unit,
+        notes: input.notes,
       },
     });
   }
