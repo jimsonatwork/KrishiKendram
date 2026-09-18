@@ -170,20 +170,7 @@ export class CropsService {
       ownerId: farm.ownerId,
     });
 
-    const nameResult = this.registry.validateResourceField(
-      'crop',
-      'name',
-      input.name,
-    );
-
-    if (!nameResult.valid) {
-      throw new BadRequestException({
-        message: 'Invalid crop name.',
-        errors: nameResult.errors,
-      });
-    }
-
-    const normalizedName = nameResult.value as string;
+    const normalizedName = this.validateCropName(input.name);
     const sowingDate =
       input.sowingDate ??
       options.defaultSowingDate;
@@ -406,22 +393,9 @@ export class CropsService {
     };
 
     if (dto.name !== undefined) {
-      const nameResult = this.registry.validateResourceField(
-        'crop',
-        'name',
-        dto.name,
-      );
-
-      if (!nameResult.valid) {
-        throw new BadRequestException({
-          message: 'Invalid crop name.',
-          errors: nameResult.errors,
-        });
-      }
-
       updateData = {
         ...updateData,
-        name: nameResult.value as string,
+        name: this.validateCropName(dto.name),
       };
     }
 
@@ -431,6 +405,23 @@ export class CropsService {
       },
       data: updateData,
     });
+  }
+
+  private validateCropName(name: string): string {
+    const result = this.registry.validateResourceField(
+      'crop',
+      'name',
+      name,
+    );
+
+    if (!result.valid) {
+      throw new BadRequestException({
+        message: 'Invalid crop name.',
+        errors: result.errors,
+      });
+    }
+
+    return result.value as string;
   }
 
   async archive(
