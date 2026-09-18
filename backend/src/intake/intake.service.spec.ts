@@ -34,6 +34,10 @@ describe('IntakeService', () => {
     validateResourceField: jest.fn(),
   } as any;
 
+  const farmsService = {
+    addRecord: jest.fn(),
+  } as any;
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -42,6 +46,7 @@ describe('IntakeService', () => {
       extractor,
       authorization,
       registry,
+      farmsService,
     );
   });
 
@@ -76,7 +81,7 @@ describe('IntakeService', () => {
       title: 'AI Intake Record',
     };
 
-    prisma.farmRecord.create.mockResolvedValue(record);
+    farmsService.addRecord.mockResolvedValue(record);
 
     const result = await service.create(
       'user-1',
@@ -104,9 +109,9 @@ describe('IntakeService', () => {
       ownerId: 'user-1',
     });
 
-    expect(prisma.farmRecord.create).toHaveBeenCalledWith({
-      data: {
-        farmId: 'farm-1',
+    expect(farmsService.addRecord).toHaveBeenCalledWith(
+      'farm-1',
+      {
         category: 'GENERAL',
         title: 'AI Intake Record',
         inputMethod: InputMethod.MANUAL,
@@ -115,7 +120,9 @@ describe('IntakeService', () => {
           category: 'GENERAL',
         },
       },
-    });
+      'user-1',
+      UserRole.FARMER,
+    );
   });
 
   it('creates a Crop from a planting intake', async () => {
@@ -150,7 +157,7 @@ describe('IntakeService', () => {
       name: 'Rice',
     });
 
-    prisma.farmRecord.create.mockResolvedValue({
+    farmsService.addRecord.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -223,7 +230,7 @@ describe('IntakeService', () => {
       name: 'Rice',
     });
 
-    prisma.farmRecord.create.mockResolvedValue({
+    farmsService.addRecord.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -320,7 +327,7 @@ describe('IntakeService', () => {
       }),
     );
 
-    prisma.farmRecord.create.mockResolvedValue({
+    farmsService.addRecord.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -362,7 +369,7 @@ describe('IntakeService', () => {
     ).rejects.toThrow('Forbidden');
 
     expect(extractor.extract).not.toHaveBeenCalled();
-    expect(prisma.farmRecord.create).not.toHaveBeenCalled();
+    expect(farmsService.addRecord).not.toHaveBeenCalled();
     expect(prisma.crop.create).not.toHaveBeenCalled();
   });
 
@@ -402,7 +409,7 @@ describe('IntakeService', () => {
       name: 'Rice',
     });
 
-    prisma.farmRecord.create.mockResolvedValue({
+    farmsService.addRecord.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -436,7 +443,7 @@ describe('IntakeService', () => {
       name: 'Rice',
     });
 
-    prisma.farmRecord.create.mockResolvedValue({
+    farmsService.addRecord.mockResolvedValue({
       id: 'record-1',
     });
 

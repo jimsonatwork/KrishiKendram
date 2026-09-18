@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { FarmsService } from '../farms/farms.service';
 
 import {
   AuthorizationAction,
@@ -35,6 +36,7 @@ export class IntakeService {
     private readonly extractor: IntakeExtractorService,
     private readonly authorization: AuthorizationService,
     private readonly registry: RegistryService,
+    private readonly farmsService: FarmsService,
   ) {}
 
   async create(
@@ -151,51 +153,29 @@ export class IntakeService {
       }
     }
 
-    const categoryResult =
-      this.registry.validateResourceField(
-        'farmRecord',
-        'category',
-        extracted.category,
-      );
-
-    if (!categoryResult.valid) {
-      throw new BadRequestException(
-        categoryResult.errors.join(' '),
-      );
-    }
-
-    const titleResult =
-      this.registry.validateResourceField(
-        'farmRecord',
-        'title',
-        'AI Intake Record',
-      );
-
-    if (!titleResult.valid) {
-      throw new BadRequestException(
-        titleResult.errors.join(' '),
-      );
-    }
-
+    /*
+     * FarmRecord mutation belongs to FarmsService.
+     *
+     * Intake owns interpretation of the supplied content, but it must not
+     * create a second FarmRecord persistence/validation path. FarmsService
+     * remains the canonical mutation boundary for authorization, Registry
+     * validation, normalization, and Prisma persistence.
+     */
     const jsonData =
       JSON.parse(
         JSON.stringify(extracted),
       ) as Prisma.InputJsonValue;
 
-    const record =
-      await this.prisma.farmRecord.create({
-        data: {
-          farmId: dto.farmId,
-          category: categoryResult.value as string,
-          title:
-            titleResult.value === ''
-              ? null
-              : String(titleResult.value),
-          inputMethod: dto.inputMethod,
-          data: jsonData,
-        },
-      });
-
-    return record;
+    return this.farmsService.addRecord(
+      dto.farmId,
+      {
+        category: extracted.category,
+        title: 'AI Intake Record',
+        inputMethod: dto.inputMethod,
+        data: jsonData as Record<string, any>,
+      },
+      userId,
+      role,
+    );
   }
 }
