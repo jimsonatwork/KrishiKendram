@@ -30,18 +30,11 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const nameResult =
-      this.registry.validateResourceField(
-        'user',
+    const name =
+      this.validateUserField(
         'name',
         dto.name,
-      );
-
-    if (!nameResult.valid) {
-      throw new BadRequestException(
-        nameResult.errors.join(' '),
-      );
-    }
+      ) as string;
 
     let normalizedEmail:
       | string
@@ -49,26 +42,17 @@ export class AuthService {
       | undefined;
 
     if (dto.email !== undefined) {
-      const emailResult =
-        this.registry.validateResourceField(
-          'user',
+      const value =
+        this.validateUserField(
           'email',
           dto.email,
         );
 
-      if (!emailResult.valid) {
-        throw new BadRequestException(
-          emailResult.errors.join(' '),
-        );
-      }
-
       normalizedEmail =
-        emailResult.value === null ||
-        emailResult.value === undefined
+        value === null ||
+        value === undefined
           ? null
-          : String(
-              emailResult.value,
-            );
+          : String(value);
     }
 
     let normalizedMobile:
@@ -77,27 +61,18 @@ export class AuthService {
       | undefined;
 
     if (dto.mobile !== undefined) {
-      const mobileResult =
-        this.registry.validateResourceField(
-          'user',
+      const value =
+        this.validateUserField(
           'mobile',
           dto.mobile,
         );
 
-      if (!mobileResult.valid) {
-        throw new BadRequestException(
-          mobileResult.errors.join(' '),
-        );
-      }
-
       normalizedMobile =
-        mobileResult.value === null ||
-        mobileResult.value === undefined ||
-        mobileResult.value === ''
+        value === null ||
+        value === undefined ||
+        value === ''
           ? null
-          : String(
-              mobileResult.value,
-            );
+          : String(value);
     }
 
     const passwordResult =
@@ -120,25 +95,16 @@ export class AuthService {
     if (
       dto.preferredLanguage !== undefined
     ) {
-      const languageResult =
-        this.registry.validateResourceField(
-          'user',
+      const value =
+        this.validateUserField(
           'preferredLanguage',
           dto.preferredLanguage,
         );
 
-      if (!languageResult.valid) {
-        throw new BadRequestException(
-          languageResult.errors.join(' '),
-        );
-      }
-
       normalizedPreferredLanguage =
-        languageResult.value === ''
+        value === ''
           ? null
-          : String(
-              languageResult.value,
-            );
+          : String(value);
     }
 
     const passwordHash = await bcrypt.hash(
@@ -148,7 +114,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        name: nameResult.value as string,
+        name,
         email: normalizedEmail,
         mobile: normalizedMobile,
         preferredLanguage:
@@ -446,4 +412,25 @@ export class AuthService {
       refreshToken,
     };
   }
+
+  private validateUserField(
+    fieldName: string,
+    value: unknown,
+  ): unknown {
+    const result =
+      this.registry.validateResourceField(
+        'user',
+        fieldName,
+        value,
+      );
+
+    if (!result.valid) {
+      throw new BadRequestException(
+        result.errors.join(' '),
+      );
+    }
+
+    return result.value;
+  }
+
 }
