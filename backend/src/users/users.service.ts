@@ -164,34 +164,17 @@ export class UsersService {
     },
     actorId?: string,
   ) {
-    const nameResult =
-      this.registry.validateResourceField(
-        'user',
+    const name =
+      this.validateUserField(
         'name',
         data.name,
-      )
+      ) as string
 
-    if (!nameResult.valid) {
-      throw new BadRequestException(
-        nameResult.errors.join(' '),
-      )
-    }
-
-    const emailResult =
-      this.registry.validateResourceField(
-        'user',
+    const email =
+      this.validateUserField(
         'email',
         data.email,
-      )
-
-    if (!emailResult.valid) {
-      throw new BadRequestException(
-        emailResult.errors.join(' '),
-      )
-    }
-
-    const name = nameResult.value as string
-    const email = emailResult.value as string
+      ) as string
 
     const existing = await this.prisma.user.findFirst({
       where: {
@@ -327,106 +310,65 @@ export class UsersService {
           | undefined
 
         if (dto.name !== undefined) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          normalizedName =
+            this.validateUserField(
               'name',
               dto.name,
-            )
-
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
-          normalizedName =
-            result.value as string
+            ) as string
         }
 
         if (dto.email !== undefined) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          const value =
+            this.validateUserField(
               'email',
               dto.email,
             )
 
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
           normalizedEmail =
-            result.value === null ||
-            result.value === undefined
+            value === null ||
+            value === undefined
               ? null
-              : String(result.value)
+              : String(value)
         }
 
         if (dto.mobile !== undefined) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          const value =
+            this.validateUserField(
               'mobile',
               dto.mobile,
             )
 
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
           normalizedMobile =
-            result.value === null ||
-            result.value === undefined ||
-            result.value === ''
+            value === null ||
+            value === undefined ||
+            value === ''
               ? null
-              : String(result.value)
+              : String(value)
         }
 
         if (
           dto.preferredLanguage !== undefined
         ) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          const value =
+            this.validateUserField(
               'preferredLanguage',
               dto.preferredLanguage,
             )
 
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
           normalizedPreferredLanguage =
-            result.value === ''
+            value === ''
               ? null
-              : String(result.value)
+              : String(value)
         }
 
         if (
           dto.profileCompletion !== undefined
         ) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          normalizedProfileCompletion =
+            this.validateUserField(
               'profileCompletion',
               dto.profileCompletion,
-            )
-
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
-          normalizedProfileCompletion =
-            result.value as number
+            ) as number
         }
 
         if (
@@ -519,39 +461,19 @@ export class UsersService {
         }
 
         if (dto.role !== undefined) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          updateData.role =
+            this.validateUserField(
               'role',
               dto.role,
-            )
-
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
-          updateData.role =
-            result.value as UserRole
+            ) as UserRole
         }
 
         if (dto.status !== undefined) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          updateData.status =
+            this.validateUserField(
               'status',
               dto.status,
-            )
-
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
-          updateData.status =
-            result.value as UserStatus
+            ) as UserStatus
         }
 
         if (
@@ -564,21 +486,11 @@ export class UsersService {
         if (
           dto.preferredInputMethod !== undefined
         ) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          updateData.preferredInputMethod =
+            this.validateUserField(
               'preferredInputMethod',
               dto.preferredInputMethod,
-            )
-
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
-          updateData.preferredInputMethod =
-            result.value as InputMethod
+            ) as InputMethod
         }
 
         if (
@@ -589,21 +501,11 @@ export class UsersService {
         }
 
         if (dto.isVerified !== undefined) {
-          const result =
-            this.registry.validateResourceField(
-              'user',
+          updateData.isVerified =
+            this.validateUserField(
               'isVerified',
               dto.isVerified,
-            )
-
-          if (!result.valid) {
-            throw new BadRequestException(
-              result.errors.join(' '),
-            )
-          }
-
-          updateData.isVerified =
-            result.value as boolean
+            ) as boolean
         }
 
         if (dto.password !== undefined) {
@@ -1759,6 +1661,26 @@ private toSafeUser(
         'User not found',
       )
     }
+  }
+
+  private validateUserField(
+    fieldName: string,
+    value: unknown,
+  ): unknown {
+    const result =
+      this.registry.validateResourceField(
+        'user',
+        fieldName,
+        value,
+      )
+
+    if (!result.valid) {
+      throw new BadRequestException(
+        result.errors.join(' '),
+      )
+    }
+
+    return result.value
   }
 
   // ==========================================================
