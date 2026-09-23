@@ -3,10 +3,22 @@ import {
   UserRole,
 } from '@prisma/client';
 
+import {
+  AuthorizationAction,
+  AuthorizationScope,
+} from '../src/platform/authorization/authorization.types';
+
 const prisma = new PrismaClient();
 
 import { RESOURCE_DEFINITIONS } from '../src/platform/registry/definitions/resources';
 import { ResourceDefinition } from '../src/platform/registry/resource-definition.interface';
+
+const FARMER_CRUD_ACTIONS = new Set<AuthorizationAction>([
+  AuthorizationAction.READ,
+  AuthorizationAction.CREATE,
+  AuthorizationAction.UPDATE,
+  AuthorizationAction.DELETE,
+]);
 
 const CRUD_ACTIONS = [
   'READ',
@@ -159,44 +171,53 @@ async function reconcileRolePermissions(
   }
 }
 
-async function seedResourceCrudCapabilities() {
+async function seedResourceCapabilities() {
   for (const resource of RESOURCE_DEFINITIONS) {
     const module = getResourceModule(resource);
 
-    for (const action of CRUD_ACTIONS) {
-      if (!resource.permissions?.includes(action)) {
-        continue;
-      }
-
-      // ADMIN and SUPER_ADMIN receive automatic GLOBAL CRUD
-      // for every registered resource that declares the action.
-      const globalPermission = await ensurePermission(
-        module,
-        resource.name,
-        action,
-        'GLOBAL',
-      );
-
-      await reconcileRolePermissions(
-        globalPermission.id,
-        ADMINISTRATIVE_ROLES,
-      );
-
-      // FARMER receives the resource's declared ownership scope.
-      const farmerScope = getFarmerScope(resource);
-
-      if (farmerScope) {
-        const farmerPermission = await ensurePermission(
+    // Registry capabilities are the canonical declaration of what a
+    // resource supports. They do not grant roles by themselves.
+    for (const capability of resource.capabilities ?? []) {
+      // GLOBAL capabilities are automatically available to the
+      // administrative roles. This is the platform-level administrative
+      // policy and avoids maintaining a hardcoded resource list.
+      if (capability.scopes.includes(AuthorizationScope.GLOBAL)) {
+        const globalPermission = await ensurePermission(
           module,
           resource.name,
-          action,
-          farmerScope,
+          capability.action,
+          AuthorizationScope.GLOBAL,
         );
 
         await reconcileRolePermissions(
-          farmerPermission.id,
-          [UserRole.FARMER],
+          globalPermission.id,
+          ADMINISTRATIVE_ROLES,
         );
+      }
+
+      // FARMER authorization remains explicitly policy-driven.
+      // Only the currently approved CRUD capabilities receive the
+      // resource-specific FARMER scope. Future non-CRUD capabilities
+      // must not become FARMER permissions automatically.
+      if (FARMER_CRUD_ACTIONS.has(capability.action)) {
+        const farmerScope = getFarmerScope(resource);
+
+        if (
+          farmerScope &&
+          capability.scopes.includes(farmerScope as AuthorizationScope)
+        ) {
+          const farmerPermission = await ensurePermission(
+            module,
+            resource.name,
+            capability.action,
+            farmerScope,
+          );
+
+          await reconcileRolePermissions(
+            farmerPermission.id,
+            [UserRole.FARMER],
+          );
+        }
       }
     }
   }
@@ -219,7 +240,7 @@ async function seedUserPlatformCapabilities() {
 }
 
 async function main() {
-  await seedResourceCrudCapabilities();
+  await seedResourceCapabilities();
   await seedUserPlatformCapabilities();
 
   console.log(
