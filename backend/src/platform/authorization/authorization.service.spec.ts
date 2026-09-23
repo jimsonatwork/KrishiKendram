@@ -22,6 +22,9 @@ describe('AuthorizationService', () => {
   const fieldPolicyEvaluationService = {
     evaluate: jest.fn(),
   };
+  const permissionService = {
+    findForAuthorization: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -35,6 +38,7 @@ describe('AuthorizationService', () => {
     service = new AuthorizationService(
       prisma,
       fieldPolicyEvaluationService as any,
+      permissionService as any,
     );
   });
 
@@ -60,8 +64,36 @@ describe('AuthorizationService', () => {
     };
   }
 
+  it('loads authorization permissions through PermissionService', async () => {
+    const authorizedPermission = {
+      id: 'permission-boundary',
+      module: 'farms',
+      section: null,
+      resource: 'crop',
+      action: AuthorizationAction.READ,
+      scope: AuthorizationScope.GLOBAL,
+      rolePermissions: [{ role: UserRole.FARMER }],
+      accessGrants: [],
+    };
+
+    permissionService.findForAuthorization.mockResolvedValue([
+      authorizedPermission,
+    ]);
+
+    await expect(service.can(request)).resolves.toBe(true);
+
+    expect(permissionService.findForAuthorization).toHaveBeenCalledWith({
+      module: 'farms',
+      section: undefined,
+      resource: 'crop',
+      action: AuthorizationAction.READ,
+      role: UserRole.FARMER,
+      userId: 'user-1',
+    });
+  });
+
   it('allows GLOBAL permission for a matching role', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.GLOBAL),
     ]);
 
@@ -69,7 +101,7 @@ describe('AuthorizationService', () => {
   });
 
   it('allows OWN permission only when ownerId matches the user', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.OWN),
     ]);
 
@@ -89,7 +121,7 @@ describe('AuthorizationService', () => {
   });
 
   it('denies FARM permission when farmId is missing', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),
     ]);
 
@@ -99,7 +131,7 @@ describe('AuthorizationService', () => {
   });
 
   it('denies FARM permission when the referenced farm does not exist', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),
     ]);
 
@@ -114,7 +146,7 @@ describe('AuthorizationService', () => {
   });
 
   it('denies FARM permission when the user does not own the referenced farm', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),
     ]);
 
@@ -131,7 +163,7 @@ describe('AuthorizationService', () => {
   });
 
   it('allows FARM permission when the user owns the referenced farm', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),
     ]);
 
@@ -157,7 +189,7 @@ describe('AuthorizationService', () => {
   });
 
   it('allows an explicit FARM grant only for its assigned user', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       {
         ...permission(AuthorizationScope.FARM),
         accessGrants: [
@@ -178,7 +210,7 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(true);
 
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       {
         ...permission(AuthorizationScope.FARM),
         accessGrants: [
@@ -205,7 +237,7 @@ describe('AuthorizationService', () => {
   });
 
   it('applies an explicit FARM deny before the scope allows access', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       {
         ...permission(AuthorizationScope.FARM),
         accessGrants: [
@@ -232,7 +264,7 @@ describe('AuthorizationService', () => {
   });
 
   it('assertCan throws when authorization is denied', async () => {
-    prisma.permission.findMany.mockResolvedValue([]);
+    permissionService.findForAuthorization.mockResolvedValue([]);
 
     await expect(service.assertCan(request)).rejects.toBeInstanceOf(
       ForbiddenException,
@@ -240,7 +272,7 @@ describe('AuthorizationService', () => {
   });
 
   it('allows OWN user READ permission for the current user', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       {
         module: 'platform',
         section: null,
@@ -267,7 +299,7 @@ describe('AuthorizationService', () => {
   });
 
   it('denies OWN user READ permission for another user', async () => {
-    prisma.permission.findMany.mockResolvedValue([
+    permissionService.findForAuthorization.mockResolvedValue([
       {
         module: 'platform',
         section: null,
@@ -303,7 +335,7 @@ describe('AuthorizationService', () => {
       accessGrants: [],
     };
 
-    prisma.permission.findMany.mockResolvedValueOnce([
+    permissionService.findForAuthorization.mockResolvedValueOnce([
       {
         ...globalUserReadPermission,
         rolePermissions: [{ role: UserRole.ADMIN }],
@@ -328,7 +360,7 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(true);
 
-    prisma.permission.findMany.mockResolvedValueOnce([
+    permissionService.findForAuthorization.mockResolvedValueOnce([
       {
         ...globalUserReadPermission,
         rolePermissions: [{ role: UserRole.SUPER_ADMIN }],
@@ -353,7 +385,7 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(true);
 
-    prisma.permission.findMany.mockResolvedValueOnce([]);
+    permissionService.findForAuthorization.mockResolvedValueOnce([]);
 
     prisma.user.findUnique.mockResolvedValueOnce({
       id: 'user-1',
@@ -387,7 +419,7 @@ describe('AuthorizationService', () => {
         accessGrants: [],
       };
 
-      prisma.permission.findMany.mockResolvedValue([permission] as never);
+      permissionService.findForAuthorization.mockResolvedValue([permission] as never);
 
       await expect(
         service.authorize({
@@ -420,7 +452,7 @@ describe('AuthorizationService', () => {
         accessGrants: [],
       };
 
-      prisma.permission.findMany.mockResolvedValue([permission] as never);
+      permissionService.findForAuthorization.mockResolvedValue([permission] as never);
 
       await expect(
         service.authorize({
@@ -434,7 +466,7 @@ describe('AuthorizationService', () => {
     });
 
     it('returns no permissionId when no permission matches', async () => {
-      prisma.permission.findMany.mockResolvedValue([]);
+      permissionService.findForAuthorization.mockResolvedValue([]);
 
       await expect(
         service.authorize(request),
@@ -455,7 +487,7 @@ describe('AuthorizationService', () => {
         accessGrants: [],
       };
 
-      prisma.permission.findMany.mockResolvedValue([permission] as never);
+      permissionService.findForAuthorization.mockResolvedValue([permission] as never);
 
       await expect(service.can(request)).resolves.toBe(true);
     });
@@ -469,7 +501,7 @@ describe('AuthorizationService', () => {
         id: 'permission-exact',
       };
 
-      prisma.permission.findMany.mockResolvedValue([
+      permissionService.findForAuthorization.mockResolvedValue([
         authorizedPermission,
       ]);
 
@@ -508,7 +540,7 @@ describe('AuthorizationService', () => {
     });
 
     it('does not evaluate fields when resource authorization is denied', async () => {
-      prisma.permission.findMany.mockResolvedValue([]);
+      permissionService.findForAuthorization.mockResolvedValue([]);
 
       const result = await service.authorizeFields(
         request,
@@ -531,7 +563,7 @@ describe('AuthorizationService', () => {
         id: 'permission-own',
       };
 
-      prisma.permission.findMany.mockResolvedValue([
+      permissionService.findForAuthorization.mockResolvedValue([
         ownPermission,
       ]);
 
@@ -559,7 +591,7 @@ describe('AuthorizationService', () => {
         id: 'permission-field-deny',
       };
 
-      prisma.permission.findMany.mockResolvedValue([
+      permissionService.findForAuthorization.mockResolvedValue([
         authorizedPermission,
       ]);
 
@@ -603,7 +635,7 @@ describe('AuthorizationService', () => {
         action: AuthorizationAction.UPDATE,
       };
 
-      prisma.permission.findMany.mockResolvedValue([
+      permissionService.findForAuthorization.mockResolvedValue([
         authorizedPermission,
       ]);
 

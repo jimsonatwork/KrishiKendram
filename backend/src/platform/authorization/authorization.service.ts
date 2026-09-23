@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 import { AuthorizationAction, AuthorizationScope } from './authorization.types';
 import { FieldPolicyEvaluationService } from './field-policy-evaluation.service';
+import { PermissionService } from './permission.service';
 import type {
   FieldPolicyEvaluation,
   FieldPolicyOperation,
@@ -66,6 +67,7 @@ export class AuthorizationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fieldPolicyEvaluationService: FieldPolicyEvaluationService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   /**
@@ -97,47 +99,15 @@ export class AuthorizationService {
       throw new UnauthorizedException('User is not active.');
     }
 
-    const permissions = await this.prisma.permission.findMany({
-      where: {
+    const permissions =
+      await this.permissionService.findForAuthorization({
+        module: request.module,
+        section: request.section,
+        resource: request.resource,
         action: request.action,
-        OR: [
-          {
-            module: request.module,
-            section: request.section ?? null,
-            resource: request.resource,
-          },
-          {
-            module: request.module,
-            section: request.section ?? null,
-            resource: null,
-          },
-          {
-            module: request.module,
-            section: null,
-            resource: null,
-          },
-        ],
-      },
-      include: {
-        rolePermissions: {
-          where: {
-            role: user.role,
-          },
-        },
-        accessGrants: {
-          where: {
-            OR: [
-              {
-                userId: user.id,
-              },
-              {
-                userId: null,
-              },
-            ],
-          },
-        },
-      },
-    });
+        role: user.role,
+        userId: user.id,
+      });
 
     if (permissions.length === 0) {
       return {

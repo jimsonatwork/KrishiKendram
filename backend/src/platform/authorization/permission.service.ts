@@ -14,6 +14,57 @@ export interface EnsurePermissionInput {
 export class PermissionService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findForAuthorization(input: {
+    module: string;
+    section?: string;
+    resource: string;
+    action: string;
+    role: UserRole;
+    userId: string;
+  }) {
+    return this.prisma.permission.findMany({
+      where: {
+        action: input.action,
+        OR: [
+          {
+            module: input.module,
+            section: input.section ?? null,
+            resource: input.resource,
+          },
+          {
+            module: input.module,
+            section: input.section ?? null,
+            resource: null,
+          },
+          {
+            module: input.module,
+            section: null,
+            resource: null,
+          },
+        ],
+      },
+      include: {
+        rolePermissions: {
+          where: {
+            role: input.role,
+          },
+        },
+        accessGrants: {
+          where: {
+            OR: [
+              {
+                userId: input.userId,
+              },
+              {
+                userId: null,
+              },
+            ],
+          },
+        },
+      },
+    });
+  }
+
   async ensurePermission(
     input: EnsurePermissionInput,
   ): Promise<{ id: string }> {
