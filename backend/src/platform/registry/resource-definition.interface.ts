@@ -1,4 +1,5 @@
 import { FieldReference } from './field-definition.interface';
+import { CapabilityDefinition } from './capability-definition.interface';
 
 export interface ResourceDefinition {
   module: string;
@@ -13,6 +14,17 @@ export interface ResourceDefinition {
 
   defaultSort?: string;
 
+  /**
+   * First-class capability declarations.
+   *
+   * These declarations describe the actions and scopes supported by
+   * this resource. They do not grant permissions by themselves.
+   */
+  capabilities?: CapabilityDefinition[];
+
+  /**
+   * Legacy capability metadata retained during the incremental migration.
+   */
   permissions?: string[];
 
   scopes?: string[];

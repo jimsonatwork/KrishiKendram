@@ -24,7 +24,46 @@ export class RegistryService {
   ) {}
 
   register(definition: ResourceDefinition): void {
+    this.validateCapabilities(definition);
     this.resources.set(definition.name, definition);
+  }
+
+  private validateCapabilities(definition: ResourceDefinition): void {
+    const capabilities = definition.capabilities ?? [];
+    const seenActions = new Set<string>();
+
+    for (const capability of capabilities) {
+      if (!capability.action) {
+        throw new Error(
+          `Resource '${definition.name}' declares a capability without an action.`,
+        );
+      }
+
+      if (
+        !Array.isArray(capability.scopes) ||
+        capability.scopes.length === 0
+      ) {
+        throw new Error(
+          `Resource '${definition.name}' capability '${capability.action}' must declare at least one scope.`,
+        );
+      }
+
+      if (seenActions.has(capability.action)) {
+        throw new Error(
+          `Resource '${definition.name}' declares duplicate capability '${capability.action}'.`,
+        );
+      }
+
+      seenActions.add(capability.action);
+
+      const scopes = new Set(capability.scopes);
+
+      if (scopes.size !== capability.scopes.length) {
+        throw new Error(
+          `Resource '${definition.name}' capability '${capability.action}' declares duplicate scopes.`,
+        );
+      }
+    }
   }
 
   get(name: string): ResourceDefinition | undefined {

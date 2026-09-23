@@ -1,3 +1,4 @@
+export * from './capability-definition.interface';
 export * from './registry.module';
 export * from './module-definition.interface';
 export * from './module-lifecycle.service';

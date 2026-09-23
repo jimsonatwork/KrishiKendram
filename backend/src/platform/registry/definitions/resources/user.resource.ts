@@ -1,3 +1,8 @@
+import {
+  AuthorizationAction,
+  AuthorizationScope,
+} from '../../../authorization/authorization.types';
+
 import { ResourceDefinition } from '../../resource-definition.interface';
 
 export const userResource: ResourceDefinition = {
@@ -69,6 +74,25 @@ export const userResource: ResourceDefinition = {
   ],
 
   defaultSort: 'createdAt:desc',
+
+  capabilities: [
+    {
+      action: AuthorizationAction.READ,
+      scopes: [AuthorizationScope.GLOBAL],
+    },
+    {
+      action: AuthorizationAction.CREATE,
+      scopes: [AuthorizationScope.GLOBAL],
+    },
+    {
+      action: AuthorizationAction.UPDATE,
+      scopes: [AuthorizationScope.GLOBAL],
+    },
+    {
+      action: AuthorizationAction.DELETE,
+      scopes: [AuthorizationScope.GLOBAL],
+    },
+  ],
 
   permissions: [
     'READ',

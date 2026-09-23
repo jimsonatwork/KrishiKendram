@@ -832,4 +832,86 @@ describe('RegistryService - module integrity', () => {
       dependencies: ['platform'],
     });
   });
+
+  describe('capabilities', () => {
+    it('accepts a valid first-class capability declaration', () => {
+      registry.register({
+        module: 'platform',
+        name: 'capability-test',
+        model: 'CapabilityTest',
+        capabilities: [
+          {
+            action: 'READ' as never,
+            scopes: ['GLOBAL'] as never,
+          },
+        ],
+      });
+
+      expect(registry.get('capability-test')?.capabilities).toEqual([
+        {
+          action: 'READ',
+          scopes: ['GLOBAL'],
+        },
+      ]);
+    });
+
+    it('rejects capability without scopes', () => {
+      expect(() =>
+        registry.register({
+          module: 'platform',
+          name: 'invalid-capability-no-scope',
+          model: 'InvalidCapabilityNoScope',
+          capabilities: [
+            {
+              action: 'READ' as never,
+              scopes: [] as never,
+            },
+          ],
+        }),
+      ).toThrow(
+        "Resource 'invalid-capability-no-scope' capability 'READ' must declare at least one scope.",
+      );
+    });
+
+    it('rejects duplicate capability actions', () => {
+      expect(() =>
+        registry.register({
+          module: 'platform',
+          name: 'invalid-capability-duplicate-action',
+          model: 'InvalidCapabilityDuplicateAction',
+          capabilities: [
+            {
+              action: 'READ' as never,
+              scopes: ['GLOBAL'] as never,
+            },
+            {
+              action: 'READ' as never,
+              scopes: ['OWN'] as never,
+            },
+          ],
+        }),
+      ).toThrow(
+        "Resource 'invalid-capability-duplicate-action' declares duplicate capability 'READ'.",
+      );
+    });
+
+    it('rejects duplicate scopes within one capability', () => {
+      expect(() =>
+        registry.register({
+          module: 'platform',
+          name: 'invalid-capability-duplicate-scope',
+          model: 'InvalidCapabilityDuplicateScope',
+          capabilities: [
+            {
+              action: 'READ' as never,
+              scopes: ['GLOBAL', 'GLOBAL'] as never,
+            },
+          ],
+        }),
+      ).toThrow(
+        "Resource 'invalid-capability-duplicate-scope' capability 'READ' declares duplicate scopes.",
+      );
+    });
+  });
+
 });
