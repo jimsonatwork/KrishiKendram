@@ -14,10 +14,10 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` |
 | Branch | `main` |
-| Current checkpoint | `a061cc3` |
-| Current checkpoint message | Auth validation through shared helper |
+| Current checkpoint | `32b502d` |
+| Current checkpoint message | Move permission persistence into PermissionService |
 | Current primary phase | Phase 3 — Registry / Capability Architecture |
-| Current platform priority | Connect Registry to capability/permission architecture |
+| Current platform priority | Permission persistence → automatic administrative capability / stronger authorization integration |
 | Working-tree state at blueprint creation | Checked by this script |
 | Development mode | Incremental, reversible, test-driven |
 | Next major target | Registry → Capability → Permission → automatic Super Admin capability |
@@ -430,32 +430,35 @@ and data model exist.
 
 ## Current authorization status
 
-**Core foundation established.**
+The core AuthorizationService remains the established authorization decision
+engine.
 
-Evidence:
+The current capability/persistence milestone is complete:
 
-- Permission persistence
-- Permission uniqueness
-- Role assignments
-- Access grants
-- Field permissions
-- Allow/deny grants
-- Permission specificity
-- Exact permission ID propagation
-- Resource authorization
-- Field authorization
-- Fail-closed unknown field effects
-- Authorization module wiring
-- Seed-driven resource capabilities
-- Automatic ADMIN/SUPER_ADMIN GLOBAL CRUD for registered resource CRUD actions
+- Registry resource definitions declare CRUD capabilities.
+- PermissionService owns Permission persistence.
+- PermissionService owns RolePermission reconciliation.
+- AuthorizationModule provides PermissionService.
+- Seed capability persistence uses PermissionService rather than direct
+  Prisma persistence.
+- ADMIN and SUPER_ADMIN receive GLOBAL CRUD permissions derived from
+  registered resource capabilities.
+- FARMER receives the resource's declared ownership scopes.
+- Existing authorization behavior remains in AuthorizationService.
 
-Latest focused authorization verification:
+Verification at checkpoint `32b502d`:
 
-```text
-4 test suites passed
-56 tests passed
-0 failures
-```
+- Authorization regression suite: 56/56 tests passed.
+- PermissionService focused suite: 4/4 tests passed.
+- Registry/capability regression coverage passed.
+- Production build passed.
+- Seed verification: 44 Permission rows.
+- Seed verification: 84 RolePermission rows.
+- Logical permission duplicates: 0.
+
+The next integration step is connecting persisted capabilities more directly
+to authorization behavior without rewriting the established
+AuthorizationService core.
 
 ## Current authorization gaps
 
@@ -467,26 +470,38 @@ Do not implement them without defining their real relationship semantics.
 
 ### 2. Capability architecture
 
-Administrative capabilities are currently generated through seed logic.
+Registry resource definitions now declare supported capabilities.
 
-Target architecture:
+The platform capability flow is:
 
-```text
-Registered Resource
-       ↓
-Declared Capabilities
-       ↓
-Platform Permission
-       ↓
-Administrative Capability
-       ↓
-SUPER_ADMIN / ADMIN
-```
+Registry resource definition
+→ declared capability
+→ PermissionService persistence
+→ Permission
+→ RolePermission / AccessGrant
+→ AuthorizationService
 
-New registered resources should participate automatically without requiring
-manual permission lists.
+Permission persistence is owned by PermissionService rather than duplicated
+in seed/application code.
 
-### 3. Domain-specific scope resolution
+Registered resources declaring CRUD capabilities automatically participate in
+the administrative capability model. ADMIN and SUPER_ADMIN receive GLOBAL
+CRUD permissions for those declared capabilities, while FARMER receives the
+resource's declared ownership scopes.
+
+This is the foundation for platform-driven administrative capability. The
+remaining work is stronger runtime integration between persisted capabilities
+and authorization behavior.
+
+### 3. Permission → Authorization integration
+
+Persisted Registry capabilities now have a platform owner through
+PermissionService. The remaining work is to integrate those persisted
+capabilities more directly with AuthorizationService while preserving
+the existing authorization engine, scope semantics, and fail-closed
+behavior.
+
+### 4. Domain-specific scope resolution
 
 `AuthorizationService` currently resolves FARM scope through a Farm query.
 
@@ -495,7 +510,7 @@ This is acceptable for current behavior.
 Long-term, scope/resource resolution should be generalized so that the
 authorization engine does not accumulate domain-specific queries.
 
-### 4. Field transformations
+### 5. Field transformations
 
 MASK / REDACT / AGGREGATE / TRANSFORM are represented and evaluated.
 
@@ -750,12 +765,29 @@ Remaining:
 - Permission integration
 - Automatic Super Admin capability
 
-**Status: ACTIVE NEXT PHASE**
+**Status: ACTIVE — INTEGRATION UNDERWAY**
 
 ### Immediate objective
 
-Connect existing Registry resource definitions to a proper capability model
-without rewriting the established Authorization engine.
+Connect persisted Registry capabilities to the established AuthorizationService
+so authorization can consume the platform capability model without rewriting
+the existing authorization engine.
+
+Completed foundation:
+
+- Registry declares resource capabilities.
+- PermissionService owns Permission persistence.
+- PermissionService owns RolePermission reconciliation.
+- Seed derives administrative CRUD permissions from registered capabilities.
+- Existing authorization tests and build remain green.
+
+Next block:
+
+- strengthen Permission → Authorization integration,
+- verify capability persistence and authorization behavior together,
+- preserve GLOBAL / OWN / FARM semantics,
+- keep unsupported scopes fail-closed,
+- avoid duplicate authorization logic.
 
 ---
 
@@ -964,21 +996,24 @@ Legacy implementation no longer belongs after migration.
 Current verified checkpoint:
 
 ```text
+32b502d  Move permission persistence into PermissionService
+3906ca5  Connect registry capabilities to permission seeding
+5a7921c  Add first-class registry capability contracts
+c019c1b  Add CTO master blueprint and architecture control docs
 a061cc3  Refactor Auth validation through shared helper
-866aab1  Refactor Users validation through shared helper
-e93bebd  Refactor Crop validation through shared helper
-d2de8fd  Refactor Farms validation through shared helper
-6be7670  Refactor Crop persistence through CropsService
 ```
 
-This blueprint is being established against:
+This blueprint is currently aligned with checkpoint:
 
 ```text
-a061cc3024d2f7dc5c284173dc35ae099f348267
+32b502d
 ```
 
----
+The current engineering frontier is:
 
+**Permission persistence → automatic administrative capability / stronger authorization integration**
+
+The product-direction baseline remains PMD v0.2 — 23 Sep 2026.
 # 20. Versioning Protocol
 
 The blueprint is a living document.
@@ -1063,9 +1098,14 @@ Unless new evidence changes the plan:
 
 # 23. Immediate Next Objective
 
-## Registry → Capability Architecture
+## Permission → Authorization Integration
 
-The next implementation should establish the missing connection:
+The Registry → Capability → Permission persistence foundation is complete.
+
+The next engineering block is to connect persisted capabilities more directly
+to the established AuthorizationService.
+
+Target flow:
 
 ```text
 Registry Module Definition
@@ -1074,6 +1114,8 @@ Registered Resource
         ↓
 Declared Capability
         ↓
+PermissionService
+        ↓
 Permission
         ↓
 Role / Grant
@@ -1081,18 +1123,18 @@ Role / Grant
 AuthorizationService
 ```
 
-Primary requirement:
+Primary requirements:
 
-**A newly registered resource should automatically participate in the
-platform administrative capability model without manually duplicating
-permission configuration.**
+- preserve the established AuthorizationService engine;
+- persisted permissions represent Registry-declared capabilities;
+- administrative CRUD capability remains platform-driven;
+- GLOBAL / OWN / FARM behavior remains correct;
+- unsupported scopes remain fail-closed;
+- capability persistence and authorization behavior receive targeted tests;
+- no duplicate authorization engine is introduced.
 
-Do this incrementally.
-
-Do not replace the current Authorization engine.
-
----
-
+The immediate goal is stronger platform integration, not a rewrite of
+AuthorizationService.
 # 24. Definition of Architectural Success
 
 A platform layer is considered complete only when:
@@ -1140,3 +1182,729 @@ When legacy infrastructure has been safely replaced:
 **RETIRE.**
 
 Always move the project forward.
+
+---
+
+# CTO V0.3 ARCHITECTURE AMENDMENT
+
+**Date:** 25 September 2026
+**Status:** ACTIVE
+**Architecture Version:** V0.3
+**Relationship to V0.2:** Additive evolution. V0.2 remains the baseline except where this amendment explicitly extends or supersedes it.
+
+## 1. V0.3 Purpose
+
+KrishiKendram V0.3 is a controlled architectural evolution, not a platform rewrite.
+
+The existing Registry, Authorization, Audit, History/Provenance, Prisma, backend services, frontend infrastructure, security model, and domain modules remain valid foundations.
+
+The governing implementation principle is:
+
+> **Fix while upgrading. Extend while preserving. Migrate only when the replacement is proven.**
+
+V0.3 introduces a stronger model for real-world resource relationships, ownership changes, leases, custody, operational access, transfers, partial transfers, lineage, and evidence.
+
+## 2. V0.3 Architectural Direction
+
+The platform will progressively introduce four complementary capabilities:
+
+1. **Resource Relationship**
+   - Who is related to a resource?
+   - What is the relationship?
+   - When did it start and end?
+   - What is its current status?
+
+2. **Resource Movement**
+   - What business event changed the resource relationship or location?
+   - Sale, transfer, lease, inheritance, gift, partial transfer, split, merge, etc.
+
+3. **Resource Lineage**
+   - Where did this resource or resource portion come from?
+   - What predecessor resources produced it?
+   - What successor resources resulted from a split or transfer?
+
+4. **Relationship Evidence**
+   - What document, transaction, proof, or verification supports the relationship or movement?
+
+These capabilities are introduced progressively, beginning with the Farm domain and then extending to FarmAsset, FarmRecord, Livestock, Crop, and other applicable resources.
+
+## 3. Ownership Is Temporal
+
+Ownership must be treated as a time-aware business relationship rather than merely a mutable current-state attribute.
+
+The existing `Farm.ownerId` remains useful during migration as a compatibility/current-state field.
+
+However:
+
+- historical ownership must not be destroyed by updating `ownerId`;
+- ownership changes must produce historical relationship records;
+- effective dates must be preserved;
+- previous owners must remain identifiable according to authorization;
+- transfers must preserve original record provenance;
+- future architecture must support ownership succession without rewriting history.
+
+The authoritative temporal model will progressively move toward relationship history while retaining compatibility with existing fields during migration.
+
+## 4. Ownership Is Not the Same as Use
+
+The platform must distinguish:
+
+- ownership;
+- co-ownership;
+- possession;
+- lease;
+- custody;
+- management;
+- operational control;
+- service relationship;
+- advisory relationship;
+- authorized use;
+- authorization to perform a specific action.
+
+A user may therefore interact with a resource without owning it.
+
+Examples include:
+
+- a farmer leasing another farmer's land;
+- a manager operating a farm;
+- a worker performing assigned work;
+- a veterinarian accessing livestock;
+- a mechanic servicing farm equipment;
+- a caretaker maintaining livestock;
+- a service provider operating on behalf of an owner.
+
+Role alone must not determine resource ownership or access.
+
+## 5. Resource Relationship Foundation
+
+V0.3 introduces a generic relationship concept capable of representing relationships between users and resources.
+
+Conceptual fields include:
+
+- `resourceType`
+- `resourceId`
+- `userId`
+- `relationshipType`
+- `status`
+- `validFrom`
+- `validUntil`
+- `endedAt`
+- `endedReason`
+- `createdAt`
+- `updatedAt`
+- `createdBy`
+- `updatedBy`
+- optional predecessor/successor relationship references
+
+Initial relationship types may include:
+
+- `OWNER`
+- `CO_OWNER`
+- `LESSEE`
+- `MANAGER`
+- `WORKER`
+- `CUSTODIAN`
+- `CARETAKER`
+- `SERVICE_PROVIDER`
+- `ADVISOR`
+- `VETERINARIAN`
+- `AUTHORIZED_OPERATOR`
+
+The exact Prisma schema must be derived from the existing data model before implementation. This list is the architectural contract, not permission to invent a disconnected parallel schema.
+
+## 6. Relationship Status
+
+Relationship type and relationship status are separate concepts.
+
+Initial status vocabulary:
+
+- `ACTIVE`
+- `EXPIRED`
+- `TRANSFERRED`
+- `REVOKED`
+- `TERMINATED`
+- `SUSPENDED`
+
+`validUntil` may use a far-future technical default where appropriate to represent "no scheduled expiry."
+
+It must **not** be interpreted as permanent ownership.
+
+Authoritative business state comes from the relationship status and effective dates.
+
+Protected operations must evaluate the current effective relationship at operation time rather than relying only on information captured at login.
+
+
+## 7. Resource Movement
+
+Relationship history alone is insufficient for business reconstruction.
+
+V0.3 therefore introduces **Resource Movement** as a first-class business-history concept.
+
+A movement represents a meaningful business event affecting ownership, possession, custody, allocation, location, or resource lineage.
+
+Initial movement types may include:
+
+- `SALE`
+- `PARTIAL_SALE`
+- `TRANSFER`
+- `PARTIAL_TRANSFER`
+- `LEASE`
+- `LEASE_END`
+- `INHERITANCE`
+- `GIFT`
+- `DONATION`
+- `ALLOCATION`
+- `REALLOCATION`
+- `RETURN`
+- `MERGE`
+- `SPLIT`
+- `RECOVERY`
+- `LOCATION_CHANGE`
+- `CUSTODY_CHANGE`
+
+A movement should conceptually preserve:
+
+- source user/resource;
+- destination user/resource;
+- movement type;
+- affected resource;
+- affected quantity or portion where applicable;
+- effective date/time;
+- recorded date/time;
+- reason;
+- transaction reference;
+- evidence reference;
+- provenance;
+- creator/updater attribution.
+
+Movement history is a business record and must not be confused with ordinary technical audit entries.
+
+## 8. Partial Sale and Partial Transfer
+
+V0.3 must support situations where only part of a resource is transferred.
+
+Examples include:
+
+- part of a farm's land being sold;
+- part of a land parcel being transferred;
+- part of a livestock group being transferred;
+- selected assets moving to another owner;
+- a resource being divided between multiple parties.
+
+A partial movement must not overwrite the original resource history.
+
+Instead, the architecture must preserve the relationship between:
+
+- the original resource;
+- the retained portion;
+- the transferred portion;
+- any newly created resource representation;
+- subsequent movements.
+
+This creates a lineage branch that allows the platform to answer:
+
+> Where did this current resource or portion come from?
+
+and:
+
+> What happened to the original resource after the split or partial transfer?
+
+The implementation should avoid duplicating historical records unnecessarily.
+
+## 9. Resource Lineage
+
+Resource lineage records derivation between resources or resource portions.
+
+Initial lineage relationships may include:
+
+- `DERIVED_FROM`
+- `SPLIT_FROM`
+- `MERGED_FROM`
+- `TRANSFERRED_FROM`
+
+Lineage exists to preserve business continuity across:
+
+- split;
+- merge;
+- partial transfer;
+- partial sale;
+- derived resources;
+- future resource restructuring.
+
+Lineage must preserve historical identity and must not replace audit history.
+
+## 10. Relationship Evidence
+
+Relationships and movements may require supporting evidence.
+
+Conceptual evidence metadata includes:
+
+- `documentType`
+- `documentNumber`
+- `documentDate`
+- `issuer`
+- `verificationStatus`
+- `verifiedBy`
+- `verifiedAt`
+- `notes`
+- secure document/file reference
+
+Examples include:
+
+- sale deed reference;
+- lease agreement;
+- transfer document;
+- inheritance document;
+- allocation order;
+- service authorization;
+- ownership proof;
+- government or institutional reference.
+
+Actual uploaded documents must remain within the platform's secure file/document infrastructure.
+
+The relationship or movement record should reference the secure document rather than embedding uncontrolled file content.
+
+Evidence verification must be authorization-aware and auditable.
+
+## 11. Audit, History, Movement, and Lineage Are Different
+
+V0.3 explicitly separates four related but different concepts.
+
+### Technical Audit
+
+Answers:
+
+> What did a user, system, API, import, or AI process do?
+
+Examples:
+
+- created a record;
+- changed a field;
+- deleted a record;
+- restored a record;
+- accessed an administrative function.
+
+### Record History / Provenance
+
+Answers:
+
+> How did this stored record change over time?
+
+This includes:
+
+- original input;
+- corrections;
+- revisions;
+- reversals;
+- versions;
+- creator/updater/deleter attribution;
+- source/provenance.
+
+### Resource Relationship History
+
+Answers:
+
+> Who had what relationship with this resource, and when?
+
+Examples:
+
+- owner;
+- lessee;
+- manager;
+- custodian;
+- veterinarian;
+- authorized operator.
+
+### Resource Movement History
+
+Answers:
+
+> What business event caused a resource, portion, relationship, or location to change?
+
+Examples:
+
+- sale;
+- transfer;
+- lease;
+- partial transfer;
+- split;
+- merge;
+- inheritance.
+
+These layers should be linked where appropriate, but they must not be collapsed into one ambiguous history table.
+
+## 12. Authorization Integration
+
+V0.3 does not replace the existing permission architecture.
+
+The existing authorization model remains foundational:
+
+- `GLOBAL`
+- `OWN`
+- `FARM`
+
+These scopes continue to provide coarse authorization boundaries.
+
+`FARM` means access within the relevant farm boundary. It does not inherently mean that the user owns the farm.
+
+Resource relationships supplement authorization by providing contextual facts about the user's current and historical relationship with the resource.
+
+Conceptually, authorization evolves toward:
+
+> **Role + Permission + Scope + Current Resource Relationship + Field Policy → AuthorizationService**
+
+The exact implementation must continue to use the existing `AuthorizationService` and permission infrastructure rather than creating a second independent authorization engine.
+
+Relationship-aware authorization must still respect:
+
+- explicit permission grants;
+- deny conditions;
+- ownership;
+- farm boundaries;
+- field policies;
+- resource status;
+- current effective relationship;
+- administrative privileges.
+
+Relationship existence does not automatically grant unrestricted access.
+
+## 13. Historical Records and Ownership Transfer
+
+When resource ownership changes:
+
+1. Existing records retain their original creator and provenance.
+2. Historical records are not rewritten to make them appear to have been created by the new owner.
+3. Previous ownership remains historically reconstructable.
+4. The new owner may receive access to historical information where authorization permits.
+5. Sensitive personal, financial, private, or business information does not automatically transfer merely because resource ownership changed.
+6. New transactions are attributed to the users who actually create them.
+7. Movement records connect the previous and new relationship states.
+8. Audit records continue to preserve actual system/user activity.
+
+The platform must therefore support:
+
+> **Historical continuity without historical impersonation.**
+
+A new owner can legitimately inherit access to a resource while the system still preserves who created each historical record.
+
+## 14. User Profile Relationship History
+
+The User profile architecture should progressively expose relationship history.
+
+Depending on authorization, a profile may show:
+
+### Current Relationships
+
+- current ownership;
+- co-ownership;
+- leases;
+- management;
+- custody;
+- operational relationships;
+- service/advisory relationships.
+
+### Historical Relationships
+
+- previous ownership;
+- ended leases;
+- previous management/custody;
+- transferred relationships;
+- effective dates;
+- end dates;
+- status.
+
+### Movement Summary
+
+Where authorized, the profile may show resource movements associated with the user, including:
+
+- sale;
+- transfer;
+- partial transfer;
+- lease;
+- inheritance;
+- allocation;
+- other supported movement types.
+
+Visibility must remain authorization-aware.
+
+The profile must not expose unrelated private information merely because a relationship exists.
+
+## 15. Existing Resource Pages Are Upgraded, Not Replaced
+
+Existing resource pages remain the primary user experience.
+
+V0.3 progressively adds relationship and movement context to those pages.
+
+For applicable resources, the UI should eventually expose:
+
+- current relationship;
+- relationship timeline;
+- ownership history;
+- movement timeline;
+- lineage;
+- supporting evidence;
+- authorized historical records.
+
+The first implementation target is the Farm page.
+
+FarmAsset, FarmRecord, Livestock, Crop, and other applicable domains should adopt the same platform capability progressively.
+
+The platform should avoid rewriting all resource pages simultaneously.
+
+
+## 16. V0.3 Development Sequence
+
+V0.3 implementation must proceed incrementally.
+
+### Phase A — Finish Current Foundation
+
+Complete the work already in progress before introducing a broad new migration.
+
+Priority:
+
+1. Verify `UsersService` against the 19 September 2026 checkpoint.
+2. Complete the canonical user-field validation migration.
+3. Run focused TypeScript and Jest validation.
+4. Review the resulting diff.
+5. Create a clean Git checkpoint.
+
+No V0.3 relationship implementation should overwrite or abandon this existing work.
+
+### Phase B — Inspect Existing Data Foundations
+
+Before designing new Prisma models, inspect the actual current implementations of:
+
+- `User`;
+- `Farm`;
+- `FarmAsset`;
+- `FarmRecord`;
+- audit/history/provenance;
+- Registry;
+- AuthorizationService;
+- permission persistence;
+- field-policy infrastructure;
+- secure file/document infrastructure.
+
+The new relationship architecture must integrate with these existing capabilities.
+
+### Phase C — Introduce Relationship Foundation
+
+Introduce the minimum compatible foundation for:
+
+- Resource Relationship;
+- Resource Movement;
+- Resource Lineage;
+- Relationship Evidence.
+
+The first implementation should be intentionally small and testable.
+
+The exact database schema must be derived from the current Prisma model and existing conventions.
+
+### Phase D — Integrate Farm
+
+Farm is the first domain integration target.
+
+During migration:
+
+- retain `Farm.ownerId` for compatibility/current-state access;
+- introduce temporal relationship records;
+- preserve previous ownership;
+- record movement events;
+- support lease and authorized operational relationships;
+- preserve historical provenance;
+- connect evidence where required.
+
+The migration must be reversible and non-destructive.
+
+### Phase E — Authorization Integration
+
+Extend the existing AuthorizationService so that resource relationships can participate in authorization decisions.
+
+Do not create a parallel authorization system.
+
+The resulting decision path should remain explicit and auditable.
+
+### Phase F — Existing UI Upgrade
+
+Upgrade the existing Farm/resource pages rather than replacing them.
+
+Introduce progressive UI sections for:
+
+- relationships;
+- ownership history;
+- movement;
+- lineage;
+- evidence;
+- authorized historical records.
+
+### Phase G — Progressive Domain Adoption
+
+After the Farm implementation is proven, progressively adopt the capability for:
+
+1. FarmAsset;
+2. FarmRecord;
+3. Livestock;
+4. Crop;
+5. other applicable resource domains.
+
+Each adoption requires focused tests and a Git checkpoint.
+
+## 17. V0.3 Non-Goals
+
+V0.3 explicitly does **not** require:
+
+- a complete database rewrite;
+- immediate removal of `ownerId`;
+- replacement of Registry;
+- replacement of AuthorizationService;
+- replacement of existing permission scopes;
+- immediate polymorphism for every resource type;
+- rewriting every resource page;
+- migrating every domain simultaneously;
+- rebuilding Audit from scratch;
+- creating a second disconnected history framework;
+- implementing every possible transfer scenario before the foundation is proven.
+
+The goal is a reusable platform capability introduced through controlled adoption.
+
+## 18. V0.3 CTO Guardrails
+
+The following development sequence is preferred:
+
+> **Existing capability → safe extension → focused test → Git checkpoint → progressive adoption**
+
+over:
+
+> **discard → rewrite → large migration → broad regression risk**
+
+Additional guardrails:
+
+1. Preserve historical provenance.
+2. Never silently rewrite ownership history.
+3. Never equate role with ownership.
+4. Never equate ownership with authorization.
+5. Never assume a farm transfer automatically transfers every asset or livestock relationship.
+6. Never expose private historical information merely because resource ownership changed.
+7. Keep technical audit separate from business movement history.
+8. Keep relationship history separate from ordinary record version history.
+9. Keep evidence references secure and authorization-aware.
+10. Reuse existing Registry and Authorization infrastructure.
+11. Prefer additive migrations over destructive migrations.
+12. Test each coherent migration before expanding its scope.
+13. Create Git checkpoints at meaningful architectural milestones.
+14. Do not introduce a second implementation of an existing platform capability without proving the existing one is insufficient.
+
+## 19. V0.3 Definition of Success
+
+V0.3 is architecturally successful when KrishiKendram can represent, preserve, and authorize:
+
+- current ownership;
+- historical ownership;
+- co-ownership;
+- leases;
+- management;
+- custody;
+- operational relationships;
+- service relationships;
+- full transfers;
+- partial transfers;
+- partial sales;
+- movement history;
+- resource lineage;
+- supporting evidence;
+- historical record provenance;
+- authorization-aware access to historical information.
+
+The system must achieve this without:
+
+- rewriting historical creator attribution;
+- destroying previous relationships;
+- coupling every relationship to a single role;
+- replacing the existing permission architecture;
+- creating a disconnected audit/history system;
+- requiring a wholesale platform rewrite.
+
+The result should allow the platform to answer both:
+
+> **Who has this resource now?**
+
+and:
+
+> **Who had this resource, relationship, or portion of it before, what changed, when did it change, and what evidence supports that change?**
+
+---
+
+# CTO EXECUTION DASHBOARD — V0.3 BASELINE
+
+**Dashboard date:** 25 September 2026
+**Architecture:** V0.3
+**Status:** Architecture aligned — implementation ready
+
+| Area | Status |
+|---|---:|
+| Development / Architecture Foundation | 90% 🟢 |
+| Field Platform | 85% 🟢 |
+| Authorization | ~72% 🟢/🟡 |
+| Registry | ~75% 🟢/🟡 |
+| Registry → Permission persistence | Complete 🟢 |
+| Super Admin | 55% 🟡 |
+| Audit | 40% 🟡 |
+| History / Provenance | 30% 🟠 |
+| Users / Auth | 70% 🟢 |
+| Domain | 65–70% 🟢 |
+| Frontend Platform | 35–40% 🟠 |
+| AI Intake | 45% 🟡 |
+| Recall | 10% 🔵 |
+| Security Hardening | 35–40% 🟠 |
+| Production | 20–25% 🔵 |
+| Ecosystem | 10–15% 🔵 |
+
+## Dashboard Interpretation
+
+These percentages are intentionally retained from the V0.2/V0.3 baseline.
+
+V0.3 does **not** artificially increase implementation percentages merely because the architecture has become clearer.
+
+The principal V0.3 change is architectural alignment.
+
+The most important architectural evolution is within the History / Provenance foundation, which now explicitly includes the future capability for:
+
+- Relationship History;
+- Movement History;
+- Resource Lineage;
+- Relationship Evidence;
+- ownership succession;
+- lease and custody history;
+- partial transfer history;
+- authorization-aware historical access.
+
+This does not mean those capabilities are already implemented.
+
+The dashboard therefore continues to represent implementation reality rather than architectural ambition.
+
+## Current V0.3 Priority Order
+
+The current execution priority is:
+
+1. Complete the active `UsersService` validation migration.
+2. Establish a clean Git checkpoint.
+3. Verify existing History/Audit/Provenance foundations.
+4. Inspect existing Farm ownership implementation.
+5. Design the minimum Resource Relationship foundation against the actual Prisma schema.
+6. Introduce Movement, Lineage, and Evidence as compatible extensions.
+7. Integrate Farm first.
+8. Extend AuthorizationService without replacing the permission system.
+9. Upgrade existing resource pages progressively.
+10. Expand to additional domains only after the Farm implementation is proven.
+
+## V0.3 Architecture Principle
+
+> **Ownership is a temporal relationship. Authorization is a permission decision. Movement is a business event. Lineage preserves resource continuity. Evidence supports the relationship or event. Audit records system activity. Provenance preserves historical truth.**
+
+These concepts are related and must be connected, but they must not be collapsed into one ambiguous mechanism.
+
+## V0.3 Final Status
+
+**V0.3 Status: ARCHITECTURE ALIGNED — IMPLEMENTATION READY**
+
+The platform is ready to begin the V0.3 implementation sequence after the current UsersService foundation work is completed and checkpointed.
