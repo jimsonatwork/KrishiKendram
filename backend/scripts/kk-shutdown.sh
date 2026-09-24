@@ -3,13 +3,20 @@
 # ============================================================
 # KrishiKendram - Full Development Shutdown
 # ============================================================
-# Stops the KrishiKendram frontend and backend development
-# servers, frees development ports, and shuts down the
-# KrishiKendram Docker Compose services.
+# Stops:
+#   1. KrishiKendram frontend
+#   2. KrishiKendram backend
+#   3. Development ports
+#   4. KrishiKendram Docker Compose services
+#   5. Docker Desktop
 #
-# Database data is preserved because Docker volumes are not
-# removed. Docker Desktop and unrelated containers are left
-# running.
+# Safety:
+#   - Docker volumes are NEVER removed.
+#   - PostgreSQL data is preserved.
+#   - Docker commands have hard timeouts.
+#   - A stopped/unresponsive Docker Desktop cannot block exit.
+#   - If Docker Desktop is already stopped, shutdown completes
+#     normally.
 # ============================================================
 
 set -u
@@ -19,6 +26,8 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 FRONTEND_PID_FILE="$PROJECT_ROOT/.frontend.pid"
 BACKEND_PID_FILE="$PROJECT_ROOT/.backend.pid"
+
+DOCKER_TIMEOUT=10
 
 echo ""
 echo "=========================================="
@@ -113,10 +122,23 @@ for PORT in 4000 3000; do
 done
 
 # ------------------------------------------------------------
+# Docker helper
+#
+# Every Docker command gets a timeout. This is important because
+# Docker Desktop may be paused, shutting down, or otherwise
+# unavailable. kk-shutdown must never hang waiting for Docker.
+# ------------------------------------------------------------
+
+docker_command() {
+    timeout "$DOCKER_TIMEOUT" docker "$@" 2>/dev/null
+}
+
+# ------------------------------------------------------------
 # Stop KrishiKendram Docker Compose services.
 #
-# docker compose down removes project containers and network
-# but does NOT remove named volumes, so PostgreSQL data stays.
+# IMPORTANT:
+#   docker compose down does NOT remove named volumes.
+#   PostgreSQL data is therefore preserved.
 # ------------------------------------------------------------
 
 echo ""
@@ -124,13 +146,100 @@ echo "Checking KrishiKendram Docker services..."
 
 cd "$PROJECT_ROOT"
 
-COMPOSE_CONTAINERS="$(docker compose ps -q 2>/dev/null || true)"
+COMPOSE_CONTAINERS="$(timeout "$DOCKER_TIMEOUT" docker compose ps -q 2>/dev/null || true)"
 
 if [ -n "$COMPOSE_CONTAINERS" ]; then
     echo "Stopping KrishiKendram Docker Compose services..."
-    docker compose down
+
+    if timeout "$DOCKER_TIMEOUT" docker compose down; then
+        echo "KrishiKendram Docker Compose services stopped."
+    else
+        echo "WARNING: Docker Compose did not respond within ${DOCKER_TIMEOUT}s."
+        echo "Continuing to Docker Desktop shutdown."
+    fi
 else
     echo "No running KrishiKendram Docker Compose services found."
+fi
+
+# ------------------------------------------------------------
+# Docker Desktop detection and shutdown
+#
+# Docker Desktop is a Windows process while this script runs
+# inside WSL.
+#
+# We intentionally use Windows PowerShell here instead of
+# "docker desktop stop", because the Docker CLI itself may be
+# unavailable/unresponsive when Docker Desktop is paused or
+# already shutting down.
+# ------------------------------------------------------------
+
+echo ""
+echo "Checking Docker Desktop..."
+
+DOCKER_DESKTOP_PRESENT=0
+
+if command -v powershell.exe >/dev/null 2>&1; then
+    if powershell.exe -NoProfile -NonInteractive -Command \
+        "if (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }" \
+        >/dev/null 2>&1; then
+        DOCKER_DESKTOP_PRESENT=1
+        echo "Docker Desktop is running."
+    else
+        echo "Docker Desktop is already stopped."
+    fi
+else
+    echo "WARNING: powershell.exe is not available from WSL."
+fi
+
+# ------------------------------------------------------------
+# Stop Docker Desktop if it is running.
+#
+# First try Docker Desktop's Windows process shutdown.
+# If it does not disappear within the timeout, force terminate
+# the remaining Docker Desktop process so kk-shutdown cannot
+# remain stuck indefinitely.
+# ------------------------------------------------------------
+
+if [ "$DOCKER_DESKTOP_PRESENT" -eq 1 ]; then
+    echo "Stopping Docker Desktop..."
+
+    powershell.exe -NoProfile -NonInteractive -Command \
+        "Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue" \
+        >/dev/null 2>&1 || true
+
+    DOCKER_STOPPED=0
+
+    for _ in {1..10}; do
+        if ! powershell.exe -NoProfile -NonInteractive -Command \
+            "if (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }" \
+            >/dev/null 2>&1; then
+            DOCKER_STOPPED=1
+            break
+        fi
+
+        sleep 1
+    done
+
+    if [ "$DOCKER_STOPPED" -eq 1 ]; then
+        echo "Docker Desktop stopped."
+    else
+        echo "Docker Desktop did not stop within ${DOCKER_TIMEOUT}s."
+        echo "Force stopping remaining Docker Desktop process..."
+
+        powershell.exe -NoProfile -NonInteractive -Command \
+            "Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue" \
+            >/dev/null 2>&1 || true
+
+        sleep 2
+
+        if powershell.exe -NoProfile -NonInteractive -Command \
+            "if (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }" \
+            >/dev/null 2>&1; then
+            echo "WARNING: Docker Desktop process is still present."
+        else
+            echo "Docker Desktop force-stopped."
+        fi
+    fi
 fi
 
 # ------------------------------------------------------------
@@ -148,12 +257,16 @@ for PORT in 4000 3000 5432; do
     fi
 done
 
-REMAINING_COMPOSE="$(docker compose ps -q 2>/dev/null || true)"
+# Docker may already be stopped, so this check is deliberately
+# timeout protected and is informational only.
+REMAINING_COMPOSE="$(
+    timeout "$DOCKER_TIMEOUT" docker compose ps -q 2>/dev/null || true
+)"
 
 if [ -n "$REMAINING_COMPOSE" ]; then
     echo "WARNING: KrishiKendram Docker services are still running."
 else
-    echo "KrishiKendram Docker services are stopped."
+    echo "KrishiKendram Docker services are stopped or Docker Desktop is stopped."
 fi
 
 rm -f "$FRONTEND_PID_FILE" "$BACKEND_PID_FILE"
@@ -168,5 +281,5 @@ echo " Backend:           stopped"
 echo " PostgreSQL:        stopped"
 echo " Docker Compose:    stopped"
 echo " Database data:     preserved"
-echo " Docker Desktop:    left running"
+echo " Docker Desktop:    stopped or already stopped"
 echo ""

@@ -81,18 +81,25 @@ Database uniqueness is enforced.
 ---
 
 ## ADR-006 — Super Admin Capability Must Be Platform-Driven
-
 **Status:** ACTIVE
 
-Super Admin administrative access should ultimately derive from Registry
-capability definitions rather than requiring manual permission maintenance for
-every new resource.
+Super Admin administrative access must derive from Registry capability
+definitions rather than requiring manual permission maintenance for every
+resource.
 
-Current seed-driven automatic GLOBAL CRUD is considered a foundation, not the
-final architecture.
+The first persistence milestone is implemented:
 
----
+- Registry resource definitions declare CRUD capabilities.
+- PermissionService owns Permission persistence.
+- PermissionService owns RolePermission reconciliation.
+- Seed derives ADMIN and SUPER_ADMIN GLOBAL CRUD permissions from registered
+  resource capabilities.
 
+This persistence layer is a foundation, not the final runtime architecture.
+
+The next step is stronger Permission → Authorization integration while
+preserving the established AuthorizationService engine and fail-closed
+unsupported scopes.
 ## ADR-007 — Do Not Rewrite a Working Authorization Core
 
 **Status:** ACTIVE

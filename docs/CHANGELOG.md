@@ -64,6 +64,51 @@ Move forward with implementation.
 
 ---
 
+## 2026-09-24 — Permission Persistence Checkpoint
+
+### Git checkpoint
+
+`32b502d` — Move permission persistence into PermissionService
+
+### Completed architectural work
+
+- Registry resource definitions declare CRUD capabilities.
+- Permission persistence is owned by PermissionService.
+- Role-permission reconciliation is owned by PermissionService.
+- AuthorizationModule provides PermissionService.
+- Seed capability persistence uses PermissionService.
+- Registered resources automatically participate in the administrative
+  capability model.
+- ADMIN and SUPER_ADMIN receive GLOBAL CRUD permissions derived from declared
+  capabilities.
+- FARMER receives declared ownership scopes.
+
+### Verification
+
+- Authorization regression suite: 56/56 tests passed.
+- PermissionService focused suite: 4/4 tests passed.
+- Registry/capability regression coverage passed.
+- Production build passed.
+- Seed verification: 44 Permission rows.
+- Seed verification: 84 RolePermission rows.
+- Logical permission duplicates: 0.
+
+### Architectural position
+
+Registry remains the declaration layer.
+
+PermissionService owns permission persistence.
+
+AuthorizationService remains the authorization decision engine.
+
+The next block is stronger Permission → Authorization integration without
+rewriting the established authorization core.
+
+### Next target
+
+**Permission → Authorization integration / automatic administrative capability**
+
+---
 ## Versioning Rule
 
 At every coherent architectural milestone:
