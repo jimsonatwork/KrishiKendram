@@ -3,12 +3,20 @@ import { UserRole } from '@prisma/client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PermissionService } from '../src/platform/authorization/permission.service';
 import { AuthorizationAction } from '../src/platform/authorization/authorization.types';
-
-const prisma = new PrismaService();
-const permissionService = new PermissionService(prisma);
-
+import { FieldValidationService } from '../src/platform/registry/field-validation.service';
+import { RegistryService } from '../src/platform/registry/registry.service';
 import { RESOURCE_DEFINITIONS } from '../src/platform/registry/definitions/resources';
 import { ResourceDefinition } from '../src/platform/registry/resource-definition.interface';
+
+const prisma = new PrismaService();
+const fieldValidation = new FieldValidationService();
+const registry = new RegistryService(fieldValidation);
+
+for (const definition of RESOURCE_DEFINITIONS) {
+  registry.register(definition);
+}
+
+const permissionService = new PermissionService(prisma, registry);
 
 const CRUD_ACTIONS: AuthorizationAction[] = [
   AuthorizationAction.READ,

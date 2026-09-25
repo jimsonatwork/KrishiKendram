@@ -1,6 +1,7 @@
 import { UserRole } from '@prisma/client';
 
 import { PermissionService } from './permission.service';
+import { RegistryService } from '../registry/registry.service';
 
 describe('PermissionService', () => {
   const prisma = {
@@ -15,11 +16,30 @@ describe('PermissionService', () => {
     },
   };
 
+  const registry = {
+    get: jest.fn(),
+  };
+
   let service: PermissionService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new PermissionService(prisma as never);
+
+    registry.get.mockReturnValue({
+      name: 'crop',
+      module: 'farms',
+      capabilities: [
+        {
+          action: 'READ',
+          scopes: ['FARM', 'GLOBAL'],
+        },
+      ],
+    });
+
+    service = new PermissionService(
+      prisma as never,
+      registry as never,
+    );
   });
 
   describe('findForAuthorization', () => {
@@ -178,6 +198,140 @@ describe('PermissionService', () => {
 
     it('returns an empty collection when no permission matches', async () => {
       prisma.permission.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.findForAuthorization(authorizationInput),
+      ).resolves.toEqual([]);
+    });
+
+
+    it('keeps a resource permission only when its capability is declared by the registry', async () => {
+      const permissions = [
+        {
+          id: 'declared',
+          module: 'farms',
+          section: null,
+          resource: 'crop',
+          action: 'READ',
+          scope: 'FARM',
+          rolePermissions: [{ role: UserRole.FARMER }],
+          accessGrants: [],
+        },
+        {
+          id: 'undeclared-scope',
+          module: 'farms',
+          section: null,
+          resource: 'crop',
+          action: 'READ',
+          scope: 'OWN',
+          rolePermissions: [{ role: UserRole.FARMER }],
+          accessGrants: [],
+        },
+        {
+          id: 'wrong-module',
+          module: 'other-module',
+          section: null,
+          resource: 'crop',
+          action: 'READ',
+          scope: 'FARM',
+          rolePermissions: [{ role: UserRole.FARMER }],
+          accessGrants: [],
+        },
+      ];
+
+      prisma.permission.findMany.mockResolvedValue(permissions);
+
+      registry.get.mockReturnValue({
+        name: 'crop',
+        module: 'farms',
+        capabilities: [
+          {
+            action: 'READ',
+            scopes: ['FARM', 'GLOBAL'],
+          },
+        ],
+      });
+
+      await expect(
+        service.findForAuthorization(authorizationInput),
+      ).resolves.toEqual([permissions[0]]);
+
+      expect(registry.get).toHaveBeenCalledWith('crop');
+    });
+
+    it('fails closed when a resource permission has no registry definition', async () => {
+      const permission = {
+        id: 'undeclared-resource',
+        module: 'farms',
+        section: null,
+        resource: 'unknown-resource',
+        action: 'READ',
+        scope: 'FARM',
+        rolePermissions: [{ role: UserRole.FARMER }],
+        accessGrants: [],
+      };
+
+      prisma.permission.findMany.mockResolvedValue([permission]);
+      registry.get.mockReturnValue(undefined);
+
+      await expect(
+        service.findForAuthorization({
+          ...authorizationInput,
+          resource: 'unknown-resource',
+        }),
+      ).resolves.toEqual([]);
+
+      expect(registry.get).toHaveBeenCalledWith('unknown-resource');
+    });
+
+    it('preserves wildcard permissions without requiring a resource capability', async () => {
+      const permission = {
+        id: 'wildcard',
+        module: 'farms',
+        section: null,
+        resource: null,
+        action: 'READ',
+        scope: 'GLOBAL',
+        rolePermissions: [{ role: UserRole.ADMIN }],
+        accessGrants: [],
+      };
+
+      prisma.permission.findMany.mockResolvedValue([permission]);
+
+      await expect(
+        service.findForAuthorization({
+          ...authorizationInput,
+          role: UserRole.ADMIN,
+        }),
+      ).resolves.toEqual([permission]);
+
+      expect(registry.get).not.toHaveBeenCalled();
+    });
+
+    it('fails closed when the registry resource belongs to another module', async () => {
+      const permission = {
+        id: 'wrong-module',
+        module: 'wrong-module',
+        section: null,
+        resource: 'crop',
+        action: 'READ',
+        scope: 'FARM',
+        rolePermissions: [{ role: UserRole.FARMER }],
+        accessGrants: [],
+      };
+
+      prisma.permission.findMany.mockResolvedValue([permission]);
+
+      registry.get.mockReturnValue({
+        name: 'crop',
+        module: 'farms',
+        capabilities: [
+          {
+            action: 'READ',
+            scopes: ['FARM'],
+          },
+        ],
+      });
 
       await expect(
         service.findForAuthorization(authorizationInput),

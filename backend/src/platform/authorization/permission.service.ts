@@ -3,6 +3,8 @@ import { Prisma, UserRole } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 
+import { RegistryService } from '../registry/registry.service';
+
 export interface EnsurePermissionInput {
   module: string;
   resource: string;
@@ -28,12 +30,15 @@ export type AuthorizationPermission = Prisma.PermissionGetPayload<{
 
 @Injectable()
 export class PermissionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly registry: RegistryService,
+  ) {}
 
   async findForAuthorization(
     input: FindAuthorizationPermissionsInput,
   ): Promise<AuthorizationPermission[]> {
-    return this.prisma.permission.findMany({
+    const permissions = await this.prisma.permission.findMany({
       where: {
         action: input.action,
         OR: [
@@ -74,6 +79,42 @@ export class PermissionService {
         },
       },
     });
+
+    return permissions.filter((permission) =>
+      this.isDeclaredCapability(permission),
+    );
+  }
+
+  private isDeclaredCapability(
+    permission: AuthorizationPermission,
+  ): boolean {
+    // Registry-declared capabilities are authoritative for
+    // resource-specific permissions.
+    //
+    // Wildcard/module-level permissions are intentionally preserved
+    // because they are not resource capabilities and are used by
+    // existing platform authorization paths.
+    if (!permission.resource) {
+      return true;
+    }
+
+    const resource = this.registry.get(permission.resource);
+
+    if (!resource) {
+      return false;
+    }
+
+    if (resource.module !== permission.module) {
+      return false;
+    }
+
+    return (resource.capabilities ?? []).some(
+      (capability) =>
+        capability.action === permission.action &&
+        capability.scopes.includes(
+          permission.scope as (typeof capability.scopes)[number],
+        ),
+    );
   }
 
   async ensurePermission(
