@@ -98,21 +98,35 @@ export class PermissionService {
       return true;
     }
 
-    const resource = this.registry.get(permission.resource);
+    return this.isDeclaredCapabilityInput(
+      permission.module,
+      permission.resource,
+      permission.action,
+      permission.scope,
+    );
+  }
+
+  private isDeclaredCapabilityInput(
+    module: string,
+    resourceName: string,
+    action: string,
+    scope: string,
+  ): boolean {
+    const resource = this.registry.get(resourceName);
 
     if (!resource) {
       return false;
     }
 
-    if (resource.module !== permission.module) {
+    if (resource.module !== module) {
       return false;
     }
 
     return (resource.capabilities ?? []).some(
       (capability) =>
-        capability.action === permission.action &&
+        capability.action === action &&
         capability.scopes.includes(
-          permission.scope as (typeof capability.scopes)[number],
+          scope as (typeof capability.scopes)[number],
         ),
     );
   }
@@ -120,6 +134,19 @@ export class PermissionService {
   async ensurePermission(
     input: EnsurePermissionInput,
   ): Promise<{ id: string }> {
+    if (
+      !this.isDeclaredCapabilityInput(
+        input.module,
+        input.resource,
+        input.action,
+        input.scope,
+      )
+    ) {
+      throw new Error(
+        `Undeclared Registry capability: ${input.module}/${input.resource}/${input.action}/${input.scope}`,
+      );
+    }
+
     const permission = await this.prisma.permission.findFirst({
       where: {
         module: input.module,

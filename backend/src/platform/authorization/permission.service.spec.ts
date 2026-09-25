@@ -369,6 +369,17 @@ describe('PermissionService', () => {
     });
 
     it('creates the permission when it does not already exist', async () => {
+      registry.get.mockReturnValue({
+        name: 'crop',
+        module: 'farms',
+        capabilities: [
+          {
+            action: 'CREATE',
+            scopes: ['FARM'],
+          },
+        ],
+      });
+
       prisma.permission.findFirst.mockResolvedValue(null);
       prisma.permission.create.mockResolvedValue({ id: 'permission-2' });
 
@@ -394,6 +405,50 @@ describe('PermissionService', () => {
           id: true,
         },
       });
+    });
+
+    it('fails closed before reading persistence when the capability is undeclared', async () => {
+      await expect(
+        service.ensurePermission({
+          module: 'farms',
+          resource: 'crop',
+          action: 'DELETE',
+          scope: 'FARM',
+        }),
+      ).rejects.toThrow(
+        'Undeclared Registry capability: farms/crop/DELETE/FARM',
+      );
+
+      expect(registry.get).toHaveBeenCalledWith('crop');
+      expect(prisma.permission.findFirst).not.toHaveBeenCalled();
+      expect(prisma.permission.create).not.toHaveBeenCalled();
+    });
+
+    it('fails closed when the resource belongs to another module', async () => {
+      registry.get.mockReturnValue({
+        name: 'crop',
+        module: 'other-module',
+        capabilities: [
+          {
+            action: 'CREATE',
+            scopes: ['FARM'],
+          },
+        ],
+      });
+
+      await expect(
+        service.ensurePermission({
+          module: 'farms',
+          resource: 'crop',
+          action: 'CREATE',
+          scope: 'FARM',
+        }),
+      ).rejects.toThrow(
+        'Undeclared Registry capability: farms/crop/CREATE/FARM',
+      );
+
+      expect(prisma.permission.findFirst).not.toHaveBeenCalled();
+      expect(prisma.permission.create).not.toHaveBeenCalled();
     });
   });
 
