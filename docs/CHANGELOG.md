@@ -140,6 +140,34 @@ rewriting the established authorization core.
 **ResourceMovement business creation/lifecycle semantics, followed by ResourceLineage and RelationshipEvidence.**
 
 ---
+
+## 2026-09-26 — ResourceLineage Foundation Checkpoint
+
+### Git checkpoint
+
+Pending commit after final documentation and regression verification.
+
+### Completed architectural work
+
+- Added ResourceLineage persistence with generic source and target resource identities.
+- Added DERIVED_FROM, SPLIT_FROM, MERGED_FROM, and TRANSFERRED_FROM lineage types.
+- Linked lineage to ResourceMovement where a movement caused the continuity event.
+- Preserved quantity/unit and effective business time for resource portions.
+- Added inbound, outbound, and bidirectional lineage resolution with date-window filtering.
+- Kept lineage separate from movement history and technical audit.
+
+### Verification
+
+- Prisma migration applied successfully.
+- Prisma migration status: database schema up to date.
+- Full backend regression: 28 suites, 289 tests passed.
+- Backend TypeScript build: PASS.
+
+### Next target
+
+**RelationshipEvidence foundation for secure document/reference metadata and verification state.**
+
+---
 ## Versioning Rule
 
 At every coherent architectural milestone:

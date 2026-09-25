@@ -104,7 +104,8 @@ R1 authorization/capability integration is treated as CLOSED.
 The UsersService Field Policy migration segment has now been completed and verified.
 The Registry / Authorization foundation has also been verified through the R1.17 regression.
 The ResourceMovement persistence/resolution foundation has now been implemented and checkpointed.
-The next controlled activity is ResourceMovement business lifecycle semantics.
+The ResourceLineage persistence/resolution foundation has now been implemented and checkpointed.
+The next controlled activity is RelationshipEvidence foundation.
 
 ## 6. Historical Work Already Completed
 
@@ -290,7 +291,7 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: V0.3 — RESOURCE MOVEMENT LIFECYCLE**
+**Current position: V0.3 — RELATIONSHIP EVIDENCE FOUNDATION**
 
 UsersService Field Policy migration is complete for the current implementation segment.
 
@@ -303,7 +304,7 @@ Evidence:
 
 Next controlled activity:
 
-**Implement ResourceMovement business creation/lifecycle semantics on top of the checkpointed persistence and resolution foundation.**
+**Implement the RelationshipEvidence foundation as the secure reference layer for relationships and movements, without embedding uncontrolled document content.**
 
 This closes the current UsersService validation migration and Registry / Authorization verification segments without declaring the entire Users or V0.3 relationship capability COMPLETE.
 
@@ -366,8 +367,9 @@ A claim of COMPLETE without supporting evidence is not accepted.
 - Backend production build: PASS.
 - Pushed the completed UsersService/Execution Bible checkpoint through commit 7dfe070.
 - Implemented and pushed the ResourceMovement persistence/resolution foundation through commit 7750fc6.
+- Implemented the ResourceLineage persistence/resolution foundation through the current checkpoint.
 - Confirmed the ResourceRelationship persistence/resolution foundation remains PARTIAL as designed.
-- Moved the exact execution position to ResourceMovement business lifecycle semantics.
+- Moved the exact execution position to RelationshipEvidence foundation implementation.
 
 Future meaningful milestones must append an entry here.
 
