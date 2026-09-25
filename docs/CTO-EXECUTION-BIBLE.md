@@ -101,8 +101,7 @@ implementation change.
 
 R1 authorization/capability integration is treated as CLOSED.
 
-The next activity is **planning recovery and execution-bible establishment**,
-not another R1 micro-checkpoint.
+The next activity is **planning recovery**, beginning with the unfinished UsersService Field Policy work identified in PMD v0.3.
 
 ## 6. Historical Work Already Completed
 
@@ -135,7 +134,7 @@ At 5828828, the full R1.17 regression was verified:
 
 ## 7. Important Concept Status — Temporal Relationships
 
-The temporal user/resource relationship concept is **PARTIAL**.
+The V0.3 relationship architecture is **PARTIAL**: the ResourceRelationship authorization foundation is implemented, while movement, lineage, evidence, and business lifecycle integration remain.
 
 ### Implemented foundation
 
@@ -172,7 +171,7 @@ a module is PARTIAL unless the completion gate has been evidenced.
 | Users | PARTIAL | Validation, auth, history/API and admin protections exist; full product module gate not complete |
 | Super Admin | PARTIAL | Registry-driven administrative CRUD capability foundation exists; full platform control plane not complete |
 | Roles & Permissions | PARTIAL | RBAC + PermissionService + capability persistence/runtime integration established; broader admin UX and lifecycle remain |
-| Authorization | COMPLETE | Established decision engine and R1 integration verified; future scopes remain intentionally unsupported |
+| Authorization | PARTIAL | Core decision engine and R1 integration verified; broader platform/module completion gate is not yet satisfied |
 | Registry / Capability | PARTIAL | Resource/capability foundation and permission integration established; broader lifecycle/metadata/dependencies remain |
 | Field Platform | PARTIAL | Field Policy/validation foundation substantially established; broader metadata/provenance remains |
 | Farms | PARTIAL | Backend authorization/validation foundation substantially migrated; complete user-facing module gate not evidenced |
@@ -227,18 +226,17 @@ From that point, actual hours are logged as execution happens.
 
 ## 10. Current Recovery Order
 
-Before new feature implementation, complete the planning recovery:
+The latest PMD v0.3 update establishes this immediate order:
 
-1. Reconcile PMD V0.3 with the current Master Blueprint.
-2. Reconcile both against actual A/B/C Git state.
-3. Identify every unfinished/partial item already started.
-4. Recover important concepts already discussed but not fully implemented.
-5. Map those items to existing PMD phases/workstreams.
-6. Mark each segment using the fixed status vocabulary.
-7. Define dependencies and acceptance criteria.
-8. Estimate remaining hours.
-9. Establish the first executable module/segment.
-10. Lock the execution order.
+1. **UsersService** — verify the actual current file, continue the canonical Registry field-validation migration, preserve authorization/history/audit/Super Admin safeguards, finish tests, checkpoint.
+2. **Registry / Authorization foundation** — verify the current implementation against PMD; no redesign unless a genuine gap is evidenced.
+3. **V0.3 relationship capability** — retain the implemented ResourceRelationship foundation and complete the remaining ResourceMovement, ResourceLineage, and RelationshipEvidence capabilities incrementally.
+4. **Farm integration** — integrate the relationship/movement/lineage/evidence foundation with Farm first.
+5. **Existing module upgrades** — Farm → FarmAsset → FarmRecord → Livestock → Crop as each reaches the appropriate stage.
+6. **UI upgrades** — extend existing pages with relationships, movement history, lineage/provenance and authorized history panels.
+7. Only after the above recovery is mapped into meaningful segments do we estimate the remaining hours and lock the full execution order.
+
+No new feature implementation should begin before this recovery inventory is accepted.
 
 The recovery pass must finish before ordinary implementation resumes.
 
@@ -289,12 +287,13 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: PLANNING RECOVERY**
+**Current position: PLANNING RECOVERY — USERSERVICE FIRST**
 
 Next controlled activity:
 
-**Build the complete module/segment inventory from PMD, Blueprint, A/B/C and
-actual implementation evidence.**
+**Finish the existing UsersService validation migration from the exact current file, then test and checkpoint.**
+
+This is not a new task; it is the unfinished Phase 1 Field Policy Foundation work explicitly retained by PMD v0.3.
 
 No new feature branch or architecture expansion should start until that
 inventory is accepted.
