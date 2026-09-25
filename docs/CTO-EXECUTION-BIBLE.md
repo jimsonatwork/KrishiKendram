@@ -101,7 +101,9 @@ implementation change.
 
 R1 authorization/capability integration is treated as CLOSED.
 
-The next activity is **planning recovery**, beginning with the unfinished UsersService Field Policy work identified in PMD v0.3.
+The UsersService Field Policy migration segment has now been completed and verified.
+The next controlled activity is the Registry / Authorization foundation verification
+defined by PMD v0.3.
 
 ## 6. Historical Work Already Completed
 
@@ -287,13 +289,22 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: PLANNING RECOVERY — USERSERVICE FIRST**
+**Current position: RECOVERY — REGISTRY / AUTHORIZATION VERIFICATION**
+
+UsersService Field Policy migration is complete for the current implementation segment.
+
+Evidence:
+- Registry resource-field validation is now used for User create, update, restore-version, bulk-delete status transition, and restore status transition paths.
+- Focused UsersService tests: 10/10 PASS.
+- Related Users/Registry/Auth tests: 72/72 PASS.
+- Full backend regression: 23/23 suites, 280/280 tests PASS.
+- TypeScript build configuration check: PASS (tsc -p tsconfig.build.json --noEmit).
 
 Next controlled activity:
 
-**Finish the existing UsersService validation migration from the exact current file, then test and checkpoint.**
+**Verify the Registry / Authorization foundation against PMD v0.3; redesign only if a genuine gap is evidenced.**
 
-This is not a new task; it is the unfinished Phase 1 Field Policy Foundation work explicitly retained by PMD v0.3.
+This closes the current UsersService validation migration segment without declaring the entire Users module COMPLETE.
 
 No new feature branch or architecture expansion should start until that
 inventory is accepted.
@@ -335,6 +346,17 @@ A claim of COMPLETE without supporting evidence is not accepted.
   treated as a new roadmap.
 - Established conservative initial module statuses.
 - Established recovery-before-new-implementation rule.
+
+### 25 Sep 2026 — UsersService Field Policy migration segment completed
+
+- Completed the remaining current UsersService Registry Field Policy migration.
+- Routed User create role validation through the User resource field policy.
+- Routed restore-version mutable fields through the canonical User resource field policy.
+- Routed deletion/restore status transitions through the canonical User status policy.
+- Updated focused tests for the expanded centralized validation path.
+- Evidence: 23/23 backend suites and 280/280 tests PASS; TypeScript no-emit build check PASS.
+- Kept the Users module overall status separate from this completed validation segment.
+- Moved the exact execution position to Registry / Authorization foundation verification.
 
 Future meaningful milestones must append an entry here.
 
