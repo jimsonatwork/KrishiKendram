@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 import { AuthorizationAction, AuthorizationScope } from './authorization.types';
 import { FieldPolicyEvaluationService } from './field-policy-evaluation.service';
+import { FarmAccessService } from './farm-access.service';
 import { PermissionService } from './permission.service';
 import type {
   FieldPolicyEvaluation,
@@ -68,6 +69,7 @@ export class AuthorizationService {
     private readonly prisma: PrismaService,
     private readonly fieldPolicyEvaluationService: FieldPolicyEvaluationService,
     private readonly permissionService: PermissionService,
+    private readonly farmAccessService: FarmAccessService,
   ) {}
 
   /**
@@ -275,16 +277,10 @@ export class AuthorizationService {
           return false;
         }
 
-        const farm = await this.prisma.farm.findUnique({
-          where: {
-            id: request.farmId,
-          },
-          select: {
-            ownerId: true,
-          },
-        });
-
-        return farm?.ownerId === request.user.userId;
+        return this.farmAccessService.canAccess(
+          request.user.userId,
+          request.farmId,
+        );
 
       case AuthorizationScope.ASSIGNED:
       case AuthorizationScope.ORGANIZATION:

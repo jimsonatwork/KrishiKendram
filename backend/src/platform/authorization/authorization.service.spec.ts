@@ -19,6 +19,10 @@ describe('AuthorizationService', () => {
     },
   } as any;
 
+  const farmAccessService = {
+    canAccess: jest.fn(),
+  };
+
   const fieldPolicyEvaluationService = {
     evaluate: jest.fn(),
   };
@@ -28,6 +32,8 @@ describe('AuthorizationService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    farmAccessService.canAccess.mockResolvedValue(false);
 
     prisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
@@ -39,6 +45,7 @@ describe('AuthorizationService', () => {
       prisma,
       fieldPolicyEvaluationService as any,
       permissionService as any,
+      farmAccessService as any,
     );
   });
 
@@ -127,15 +134,35 @@ describe('AuthorizationService', () => {
 
     await expect(service.can(request)).resolves.toBe(false);
 
-    expect(prisma.farm.findUnique).not.toHaveBeenCalled();
+    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
   });
 
-  it('denies FARM permission when the referenced farm does not exist', async () => {
+  it('denies FARM permission when the farm access boundary denies access', async () => {
     permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),
     ]);
 
-    prisma.farm.findUnique.mockResolvedValue(null);
+    farmAccessService.canAccess.mockResolvedValue(false);
+
+    await expect(
+      service.can({
+        ...request,
+        farmId: 'farm-1',
+      }),
+    ).resolves.toBe(false);
+
+    expect(farmAccessService.canAccess).toHaveBeenCalledWith(
+      'user-1',
+      'farm-1',
+    );
+  });
+
+  it('denies FARM permission when the farm access boundary denies the user', async () => {
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.FARM),
+    ]);
+
+    farmAccessService.canAccess.mockResolvedValue(false);
 
     await expect(
       service.can({
@@ -145,31 +172,12 @@ describe('AuthorizationService', () => {
     ).resolves.toBe(false);
   });
 
-  it('denies FARM permission when the user does not own the referenced farm', async () => {
+  it('allows FARM permission when the farm access boundary allows the user', async () => {
     permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),
     ]);
 
-    prisma.farm.findUnique.mockResolvedValue({
-      ownerId: 'user-2',
-    });
-
-    await expect(
-      service.can({
-        ...request,
-        farmId: 'farm-1',
-      }),
-    ).resolves.toBe(false);
-  });
-
-  it('allows FARM permission when the user owns the referenced farm', async () => {
-    permissionService.findForAuthorization.mockResolvedValue([
-      permission(AuthorizationScope.FARM),
-    ]);
-
-    prisma.farm.findUnique.mockResolvedValue({
-      ownerId: 'user-1',
-    });
+    farmAccessService.canAccess.mockResolvedValue(true);
 
     await expect(
       service.can({
@@ -178,14 +186,10 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(true);
 
-    expect(prisma.farm.findUnique).toHaveBeenCalledWith({
-      where: {
-        id: 'farm-1',
-      },
-      select: {
-        ownerId: true,
-      },
-    });
+    expect(farmAccessService.canAccess).toHaveBeenCalledWith(
+      'user-1',
+      'farm-1',
+    );
   });
 
   it('allows an explicit FARM grant only for its assigned user', async () => {

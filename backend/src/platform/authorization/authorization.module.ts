@@ -3,6 +3,7 @@ import { Global, Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 import { AuthorizationService } from './authorization.service';
+import { FarmAccessService } from './farm-access.service';
 import { FieldPolicyEvaluationService } from './field-policy-evaluation.service';
 import { FieldPolicyRepository } from './field-policy.repository';
 import { FieldPolicyService } from './field-policy.service';
@@ -13,6 +14,7 @@ import { PermissionService } from './permission.service';
   imports: [PrismaModule],
   providers: [
     AuthorizationService,
+    FarmAccessService,
     FieldPolicyEvaluationService,
     FieldPolicyRepository,
     FieldPolicyService,
@@ -20,6 +22,7 @@ import { PermissionService } from './permission.service';
   ],
   exports: [
     AuthorizationService,
+    FarmAccessService,
     FieldPolicyEvaluationService,
     FieldPolicyRepository,
     FieldPolicyService,
