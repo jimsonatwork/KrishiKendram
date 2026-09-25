@@ -102,8 +102,8 @@ implementation change.
 R1 authorization/capability integration is treated as CLOSED.
 
 The UsersService Field Policy migration segment has now been completed and verified.
-The next controlled activity is the Registry / Authorization foundation verification
-defined by PMD v0.3.
+The Registry / Authorization foundation has also been verified through the R1.17 regression.
+The next controlled activity is the ResourceMovement foundation defined by PMD v0.3.
 
 ## 6. Historical Work Already Completed
 
@@ -289,7 +289,7 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: RECOVERY — REGISTRY / AUTHORIZATION VERIFICATION**
+**Current position: V0.3 — RESOURCE MOVEMENT FOUNDATION**
 
 UsersService Field Policy migration is complete for the current implementation segment.
 
@@ -302,12 +302,12 @@ Evidence:
 
 Next controlled activity:
 
-**Verify the Registry / Authorization foundation against PMD v0.3; redesign only if a genuine gap is evidenced.**
+**Implement the ResourceMovement foundation incrementally, derived from the existing ResourceRelationship model and PMD v0.3 movement contract.**
 
-This closes the current UsersService validation migration segment without declaring the entire Users module COMPLETE.
+This closes the current UsersService validation migration and Registry / Authorization verification segments without declaring the entire Users or V0.3 relationship capability COMPLETE.
 
-No new feature branch or architecture expansion should start until that
-inventory is accepted.
+No unrelated feature branch or architecture expansion should start while this
+controlled V0.3 implementation segment is in progress.
 
 ### Resume rule
 
@@ -357,6 +357,15 @@ A claim of COMPLETE without supporting evidence is not accepted.
 - Evidence: 23/23 backend suites and 280/280 tests PASS; TypeScript no-emit build check PASS.
 - Kept the Users module overall status separate from this completed validation segment.
 - Moved the exact execution position to Registry / Authorization foundation verification.
+
+### 26 Sep 2026 — Registry / Authorization verification closed
+
+- Verified the current Development workspace against the implemented R1.17 authorization/capability chain.
+- Focused current regression: 8 suites, 83 tests PASS.
+- Backend production build: PASS.
+- Pushed the completed UsersService/Execution Bible checkpoint through commit 7dfe070.
+- Confirmed the ResourceRelationship persistence/resolution foundation remains PARTIAL as designed.
+- Moved the exact execution position to ResourceMovement foundation implementation.
 
 Future meaningful milestones must append an entry here.
 
