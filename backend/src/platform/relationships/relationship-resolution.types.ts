@@ -68,6 +68,10 @@ export interface ResourceRelationshipResolution {
  * Implementations may later resolve relationships from persistence,
  * historical records, external sources, or other domain providers.
  */
+export const RESOURCE_RELATIONSHIP_RESOLVER = Symbol(
+  'ResourceRelationshipResolver',
+);
+
 export interface ResourceRelationshipResolver {
   resolve(
     query: ResourceRelationshipQuery,
