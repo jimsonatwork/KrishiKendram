@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -10,18 +10,29 @@ export interface EnsurePermissionInput {
   scope: string;
 }
 
+export interface FindAuthorizationPermissionsInput {
+  module: string;
+  section?: string;
+  resource: string;
+  action: string;
+  role: UserRole;
+  userId: string;
+}
+
+export type AuthorizationPermission = Prisma.PermissionGetPayload<{
+  include: {
+    rolePermissions: true;
+    accessGrants: true;
+  };
+}>;
+
 @Injectable()
 export class PermissionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findForAuthorization(input: {
-    module: string;
-    section?: string;
-    resource: string;
-    action: string;
-    role: UserRole;
-    userId: string;
-  }) {
+  async findForAuthorization(
+    input: FindAuthorizationPermissionsInput,
+  ): Promise<AuthorizationPermission[]> {
     return this.prisma.permission.findMany({
       where: {
         action: input.action,

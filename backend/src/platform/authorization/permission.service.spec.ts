@@ -5,6 +5,7 @@ import { PermissionService } from './permission.service';
 describe('PermissionService', () => {
   const prisma = {
     permission: {
+      findMany: jest.fn(),
       findFirst: jest.fn(),
       create: jest.fn(),
     },
@@ -19,6 +20,169 @@ describe('PermissionService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     service = new PermissionService(prisma as never);
+  });
+
+  describe('findForAuthorization', () => {
+    const authorizationInput = {
+      module: 'farms',
+      section: 'production',
+      resource: 'crop',
+      action: 'READ',
+      role: UserRole.FARMER,
+      userId: 'user-1',
+    };
+
+    it('loads resource-specific permissions with role and grant context', async () => {
+      const permissions = [
+        {
+          id: 'permission-resource',
+          module: 'farms',
+          section: 'production',
+          resource: 'crop',
+          action: 'READ',
+          scope: 'FARM',
+          rolePermissions: [{ role: UserRole.FARMER }],
+          accessGrants: [],
+        },
+      ];
+
+      prisma.permission.findMany.mockResolvedValue(permissions);
+
+      await expect(
+        service.findForAuthorization(authorizationInput),
+      ).resolves.toEqual(permissions);
+
+      expect(prisma.permission.findMany).toHaveBeenCalledWith({
+        where: {
+          action: 'READ',
+          OR: [
+            {
+              module: 'farms',
+              section: 'production',
+              resource: 'crop',
+            },
+            {
+              module: 'farms',
+              section: 'production',
+              resource: null,
+            },
+            {
+              module: 'farms',
+              section: null,
+              resource: null,
+            },
+          ],
+        },
+        include: {
+          rolePermissions: {
+            where: {
+              role: UserRole.FARMER,
+            },
+          },
+          accessGrants: {
+            where: {
+              OR: [
+                { userId: 'user-1' },
+                { userId: null },
+              ],
+            },
+          },
+        },
+      });
+    });
+
+    it('preserves the authorization specificity fallback candidates', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      await service.findForAuthorization({
+        ...authorizationInput,
+        section: 'operations',
+        resource: 'asset',
+      });
+
+      expect(prisma.permission.findMany.mock.calls[0][0].where.OR).toEqual([
+        {
+          module: 'farms',
+          section: 'operations',
+          resource: 'asset',
+        },
+        {
+          module: 'farms',
+          section: 'operations',
+          resource: null,
+        },
+        {
+          module: 'farms',
+          section: null,
+          resource: null,
+        },
+      ]);
+    });
+
+    it('filters role permissions to the requesting role', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      await service.findForAuthorization({
+        ...authorizationInput,
+        role: UserRole.ADMIN,
+      });
+
+      expect(
+        prisma.permission.findMany.mock.calls[0][0].include.rolePermissions,
+      ).toEqual({
+        where: {
+          role: UserRole.ADMIN,
+        },
+      });
+    });
+
+    it('loads only user-specific and global access grants', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      await service.findForAuthorization(authorizationInput);
+
+      expect(
+        prisma.permission.findMany.mock.calls[0][0].include.accessGrants,
+      ).toEqual({
+        where: {
+          OR: [
+            { userId: 'user-1' },
+            { userId: null },
+          ],
+        },
+      });
+    });
+
+    it('returns persisted permission records without evaluating authorization', async () => {
+      const permissions = [
+        {
+          id: 'permission-record',
+          module: 'farms',
+          section: null,
+          resource: 'crop',
+          action: 'READ',
+          scope: 'GLOBAL',
+          rolePermissions: [],
+          accessGrants: [],
+        },
+      ];
+
+      prisma.permission.findMany.mockResolvedValue(permissions);
+
+      await expect(
+        service.findForAuthorization(authorizationInput),
+      ).resolves.toEqual(permissions);
+
+      expect(prisma.permission.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns an empty collection when no permission matches', async () => {
+      prisma.permission.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.findForAuthorization(authorizationInput),
+      ).resolves.toEqual([]);
+    });
   });
 
   describe('ensurePermission', () => {
