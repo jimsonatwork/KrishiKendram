@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { UserRole } from '@prisma/client';
-
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { RESOURCE_RELATIONSHIP_RESOLVER } from '../relationships/relationship-resolution.types';
 import type { ResourceRelationshipResolver } from '../relationships/relationship-resolution.types';
 import { RelationshipAccessPolicy } from '../relationships/relationship-access.policy';
+
+import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
 
 export interface FarmAccessDecision {
   allowed: boolean;
@@ -20,6 +20,7 @@ export class FarmAccessService {
     @Inject(RESOURCE_RELATIONSHIP_RESOLVER)
     private readonly relationshipResolver: ResourceRelationshipResolver,
     private readonly relationshipAccessPolicy: RelationshipAccessPolicy,
+    private readonly globalFarmAccessPolicy: GlobalFarmAccessPolicy,
   ) {}
 
   async resolveAccess(
@@ -40,7 +41,10 @@ export class FarmAccessService {
       select: { role: true },
     });
 
-    if (user?.role === UserRole.SUPER_ADMIN) {
+    if (
+      user?.role &&
+      this.globalFarmAccessPolicy.allowsGlobalFarmAccess(user.role)
+    ) {
       return { allowed: true, source: 'GLOBAL' };
     }
 

@@ -6,6 +6,7 @@ import {
   ResourceRelationshipType,
 } from '../relationships/relationship.types';
 import { RelationshipAccessPolicy } from '../relationships/relationship-access.policy';
+import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
 
 describe('FarmAccessService', () => {
   let service: FarmAccessService;
@@ -24,6 +25,7 @@ describe('FarmAccessService', () => {
   };
 
   const relationshipAccessPolicy = new RelationshipAccessPolicy();
+  const globalFarmAccessPolicy = new GlobalFarmAccessPolicy();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -44,6 +46,7 @@ describe('FarmAccessService', () => {
       prisma,
       relationshipResolver,
       relationshipAccessPolicy,
+      globalFarmAccessPolicy,
     );
   });
 
