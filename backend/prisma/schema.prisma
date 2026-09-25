@@ -146,8 +146,10 @@ model User {
   farms       Farm[]
   auditEvents AuditEvent[] @relation("AuditActor")
 
-  userHistoryEntries UserHistory[] @relation("UserHistoryUser")
-  userHistoryActions UserHistory[] @relation("UserHistoryActor")
+  userHistoryEntries       UserHistory[]      @relation("UserHistoryUser")
+  userHistoryActions       UserHistory[]      @relation("UserHistoryActor")
+  resourceMovementsCreated ResourceMovement[] @relation("ResourceMovementCreatedBy")
+  resourceMovementsUpdated ResourceMovement[] @relation("ResourceMovementUpdatedBy")
 
   resourceRelationships        ResourceRelationship[] @relation("ResourceRelationshipUser")
   createdResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipCreatedBy")
@@ -393,6 +395,76 @@ model ResourceRelationship {
 // ============================================================
 // PART 05 END
 // ============================================================
+
+model ResourceMovement {
+  id String @id @default(cuid())
+
+  resourceType String
+  resourceId   String
+  movementType ResourceMovementType
+
+  sourceUserId            String?
+  destinationUserId       String?
+  sourceResourceType      String?
+  sourceResourceId        String?
+  destinationResourceType String?
+  destinationResourceId   String?
+
+  sourceRelationshipId      String?
+  destinationRelationshipId String?
+  previousMovementId        String?
+
+  quantity      Float?
+  unit          String?
+  effectiveAt   DateTime
+  recordedAt    DateTime @default(now())
+  reason        String?
+  transactionId String?
+  evidenceId    String?
+  metadata      Json?
+
+  createdBy String
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator          User               @relation("ResourceMovementCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater          User               @relation("ResourceMovementUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+  previousMovement ResourceMovement?  @relation("ResourceMovementChain", fields: [previousMovementId], references: [id], onDelete: SetNull)
+  nextMovements    ResourceMovement[] @relation("ResourceMovementChain")
+
+  @@index([resourceType, resourceId])
+  @@index([movementType])
+  @@index([sourceUserId])
+  @@index([destinationUserId])
+  @@index([sourceResourceType, sourceResourceId])
+  @@index([destinationResourceType, destinationResourceId])
+  @@index([effectiveAt])
+  @@index([recordedAt])
+  @@index([previousMovementId])
+  @@index([createdBy])
+  @@index([updatedBy])
+}
+
+enum ResourceMovementType {
+  SALE
+  PARTIAL_SALE
+  TRANSFER
+  PARTIAL_TRANSFER
+  LEASE
+  LEASE_END
+  INHERITANCE
+  GIFT
+  DONATION
+  ALLOCATION
+  REALLOCATION
+  RETURN
+  MERGE
+  SPLIT
+  RECOVERY
+  LOCATION_CHANGE
+  CUSTODY_CHANGE
+}
 
 enum ResourceRelationshipType {
   OWNER

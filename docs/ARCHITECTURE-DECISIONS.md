@@ -220,4 +220,24 @@ Target:
 Authorization → permitted context → AI abstraction → provider.
 
 AI does not bypass platform authorization.
+---
+
+## ADR-016 — Resource Movement Is Business History
+
+**Status:** ACTIVE
+
+ResourceMovement is a first-class business-history layer separate from technical AuditEvent records and temporal ResourceRelationship records.
+
+The movement foundation must preserve, where applicable:
+
+- affected resource identity;
+- source and destination user/resource references;
+- movement type;
+- effective business time and recorded system time;
+- quantity or portion for partial movement;
+- previous-movement linkage;
+- transaction and evidence references;
+- creator/updater attribution.
+
+Movement records must not silently rewrite prior relationship history. Partial sale and transfer scenarios will use movement history together with ResourceLineage to preserve continuity.
 

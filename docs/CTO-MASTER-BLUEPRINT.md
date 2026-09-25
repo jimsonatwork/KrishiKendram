@@ -1836,7 +1836,7 @@ and:
 
 # CTO EXECUTION DASHBOARD — V0.3 BASELINE
 
-**Dashboard date:** 25 September 2026
+**Dashboard date:** 26 September 2026
 **Architecture:** V0.3
 **Status:** Architecture aligned — implementation ready
 
@@ -1882,6 +1882,8 @@ This does not mean those capabilities are already implemented.
 
 The dashboard therefore continues to represent implementation reality rather than architectural ambition.
 
+As of 26 September 2026, the ResourceMovement foundation is implemented as a platform persistence and resolution layer. It supports movement vocabulary, effective-date history, source/destination user or resource references, partial-portion quantity, transaction/evidence references, and linked previous-movement history. Business creation workflows and Farm integration remain pending.
+
 ## Current V0.3 Priority Order
 
 The current execution priority is:
@@ -1907,4 +1909,4 @@ These concepts are related and must be connected, but they must not be collapsed
 
 **V0.3 Status: ARCHITECTURE ALIGNED — IMPLEMENTATION READY**
 
-The platform is ready to begin the V0.3 implementation sequence after the current UsersService foundation work is completed and checkpointed.
+The V0.3 implementation sequence is active. UsersService and Registry / Authorization foundations are checkpointed; ResourceRelationship and ResourceMovement foundations are implemented, while business lifecycle integration, lineage, evidence, and Farm adoption remain.

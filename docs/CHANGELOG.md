@@ -109,6 +109,37 @@ rewriting the established authorization core.
 **Permission → Authorization integration / automatic administrative capability**
 
 ---
+
+## 2026-09-26 — ResourceMovement Foundation Checkpoint
+
+### Git checkpoint
+
+Pending commit after final documentation and regression verification.
+
+### Completed architectural work
+
+- Added the ResourceMovement Prisma persistence model and migration.
+- Added the PMD movement vocabulary, including partial sale and partial transfer.
+- Preserved source/destination user and resource references.
+- Preserved effective business time separately from recorded system time.
+- Added quantity/unit support for partial portions.
+- Added previous-movement linkage for connected business history.
+- Preserved transaction and evidence references without coupling them to a future document implementation.
+- Added a platform movement resolver with effective-date window support.
+- Kept movement history separate from authorization and technical audit.
+
+### Verification
+
+- Prisma migration applied successfully.
+- Prisma migration status: database schema up to date.
+- Focused regression: 10 suites, 87 tests passed.
+- Backend TypeScript build: PASS.
+
+### Next target
+
+**ResourceMovement business creation/lifecycle semantics, followed by ResourceLineage and RelationshipEvidence.**
+
+---
 ## Versioning Rule
 
 At every coherent architectural milestone:
