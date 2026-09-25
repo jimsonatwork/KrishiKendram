@@ -27,18 +27,30 @@ describe('RelationshipAccessPolicy', () => {
     };
   }
 
-  it('does not grant farm access from an ACTIVE relationship by default', () => {
-    expect(
-      policy.allowsFarmAccess(
-        relationship(
-          ResourceRelationshipType.LESSEE,
-          ResourceRelationshipStatus.ACTIVE,
+  it('allows explicitly approved active farm-access relationships', () => {
+    const approvedTypes = [
+      ResourceRelationshipType.CO_OWNER,
+      ResourceRelationshipType.LESSEE,
+      ResourceRelationshipType.MANAGER,
+      ResourceRelationshipType.WORKER,
+      ResourceRelationshipType.CUSTODIAN,
+      ResourceRelationshipType.CARETAKER,
+      ResourceRelationshipType.AUTHORIZED_OPERATOR,
+    ];
+
+    for (const relationshipType of approvedTypes) {
+      expect(
+        policy.allowsFarmAccess(
+          relationship(
+            relationshipType,
+            ResourceRelationshipStatus.ACTIVE,
+          ),
         ),
-      ),
-    ).toBe(false);
+      ).toBe(true);
+    }
   });
 
-  it('does not grant farm access from an inactive relationship', () => {
+  it('does not grant farm access from inactive relationships', () => {
     const statuses = [
       ResourceRelationshipStatus.EXPIRED,
       ResourceRelationshipStatus.TRANSFERRED,
@@ -47,19 +59,44 @@ describe('RelationshipAccessPolicy', () => {
       ResourceRelationshipStatus.SUSPENDED,
     ];
 
-    for (const status of statuses) {
-      expect(
-        policy.allowsFarmAccess(
-          relationship(ResourceRelationshipType.LESSEE, status),
-        ),
-      ).toBe(false);
+    for (const relationshipType of [
+      ResourceRelationshipType.CO_OWNER,
+      ResourceRelationshipType.LESSEE,
+      ResourceRelationshipType.MANAGER,
+      ResourceRelationshipType.WORKER,
+      ResourceRelationshipType.CUSTODIAN,
+      ResourceRelationshipType.CARETAKER,
+      ResourceRelationshipType.AUTHORIZED_OPERATOR,
+    ]) {
+      for (const status of statuses) {
+        expect(
+          policy.allowsFarmAccess(
+            relationship(relationshipType, status),
+          ),
+        ).toBe(false);
+      }
     }
   });
 
-  it('keeps every relationship type outside the access policy until explicitly approved', () => {
-    const relationshipTypes = Object.values(ResourceRelationshipType);
+  it('does not treat OWNER as a relationship-based farm access grant', () => {
+    expect(
+      policy.allowsFarmAccess(
+        relationship(
+          ResourceRelationshipType.OWNER,
+          ResourceRelationshipStatus.ACTIVE,
+        ),
+      ),
+    ).toBe(false);
+  });
 
-    for (const relationshipType of relationshipTypes) {
+  it('does not grant blanket farm access to service-provider or advisory relationships', () => {
+    const restrictedTypes = [
+      ResourceRelationshipType.SERVICE_PROVIDER,
+      ResourceRelationshipType.ADVISOR,
+      ResourceRelationshipType.VETERINARIAN,
+    ];
+
+    for (const relationshipType of restrictedTypes) {
       expect(
         policy.allowsFarmAccess(
           relationship(
@@ -71,7 +108,7 @@ describe('RelationshipAccessPolicy', () => {
     }
   });
 
-  it('does not reinterpret relationship facts as authorization grants', () => {
+  it('keeps the relationship fact separate from authorization semantics', () => {
     const relationshipFact = relationship(
       ResourceRelationshipType.MANAGER,
       ResourceRelationshipStatus.ACTIVE,
@@ -80,6 +117,6 @@ describe('RelationshipAccessPolicy', () => {
     expect(relationshipFact.relationshipType).toBe(
       ResourceRelationshipType.MANAGER,
     );
-    expect(policy.allowsFarmAccess(relationshipFact)).toBe(false);
+    expect(policy.allowsFarmAccess(relationshipFact)).toBe(true);
   });
 });

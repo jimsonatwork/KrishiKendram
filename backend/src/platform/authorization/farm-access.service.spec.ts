@@ -135,7 +135,7 @@ describe('FarmAccessService', () => {
     expect(relationshipResolver.resolve).not.toHaveBeenCalled();
   });
 
-  it('does not turn an ACTIVE relationship into access while the policy allow-list is empty', async () => {
+  it('allows an ACTIVE approved relationship to establish farm access', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       ownerId: 'owner-1',
     });
@@ -162,8 +162,8 @@ describe('FarmAccessService', () => {
     await expect(
       service.resolveAccess('user-1', 'farm-1'),
     ).resolves.toEqual({
-      allowed: false,
-      source: 'NONE',
+      allowed: true,
+      source: 'RELATIONSHIP',
     });
   });
 

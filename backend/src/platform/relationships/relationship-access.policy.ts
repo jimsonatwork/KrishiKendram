@@ -11,17 +11,21 @@ import {
  * Relationship facts and authorization decisions remain separate concerns.
  * This policy is the explicit translation boundary between them.
  *
- * R1.9A intentionally starts with no relationship type granting access.
- * Existing farm-owner access remains owned by FarmAccessService and is not
- * represented by this policy.
+ * Farm-boundary access is intentionally limited to relationships that
+ * represent an ongoing ownership, tenancy, management, operational, or
+ * custodial relationship with the farm.
+ *
+ * This policy does not grant resource actions or field permissions. Those
+ * remain the responsibility of the authorization and permission layers.
  */
 export class RelationshipAccessPolicy {
   /**
    * Determines whether a resolved relationship fact may establish access
    * to the farm boundary.
    *
-   * The relationship must be current and ACTIVE before its relationship
-   * type can be considered for access.
+   * The relationship must be ACTIVE before its relationship type can be
+   * considered for access. Temporal validity is established by the
+   * relationship resolver before this policy evaluates the relationship.
    */
   allowsFarmAccess(relationship: ResourceRelationship): boolean {
     if (relationship.status !== ResourceRelationshipStatus.ACTIVE) {
@@ -37,12 +41,21 @@ export class RelationshipAccessPolicy {
    * Explicit allow-list for relationship types that may establish farm
    * boundary access.
    *
-   * R1.9A intentionally returns an empty set. Relationship types must not
-   * become authorization grants merely because they exist in the domain
-   * taxonomy. Future milestones may add explicitly approved types here
-   * together with their policy tests.
+   * OWNER is intentionally excluded because current farm ownership is
+   * evaluated directly by FarmAccessService.
+   *
+   * Service-provider and advisory relationships are intentionally excluded
+   * because their farm access must not become a blanket farm-boundary grant.
    */
   private farmAccessRelationshipTypes(): ReadonlySet<ResourceRelationshipType> {
-    return new Set<ResourceRelationshipType>();
+    return new Set<ResourceRelationshipType>([
+      ResourceRelationshipType.CO_OWNER,
+      ResourceRelationshipType.LESSEE,
+      ResourceRelationshipType.MANAGER,
+      ResourceRelationshipType.WORKER,
+      ResourceRelationshipType.CUSTODIAN,
+      ResourceRelationshipType.CARETAKER,
+      ResourceRelationshipType.AUTHORIZED_OPERATOR,
+    ]);
   }
 }
