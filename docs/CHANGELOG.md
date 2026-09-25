@@ -114,7 +114,7 @@ rewriting the established authorization core.
 
 ### Git checkpoint
 
- — Add ResourceMovement foundation
+7750fc6 — Add ResourceMovement foundation
 
 ### Completed architectural work
 
