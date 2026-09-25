@@ -2,6 +2,8 @@ import { Global, Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
 
+import { RelationshipsModule } from '../relationships/relationships.module';
+
 import { AuthorizationService } from './authorization.service';
 import { FarmAccessService } from './farm-access.service';
 import { FieldPolicyEvaluationService } from './field-policy-evaluation.service';
@@ -11,7 +13,10 @@ import { PermissionService } from './permission.service';
 
 @Global()
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    RelationshipsModule,
+  ],
   providers: [
     AuthorizationService,
     FarmAccessService,

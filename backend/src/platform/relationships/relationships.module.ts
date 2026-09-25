@@ -4,19 +4,23 @@ import { PrismaModule } from '../../prisma/prisma.module';
 
 import {
   RESOURCE_RELATIONSHIP_RESOLVER,
-  ResourceRelationshipResolver,
 } from './relationship-resolution.types';
+import { RelationshipAccessPolicy } from './relationship-access.policy';
 import { ResourceRelationshipResolverService } from './relationship-resolver.service';
 
 @Module({
   imports: [PrismaModule],
   providers: [
+    RelationshipAccessPolicy,
     ResourceRelationshipResolverService,
     {
       provide: RESOURCE_RELATIONSHIP_RESOLVER,
       useExisting: ResourceRelationshipResolverService,
     },
   ],
-  exports: [RESOURCE_RELATIONSHIP_RESOLVER],
+  exports: [
+    RelationshipAccessPolicy,
+    RESOURCE_RELATIONSHIP_RESOLVER,
+  ],
 })
 export class RelationshipsModule {}
