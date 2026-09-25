@@ -92,6 +92,18 @@ export const userResource: ResourceDefinition = {
       action: AuthorizationAction.DELETE,
       scopes: [AuthorizationScope.GLOBAL],
     },
+    {
+      action: AuthorizationAction.READ_ACTIVITY,
+      scopes: [AuthorizationScope.GLOBAL],
+    },
+    {
+      action: AuthorizationAction.READ_HISTORY,
+      scopes: [AuthorizationScope.GLOBAL],
+    },
+    {
+      action: AuthorizationAction.RESTORE,
+      scopes: [AuthorizationScope.GLOBAL],
+    },
   ],
 
   permissions: [

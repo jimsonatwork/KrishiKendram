@@ -33,41 +33,9 @@ const ADMINISTRATIVE_ROLES: UserRole[] = [
 const ALL_USER_ROLES: UserRole[] = Object.values(UserRole);
 
 const userPermissions = [
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'READ',
-    scope: 'OWN',
-    roles: ALL_USER_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'READ',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'CREATE',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'UPDATE',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'DELETE',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
+  // Non-CRUD administrative capabilities remain explicit until their
+  // persistence path is fully generalized through Registry capability
+  // reconciliation.
   {
     module: 'platform',
     resource: 'user',
