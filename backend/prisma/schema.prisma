@@ -148,6 +148,10 @@ model User {
 
   userHistoryEntries UserHistory[] @relation("UserHistoryUser")
   userHistoryActions UserHistory[] @relation("UserHistoryActor")
+
+  resourceRelationships        ResourceRelationship[] @relation("ResourceRelationshipUser")
+  createdResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipCreatedBy")
+  updatedResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipUpdatedBy")
 }
 
 // ============================================================
@@ -346,6 +350,72 @@ model UserHistory {
 // ============================================================
 // PART 10 - USER ROLES
 // ============================================================
+
+// ============================================================
+// PART 05 - RESOURCE RELATIONSHIPS
+// ============================================================
+
+model ResourceRelationship {
+  id String @id @default(cuid())
+
+  resourceType String
+  resourceId   String
+  userId       String
+
+  relationshipType ResourceRelationshipType
+  status           ResourceRelationshipStatus
+
+  validFrom   DateTime
+  validUntil  DateTime?
+  endedAt     DateTime?
+  endedReason String?
+
+  createdBy String
+  updatedBy String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User @relation("ResourceRelationshipUser", fields: [userId], references: [id], onDelete: Restrict)
+  creator User @relation("ResourceRelationshipCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater User @relation("ResourceRelationshipUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@index([resourceType, resourceId])
+  @@index([userId])
+  @@index([relationshipType])
+  @@index([status])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@index([createdBy])
+  @@index([updatedBy])
+}
+
+// ============================================================
+// PART 05 END
+// ============================================================
+
+enum ResourceRelationshipType {
+  OWNER
+  CO_OWNER
+  LESSEE
+  MANAGER
+  WORKER
+  CUSTODIAN
+  CARETAKER
+  SERVICE_PROVIDER
+  ADVISOR
+  VETERINARIAN
+  AUTHORIZED_OPERATOR
+}
+
+enum ResourceRelationshipStatus {
+  ACTIVE
+  EXPIRED
+  TRANSFERRED
+  REVOKED
+  TERMINATED
+  SUSPENDED
+}
 
 enum UserRole {
   SUPER_ADMIN
