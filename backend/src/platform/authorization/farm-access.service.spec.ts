@@ -1,3 +1,5 @@
+import { UserRole } from '@prisma/client';
+
 import { FarmAccessService } from './farm-access.service';
 import {
   ResourceRelationshipStatus,
@@ -12,6 +14,9 @@ describe('FarmAccessService', () => {
     farm: {
       findUnique: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
   } as any;
 
   const relationshipResolver = {
@@ -22,6 +27,10 @@ describe('FarmAccessService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    prisma.user.findUnique.mockResolvedValue({
+      role: UserRole.FARMER,
+    });
 
     relationshipResolver.resolve.mockResolvedValue({
       resourceType: 'farm',
@@ -36,6 +45,30 @@ describe('FarmAccessService', () => {
       relationshipResolver,
       relationshipAccessPolicy,
     );
+  });
+
+  it('allows SUPER_ADMIN global access to a non-owned farm', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      ownerId: 'owner-1',
+    });
+
+    prisma.user.findUnique.mockResolvedValue({
+      role: UserRole.SUPER_ADMIN,
+    });
+
+    await expect(
+      service.resolveAccess('super-admin-1', 'farm-1'),
+    ).resolves.toEqual({
+      allowed: true,
+      source: 'GLOBAL',
+    });
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'super-admin-1' },
+      select: { role: true },
+    });
+
+    expect(relationshipResolver.resolve).not.toHaveBeenCalled();
   });
 
   it('allows the current farm owner with OWNER source', async () => {
@@ -53,7 +86,7 @@ describe('FarmAccessService', () => {
     expect(relationshipResolver.resolve).not.toHaveBeenCalled();
   });
 
-  it('denies a non-owner when no relationship grants access', async () => {
+  it('denies a normal non-owner when no relationship grants access', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       ownerId: 'owner-1',
     });
@@ -70,6 +103,20 @@ describe('FarmAccessService', () => {
       resourceId: 'farm-1',
       userId: 'user-1',
     });
+  });
+
+  it('does not grant global access when the farm does not exist', async () => {
+    prisma.farm.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.resolveAccess('super-admin-1', 'missing-farm'),
+    ).resolves.toEqual({
+      allowed: false,
+      source: 'NONE',
+    });
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(relationshipResolver.resolve).not.toHaveBeenCalled();
   });
 
   it('denies access when the farm does not exist', async () => {

@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { UserRole } from '@prisma/client';
+
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { RESOURCE_RELATIONSHIP_RESOLVER } from '../relationships/relationship-resolution.types';
@@ -8,7 +10,7 @@ import { RelationshipAccessPolicy } from '../relationships/relationship-access.p
 
 export interface FarmAccessDecision {
   allowed: boolean;
-  source: 'OWNER' | 'RELATIONSHIP' | 'NONE';
+  source: 'GLOBAL' | 'OWNER' | 'RELATIONSHIP' | 'NONE';
 }
 
 @Injectable()
@@ -31,6 +33,15 @@ export class FarmAccessService {
 
     if (!farm) {
       return { allowed: false, source: 'NONE' };
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === UserRole.SUPER_ADMIN) {
+      return { allowed: true, source: 'GLOBAL' };
     }
 
     if (farm.ownerId === userId) {
