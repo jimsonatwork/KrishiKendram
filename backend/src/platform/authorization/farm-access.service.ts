@@ -8,10 +8,28 @@ import { RelationshipAccessPolicy } from '../relationships/relationship-access.p
 
 import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
 
-export interface FarmAccessDecision {
+import type { ResourceRelationship } from '../relationships/relationship.types';
+
+export type FarmAccessSource =
+  | 'GLOBAL'
+  | 'OWNER'
+  | 'RELATIONSHIP'
+  | 'NONE';
+
+/**
+ * Canonical context produced by the farm-access boundary.
+ *
+ * The source describes how the farm boundary was reached. Relationship
+ * entries remain domain facts and are never converted into roles,
+ * permissions, or resource actions by this contract.
+ */
+export interface FarmAccessContext {
   allowed: boolean;
-  source: 'GLOBAL' | 'OWNER' | 'RELATIONSHIP' | 'NONE';
+  source: FarmAccessSource;
+  relationships?: readonly ResourceRelationship[];
 }
+
+export type FarmAccessDecision = FarmAccessContext;
 
 @Injectable()
 export class FarmAccessService {
@@ -64,7 +82,11 @@ export class FarmAccessService {
     );
 
     if (hasRelationshipAccess) {
-      return { allowed: true, source: 'RELATIONSHIP' };
+      return {
+        allowed: true,
+        source: 'RELATIONSHIP',
+        relationships: resolution.relationships,
+      };
     }
 
     return { allowed: false, source: 'NONE' };

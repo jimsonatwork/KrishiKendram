@@ -164,7 +164,54 @@ describe('FarmAccessService', () => {
     ).resolves.toEqual({
       allowed: true,
       source: 'RELATIONSHIP',
+      relationships: [
+        {
+          resourceType: 'farm',
+          resourceId: 'farm-1',
+          userId: 'user-1',
+          relationshipType: ResourceRelationshipType.MANAGER,
+          status: ResourceRelationshipStatus.ACTIVE,
+          validFrom: new Date('2026-01-01T00:00:00.000Z'),
+          createdBy: 'admin-1',
+          updatedBy: 'admin-1',
+        },
+      ],
     });
+  });
+
+  it('keeps relationship facts as context without converting them into permissions', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      ownerId: 'owner-1',
+    });
+
+    const relationshipFact = {
+      resourceType: 'farm',
+      resourceId: 'farm-1',
+      userId: 'user-1',
+      relationshipType: ResourceRelationshipType.MANAGER,
+      status: ResourceRelationshipStatus.ACTIVE,
+      validFrom: new Date('2026-01-01T00:00:00.000Z'),
+      createdBy: 'admin-1',
+      updatedBy: 'admin-1',
+    };
+
+    relationshipResolver.resolve.mockResolvedValue({
+      resourceType: 'farm',
+      resourceId: 'farm-1',
+      userId: 'user-1',
+      relationships: [relationshipFact],
+      resolvedAt: new Date('2026-09-25T00:00:00.000Z'),
+    });
+
+    const decision = await service.resolveAccess('user-1', 'farm-1');
+
+    expect(decision.allowed).toBe(true);
+    expect(decision.source).toBe('RELATIONSHIP');
+    expect(decision.relationships).toEqual([relationshipFact]);
+
+    expect(
+      decision.relationships?.[0].relationshipType,
+    ).toBe(ResourceRelationshipType.MANAGER);
   });
 
   it('preserves the boolean canAccess contract', async () => {
