@@ -103,7 +103,8 @@ R1 authorization/capability integration is treated as CLOSED.
 
 The UsersService Field Policy migration segment has now been completed and verified.
 The Registry / Authorization foundation has also been verified through the R1.17 regression.
-The next controlled activity is the ResourceMovement foundation defined by PMD v0.3.
+The ResourceMovement persistence/resolution foundation has now been implemented and checkpointed.
+The next controlled activity is ResourceMovement business lifecycle semantics.
 
 ## 6. Historical Work Already Completed
 
@@ -289,7 +290,7 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: V0.3 — RESOURCE MOVEMENT FOUNDATION**
+**Current position: V0.3 — RESOURCE MOVEMENT LIFECYCLE**
 
 UsersService Field Policy migration is complete for the current implementation segment.
 
@@ -302,7 +303,7 @@ Evidence:
 
 Next controlled activity:
 
-**Implement the ResourceMovement foundation incrementally, derived from the existing ResourceRelationship model and PMD v0.3 movement contract.**
+**Implement ResourceMovement business creation/lifecycle semantics on top of the checkpointed persistence and resolution foundation.**
 
 This closes the current UsersService validation migration and Registry / Authorization verification segments without declaring the entire Users or V0.3 relationship capability COMPLETE.
 
@@ -364,8 +365,9 @@ A claim of COMPLETE without supporting evidence is not accepted.
 - Focused current regression: 8 suites, 83 tests PASS.
 - Backend production build: PASS.
 - Pushed the completed UsersService/Execution Bible checkpoint through commit 7dfe070.
+- Implemented and pushed the ResourceMovement persistence/resolution foundation through commit 7750fc6.
 - Confirmed the ResourceRelationship persistence/resolution foundation remains PARTIAL as designed.
-- Moved the exact execution position to ResourceMovement foundation implementation.
+- Moved the exact execution position to ResourceMovement business lifecycle semantics.
 
 Future meaningful milestones must append an entry here.
 

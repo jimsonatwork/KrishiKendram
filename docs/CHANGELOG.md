@@ -114,7 +114,7 @@ rewriting the established authorization core.
 
 ### Git checkpoint
 
-Pending commit after final documentation and regression verification.
+ — Add ResourceMovement foundation
 
 ### Completed architectural work
 
