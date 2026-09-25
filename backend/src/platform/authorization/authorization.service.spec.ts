@@ -20,6 +20,7 @@ describe('AuthorizationService', () => {
   } as any;
 
   const farmAccessService = {
+    resolveAccess: jest.fn(),
     canAccess: jest.fn(),
   };
 
@@ -33,6 +34,10 @@ describe('AuthorizationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    farmAccessService.resolveAccess.mockResolvedValue({
+      allowed: false,
+      source: 'NONE',
+    });
     farmAccessService.canAccess.mockResolvedValue(false);
 
     prisma.user.findUnique.mockResolvedValue({
@@ -134,7 +139,7 @@ describe('AuthorizationService', () => {
 
     await expect(service.can(request)).resolves.toBe(false);
 
-    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
+    expect(farmAccessService.resolveAccess).not.toHaveBeenCalled();
   });
 
   it('does not allow farmId to satisfy OWN authorization', async () => {
@@ -151,7 +156,7 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(false);
 
-    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
+    expect(farmAccessService.resolveAccess).not.toHaveBeenCalled();
   });
 
   it('does not allow ownerId to satisfy FARM authorization', async () => {
@@ -166,7 +171,7 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(false);
 
-    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
+    expect(farmAccessService.resolveAccess).not.toHaveBeenCalled();
   });
 
   it('keeps OWN and FARM contexts independent when both are present', async () => {
@@ -182,13 +187,16 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(true);
 
-    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
+    expect(farmAccessService.resolveAccess).not.toHaveBeenCalled();
 
     permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),
     ]);
 
-    farmAccessService.canAccess.mockResolvedValue(true);
+    farmAccessService.resolveAccess.mockResolvedValue({
+      allowed: true,
+      source: 'OWNER',
+    });
 
     await expect(
       service.can({
@@ -198,7 +206,7 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(true);
 
-    expect(farmAccessService.canAccess).toHaveBeenCalledWith(
+    expect(farmAccessService.resolveAccess).toHaveBeenCalledWith(
       'user-1',
       'farm-1',
     );
@@ -209,7 +217,10 @@ describe('AuthorizationService', () => {
       permission(AuthorizationScope.FARM),
     ]);
 
-    farmAccessService.canAccess.mockResolvedValue(false);
+    farmAccessService.resolveAccess.mockResolvedValue({
+      allowed: false,
+      source: 'NONE',
+    });
 
     await expect(
       service.can({
@@ -218,7 +229,7 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(false);
 
-    expect(farmAccessService.canAccess).toHaveBeenCalledWith(
+    expect(farmAccessService.resolveAccess).toHaveBeenCalledWith(
       'user-1',
       'farm-1',
     );
@@ -229,7 +240,10 @@ describe('AuthorizationService', () => {
       permission(AuthorizationScope.FARM),
     ]);
 
-    farmAccessService.canAccess.mockResolvedValue(false);
+    farmAccessService.resolveAccess.mockResolvedValue({
+      allowed: false,
+      source: 'NONE',
+    });
 
     await expect(
       service.can({
@@ -244,7 +258,11 @@ describe('AuthorizationService', () => {
       permission(AuthorizationScope.FARM),
     ]);
 
-    farmAccessService.canAccess.mockResolvedValue(true);
+    farmAccessService.resolveAccess.mockResolvedValue({
+      allowed: true,
+      source: 'RELATIONSHIP',
+      relationships: [],
+    });
 
     await expect(
       service.can({
@@ -253,10 +271,161 @@ describe('AuthorizationService', () => {
       }),
     ).resolves.toBe(true);
 
-    expect(farmAccessService.canAccess).toHaveBeenCalledWith(
+    expect(farmAccessService.resolveAccess).toHaveBeenCalledWith(
       'user-1',
       'farm-1',
     );
+  });
+
+  it('consumes farm access context without interpreting relationship facts as permissions', async () => {
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.FARM),
+    ]);
+
+    farmAccessService.resolveAccess.mockResolvedValue({
+      allowed: true,
+      source: 'RELATIONSHIP',
+      relationships: [
+        {
+          resourceType: 'farm',
+          resourceId: 'farm-1',
+          userId: 'user-1',
+          relationshipType: 'MANAGER',
+          status: 'ACTIVE',
+          validFrom: new Date('2026-01-01T00:00:00.000Z'),
+          createdBy: 'admin-1',
+          updatedBy: 'admin-1',
+        },
+      ],
+    });
+
+    await expect(
+      service.authorize({
+        ...request,
+        farmId: 'farm-1',
+      }),
+    ).resolves.toMatchObject({
+      allowed: true,
+    });
+
+    expect(farmAccessService.resolveAccess).toHaveBeenCalledWith(
+      'user-1',
+      'farm-1',
+    );
+  });
+
+  it('preserves relationship-backed farm access context in the authorization decision', async () => {
+    const relationship = {
+      resourceType: 'farm',
+      resourceId: 'farm-1',
+      userId: 'user-1',
+      relationshipType: 'MANAGER',
+      status: 'ACTIVE',
+      validFrom: new Date('2026-01-01T00:00:00.000Z'),
+      createdBy: 'admin-1',
+      updatedBy: 'admin-1',
+    };
+
+    const farmAccessContext = {
+      allowed: true,
+      source: 'RELATIONSHIP' as const,
+      relationships: [relationship],
+    };
+
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.FARM),
+    ]);
+
+    farmAccessService.resolveAccess.mockResolvedValue(
+      farmAccessContext,
+    );
+
+    await expect(
+      service.authorize({
+        ...request,
+        farmId: 'farm-1',
+      }),
+    ).resolves.toMatchObject({
+      allowed: true,
+      farmAccess: farmAccessContext,
+    });
+  });
+
+  it('preserves owner-backed farm access context in the authorization decision', async () => {
+    const farmAccessContext = {
+      allowed: true,
+      source: 'OWNER' as const,
+    };
+
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.FARM),
+    ]);
+
+    farmAccessService.resolveAccess.mockResolvedValue(
+      farmAccessContext,
+    );
+
+    await expect(
+      service.authorize({
+        ...request,
+        farmId: 'farm-1',
+      }),
+    ).resolves.toMatchObject({
+      allowed: true,
+      farmAccess: farmAccessContext,
+    });
+  });
+
+  it('preserves global farm access context in the authorization decision', async () => {
+    const farmAccessContext = {
+      allowed: true,
+      source: 'GLOBAL' as const,
+    };
+
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.FARM),
+    ]);
+
+    farmAccessService.resolveAccess.mockResolvedValue(
+      farmAccessContext,
+    );
+
+    await expect(
+      service.authorize({
+        ...request,
+        farmId: 'farm-1',
+      }),
+    ).resolves.toMatchObject({
+      allowed: true,
+      farmAccess: farmAccessContext,
+    });
+  });
+
+  it('does not attach farm access context to GLOBAL-scoped authorization', async () => {
+    const globalPermission = {
+      ...permission(AuthorizationScope.GLOBAL),
+      id: 'permission-global',
+    };
+
+    permissionService.findForAuthorization.mockResolvedValue([
+      globalPermission,
+    ]);
+
+    await expect(
+      service.authorize(request),
+    ).resolves.toEqual({
+      allowed: true,
+      permissionId: 'permission-global',
+      metadata: {
+        module: globalPermission.module,
+        section: globalPermission.section,
+        resource: globalPermission.resource,
+        action: globalPermission.action,
+        scope: globalPermission.scope,
+      },
+    });
+
+    expect(farmAccessService.resolveAccess).not.toHaveBeenCalled();
   });
 
   it('allows an explicit FARM grant only for its assigned user', async () => {
