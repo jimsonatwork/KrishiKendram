@@ -137,6 +137,73 @@ describe('AuthorizationService', () => {
     expect(farmAccessService.canAccess).not.toHaveBeenCalled();
   });
 
+  it('does not allow farmId to satisfy OWN authorization', async () => {
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.OWN),
+    ]);
+
+    farmAccessService.canAccess.mockResolvedValue(true);
+
+    await expect(
+      service.can({
+        ...request,
+        farmId: 'farm-1',
+      }),
+    ).resolves.toBe(false);
+
+    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
+  });
+
+  it('does not allow ownerId to satisfy FARM authorization', async () => {
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.FARM),
+    ]);
+
+    await expect(
+      service.can({
+        ...request,
+        ownerId: 'user-1',
+      }),
+    ).resolves.toBe(false);
+
+    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
+  });
+
+  it('keeps OWN and FARM contexts independent when both are present', async () => {
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.OWN),
+    ]);
+
+    await expect(
+      service.can({
+        ...request,
+        ownerId: 'user-1',
+        farmId: 'farm-1',
+      }),
+    ).resolves.toBe(true);
+
+    expect(farmAccessService.canAccess).not.toHaveBeenCalled();
+
+    permissionService.findForAuthorization.mockResolvedValue([
+      permission(AuthorizationScope.FARM),
+    ]);
+
+    farmAccessService.canAccess.mockResolvedValue(true);
+
+    await expect(
+      service.can({
+        ...request,
+        ownerId: 'different-user',
+        farmId: 'farm-1',
+      }),
+    ).resolves.toBe(true);
+
+    expect(farmAccessService.canAccess).toHaveBeenCalledWith(
+      'user-1',
+      'farm-1',
+    );
+  });
+
   it('denies FARM permission when the farm access boundary denies access', async () => {
     permissionService.findForAuthorization.mockResolvedValue([
       permission(AuthorizationScope.FARM),

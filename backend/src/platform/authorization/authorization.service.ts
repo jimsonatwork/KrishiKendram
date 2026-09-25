@@ -22,7 +22,29 @@ export interface AuthorizationContext {
   role: UserRole;
 }
 
-export interface AuthorizationRequest {
+/**
+ * Explicit ownership authorization context.
+ *
+ * OWN scope evaluates this context only. It must never be inferred from
+ * farmId or another resource boundary.
+ */
+export interface AuthorizationOwnershipContext {
+  ownerId?: string;
+}
+
+/**
+ * Explicit farm-boundary authorization context.
+ *
+ * FARM scope evaluates this context only. It must never be inferred from
+ * ownerId or another ownership boundary.
+ */
+export interface AuthorizationFarmContext {
+  farmId?: string;
+}
+
+export interface AuthorizationRequest
+  extends AuthorizationOwnershipContext,
+    AuthorizationFarmContext {
   user: AuthorizationContext;
 
   module: string;
@@ -270,17 +292,10 @@ export class AuthorizationService {
         return true;
 
       case AuthorizationScope.OWN:
-        return !!request.ownerId && request.ownerId === request.user.userId;
+        return this.matchesOwnershipContext(request);
 
       case AuthorizationScope.FARM:
-        if (!request.farmId) {
-          return false;
-        }
-
-        return this.farmAccessService.canAccess(
-          request.user.userId,
-          request.farmId,
-        );
+        return this.matchesFarmContext(request);
 
       case AuthorizationScope.ASSIGNED:
       case AuthorizationScope.ORGANIZATION:
@@ -291,6 +306,39 @@ export class AuthorizationService {
       default:
         return false;
     }
+  }
+
+  /**
+   * Evaluates the ownership authorization boundary.
+   *
+   * OWN authorization is intentionally independent from farm access.
+   */
+  private matchesOwnershipContext(
+    request: AuthorizationRequest,
+  ): boolean {
+    return (
+      !!request.ownerId &&
+      request.ownerId === request.user.userId
+    );
+  }
+
+  /**
+   * Evaluates the farm authorization boundary.
+   *
+   * FARM authorization is intentionally delegated to FarmAccessService so
+   * AuthorizationService does not interpret farm ownership/relationships.
+   */
+  private async matchesFarmContext(
+    request: AuthorizationRequest,
+  ): Promise<boolean> {
+    if (!request.farmId) {
+      return false;
+    }
+
+    return this.farmAccessService.canAccess(
+      request.user.userId,
+      request.farmId,
+    );
   }
 
   private grantMatches(
