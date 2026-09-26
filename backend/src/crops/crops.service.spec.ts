@@ -17,6 +17,7 @@ describe('CropsService', () => {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    $transaction: jest.fn(),
   } as any;
 
   const authorization = {
@@ -27,13 +28,23 @@ describe('CropsService', () => {
     validateResourceField: jest.fn(),
   } as any;
 
+  const relationships = {
+    createOwnerRelationship: jest.fn(),
+    terminateResourceRelationships: jest.fn(),
+  } as any;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: any) => Promise<unknown>) =>
+        callback({ crop: prisma.crop }),
+    );
 
     service = new CropsService(
       prisma,
       authorization,
       registry,
+      relationships,
     );
   });
 
@@ -47,6 +58,7 @@ describe('CropsService', () => {
       id: 'crop-1',
       farmId: 'farm-1',
       name: 'Rice',
+      createdAt: new Date('2026-09-26T08:00:00.000Z'),
     };
 
     prisma.farm.findUnique.mockResolvedValue(farm);
@@ -84,6 +96,13 @@ describe('CropsService', () => {
     });
 
     expect(result).toEqual(createdCrop);
+    expect(relationships.createOwnerRelationship).toHaveBeenCalledWith(
+      expect.anything(),
+      'crop',
+      'crop-1',
+      'user-1',
+      expect.any(Date),
+    );
   });
 
   it('creates a crop through the canonical Intake mutation boundary', async () => {
@@ -655,7 +674,23 @@ describe('CropsService', () => {
     });
 
     expect(
+      relationships.terminateResourceRelationships,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      'crop',
+      'crop-1',
+      expect.any(Date),
+      'Crop archived',
+    );
+
+    expect(
       authorization.assertCan.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      relationships.terminateResourceRelationships.mock.invocationCallOrder[0],
+    );
+
+    expect(
+      relationships.terminateResourceRelationships.mock.invocationCallOrder[0],
     ).toBeLessThan(
       prisma.crop.update.mock.invocationCallOrder[0],
     );

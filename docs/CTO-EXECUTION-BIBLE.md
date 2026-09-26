@@ -305,7 +305,7 @@ Evidence:
 
 Next controlled activity:
 
-**Complete the remaining Farm lifecycle integration where relationships, movement, lineage, or evidence materially represent FarmAsset, FarmRecord, and Crop history; then run the A/B/C promotion validation.**
+**Complete relationship-aware child access/history surfaces for FarmAsset and Crop, then execute the V0.3 A/B/C promotion and recovery checkpoint.**
 
 This closes the current UsersService validation migration and Registry / Authorization verification segments without declaring the entire Users or V0.3 relationship capability COMPLETE.
 
@@ -409,3 +409,16 @@ evidence, deviations and exact resume position.
 Repository promotion and development control.
 
 These records support one another. None should silently replace another.
+
+### 26 Sep 2026 — Farm child lifecycle closure
+
+- Crop creation now establishes temporal OWNER relationship history atomically.
+- Crop archive now terminates temporal relationship history atomically.
+- Farm deletion now terminates FarmAsset and Crop relationships before the
+  database cascade deletes child resources.
+- FarmRecord remains a historical observation record; no artificial ownership
+  relationship was introduced.
+- Full backend regression: 30/30 suites, 293/293 tests PASS.
+- TypeScript no-emit check and production build: PASS.
+- Exact next segment: relationship-aware child access/history surfaces,
+  followed by A/B/C promotion validation and recovery checkpoint.

@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram-Development` (active C) |
 | Branch | `main` |
-| Current checkpoint | `e83bff5` |
-| Current checkpoint message | Integrate temporal relationships with Farm lifecycle |
+| Current checkpoint | `farm-child-lifecycle-pending` |
+| Current checkpoint message | Complete Farm child lifecycle closure |
 | Current primary phase | V0.3 — Farm Lifecycle Integration |
-| Current platform priority | Complete FarmAsset/FarmRecord/Crop lifecycle integration and A/B/C promotion validation |
+| Current platform priority | Relationship-aware child access/history surfaces → V0.3 A/B/C promotion and recovery checkpoint |
 | Working-tree state at blueprint creation | Checked by this script |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Farm integration → relationship-aware lifecycle semantics → authorized history |
+| Next major target | Child relationship-aware access/history → V0.3 promotion → authorized history |
 
 ## Current Status
 
@@ -1912,3 +1912,13 @@ These concepts are related and must be connected, but they must not be collapsed
 **V0.3 Status: ARCHITECTURE ALIGNED — FARM INTEGRATION ACTIVE**
 
 The V0.3 implementation sequence is active. UsersService and Registry / Authorization foundations are checkpointed; ResourceRelationship, ResourceMovement, ResourceLineage, and ResourceEvidence foundations are implemented and verified. The current engineering frontier is Farm integration and business lifecycle semantics.
+
+### 2026-09-26 — Farm child lifecycle checkpoint
+
+The Farm lifecycle foundation now covers temporal ownership for Farm, FarmAsset,
+and Crop. Farm deletion explicitly closes child relationship history before
+database cascade deletion. FarmRecord remains classified as historical
+observation data rather than an owned resource.
+
+Next platform target: expose relationship-aware child access/history surfaces
+and then complete the V0.3 A/B/C promotion and recovery checkpoint.

@@ -579,6 +579,17 @@ export class FarmsService {
     return this.prisma.$transaction(async (tx) => {
       const endedAt = new Date();
 
+      const [assets, crops] = await Promise.all([
+        tx.farmAsset.findMany({
+          where: { farmId: id },
+          select: { id: true },
+        }),
+        tx.crop.findMany({
+          where: { farmId: id },
+          select: { id: true },
+        }),
+      ]);
+
       await this.relationships.terminateResourceRelationships(
         tx,
         'farm',
@@ -586,6 +597,27 @@ export class FarmsService {
         endedAt,
         'Farm deleted',
       );
+
+      await Promise.all([
+        ...assets.map((asset: { id: string }) =>
+          this.relationships.terminateResourceRelationships(
+            tx,
+            'farmAsset',
+            asset.id,
+            endedAt,
+            'Parent farm deleted',
+          ),
+        ),
+        ...crops.map((crop: { id: string }) =>
+          this.relationships.terminateResourceRelationships(
+            tx,
+            'crop',
+            crop.id,
+            endedAt,
+            'Parent farm deleted',
+          ),
+        ),
+      ]);
 
       return tx.farm.delete({
         where: { id },
