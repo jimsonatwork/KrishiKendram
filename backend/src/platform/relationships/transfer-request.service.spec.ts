@@ -6,7 +6,7 @@ describe('ResourceTransferRequestService', () => {
   const relationships = { createOwnerRelationship: jest.fn(), transferOwnerRelationship: jest.fn() } as any;
   const audit = { create: jest.fn(), createInTransaction: jest.fn() } as any;
   const tx = {
-    resourceTransferRequest: { updateMany: jest.fn(), update: jest.fn() },
+    resourceTransferRequest: { create: jest.fn(), updateMany: jest.fn(), update: jest.fn(), findUnique: jest.fn() },
     resourceRelationship: { findFirst: jest.fn() },
     farmAsset: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     resourceMovement: { findFirst: jest.fn(), create: jest.fn() },
@@ -61,7 +61,8 @@ describe('ResourceTransferRequestService', () => {
   it('rejects an expiry that is not after the effective time', async () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'jim' });
     prisma.user.findUnique.mockResolvedValue({ id: 'cto', status: 'ACTIVE' });
-    prisma.resourceTransferRequest.create.mockResolvedValue({ id: 'request-1' });
+    tx.resourceTransferRequest.create.mockResolvedValue({ id: 'request-1' });
+    jest.spyOn<any, any>(service, 'nextRequestNumber').mockResolvedValue('TR-20260926-123456');
     const effectiveAt = new Date(Date.now() + 60_000);
 
     await expect(service.create({
@@ -70,7 +71,7 @@ describe('ResourceTransferRequestService', () => {
       expiresAt: new Date(effectiveAt.getTime() + 30_000).toISOString(),
     }, 'jim', UserRole.FARMER)).resolves.toBeDefined();
 
-    prisma.resourceTransferRequest.create.mockClear();
+    tx.resourceTransferRequest.create.mockClear();
     await expect(service.create({
       resourceType: 'farm', resourceId: 'farm-1', destinationUserId: 'cto',
       effectiveAt: effectiveAt.toISOString(),
@@ -99,7 +100,8 @@ describe('ResourceTransferRequestService', () => {
   it('creates a pending partial farm-asset transfer request', async () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'jim' });
     prisma.user.findUnique.mockResolvedValue({ id: 'cto', status: 'ACTIVE' });
-    prisma.resourceTransferRequest.create.mockResolvedValue({ id: 'request-1', quantity: 5 });
+    tx.resourceTransferRequest.create.mockResolvedValue({ id: 'request-1', quantity: 5 });
+    tx.resourceTransferRequest.findUnique.mockResolvedValue({ id: 'request-1', quantity: 5 });
     jest.spyOn<any, any>(service, 'nextRequestNumber').mockResolvedValue('TR-20260926-123456');
 
     const result = await service.create({
@@ -107,13 +109,68 @@ describe('ResourceTransferRequestService', () => {
       quantity: 5, unit: 'head', reason: 'Transfer five hens',
     }, 'jim', UserRole.FARMER);
 
-    expect(prisma.resourceTransferRequest.create).toHaveBeenCalledWith({
+    expect(tx.resourceTransferRequest.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         resourceType: 'farmAsset', resourceId: 'asset-1', sourceUserId: 'jim',
         destinationUserId: 'cto', quantity: 5, unit: 'head', status: 'PENDING',
       }),
     });
     expect(result).toEqual({ id: 'request-1', quantity: 5 });
+  });
+
+  it('keeps transfer request creation and audit in one transaction', async () => {
+    prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'jim' });
+    prisma.user.findUnique.mockResolvedValue({ id: 'cto', status: 'ACTIVE' });
+    tx.resourceTransferRequest.create.mockResolvedValue({ id: 'request-1' });
+    jest.spyOn<any, any>(service, 'nextRequestNumber').mockResolvedValue('TR-20260926-654321');
+
+    await service.create({ resourceType: 'farm', resourceId: 'farm-1', destinationUserId: 'cto' }, 'jim', UserRole.FARMER);
+
+    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      action: 'RESOURCE_TRANSFER_REQUESTED',
+      resourceId: 'farm-1',
+    }));
+    expect(audit.create).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'RESOURCE_TRANSFER_REQUESTED' }));
+  });
+
+  it('atomically rejects a pending request with its audit event', async () => {
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farm', resourceId: 'farm-1', sourceUserId: 'jim', destinationUserId: 'cto', status: 'PENDING',
+    });
+    tx.resourceTransferRequest.findUnique.mockResolvedValue({ id: 'request-1', status: 'REJECTED' });
+
+    await expect(service.reject('request-1', 'cto')).resolves.toEqual({ id: 'request-1', status: 'REJECTED' });
+    expect(tx.resourceTransferRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 'request-1', status: 'PENDING' },
+      data: expect.objectContaining({ status: 'REJECTED', rejectedBy: 'cto' }),
+    });
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({ action: 'RESOURCE_TRANSFER_REJECTED' }));
+  });
+
+  it('atomically cancels a pending request with its audit event', async () => {
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farm', resourceId: 'farm-1', sourceUserId: 'jim', destinationUserId: 'cto', status: 'PENDING',
+    });
+    tx.resourceTransferRequest.findUnique.mockResolvedValue({ id: 'request-1', status: 'CANCELLED' });
+
+    await expect(service.cancel('request-1', 'jim')).resolves.toEqual({ id: 'request-1', status: 'CANCELLED' });
+    expect(tx.resourceTransferRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 'request-1', status: 'PENDING' },
+      data: expect.objectContaining({ status: 'CANCELLED', updatedBy: 'jim' }),
+    });
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({ action: 'RESOURCE_TRANSFER_CANCELLED' }));
+  });
+
+  it('prevents an expired request from being claimed during acceptance', async () => {
+    const expiredAt = new Date(Date.now() - 60_000);
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farm', resourceId: 'farm-1', sourceUserId: 'jim', destinationUserId: 'cto', quantity: null,
+      status: 'PENDING', effectiveAt: null, expiresAt: expiredAt, reason: null, transactionId: null,
+    });
+
+    await expect(service.accept('request-1', 'cto')).rejects.toThrow('Transfer request has expired.');
+    expect(tx.resourceTransferRequest.updateMany).not.toHaveBeenCalled();
   });
 
   it('atomically splits and transfers five of ten hens after acceptance', async () => {

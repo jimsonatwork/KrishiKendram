@@ -485,3 +485,26 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 ### Next target
 
 **Final end-to-end lifecycle verification → next concrete domain lifecycle adoption.**
+
+## 2026-09-26 — Transfer Hardening + FarmAsset Merge UI
+
+### Completed
+
+- Transfer request creation + audit are now atomic.
+- Reject/cancel use atomic pending-state claims and transaction-bound audit.
+- Acceptance adds an expiry condition to its atomic state claim.
+- FarmAsset merge is exposed as a first-class action in the existing Farm workspace.
+- Merge UI is isolated as a small component and delegates lifecycle truth to the backend.
+
+### Verification
+
+- Transfer service: 11/11 tests passed.
+- Backend regression: 34/34 suites, 315/315 tests passed.
+- Backend production build: passed.
+- Frontend production build: passed.
+- Runtime `/api/v1/health`: passed.
+- `git diff --check`: passed.
+
+### Next target
+
+**Final runtime/end-to-end smoke coverage → next concrete domain adoption where semantics are real.**

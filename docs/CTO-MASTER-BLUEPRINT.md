@@ -2065,3 +2065,13 @@ Current execution frontier: expose pending transfer actions in the frontend, the
 - Runtime smoke verification exposed missing Nest module wiring for the newly relationship-aware CropsService. CropsModule now imports PrismaModule and RelationshipsModule, and AuthorizationModule explicitly imports RegistryModule for its PermissionService dependency. A module-graph regression test was added so this class of startup failure is caught before runtime.
 - Verification: transfer service 7/7 tests PASS; full backend regression 34/34 suites and 311/311 tests PASS; backend production build PASS; frontend production build PASS; runtime Nest startup PASS; `/api/v1/health` PASS; git diff --check PASS.
 - Current execution frontier: final end-to-end lifecycle verification, then move from the Farm/Crop adoption pass into the next concrete domain lifecycle without introducing artificial movement/lineage semantics.
+
+### 26 September 2026 — Transfer hardening + FarmAsset merge UI checkpoint
+
+- Transfer request creation now persists the request and its audit event atomically.
+- Reject and cancel now use atomic pending-state claims with transaction-bound audit events, preventing stale concurrent actions from rewriting a completed request.
+- Transfer acceptance now includes expiry in the atomic claim condition as a second concurrency guard.
+- FarmAsset merge is now exposed as a first-class action in the existing Farm workspace. The UI only offers quantified assets and provides a lightweight compatibility check for matching type/unit before calling the authoritative backend merge workflow.
+- The merge UI remains isolated in a small component so the existing Farm page does not absorb another lifecycle implementation.
+- Verification: transfer service 11/11 tests PASS; full backend regression 34/34 suites and 315/315 tests PASS; backend production build PASS; frontend production build PASS; runtime health PASS; git diff --check PASS.
+- Current execution frontier: complete final runtime/end-to-end smoke coverage, then begin the next concrete domain adoption only where the domain semantics are real.

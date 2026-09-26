@@ -43,23 +43,25 @@ export class ResourceTransferRequestService {
     }
 
     const requestNumber = await this.nextRequestNumber();
-    const created = await this.prisma.resourceTransferRequest.create({
-      data: {
-        requestNumber, resourceType: dto.resourceType, resourceId: dto.resourceId,
-        sourceUserId: source.userId, destinationUserId: dto.destinationUserId,
-        quantity: dto.quantity, unit: dto.unit, status: 'PENDING',
-        effectiveAt,
-        expiresAt,
-        reason: dto.reason, transactionId: dto.transactionId,
-        createdBy: actorId, updatedBy: actorId,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.resourceTransferRequest.create({
+        data: {
+          requestNumber, resourceType: dto.resourceType, resourceId: dto.resourceId,
+          sourceUserId: source.userId, destinationUserId: dto.destinationUserId,
+          quantity: dto.quantity, unit: dto.unit, status: 'PENDING',
+          effectiveAt,
+          expiresAt,
+          reason: dto.reason, transactionId: dto.transactionId,
+          createdBy: actorId, updatedBy: actorId,
+        },
+      });
+      await this.audit.createInTransaction(tx, {
+        actorId, action: 'RESOURCE_TRANSFER_REQUESTED', resourceType: dto.resourceType, resourceId: dto.resourceId,
+        description: 'Transfer request created.',
+        metadata: { requestId: created.id, destinationUserId: dto.destinationUserId, quantity: dto.quantity ?? null, unit: dto.unit ?? null },
+      });
+      return created;
     });
-    await this.audit.create({
-      actorId, action: 'RESOURCE_TRANSFER_REQUESTED', resourceType: dto.resourceType, resourceId: dto.resourceId,
-      description: 'Transfer request created.',
-      metadata: { requestId: created.id, destinationUserId: dto.destinationUserId, quantity: dto.quantity ?? null, unit: dto.unit ?? null },
-    });
-    return created;
   }
 
   async findActiveMember(memberId: string) {
@@ -117,21 +119,45 @@ export class ResourceTransferRequestService {
   async reject(id: string, actorId: string) {
     const request = await this.getPending(id);
     if (request.destinationUserId !== actorId) throw new ForbiddenException('Only the destination user can reject this request.');
-    const updated = await this.prisma.resourceTransferRequest.update({
-      where: { id }, data: { status: 'REJECTED', rejectedAt: new Date(), rejectedBy: actorId, updatedBy: actorId },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.resourceTransferRequest.updateMany({
+        where: { id, status: 'PENDING' },
+        data: { status: 'REJECTED', rejectedAt: new Date(), rejectedBy: actorId, updatedBy: actorId },
+      });
+      if (updated.count !== 1) throw new BadRequestException('Transfer request is no longer pending.');
+
+      await this.audit.createInTransaction(tx, {
+        actorId,
+        action: 'RESOURCE_TRANSFER_REJECTED',
+        resourceType: request.resourceType,
+        resourceId: request.resourceId,
+        description: 'Transfer request rejected.',
+        metadata: { requestId: id },
+      });
+      return tx.resourceTransferRequest.findUnique({ where: { id } });
     });
-    await this.audit.create({ actorId, action: 'RESOURCE_TRANSFER_REJECTED', resourceType: request.resourceType, resourceId: request.resourceId, description: 'Transfer request rejected.', metadata: { requestId: id } });
-    return updated;
   }
 
   async cancel(id: string, actorId: string) {
     const request = await this.getPending(id);
     if (request.sourceUserId !== actorId) throw new ForbiddenException('Only the source user can cancel this request.');
-    const updated = await this.prisma.resourceTransferRequest.update({
-      where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date(), updatedBy: actorId },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.resourceTransferRequest.updateMany({
+        where: { id, status: 'PENDING' },
+        data: { status: 'CANCELLED', cancelledAt: new Date(), updatedBy: actorId },
+      });
+      if (updated.count !== 1) throw new BadRequestException('Transfer request is no longer pending.');
+
+      await this.audit.createInTransaction(tx, {
+        actorId,
+        action: 'RESOURCE_TRANSFER_CANCELLED',
+        resourceType: request.resourceType,
+        resourceId: request.resourceId,
+        description: 'Transfer request cancelled.',
+        metadata: { requestId: id },
+      });
+      return tx.resourceTransferRequest.findUnique({ where: { id } });
     });
-    await this.audit.create({ actorId, action: 'RESOURCE_TRANSFER_CANCELLED', resourceType: request.resourceType, resourceId: request.resourceId, description: 'Transfer request cancelled.', metadata: { requestId: id } });
-    return updated;
   }
 
   private async complete(id: string, actorId: string, administrative: boolean, approvalReason?: string) {
@@ -144,7 +170,11 @@ export class ResourceTransferRequestService {
 
     return this.prisma.$transaction(async (tx) => {
       const claimed = await tx.resourceTransferRequest.updateMany({
-        where: { id, status: { in: ['PENDING', 'APPROVED'] } },
+        where: {
+          id,
+          status: { in: ['PENDING', 'APPROVED'] },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
         data: {
           status: 'ACCEPTED', acceptedAt: new Date(),
           acceptedBy: administrative ? undefined : actorId,

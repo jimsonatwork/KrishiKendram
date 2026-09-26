@@ -471,6 +471,23 @@ export const api = {
       headers: { Authorization: 'Bearer ' + token },
     }),
 
+  mergeFarmAssets: (
+    farmId: string,
+    data: {
+      sourceAssetIds: string[]
+      name?: string
+      metadata?: Record<string, unknown>
+      effectiveAt?: string
+      reason?: string
+    },
+    token: string,
+  ) =>
+    request(`/farms/${farmId}/assets/merge`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    }),
+
   addFarmAsset: (
     farmId: string,
     data: AssetData,

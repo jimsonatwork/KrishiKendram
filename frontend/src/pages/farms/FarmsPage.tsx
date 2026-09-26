@@ -19,6 +19,7 @@ import { motion } from 'framer-motion'
 
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { FarmAssetMergePanel } from './FarmAssetMergePanel'
 
 type FarmAsset = {
   id: string
@@ -657,6 +658,7 @@ function FarmHistoryPanels({ farmId }: { farmId: string }) {
 function FarmSubsection({
   farm,
   crops,
+  token,
   assetForm,
   editingAssetId,
   savingAsset,
@@ -669,9 +671,12 @@ function FarmSubsection({
   onAssetDelete,
   onRecordChange,
   onRecordSubmit,
+  onFarmReload,
+  onFarmError,
 }: {
   farm: Farm
   crops: CropSummary[]
+  token: string
   assetForm: AssetFormData
   editingAssetId: string | null
   savingAsset: boolean
@@ -684,6 +689,8 @@ function FarmSubsection({
   onAssetDelete: (asset: FarmAsset) => void
   onRecordChange: (patch: Partial<RecordFormData>) => void
   onRecordSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onFarmReload: () => Promise<void>
+  onFarmError: (message: string) => void
 }) {
   const assets = Array.isArray(farm.assets) ? farm.assets : []
   const records = Array.isArray(farm.records) ? farm.records : []
@@ -1002,6 +1009,14 @@ function FarmSubsection({
           </div>
         )}
       </div>
+
+      <FarmAssetMergePanel
+        farmId={farm.id}
+        assets={assets}
+        token={token}
+        onComplete={onFarmReload}
+        onError={onFarmError}
+      />
 
       {/* START: Farm record form */}
       <div className="mt-8 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
@@ -1803,6 +1818,7 @@ export function FarmsPage() {
               <FarmSubsection
                 farm={selectedFarm}
                 crops={crops}
+                token={token}
                 assetForm={assetForm}
                 editingAssetId={editingAssetId}
                 savingAsset={savingAsset}
@@ -1825,6 +1841,8 @@ export function FarmsPage() {
                   }))
                 }
                 onRecordSubmit={handleRecordSubmit}
+                onFarmReload={loadFarms}
+                onFarmError={setError}
               />
             </div>
           </section>
