@@ -552,3 +552,23 @@ The CTO Master Blueprint now reflects the actual implementation frontier rather 
 - FarmRecord remains immutable observation data.
 - Registry capability consistency has been tightened.
 - Final remaining V0.3 checkpoint: runtime/end-to-end smoke verification and recovery validation.
+
+
+## 2026-09-27 — V0.3 Final Closeout
+
+### Completed
+
+- Final runtime smoke verification passed against `/api/v1/health`.
+- Full backend regression remains green at 34/34 suites and 315/315 tests.
+- Backend and frontend production builds passed.
+- Registry/permission consistency review confirmed resource-specific authorization remains Registry-authoritative.
+- FarmRecord capability surface is aligned to its immutable READ/CREATE lifecycle.
+- Working tree is clean and `main` is synchronized with `origin/main` at `b8d06f5`.
+
+### Status
+
+**V0.3 CLOSED — verified recovery baseline established.**
+
+### Next target
+
+**V0.4 concrete domain adoption using existing lifecycle primitives; no speculative domain model or parallel ownership/movement/history system.**

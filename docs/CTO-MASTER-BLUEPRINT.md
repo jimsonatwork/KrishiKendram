@@ -2094,3 +2094,25 @@ Current execution frontier: expose pending transfer actions in the frontend, the
 - No database migration was introduced; the correction is additive at the Registry/authorization decision layer.
 - Verification: Registry + Permission focused tests 57/57 PASS; backend production build PASS; frontend production build PASS; git diff --check PASS.
 - Current execution frontier: final runtime/end-to-end smoke coverage, then close the V0.3 lifecycle checkpoint and select the next real domain capability.
+
+
+### 27 September 2026 — V0.3 FINAL CLOSEOUT
+
+V0.3 is now closed after final runtime, regression, build, and capability-consistency verification.
+
+- Backend regression: 34/34 suites, 315/315 tests PASS.
+- Backend production build: PASS.
+- Frontend production build: PASS.
+- Runtime `/api/v1/health`: PASS.
+- `git diff --check`: PASS.
+- Working tree: clean; `main` synchronized with `origin/main` at checkpoint `b8d06f5`.
+- FarmRecord Registry capabilities now match its immutable READ/CREATE lifecycle.
+- PermissionService continues to reject stale resource permission rows at authorization time when they are not declared by Registry.
+
+V0.3 therefore becomes the recovered baseline for the next execution phase. No additional recovery infrastructure or speculative domain model is introduced.
+
+### Next execution phase — V0.4 domain adoption
+
+The next capability will be selected from a concrete lifecycle already represented by the current platform primitives. Implementation will reuse ResourceRelationship, ResourceMovement, ResourceEvidence, ResourceLineage, Registry, and Authorization rather than creating parallel lifecycle systems.
+
+Selection rule: introduce a new domain/model only when there is an actual business lifecycle contract; otherwise extend an existing resource capability with the smallest reversible change.
