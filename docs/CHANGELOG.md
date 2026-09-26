@@ -11,7 +11,7 @@ Detailed current state belongs in `CTO-MASTER-BLUEPRINT.md`.
 
 ### Git checkpoint
 
-Pending commit after verification.
+269b310 — Add member identity and transfer request workflow
 
 ### Completed architectural work
 
