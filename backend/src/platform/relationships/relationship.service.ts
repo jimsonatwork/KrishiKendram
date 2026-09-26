@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { ResourceMovementType } from './movement.types';
 import {
   ResourceRelationship,
   ResourceRelationshipStatus,
@@ -80,6 +81,159 @@ export class ResourceRelationshipService {
         endedReason,
       },
     });
+  }
+
+  async transferOwnerRelationship(
+    tx: Prisma.TransactionClient,
+    resourceType: string,
+    resourceId: string,
+    sourceUserId: string,
+    destinationUserId: string,
+    effectiveAt: Date,
+    reason: string | undefined,
+    transactionId: string | undefined,
+    evidenceInput?: {
+      referenceType: string;
+      referenceValue: string;
+      documentNumber?: string;
+      issuer?: string;
+    },
+  ) {
+    const current = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        userId: sourceUserId,
+        relationshipType: ResourceRelationshipType.OWNER,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!current) {
+      throw new Error(
+        'Active owner relationship not found for transfer.',
+      );
+    }
+
+    if (evidenceInput) {
+      const evidence = await tx.resourceEvidence.create({
+        data: {
+          evidenceType: transactionId
+            ? 'TRANSACTION'
+            : 'DOCUMENT',
+          referenceType: evidenceInput.referenceType,
+          referenceValue: evidenceInput.referenceValue,
+          documentNumber: evidenceInput.documentNumber,
+          issuer: evidenceInput.issuer,
+          createdBy: sourceUserId,
+          updatedBy: sourceUserId,
+        },
+      });
+
+      await tx.resourceRelationship.update({
+        where: { id: current.id },
+        data: {
+          status: ResourceRelationshipStatus.TRANSFERRED,
+          endedAt: effectiveAt,
+          validUntil: effectiveAt,
+          endedReason: reason ?? 'Ownership transferred',
+          evidenceId: evidence.id,
+        },
+      });
+
+      const destinationRelationship =
+        await tx.resourceRelationship.create({
+          data: {
+            resourceType,
+            resourceId,
+            userId: destinationUserId,
+            relationshipType: ResourceRelationshipType.OWNER,
+            status: ResourceRelationshipStatus.ACTIVE,
+            validFrom: effectiveAt,
+            validUntil: this.defaultValidUntil(effectiveAt),
+            createdBy: sourceUserId,
+            updatedBy: sourceUserId,
+            evidenceId: evidence.id,
+          },
+        });
+
+      const previousMovement = await tx.resourceMovement.findFirst({
+        where: { resourceType, resourceId },
+        orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+      });
+
+      const movement = await tx.resourceMovement.create({
+        data: {
+          resourceType,
+          resourceId,
+          movementType: ResourceMovementType.TRANSFER,
+          sourceUserId,
+          destinationUserId,
+          sourceRelationshipId: current.id,
+          destinationRelationshipId: destinationRelationship.id,
+          previousMovementId: previousMovement?.id,
+          effectiveAt,
+          reason: reason ?? 'Ownership transferred',
+          transactionId,
+          evidenceId: evidence.id,
+          createdBy: sourceUserId,
+          updatedBy: sourceUserId,
+        },
+      });
+
+      return { previousRelationship: current, destinationRelationship, movement, evidence };
+    }
+
+    await tx.resourceRelationship.update({
+      where: { id: current.id },
+      data: {
+        status: ResourceRelationshipStatus.TRANSFERRED,
+        endedAt: effectiveAt,
+        validUntil: effectiveAt,
+        endedReason: reason ?? 'Ownership transferred',
+      },
+    });
+
+    const destinationRelationship =
+      await tx.resourceRelationship.create({
+        data: {
+          resourceType,
+          resourceId,
+          userId: destinationUserId,
+          relationshipType: ResourceRelationshipType.OWNER,
+          status: ResourceRelationshipStatus.ACTIVE,
+          validFrom: effectiveAt,
+          validUntil: this.defaultValidUntil(effectiveAt),
+          createdBy: sourceUserId,
+          updatedBy: sourceUserId,
+        },
+      });
+
+    const previousMovement = await tx.resourceMovement.findFirst({
+      where: { resourceType, resourceId },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const movement = await tx.resourceMovement.create({
+      data: {
+        resourceType,
+        resourceId,
+        movementType: ResourceMovementType.TRANSFER,
+        sourceUserId,
+        destinationUserId,
+        sourceRelationshipId: current.id,
+        destinationRelationshipId: destinationRelationship.id,
+        previousMovementId: previousMovement?.id,
+        effectiveAt,
+        reason: reason ?? 'Ownership transferred',
+        transactionId,
+        createdBy: sourceUserId,
+        updatedBy: sourceUserId,
+      },
+    });
+
+    return { previousRelationship: current, destinationRelationship, movement };
   }
 
   private toDomainRelationshipType(value: string): ResourceRelationshipType {

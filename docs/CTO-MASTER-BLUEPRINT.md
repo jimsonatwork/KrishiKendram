@@ -1939,3 +1939,31 @@ Development, Integration, and Canonical are synchronized with their remote main 
 
 Current execution frontier: continue from the verified V0.3 relationship/history foundation into the next narrowly scoped platform capability.
 
+
+
+### 26 September 2026 — Farm Resource Transfer Lifecycle checkpoint
+
+The Farm integration now contains an explicit ownership-transfer lifecycle for
+Farm and FarmAsset. Transfer closes the prior temporal OWNER relationship,
+creates the destination OWNER relationship, and records a ResourceMovement
+TRANSFER event linked to both relationship records. Optional transaction or
+document references are persisted as ResourceEvidence and linked to the
+transfer event and relationship history.
+
+Ordinary create/update/delete operations deliberately do not create Movement
+or Lineage records. ResourceLineage remains reserved for genuine resource
+continuity events such as split, merge, derivation, or future transformations.
+This preserves the V0.3 architectural separation between ownership, movement,
+lineage, evidence, audit, and provenance.
+
+Transfer implementation is isolated in FarmResourceLifecycleService so
+FarmsService remains a CRUD façade and stays within the project's service-size
+guardrail.
+
+Verification: full backend regression 30/30 suites, 294/294 tests PASS;
+production build PASS; git diff --check PASS.
+
+Current execution frontier: add focused transfer lifecycle tests, expose
+movement/evidence history through existing authorization-aware resource
+workspaces, then implement a real split/merge lineage workflow when a concrete
+resource transformation contract exists.

@@ -301,3 +301,33 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Confirmed backend production build and git diff --check passing.
 - Closed the V0.3 A/B/C promotion and recovery checkpoint using the existing Git checkpoint/recovery posture.
 
+
+
+## 2026-09-26 — Farm Resource Transfer Lifecycle Checkpoint
+
+### Completed
+
+- Added explicit Farm ownership transfer lifecycle handling.
+- Added explicit FarmAsset ownership transfer lifecycle handling.
+- Transfer closes the previous OWNER relationship with TRANSFERRED status and effective termination time, then opens the destination OWNER relationship.
+- Transfer records a ResourceMovement TRANSFER event with source/destination users and relationship links.
+- Optional transaction/document evidence is persisted and linked to both relationship sides and the movement.
+- Ordinary create/update/delete operations do not fabricate Movement or Lineage records.
+- ResourceLineage remains reserved for genuine continuity events such as split, merge, derivation, or future resource transformations.
+- Transfer logic is isolated in FarmResourceLifecycleService rather than expanding FarmsService beyond the project service-size guardrail.
+
+### API surfaces
+
+- `POST /api/v1/farms/:id/transfer`
+- `POST /api/v1/farms/:farmId/assets/:assetId/transfer`
+
+### Verification
+
+- Focused regression: 45/45 PASS.
+- Full backend regression: 30 suites, 294 tests PASS.
+- Backend production build: PASS.
+- `git diff --check`: PASS.
+
+### Next target
+
+**Add focused transfer lifecycle tests, then expose authorized movement/evidence history in the existing resource workspace before extending Lineage to a real split/merge workflow.**

@@ -20,6 +20,7 @@ import { CreateFarmDto } from './dto/create-farm.dto';
 import { UpdateFarmDto } from './dto/update-farm.dto';
 import { CreateFarmAssetDto } from './dto/create-farm-asset.dto';
 import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
+import { TransferResourceDto } from './dto/transfer-resource.dto';
 
 @Controller('farms')
 @UseGuards(JwtAuthGuard)
@@ -76,6 +77,20 @@ create(
     );
   }
 
+  @Post(':id/transfer')
+  transferFarm(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: TransferResourceDto,
+  ) {
+    return this.farmsService.transferFarm(
+      id,
+      dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Get(':farmId/assets/:assetId/relationships/history')
   getAssetRelationshipHistory(
     @Param('farmId') farmId: string,
@@ -98,6 +113,22 @@ create(
   ) {
     return this.farmsService.addAsset(
       id,
+      dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Post(':farmId/assets/:assetId/transfer')
+  transferAsset(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+    @Body() dto: TransferResourceDto,
+  ) {
+    return this.farmsService.transferFarmAsset(
+      farmId,
+      assetId,
       dto,
       user.userId,
       user.role as UserRole,

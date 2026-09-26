@@ -4,6 +4,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 
 import { FarmsController } from './farms.controller';
 import { FarmsService } from './farms.service';
+import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service';
 
 
 @Module({
@@ -18,6 +19,7 @@ controllers:[
 
 providers:[
  FarmsService,
+ FarmResourceLifecycleService,
 ],
 
 exports:[

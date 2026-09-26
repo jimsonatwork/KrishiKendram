@@ -11,12 +11,15 @@ import { RegistryService } from '../platform/registry/registry.service';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 import { PrismaService } from '../prisma/prisma.service';
 
+import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service';
+
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 
 import { CreateFarmDto } from './dto/create-farm.dto';
 import { UpdateFarmDto } from './dto/update-farm.dto';
 import { CreateFarmAssetDto } from './dto/create-farm-asset.dto';
 import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
+import { TransferResourceDto } from './dto/transfer-resource.dto';
 
 @Injectable()
 export class FarmsService {
@@ -25,6 +28,7 @@ export class FarmsService {
     private readonly authorization: AuthorizationService,
     private readonly registry: RegistryService,
     private readonly relationships: ResourceRelationshipService,
+    private readonly lifecycle: FarmResourceLifecycleService,
   ) {}
 
   async create(ownerId: string, role: UserRole, dto: CreateFarmDto) {
@@ -283,6 +287,31 @@ export class FarmsService {
       },
       data: updateData,
     });
+  }
+
+  async transferFarm(
+    farmId: string,
+    dto: TransferResourceDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lifecycle.transferFarm(farmId, dto, userId, role);
+  }
+
+  async transferFarmAsset(
+    farmId: string,
+    assetId: string,
+    dto: TransferResourceDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lifecycle.transferFarmAsset(
+      farmId,
+      assetId,
+      dto,
+      userId,
+      role,
+    );
   }
 
   async getFarmAssetRelationshipHistory(
