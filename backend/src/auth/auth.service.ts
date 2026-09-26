@@ -12,6 +12,8 @@ import {
 
 import * as bcrypt from 'bcrypt';
 
+import { generateMemberId } from '../platform/identity/member-id';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../platform/audit/audit.service';
 import { RegistryService } from '../platform/registry/registry.service';
@@ -114,6 +116,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
+        memberId: generateMemberId(),
         name,
         email: normalizedEmail,
         mobile: normalizedMobile,

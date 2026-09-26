@@ -16,6 +16,8 @@ import {
 
 import * as bcrypt from 'bcrypt'
 
+import { generateMemberId } from '../platform/identity/member-id'
+
 import { PrismaService } from '../prisma/prisma.service'
 import { AuditService } from '../platform/audit/audit.service'
 
@@ -33,6 +35,7 @@ import { UpdateUserDto } from './dto/update-user.dto'
 
 type UserSnapshot = {
   id: string
+  memberId?: string | null
   name: string
   email: string | null
   mobile: string | null
@@ -82,6 +85,7 @@ export class UsersService {
       },
       select: {
         id: true,
+        memberId: true,
         name: true,
         email: true,
         mobile: true,
@@ -113,6 +117,7 @@ export class UsersService {
       where: { id },
       select: {
         id: true,
+        memberId: true,
         name: true,
         email: true,
         mobile: true,
@@ -214,8 +219,11 @@ export class UsersService {
         UserRole.FARMER,
       ) as UserRole
 
+    const memberId = generateMemberId()
+
     const user = await this.prisma.user.create({
       data: {
+        memberId,
         name,
         email,
         passwordHash,

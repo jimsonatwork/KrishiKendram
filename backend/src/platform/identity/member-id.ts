@@ -1,0 +1,5 @@
+import { randomInt } from 'crypto';
+
+export function generateMemberId(): string {
+  return 'IN-' + randomInt(0, 10_000_000_000).toString().padStart(10, '0');
+}

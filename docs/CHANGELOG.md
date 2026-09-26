@@ -7,6 +7,45 @@ Detailed current state belongs in `CTO-MASTER-BLUEPRINT.md`.
 
 ---
 
+## 2026-09-26 — Member Identity & Transfer Request Foundation
+
+### Git checkpoint
+
+Pending commit after verification.
+
+### Completed architectural work
+
+- Added stable `User.memberId` identity using `IN-` plus 10 digits.
+- Backfilled existing users with permanent member IDs.
+- Added `ResourceTransferRequest` as a first-class transfer workflow.
+- Added incoming/outgoing request views and accept/reject/cancel actions.
+- Added administrator approval for governed transfer completion.
+- Transfer completion reuses temporal ownership relationships and existing
+  movement/evidence machinery.
+- Farm ownership transfer keeps `Farm.ownerId` synchronized.
+- Partial transfer quantity is explicitly blocked until split + transfer can be
+  completed atomically.
+
+### Verification
+
+- Prisma migration deploy: passed.
+- Prisma client generation: passed.
+- Backend TypeScript build: passed.
+- Backend regression: 32/32 suites, 302/302 tests passed.
+- `git diff --check`: passed.
+
+### Architectural position
+
+A member does not require a farm to own a resource. Ownership, farm placement,
+and movement remain separate temporal concepts. Transfer requests govern changes
+between those relationships rather than directly editing profiles.
+
+### Next target
+
+**Partial transfer execution → pending-action/notification UX → resource timeline.**
+
+---
+
 ## 2026-09-23 — CTO Control Baseline
 
 ### Git checkpoint

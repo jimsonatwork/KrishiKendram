@@ -115,6 +115,7 @@ model FieldPermission {
 
 model User {
   id           String  @id @default(cuid())
+  memberId     String? @unique
   name         String
   email        String? @unique
   mobile       String? @unique
@@ -156,6 +157,12 @@ model User {
   resourceLineagesUpdated  ResourceLineage[]  @relation("ResourceLineageUpdatedBy")
 
   resourceRelationships        ResourceRelationship[] @relation("ResourceRelationshipUser")
+  transferRequestsCreated     ResourceTransferRequest[] @relation("TransferRequestCreatedBy")
+  transferRequestsSource      ResourceTransferRequest[] @relation("TransferRequestSourceUser")
+  transferRequestsDestination ResourceTransferRequest[] @relation("TransferRequestDestinationUser")
+  transferRequestsAccepted   ResourceTransferRequest[] @relation("TransferRequestAcceptedBy")
+  transferRequestsRejected   ResourceTransferRequest[] @relation("TransferRequestRejectedBy")
+  transferRequestsApproved   ResourceTransferRequest[] @relation("TransferRequestApprovedBy")
   createdResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipCreatedBy")
   updatedResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipUpdatedBy")
 }
@@ -399,6 +406,54 @@ model ResourceRelationship {
   @@index([evidenceId])
 }
 
+model ResourceTransferRequest {
+  id String @id @default(cuid())
+
+  requestNumber String @unique
+  resourceType String
+  resourceId String
+  sourceUserId String
+  destinationUserId String
+  quantity Float?
+  unit String?
+  status ResourceTransferRequestStatus @default(PENDING)
+
+  requestedAt DateTime @default(now())
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+  cancelledAt DateTime?
+  completedAt DateTime?
+  effectiveAt DateTime?
+  expiresAt DateTime?
+
+  reason String?
+  transactionId String?
+  evidenceId String?
+
+  createdBy String
+  updatedBy String
+  acceptedBy String?
+  rejectedBy String?
+  approvedBy String?
+  approvalReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resourceEvidence ResourceEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  creator User @relation("TransferRequestCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  sourceUser User @relation("TransferRequestSourceUser", fields: [sourceUserId], references: [id], onDelete: Restrict)
+  destinationUser User @relation("TransferRequestDestinationUser", fields: [destinationUserId], references: [id], onDelete: Restrict)
+  acceptedUser User? @relation("TransferRequestAcceptedBy", fields: [acceptedBy], references: [id], onDelete: SetNull)
+  rejectedUser User? @relation("TransferRequestRejectedBy", fields: [rejectedBy], references: [id], onDelete: SetNull)
+  approvedUser User? @relation("TransferRequestApprovedBy", fields: [approvedBy], references: [id], onDelete: SetNull)
+
+  @@index([resourceType, resourceId])
+  @@index([sourceUserId, status])
+  @@index([destinationUserId, status])
+  @@index([status, requestedAt])
+  @@index([expiresAt])
+}
+
 model ResourceEvidence {
   id String @id @default(cuid())
 
@@ -419,8 +474,9 @@ model ResourceEvidence {
 
   creator       User                   @relation("ResourceEvidenceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
   updater       User                   @relation("ResourceEvidenceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  relationships ResourceRelationship[]
-  movements     ResourceMovement[]
+  relationships    ResourceRelationship[]
+  movements        ResourceMovement[]
+  transferRequests ResourceTransferRequest[]
 
   @@index([evidenceType])
   @@index([referenceType, referenceValue])
@@ -521,6 +577,17 @@ model ResourceLineage {
   @@index([effectiveAt])
   @@index([createdBy])
   @@index([updatedBy])
+}
+
+enum ResourceTransferRequestStatus {
+  DRAFT
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+  APPROVED
+  COMPLETED
 }
 
 enum ResourceEvidenceType {

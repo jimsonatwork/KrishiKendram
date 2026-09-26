@@ -12,15 +12,15 @@
 
 | Item | Current State |
 |---|---|
-| Repository | `/home/jj/Dev/KrishiKendram-Development` (active C) |
+| Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `farm-child-lifecycle-pending` |
-| Current checkpoint message | Complete Farm child lifecycle closure |
-| Current primary phase | V0.3 — Farm Lifecycle Integration |
-| Current platform priority | Relationship-aware child access/history surfaces → V0.3 A/B/C promotion and recovery checkpoint |
+| Current checkpoint | `resource-transfer-request-foundation` |
+| Current checkpoint message | Member identity + governed resource transfer workflow foundation |
+| Current primary phase | V0.3 — Relationship & Resource Lifecycle Integration |
+| Current platform priority | Resource identity → relationship ownership → transfer request → acceptance/approval → movement/lineage |
 | Working-tree state at blueprint creation | Checked by this script |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Child relationship-aware access/history → V0.3 promotion → authorized history |
+| Next major target | Partial transfer execution → notification/pending-action UX → resource timeline |
 
 ## Current Status
 
@@ -52,6 +52,34 @@
 
 Authorization core is considered an **established foundation**, not an area
 for unnecessary rewrite.
+
+### 2026-09-26 Major Lifecycle Checkpoint
+
+The platform now explicitly treats **member identity, resource identity,
+ownership, farm association, and movement as separate concerns**. A person may
+exist without a farm and a resource may be owned by a member without requiring
+a farm as the ownership container.
+
+Implemented foundation:
+
+- Permanent `User.memberId` identity anchor using `IN-` + 10 digits.
+- Existing users backfilled with stable member IDs.
+- `ResourceTransferRequest` persisted as a governed workflow object.
+- Source owner initiates a transfer request; destination member can accept or
+  reject it.
+- Source member can cancel a pending request.
+- Authorized administrators can approve a pending request.
+- Accepted/approved requests execute the existing temporal ownership,
+  movement, and evidence lifecycle rather than directly rewriting ownership.
+- Farm ownership transfer also updates the canonical `Farm.ownerId` field.
+- Partial transfer quantity is intentionally blocked until the partial-transfer
+  lifecycle is wired to split + transfer atomically.
+
+Architectural rule:
+
+> A transfer request is a workflow; the transfer itself is a governed change to
+> resource relationships. Ownership is not represented by editing a farm or
+> member profile.
 
 The next work should concentrate on platform integration:
 

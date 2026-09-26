@@ -8,13 +8,17 @@ import {
 import { RelationshipAccessPolicy } from './relationship-access.policy';
 import { ResourceRelationshipResolverService } from './relationship-resolver.service';
 import { ResourceRelationshipService } from './relationship.service';
+import { ResourceTransferRequestController } from './transfer-request.controller';
+import { ResourceTransferRequestService } from './transfer-request.service';
 
 @Module({
   imports: [PrismaModule],
+  controllers: [ResourceTransferRequestController],
   providers: [
     RelationshipAccessPolicy,
     ResourceRelationshipResolverService,
     ResourceRelationshipService,
+    ResourceTransferRequestService,
     {
       provide: RESOURCE_RELATIONSHIP_RESOLVER,
       useExisting: ResourceRelationshipResolverService,
