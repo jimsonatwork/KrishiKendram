@@ -508,3 +508,20 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 ### Next target
 
 **Final runtime/end-to-end smoke coverage → next concrete domain adoption where semantics are real.**
+
+## 2026-09-26 — FarmRecord Adoption Alignment
+
+- Kept FarmRecord as immutable historical observation data with no ownership, movement, or lineage semantics.
+- Aligned Farm UI input-method choices with the canonical backend/Registry enum.
+- Stored the UI record description inside the existing JSON `data` payload rather than inventing a new schema field.
+- Updated the operational History/Farm views to read that canonical description location.
+
+### Verification
+
+- FarmsService: 38/38 tests passed.
+- Frontend TypeScript/Vite production build: passed.
+- `git diff --check`: passed.
+
+### Next target
+
+**Final runtime/end-to-end smoke coverage → Registry/permission consistency review → next real domain only.**

@@ -26,8 +26,8 @@ type FarmRecord = {
   id: string
   category?: string
   title?: string
-  description?: string
   inputMethod?: string
+  data?: Record<string, unknown>
   createdAt?: string
 }
 
@@ -328,8 +328,9 @@ export function HistoryPage() {
             record.title ||
             `${formatEnum(record.category)} record`,
           description:
-            record.description ||
-            'Operational information recorded against the farm.',
+            typeof record.data?.description === 'string' && record.data.description
+              ? record.data.description
+              : 'Operational information recorded against the farm.',
           context: farm.name,
           kind: 'record',
         })

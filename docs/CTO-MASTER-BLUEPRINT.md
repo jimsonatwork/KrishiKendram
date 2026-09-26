@@ -2075,3 +2075,13 @@ Current execution frontier: expose pending transfer actions in the frontend, the
 - The merge UI remains isolated in a small component so the existing Farm page does not absorb another lifecycle implementation.
 - Verification: transfer service 11/11 tests PASS; full backend regression 34/34 suites and 315/315 tests PASS; backend production build PASS; frontend production build PASS; runtime health PASS; git diff --check PASS.
 - Current execution frontier: complete final runtime/end-to-end smoke coverage, then begin the next concrete domain adoption only where the domain semantics are real.
+
+### 26 September 2026 — FarmRecord adoption alignment checkpoint
+
+- FarmRecord remains an immutable historical observation/operational record and does not receive an ownership relationship, movement, or lineage model.
+- The existing Farm workspace now sends only the canonical InputMethod values defined by the backend/Registry (MANUAL, VOICE, IMAGE, VIDEO, MIXED).
+- Record descriptions are stored inside the existing required JSON data payload instead of an unsupported top-level field, preserving the current schema and avoiding a needless migration.
+- Farm history now reads that observation description from the canonical data payload.
+- This closes a frontend/backend contract mismatch without changing the FarmRecord persistence model or inventing new lifecycle semantics.
+- Verification: FarmsService 38/38 tests PASS; frontend TypeScript/Vite production build PASS; git diff --check PASS.
+- Current execution frontier: final runtime/end-to-end smoke coverage and Registry/permission consistency review before any new domain is introduced.

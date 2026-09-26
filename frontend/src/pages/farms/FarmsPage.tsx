@@ -34,7 +34,6 @@ type FarmRecord = {
   id: string
   category?: string
   title?: string
-  description?: string
   inputMethod?: string
   data?: Record<string, unknown>
   createdAt?: string
@@ -1051,12 +1050,10 @@ function FarmSubsection({
             value={recordForm.inputMethod}
             options={[
               'MANUAL',
-              'IMPORT',
-              'API',
               'VOICE',
-              'PHOTO',
-              'DOCUMENT',
-              'AI',
+              'IMAGE',
+              'VIDEO',
+              'MIXED',
             ]}
             onChange={(value) =>
               onRecordChange({ inputMethod: value })
@@ -1149,9 +1146,9 @@ function FarmSubsection({
                     : ''}
                 </p>
 
-                {record.description && (
+                {typeof record.data?.description === 'string' && record.data.description && (
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    {record.description}
+                    {record.data.description}
                   </p>
                 )}
               </div>
@@ -1640,16 +1637,21 @@ export function FarmsPage() {
         data = parsed as Record<string, unknown>
       }
 
+      const recordData = {
+        ...(data ?? {}),
+        ...(recordForm.description.trim()
+          ? { description: recordForm.description.trim() }
+          : {}),
+      }
+
       await api.addFarmRecord(
         selectedFarmId,
         {
           category: recordForm.category.trim(),
           title:
             recordForm.title.trim() || undefined,
-          description:
-            recordForm.description.trim() || undefined,
           inputMethod: recordForm.inputMethod,
-          data,
+          data: recordData,
         },
         token,
       )
