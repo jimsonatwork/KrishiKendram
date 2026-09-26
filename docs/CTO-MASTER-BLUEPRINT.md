@@ -14,10 +14,10 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram-Development` (active C) |
 | Branch | `main` |
-| Current checkpoint | `7d6904b` |
-| Current checkpoint message | Add RelationshipEvidence foundation |
-| Current primary phase | V0.3 — Farm Integration Foundation |
-| Current platform priority | Farm integration of temporal relationship, movement, lineage, and evidence context |
+| Current checkpoint | `e83bff5` |
+| Current checkpoint message | Integrate temporal relationships with Farm lifecycle |
+| Current primary phase | V0.3 — Farm Lifecycle Integration |
+| Current platform priority | Complete FarmAsset/FarmRecord/Crop lifecycle integration and A/B/C promotion validation |
 | Working-tree state at blueprint creation | Checked by this script |
 | Development mode | Incremental, reversible, test-driven |
 | Next major target | Farm integration → relationship-aware lifecycle semantics → authorized history |
@@ -996,6 +996,7 @@ Legacy implementation no longer belongs after migration.
 Current verified checkpoint:
 
 ```text
+e83bff5  Integrate temporal relationships with Farm lifecycle
 7d6904b  Add RelationshipEvidence foundation
 9b14cd3  Add ResourceLineage foundation
 7750fc6  Add ResourceMovement foundation
@@ -1008,7 +1009,7 @@ a061cc3  Refactor Auth validation through shared helper
 This blueprint is currently aligned with checkpoint:
 
 ```text
-7d6904b
+e83bff5
 ```
 
 The current engineering frontier is:
