@@ -9,14 +9,10 @@ import { UserRole, UserStatus } from '@prisma/client';
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
-import {
-  RESOURCE_MOVEMENT_RESOLVER,
-  ResourceMovementResolver,
-} from '../platform/relationships/movement-resolution.types';
-import {
-  RESOURCE_EVIDENCE_RESOLVER,
-  ResourceEvidenceResolver,
-} from '../platform/relationships/evidence-resolution.types';
+import { RESOURCE_MOVEMENT_RESOLVER } from '../platform/relationships/movement-resolution.types';
+import type { ResourceMovementResolver } from '../platform/relationships/movement-resolution.types';
+import { RESOURCE_EVIDENCE_RESOLVER } from '../platform/relationships/evidence-resolution.types';
+import type { ResourceEvidenceResolver } from '../platform/relationships/evidence-resolution.types';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';

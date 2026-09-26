@@ -1985,3 +1985,6 @@ split/merge/derivation transformation contract exists.
 
 ## Checkpoint — 2026-09-26
 Farm and FarmAsset lifecycle history is now exposed in the existing frontend workspace. Movement and Evidence history are lazy-loaded through centralized API methods, while authorization remains enforced by the backend history endpoints. ResourceLineage remains reserved for genuine split/merge/derivation semantics and is not fabricated for ordinary CRUD or transfer events.
+
+## Checkpoint — 2026-09-26 — ResourceLineage
+The first real lineage workflow is now implemented for quantified FarmAsset stock/resource splitting. Ordinary CRUD and ownership transfer remain free of fabricated lineage. Split is transactional: source quantity decreases, a target asset is created, temporal ownership is established, a SPLIT movement is recorded, and a SPLIT_FROM lineage edge links source to target. Lineage history is authorization-aware and exposed in the FarmAsset workspace. Lineage logic is isolated in FarmResourceLineageService; FarmResourceLifecycleService remains focused on movement/evidence lifecycle concerns.

@@ -12,6 +12,7 @@ import { ResourceRelationshipService } from '../platform/relationships/relations
 import { PrismaService } from '../prisma/prisma.service';
 
 import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service';
+import { FarmResourceLineageService } from './farm-resource-lineage.service';
 
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 
@@ -20,6 +21,7 @@ import { UpdateFarmDto } from './dto/update-farm.dto';
 import { CreateFarmAssetDto } from './dto/create-farm-asset.dto';
 import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
 import { TransferResourceDto } from './dto/transfer-resource.dto';
+import { SplitFarmAssetDto } from './dto/split-farm-asset.dto';
 
 @Injectable()
 export class FarmsService {
@@ -29,6 +31,7 @@ export class FarmsService {
     private readonly registry: RegistryService,
     private readonly relationships: ResourceRelationshipService,
     private readonly lifecycle: FarmResourceLifecycleService,
+    private readonly lineage: FarmResourceLineageService,
   ) {}
 
   async create(ownerId: string, role: UserRole, dto: CreateFarmDto) {
@@ -455,6 +458,25 @@ export class FarmsService {
 
       return asset;
     });
+  }
+
+  async getFarmAssetLineageHistory(
+    farmId: string,
+    assetId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lineage.getFarmAssetLineageHistory(farmId, assetId, userId, role);
+  }
+
+  async splitFarmAsset(
+    farmId: string,
+    assetId: string,
+    dto: SplitFarmAssetDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lineage.splitFarmAsset(farmId, assetId, dto, userId, role);
   }
 
   async updateAsset(

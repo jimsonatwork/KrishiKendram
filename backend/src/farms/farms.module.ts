@@ -6,6 +6,7 @@ import { PlatformModule } from '../platform/platform.module';
 import { FarmsController } from './farms.controller';
 import { FarmsService } from './farms.service';
 import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service';
+import { FarmResourceLineageService } from './farm-resource-lineage.service';
 
 
 @Module({
@@ -22,6 +23,7 @@ controllers:[
 providers:[
  FarmsService,
  FarmResourceLifecycleService,
+ FarmResourceLineageService,
 ],
 
 exports:[

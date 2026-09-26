@@ -21,6 +21,7 @@ import { UpdateFarmDto } from './dto/update-farm.dto';
 import { CreateFarmAssetDto } from './dto/create-farm-asset.dto';
 import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
 import { TransferResourceDto } from './dto/transfer-resource.dto';
+import { SplitFarmAssetDto } from './dto/split-farm-asset.dto';
 
 @Controller('farms')
 @UseGuards(JwtAuthGuard)
@@ -179,6 +180,36 @@ create(
     @Body() dto: TransferResourceDto,
   ) {
     return this.farmsService.transferFarmAsset(
+      farmId,
+      assetId,
+      dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Get(':farmId/assets/:assetId/lineage/history')
+  getAssetLineageHistory(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.getFarmAssetLineageHistory(
+      farmId,
+      assetId,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Post(':farmId/assets/:assetId/split')
+  splitAsset(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+    @Body() dto: SplitFarmAssetDto,
+  ) {
+    return this.farmsService.splitFarmAsset(
       farmId,
       assetId,
       dto,

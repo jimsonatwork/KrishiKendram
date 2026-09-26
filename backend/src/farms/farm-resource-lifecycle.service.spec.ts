@@ -7,15 +7,24 @@ import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service'
 
 describe('FarmResourceLifecycleService', () => {
   const authorization = { assertCan: jest.fn() } as any;
-  const relationships = { transferOwnerRelationship: jest.fn() } as any;
+  const relationships = {
+    transferOwnerRelationship: jest.fn(),
+    createOwnerRelationship: jest.fn(),
+  } as any;
   const movementResolver = { resolve: jest.fn() } as any;
   const evidenceResolver = { resolve: jest.fn() } as any;
 
   const tx = {
     user: { findUnique: jest.fn() },
     farm: { update: jest.fn(), findUnique: jest.fn() },
-    farmAsset: { findUnique: jest.fn() },
+    farmAsset: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
     resourceRelationship: { findFirst: jest.fn() },
+    resourceMovement: { create: jest.fn() },
+    resourceLineage: { create: jest.fn() },
   } as any;
 
   const prisma = {

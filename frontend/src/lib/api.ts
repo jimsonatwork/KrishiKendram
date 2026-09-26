@@ -385,6 +385,11 @@ export const api = {
       headers: { Authorization: 'Bearer ' + token },
     }),
 
+  farmAssetLineageHistory: (farmId: string, assetId: string, token: string) =>
+    request<any[]>('/farms/' + farmId + '/assets/' + assetId + '/lineage/history', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
   farmAssetEvidenceHistory: (farmId: string, assetId: string, token: string) =>
     request<any[]>('/farms/' + farmId + '/assets/' + assetId + '/evidence/history', {
       headers: { Authorization: 'Bearer ' + token },

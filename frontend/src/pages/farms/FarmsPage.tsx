@@ -367,6 +367,88 @@ function InfoItem({
   )
 }
 
+function AssetLineageHistory({
+  farmId,
+  assetId,
+}: {
+  farmId: string
+  assetId: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [history, setHistory] = useState<any[]>([])
+
+  const loadHistory = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    setLoading(true)
+    try {
+      const result = await api.farmAssetLineageHistory(farmId, assetId, token)
+      setHistory(Array.isArray(result) ? result : [])
+    } catch {
+      setHistory([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    if (next) void loadHistory()
+  }
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <button
+        type="button"
+        onClick={toggle}
+        className="text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+      >
+        {open ? 'Hide lineage history' : 'View lineage history'}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-950/40">
+          {loading ? (
+            <p className="text-xs text-slate-500">Loading lineage…</p>
+          ) : history.length === 0 ? (
+            <p className="text-xs text-slate-500">No lineage history available.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.map((item, index) => (
+                <div
+                  key={String(item.id || item.movementId || index)}
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[11px] dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="flex flex-wrap justify-between gap-2 text-xs">
+                    <span className="font-medium">{item.lineageType || 'LINEAGE'}</span>
+                    <span className="text-slate-500">
+                      {item.effectiveAt ? new Date(item.effectiveAt).toLocaleString() : 'Effective time not recorded'}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-slate-500">
+                    Source: {item.sourceResourceType || 'resource'} / {item.sourceResourceId || 'unknown'}
+                  </div>
+                  <div className="mt-1 text-slate-500">
+                    Target: {item.targetResourceType || 'resource'} / {item.targetResourceId || 'unknown'}
+                  </div>
+                  {item.quantity !== undefined && item.quantity !== null && (
+                    <div className="mt-1 text-slate-500">
+                      Quantity: {String(item.quantity)}{item.unit ? ' ' + item.unit : ''}
+                    </div>
+                  )}
+                  {item.movementId && <div className="mt-1 text-slate-500">Movement: {item.movementId}</div>}
+                  {item.reason && <div className="mt-1 text-slate-500">Reason: {item.reason}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AssetRelationshipHistory({
   farmId,
   assetId,
@@ -900,6 +982,10 @@ function FarmSubsection({
                   )}
 
                 <AssetRelationshipHistory
+                  farmId={farm.id}
+                  assetId={asset.id}
+                />
+                <AssetLineageHistory
                   farmId={farm.id}
                   assetId={asset.id}
                 />

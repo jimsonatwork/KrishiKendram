@@ -368,3 +368,11 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Movement UI surfaces type, effective/recorded timestamps, source/destination references, quantity/unit, previous movement, transaction/evidence references when returned.
 - Evidence UI surfaces reference data, document/issuer/date fields, integrity hash and returned metadata without fabricating values.
 - Frontend TypeScript/Vite production build passed.
+
+### 2026-09-26 — ResourceLineage Split Workflow
+- Added the first concrete ResourceLineage business workflow: quantified FarmAsset split.
+- A split atomically creates the child FarmAsset, creates its OWNER relationship, decrements the source quantity, records a SPLIT movement, and records source→target SPLIT_FROM lineage.
+- Added authorization for source UPDATE and destination resource CREATE before mutation.
+- Added FarmAsset lineage-history endpoint and lazy lineage-history UI.
+- Extracted lineage lifecycle logic into FarmResourceLineageService to keep FarmResourceLifecycleService within the project service-size guardrail.
+- Full backend regression: 32 suites / 301 tests passed; backend production build and frontend production build passed.
