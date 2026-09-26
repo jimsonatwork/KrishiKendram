@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,6 +9,14 @@ import { UserRole, UserStatus } from '@prisma/client';
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
+import {
+  RESOURCE_MOVEMENT_RESOLVER,
+  ResourceMovementResolver,
+} from '../platform/relationships/movement-resolution.types';
+import {
+  RESOURCE_EVIDENCE_RESOLVER,
+  ResourceEvidenceResolver,
+} from '../platform/relationships/evidence-resolution.types';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';
@@ -18,7 +27,141 @@ export class FarmResourceLifecycleService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly relationships: ResourceRelationshipService,
+    @Inject(RESOURCE_MOVEMENT_RESOLVER)
+    private readonly movementResolver: ResourceMovementResolver,
+    @Inject(RESOURCE_EVIDENCE_RESOLVER)
+    private readonly evidenceResolver: ResourceEvidenceResolver,
   ) {}
+
+  async getFarmMovementHistory(
+    farmId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    const farm = await this.prisma.farm.findUnique({
+      where: { id: farmId },
+      select: { ownerId: true },
+    });
+    if (!farm) throw new NotFoundException('Farm not found');
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      resourceId: farmId,
+      ownerId: farm.ownerId,
+    });
+    return this.movementResolver.resolve({
+      resourceType: 'farm',
+      resourceId: farmId,
+    });
+  }
+
+  async getFarmEvidenceHistory(
+    farmId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    const farm = await this.prisma.farm.findUnique({
+      where: { id: farmId },
+      select: { ownerId: true },
+    });
+    if (!farm) throw new NotFoundException('Farm not found');
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      resourceId: farmId,
+      ownerId: farm.ownerId,
+    });
+    return this.evidenceResolver.resolve({
+      resourceType: 'farm',
+      resourceId: farmId,
+    });
+  }
+
+  async getFarmAssetMovementHistory(
+    farmId: string,
+    assetId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    const asset = await this.prisma.farmAsset.findUnique({
+      where: { id: assetId },
+      select: { farmId: true, farm: { select: { ownerId: true } } },
+    });
+    if (!asset || asset.farmId !== farmId) {
+      throw new NotFoundException('Asset not found');
+    }
+
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.READ,
+      resourceId: assetId,
+      farmId,
+      ownerId: relationship?.userId ?? asset.farm.ownerId,
+    });
+    return this.movementResolver.resolve({
+      resourceType: 'farmAsset',
+      resourceId: assetId,
+    });
+  }
+
+  async getFarmAssetEvidenceHistory(
+    farmId: string,
+    assetId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    const asset = await this.prisma.farmAsset.findUnique({
+      where: { id: assetId },
+      select: { farmId: true, farm: { select: { ownerId: true } } },
+    });
+    if (!asset || asset.farmId !== farmId) {
+      throw new NotFoundException('Asset not found');
+    }
+
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.READ,
+      resourceId: assetId,
+      farmId,
+      ownerId: relationship?.userId ?? asset.farm.ownerId,
+    });
+    return this.evidenceResolver.resolve({
+      resourceType: 'farmAsset',
+      resourceId: assetId,
+    });
+  }
 
   async transferFarm(
     farmId: string,

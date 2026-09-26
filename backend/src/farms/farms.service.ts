@@ -289,6 +289,50 @@ export class FarmsService {
     });
   }
 
+  async getFarmMovementHistory(
+    farmId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lifecycle.getFarmMovementHistory(farmId, userId, role);
+  }
+
+  async getFarmEvidenceHistory(
+    farmId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lifecycle.getFarmEvidenceHistory(farmId, userId, role);
+  }
+
+  async getFarmAssetMovementHistory(
+    farmId: string,
+    assetId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lifecycle.getFarmAssetMovementHistory(
+      farmId,
+      assetId,
+      userId,
+      role,
+    );
+  }
+
+  async getFarmAssetEvidenceHistory(
+    farmId: string,
+    assetId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lifecycle.getFarmAssetEvidenceHistory(
+      farmId,
+      assetId,
+      userId,
+      role,
+    );
+  }
+
   async transferFarm(
     farmId: string,
     dto: TransferResourceDto,

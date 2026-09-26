@@ -331,3 +331,32 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 ### Next target
 
 **Add focused transfer lifecycle tests, then expose authorized movement/evidence history in the existing resource workspace before extending Lineage to a real split/merge workflow.**
+
+
+## 2026-09-26 — Movement and Evidence History Surface
+
+### Completed
+
+- Added authorization-aware Farm movement history endpoint.
+- Added authorization-aware Farm evidence history endpoint.
+- Added authorization-aware FarmAsset movement history endpoint.
+- Added authorization-aware FarmAsset evidence history endpoint.
+- History resolution uses the active temporal OWNER relationship for FarmAsset authorization, with the existing legacy farm owner fallback.
+- Added dedicated transfer lifecycle tests covering successful transfer, inactive destination rejection, evidence validation, and temporal-owner authorization.
+
+### API surfaces
+
+- `GET /api/v1/farms/:id/movements/history`
+- `GET /api/v1/farms/:id/evidence/history`
+- `GET /api/v1/farms/:farmId/assets/:assetId/movements/history`
+- `GET /api/v1/farms/:farmId/assets/:assetId/evidence/history`
+
+### Verification
+
+- Focused regression: 49/49 PASS.
+- Backend production build: PASS.
+- `git diff --check`: PASS.
+
+### Next target
+
+**Expose these authorized histories in the existing Farm workspace, then add a concrete ResourceLineage split/merge workflow only when a real resource transformation contract is introduced.**

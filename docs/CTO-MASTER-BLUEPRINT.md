@@ -1967,3 +1967,18 @@ Current execution frontier: add focused transfer lifecycle tests, expose
 movement/evidence history through existing authorization-aware resource
 workspaces, then implement a real split/merge lineage workflow when a concrete
 resource transformation contract exists.
+
+
+### 26 September 2026 — Movement/Evidence history access checkpoint
+
+The Farm workspace API now exposes authorization-aware movement and evidence
+history for Farms and FarmAssets. FarmAsset access resolves the active temporal
+OWNER relationship before invoking the existing authorization policy, retaining
+the legacy farm-owner fallback for resources without relationship history.
+
+Dedicated lifecycle tests cover transfer success, inactive destinations,
+evidence-reference validation, and temporal-owner history authorization.
+
+The next UI checkpoint is to expose these histories in the existing Farm
+workspace. ResourceLineage remains intentionally deferred until a concrete
+split/merge/derivation transformation contract exists.

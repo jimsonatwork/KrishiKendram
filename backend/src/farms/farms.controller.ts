@@ -77,6 +77,30 @@ create(
     );
   }
 
+  @Get(':id/movements/history')
+  getFarmMovementHistory(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.getFarmMovementHistory(
+      id,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Get(':id/evidence/history')
+  getFarmEvidenceHistory(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.getFarmEvidenceHistory(
+      id,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Post(':id/transfer')
   transferFarm(
     @Param('id') id: string,
@@ -114,6 +138,34 @@ create(
     return this.farmsService.addAsset(
       id,
       dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Get(':farmId/assets/:assetId/movements/history')
+  getAssetMovementHistory(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.getFarmAssetMovementHistory(
+      farmId,
+      assetId,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Get(':farmId/assets/:assetId/evidence/history')
+  getAssetEvidenceHistory(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.getFarmAssetEvidenceHistory(
+      farmId,
+      assetId,
       user.userId,
       user.role as UserRole,
     );
