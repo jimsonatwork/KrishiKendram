@@ -291,20 +291,21 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: V0.3 — FARM INTEGRATION FOUNDATION**
+**Current position: V0.3 — FARM LIFECYCLE INTEGRATION**
 
 UsersService Field Policy migration is complete for the current implementation segment.
 
 Evidence:
 - Registry resource-field validation is now used for User create, update, restore-version, bulk-delete status transition, and restore status transition paths.
-- Focused UsersService tests: 10/10 PASS.
-- Related Users/Registry/Auth tests: 72/72 PASS.
-- Full backend regression: 23/23 suites, 280/280 tests PASS.
-- TypeScript build configuration check: PASS (tsc -p tsconfig.build.json --noEmit).
+- Farm creation/deletion and FarmAsset creation/deletion now establish or close temporal relationships atomically.
+- Farm access evaluates relationship context before the legacy owner fallback.
+- Full backend regression: 30/30 suites, 293/293 tests PASS.
+- TypeScript no-emit build check: PASS.
+- Backend production build: PASS.
 
 Next controlled activity:
 
-**Integrate the relationship, movement, lineage, and evidence foundations with Farm, preserving Farm.ownerId as a compatibility/current-state field while making temporal relationship history authoritative for the new lifecycle context.**
+**Complete the remaining Farm lifecycle integration where relationships, movement, lineage, or evidence materially represent FarmAsset, FarmRecord, and Crop history; then run the A/B/C promotion validation.**
 
 This closes the current UsersService validation migration and Registry / Authorization verification segments without declaring the entire Users or V0.3 relationship capability COMPLETE.
 
@@ -372,7 +373,18 @@ A claim of COMPLETE without supporting evidence is not accepted.
 - Full backend regression after evidence integration: 29 suites, 291 tests PASS.
 - Backend TypeScript no-emit check and production build: PASS.
 - Confirmed the ResourceRelationship persistence/resolution foundation remains PARTIAL as designed.
-- Moved the exact execution position to Farm integration foundation.
+- Moved the exact execution position to Farm lifecycle integration.
+
+### 26 Sep 2026 — Farm lifecycle integration foundation
+
+- Added centralized temporal relationship lifecycle operations.
+- Farm creation now establishes an OWNER relationship atomically.
+- Farm deletion closes open relationship history atomically.
+- FarmAsset creation/deletion now establishes and closes OWNER relationship history atomically.
+- Farm access evaluates temporal relationship context before legacy ownerId fallback.
+- Full backend regression after Farm integration: 30/30 suites, 293/293 tests PASS.
+- TypeScript no-emit check and backend production build: PASS.
+- Moved the exact execution position to remaining Farm lifecycle integration and A/B/C promotion validation.
 
 Future meaningful milestones must append an entry here.
 

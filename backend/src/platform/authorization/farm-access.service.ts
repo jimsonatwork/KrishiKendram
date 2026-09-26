@@ -66,10 +66,6 @@ export class FarmAccessService {
       return { allowed: true, source: 'GLOBAL' };
     }
 
-    if (farm.ownerId === userId) {
-      return { allowed: true, source: 'OWNER' };
-    }
-
     const resolution = await this.relationshipResolver.resolve({
       resourceType: 'farm',
       resourceId: farmId,
@@ -87,6 +83,10 @@ export class FarmAccessService {
         source: 'RELATIONSHIP',
         relationships: resolution.relationships,
       };
+    }
+
+    if (resolution.relationships.length === 0 && farm.ownerId === userId) {
+      return { allowed: true, source: 'OWNER' };
     }
 
     return { allowed: false, source: 'NONE' };

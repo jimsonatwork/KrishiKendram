@@ -268,3 +268,22 @@ govern access to any underlying document or external record.
 
 This keeps relationship truth, evidence references, file storage, and technical
 audit as distinct platform responsibilities.
+
+---
+
+## ADR-018 — Temporal Relationship Is Authoritative for New Farm Access
+
+**Status:** ACTIVE
+
+For Farm access, the temporal ResourceRelationship context is evaluated before
+the legacy Farm.ownerId compatibility field.
+
+The existing Farm.ownerId remains a compatibility fallback only when no
+temporal relationship history exists for the farm.
+
+This prevents a stale current-state owner field from silently overriding an
+explicit relationship lifecycle such as transfer, termination, or revocation.
+
+The rule preserves backward compatibility for pre-relationship farms while
+making the V0.3 relationship model authoritative as soon as relationship
+history exists.

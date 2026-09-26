@@ -74,7 +74,7 @@ describe('FarmAccessService', () => {
     expect(relationshipResolver.resolve).not.toHaveBeenCalled();
   });
 
-  it('allows the current farm owner with OWNER source', async () => {
+  it('uses the legacy owner field only when no temporal relationship exists', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       ownerId: 'user-1',
     });
@@ -86,7 +86,11 @@ describe('FarmAccessService', () => {
       source: 'OWNER',
     });
 
-    expect(relationshipResolver.resolve).not.toHaveBeenCalled();
+    expect(relationshipResolver.resolve).toHaveBeenCalledWith({
+      resourceType: 'farm',
+      resourceId: 'farm-1',
+      userId: 'user-1',
+    });
   });
 
   it('denies a normal non-owner when no relationship grants access', async () => {
@@ -224,13 +228,36 @@ describe('FarmAccessService', () => {
     ).resolves.toBe(true);
   });
 
-  it('does not evaluate relationships for the owner path', async () => {
+  it('does not fall back to ownerId when temporal history explicitly exists', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       ownerId: 'user-1',
     });
+    relationshipResolver.resolve.mockResolvedValue({
+      resourceType: 'farm',
+      resourceId: 'farm-1',
+      userId: 'user-1',
+      relationships: [
+        {
+          resourceType: 'farm',
+          resourceId: 'farm-1',
+          userId: 'user-1',
+          relationshipType: ResourceRelationshipType.OWNER,
+          status: ResourceRelationshipStatus.TRANSFERRED,
+          validFrom: new Date('2026-01-01T00:00:00.000Z'),
+          endedAt: new Date('2026-09-20T00:00:00.000Z'),
+          endedReason: 'Transferred',
+          createdBy: 'admin-1',
+          updatedBy: 'admin-1',
+        },
+      ],
+      resolvedAt: new Date('2026-09-26T00:00:00.000Z'),
+    });
 
-    await service.resolveAccess('user-1', 'farm-1');
-
-    expect(relationshipResolver.resolve).not.toHaveBeenCalled();
+    await expect(
+      service.resolveAccess('user-1', 'farm-1'),
+    ).resolves.toEqual({
+      allowed: false,
+      source: 'NONE',
+    });
   });
 });

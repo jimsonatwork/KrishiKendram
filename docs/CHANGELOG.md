@@ -208,3 +208,38 @@ At every coherent architectural milestone:
 6. Update this changelog.
 7. Record any changed architectural decision.
 
+
+---
+
+## 2026-09-26 — Farm Relationship Integration Foundation
+
+### Git checkpoint
+
+Pending commit after documentation and regression verification.
+
+### Completed architectural work
+
+- Added a centralized ResourceRelationship lifecycle service.
+- Farm creation now atomically establishes an OWNER relationship with a
+  1000-year practical non-expiry horizon.
+- Farm deletion atomically terminates open Farm relationships before deletion.
+- FarmAsset creation now atomically establishes an OWNER relationship using
+  the Farm's current owner as the compatibility source.
+- FarmAsset deletion atomically terminates its open relationship history.
+- Farm access now evaluates temporal relationship context before falling back
+  to Farm.ownerId for legacy farms with no relationship history.
+- Preserved the existing AuthorizationService and fail-closed behavior.
+
+### Verification
+
+- Focused Farm + relationship tests: 40/40 PASS.
+- Farm access regression: 9/9 PASS.
+- Full backend regression: 30 suites, 293 tests PASS.
+- TypeScript no-emit build check: PASS.
+- Backend production build: PASS.
+
+### Next target
+
+**Complete Farm lifecycle integration for FarmAsset/FarmRecord/Crop where
+relationship, movement, lineage, or evidence context is materially required,
+then promote the proven Farm foundation through B → A.**

@@ -7,12 +7,14 @@ import {
 } from './relationship-resolution.types';
 import { RelationshipAccessPolicy } from './relationship-access.policy';
 import { ResourceRelationshipResolverService } from './relationship-resolver.service';
+import { ResourceRelationshipService } from './relationship.service';
 
 @Module({
   imports: [PrismaModule],
   providers: [
     RelationshipAccessPolicy,
     ResourceRelationshipResolverService,
+    ResourceRelationshipService,
     {
       provide: RESOURCE_RELATIONSHIP_RESOLVER,
       useExisting: ResourceRelationshipResolverService,
@@ -20,6 +22,7 @@ import { ResourceRelationshipResolverService } from './relationship-resolver.ser
   ],
   exports: [
     RelationshipAccessPolicy,
+    ResourceRelationshipService,
     RESOURCE_RELATIONSHIP_RESOLVER,
   ],
 })
