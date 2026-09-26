@@ -2054,3 +2054,14 @@ Current execution frontier: expose pending transfer actions in the frontend, the
 - Added focused Member ID resolution coverage without changing the transfer lifecycle's ownership, movement, lineage, evidence, or audit boundaries.
 - Verification: transfer service 4/4 tests PASS; full backend regression 33/33 suites and 306/306 tests PASS; backend production build PASS; frontend TypeScript/Vite production build PASS; git diff --check PASS.
 - Current execution frontier: final lifecycle hardening and end-to-end verification, followed by the next domain adoption pass.
+
+### 26 September 2026 — Lifecycle hardening + runtime integration checkpoint
+
+- Transfer request creation now rejects expired requests and invalid effective/expiry ordering before persistence.
+- Transfer completion audit is written through the active Prisma transaction, keeping audit truth atomic with ownership/movement/lineage changes.
+- History workspace now supports sent-transfer visibility/cancellation and transaction/document references, while retaining incoming accept/reject actions.
+- Crop relationship history is incorporated into the unified operational timeline.
+- Farm and FarmAsset evidence history is incorporated into the same timeline alongside movement and lineage events.
+- Runtime smoke verification exposed missing Nest module wiring for the newly relationship-aware CropsService. CropsModule now imports PrismaModule and RelationshipsModule, and AuthorizationModule explicitly imports RegistryModule for its PermissionService dependency. A module-graph regression test was added so this class of startup failure is caught before runtime.
+- Verification: transfer service 7/7 tests PASS; full backend regression 34/34 suites and 311/311 tests PASS; backend production build PASS; frontend production build PASS; runtime Nest startup PASS; `/api/v1/health` PASS; git diff --check PASS.
+- Current execution frontier: final end-to-end lifecycle verification, then move from the Farm/Crop adoption pass into the next concrete domain lifecycle without introducing artificial movement/lineage semantics.

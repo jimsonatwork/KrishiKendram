@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
 
+import { RegistryModule } from '../registry/registry.module';
 import { RelationshipsModule } from '../relationships/relationships.module';
 
 import { AuthorizationService } from './authorization.service';
@@ -16,6 +17,7 @@ import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
 @Module({
   imports: [
     PrismaModule,
+    RegistryModule,
     RelationshipsModule,
   ],
   providers: [

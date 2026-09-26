@@ -459,3 +459,29 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 ### Next target
 
 **Final lifecycle hardening → end-to-end verification → next domain adoption pass.**
+
+## 2026-09-26 — Lifecycle Hardening & Runtime Integration
+
+### Completed
+
+- Transfer expiry/effective-time validation hardened.
+- Transfer completion audit made transaction-bound.
+- Added sent-transfer tracking/cancellation and transaction/document reference capture in History.
+- Unified Crop relationship history with the operational timeline.
+- Unified Farm/FarmAsset evidence history with movement and lineage timeline events.
+- Fixed runtime Nest module wiring for CropsService and Authorization/Registry dependencies.
+- Added a CropsModule dependency-graph regression test.
+
+### Verification
+
+- Transfer service: 7/7 tests passed.
+- Backend regression: 34/34 suites, 311/311 tests passed.
+- Backend production build: passed.
+- Frontend production build: passed.
+- Nest runtime startup: passed.
+- /api/v1/health: passed.
+- git diff --check: passed.
+
+### Next target
+
+**Final end-to-end lifecycle verification → next concrete domain lifecycle adoption.**
