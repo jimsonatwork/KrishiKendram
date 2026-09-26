@@ -356,6 +356,20 @@ export const api = {
       },
     }),
 
+  farmAssetRelationshipHistory: (
+    farmId: string,
+    assetId: string,
+    token: string,
+  ) =>
+    request<any[]>(
+      `/farms/${farmId}/assets/${assetId}/relationships/history`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    ),
+
   addFarmAsset: (
     farmId: string,
     data: AssetData,

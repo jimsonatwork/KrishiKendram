@@ -367,6 +367,87 @@ function InfoItem({
   )
 }
 
+function AssetRelationshipHistory({
+  farmId,
+  assetId,
+}: {
+  farmId: string
+  assetId: string
+}) {
+  const token = localStorage.getItem('accessToken')
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [history, setHistory] = useState<any[]>([])
+
+  const loadHistory = async () => {
+    if (!token) return
+    setLoading(true)
+    try {
+      const result = await api.farmAssetRelationshipHistory(
+        farmId,
+        assetId,
+        token,
+      )
+      setHistory(Array.isArray(result) ? result : [])
+    } catch {
+      setHistory([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    if (next) void loadHistory()
+  }
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <button
+        type="button"
+        onClick={toggle}
+        className="text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+      >
+        {open ? 'Hide relationship history' : 'View relationship history'}
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-950/40">
+          {loading ? (
+            <p className="text-xs text-slate-500">Loading history…</p>
+          ) : history.length === 0 ? (
+            <p className="text-xs text-slate-500">No relationship history available.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.map((item, index) => (
+                <div
+                  key={`${item.resourceId || assetId}-${index}`}
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="flex flex-wrap justify-between gap-2 text-xs">
+                    <span className="font-medium">{item.relationshipType || 'Relationship'}</span>
+                    <span className="text-slate-500">{item.status || 'UNKNOWN'}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    {item.validFrom ? new Date(item.validFrom).toLocaleString() : 'Start not recorded'}
+                    {item.validUntil ? ` → ${new Date(item.validUntil).toLocaleString()}` : ' → current/non-expiring'}
+                  </div>
+                  {item.endedReason && (
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      Reason: {item.endedReason}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FarmSubsection({
   farm,
   crops,
@@ -691,6 +772,11 @@ function FarmSubsection({
                         .join(' · ')}
                     </p>
                   )}
+
+                <AssetRelationshipHistory
+                  farmId={farm.id}
+                  assetId={asset.id}
+                />
               </div>
             ))}
           </div>
