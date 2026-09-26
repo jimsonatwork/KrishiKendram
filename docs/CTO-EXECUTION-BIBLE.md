@@ -438,3 +438,12 @@ These records support one another. None should silently replace another.
 - Backend production build and git diff --check: PASS.
 - Exact execution position: V0.3 A/B/C promotion validation and recovery
   checkpoint.
+
+### 26 Sep 2026 — V0.3 A/B/C promotion validation and recovery checkpoint
+
+- Development, Integration, and Canonical repositories validated against origin/main.
+- Full backend regression: 30/30 suites, 294/294 tests PASS.
+- Backend production build and git diff --check: PASS.
+- Existing Git checkpoints are the recovery mechanism; no additional recovery framework added.
+- V0.3 promotion/recovery checkpoint CLOSED.
+

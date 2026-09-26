@@ -1932,3 +1932,10 @@ chronological order. FarmRecord remains historical observation/provenance data.
 
 Current execution frontier: V0.3 A/B/C promotion validation and recovery
 checkpoint.
+
+### 26 September 2026 — V0.3 A/B/C promotion and recovery checkpoint
+
+Development, Integration, and Canonical are synchronized with their remote main branches. Full backend regression remains 30/30 suites and 294/294 tests passing, production build passes, and git diff --check passes. Git checkpoints provide the current recovery mechanism; no additional recovery infrastructure is justified yet.
+
+Current execution frontier: continue from the verified V0.3 relationship/history foundation into the next narrowly scoped platform capability.
+
