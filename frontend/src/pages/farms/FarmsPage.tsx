@@ -448,6 +448,130 @@ function AssetRelationshipHistory({
   )
 }
 
+
+function ResourceHistoryPanel({
+  title,
+  emptyText,
+  loader,
+  renderItem,
+}: {
+  title: string
+  emptyText: string
+  loader: (token: string) => Promise<any[]>
+  renderItem: (item: any, index: number) => React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [items, setItems] = useState<any[]>([])
+
+  const load = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    setLoading(true)
+    try {
+      const result = await loader(token)
+      setItems(Array.isArray(result) ? result : [])
+    } catch {
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    if (next) void load()
+  }
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <button type="button" onClick={toggle} className="text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+        {open ? 'Hide ' + title : 'View ' + title}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-950/40">
+          {loading ? <p className="text-xs text-slate-500">Loading history…</p> : items.length === 0 ? <p className="text-xs text-slate-500">{emptyText}</p> : <div className="space-y-2">{items.map(renderItem)}</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MovementHistoryPanel({
+  loader,
+  label = 'movement history',
+}: {
+  loader: (token: string) => Promise<any[]>
+  label?: string
+}) {
+  return (
+    <ResourceHistoryPanel
+      title={label}
+      emptyText="No movement history available."
+      loader={loader}
+      renderItem={(item, index) => (
+        <div key={String(item.id || item.movementId || index)} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[11px] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap justify-between gap-2 text-xs">
+            <span className="font-medium">{item.movementType || item.type || 'MOVEMENT'}</span>
+            <span className="text-slate-500">{item.effectiveAt ? new Date(item.effectiveAt).toLocaleString() : 'Effective time not recorded'}</span>
+          </div>
+          <div className="mt-1 text-slate-500">Recorded: {item.recordedAt ? new Date(item.recordedAt).toLocaleString() : 'Not recorded'}</div>
+          {(item.sourceResourceId || item.sourceUserId || item.sourceReference) && <div className="mt-1 text-slate-500">From: {item.sourceResourceId || item.sourceUserId || item.sourceReference}</div>}
+          {(item.destinationResourceId || item.destinationUserId || item.destinationReference) && <div className="mt-1 text-slate-500">To: {item.destinationResourceId || item.destinationUserId || item.destinationReference}</div>}
+          {item.quantity !== undefined && item.quantity !== null && <div className="mt-1 text-slate-500">Quantity: {String(item.quantity)}{item.unit ? ' ' + item.unit : ''}</div>}
+          {item.previousMovementId && <div className="mt-1 text-slate-500">Previous movement: {item.previousMovementId}</div>}
+          {item.transactionReference && <div className="mt-1 text-slate-500">Transaction: {item.transactionReference}</div>}
+          {item.evidenceReference && <div className="mt-1 text-slate-500">Evidence: {item.evidenceReference}</div>}
+        </div>
+      )}
+    />
+  )
+}
+
+function EvidenceHistoryPanel({
+  loader,
+  label = 'evidence history',
+}: {
+  loader: (token: string) => Promise<any[]>
+  label?: string
+}) {
+  return (
+    <ResourceHistoryPanel
+      title={label}
+      emptyText="No evidence history available."
+      loader={loader}
+      renderItem={(item, index) => (
+        <div key={String(item.id || item.evidenceId || index)} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[11px] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap justify-between gap-2 text-xs">
+            <span className="font-medium">{item.referenceType || item.type || 'Evidence'}</span>
+            <span className="text-slate-500">{item.referenceValue || item.reference || 'Reference not recorded'}</span>
+          </div>
+          {item.documentNumber && <div className="mt-1 text-slate-500">Document: {item.documentNumber}</div>}
+          {item.issuer && <div className="mt-1 text-slate-500">Issuer: {item.issuer}</div>}
+          {(item.issuedAt || item.effectiveAt) && <div className="mt-1 text-slate-500">{item.issuedAt ? 'Issued: ' + new Date(item.issuedAt).toLocaleString() : ''}{item.issuedAt && item.effectiveAt ? ' · ' : ''}{item.effectiveAt ? 'Effective: ' + new Date(item.effectiveAt).toLocaleString() : ''}</div>}
+          {item.integrityHash && <div className="mt-1 break-all text-slate-500">Integrity: {item.integrityHash}</div>}
+          {item.metadata && typeof item.metadata === 'object' && Object.keys(item.metadata).length > 0 && <div className="mt-1 break-all text-slate-500">Metadata: {JSON.stringify(item.metadata)}</div>}
+        </div>
+      )}
+    />
+  )
+}
+
+function FarmHistoryPanels({ farmId }: { farmId: string }) {
+  return (
+    <div className="mt-6 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Farm movement & evidence</h3>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Lifecycle history is loaded only when requested.</p>
+      </div>
+      <MovementHistoryPanel loader={(token) => api.farmMovementHistory(farmId, token)} />
+      <EvidenceHistoryPanel loader={(token) => api.farmEvidenceHistory(farmId, token)} />
+    </div>
+  )
+}
+
+
 function FarmSubsection({
   farm,
   crops,
@@ -541,6 +665,8 @@ function FarmSubsection({
           </p>
         </div>
       </div>
+
+      <FarmHistoryPanels farmId={farm.id} />
 
       {/* START: Farm crop workspace */}
       <div className="mt-6 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
@@ -776,6 +902,14 @@ function FarmSubsection({
                 <AssetRelationshipHistory
                   farmId={farm.id}
                   assetId={asset.id}
+                />
+                <MovementHistoryPanel
+                  label="asset movement history"
+                  loader={(token) => api.farmAssetMovementHistory(farm.id, asset.id, token)}
+                />
+                <EvidenceHistoryPanel
+                  label="asset evidence history"
+                  loader={(token) => api.farmAssetEvidenceHistory(farm.id, asset.id, token)}
                 />
               </div>
             ))}

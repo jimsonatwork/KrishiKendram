@@ -360,3 +360,11 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 ### Next target
 
 **Expose these authorized histories in the existing Farm workspace, then add a concrete ResourceLineage split/merge workflow only when a real resource transformation contract is introduced.**
+
+### 2026-09-26 — Farm Movement & Evidence History UI
+- Added Farm and FarmAsset movement-history API clients and lazy history panels.
+- Added Farm and FarmAsset evidence-history API clients and lazy history panels.
+- Existing relationship-history UI remains intact; lifecycle history is requested on demand and remains backend-authorized.
+- Movement UI surfaces type, effective/recorded timestamps, source/destination references, quantity/unit, previous movement, transaction/evidence references when returned.
+- Evidence UI surfaces reference data, document/issuer/date fields, integrity hash and returned metadata without fabricating values.
+- Frontend TypeScript/Vite production build passed.

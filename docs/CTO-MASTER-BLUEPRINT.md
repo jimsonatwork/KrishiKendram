@@ -1982,3 +1982,6 @@ evidence-reference validation, and temporal-owner history authorization.
 The next UI checkpoint is to expose these histories in the existing Farm
 workspace. ResourceLineage remains intentionally deferred until a concrete
 split/merge/derivation transformation contract exists.
+
+## Checkpoint — 2026-09-26
+Farm and FarmAsset lifecycle history is now exposed in the existing frontend workspace. Movement and Evidence history are lazy-loaded through centralized API methods, while authorization remains enforced by the backend history endpoints. ResourceLineage remains reserved for genuine split/merge/derivation semantics and is not fabricated for ordinary CRUD or transfer events.

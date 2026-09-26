@@ -370,6 +370,26 @@ export const api = {
       },
     ),
 
+  farmMovementHistory: (farmId: string, token: string) =>
+    request<any[]>('/farms/' + farmId + '/movements/history', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  farmEvidenceHistory: (farmId: string, token: string) =>
+    request<any[]>('/farms/' + farmId + '/evidence/history', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  farmAssetMovementHistory: (farmId: string, assetId: string, token: string) =>
+    request<any[]>('/farms/' + farmId + '/assets/' + assetId + '/movements/history', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  farmAssetEvidenceHistory: (farmId: string, assetId: string, token: string) =>
+    request<any[]>('/farms/' + farmId + '/assets/' + assetId + '/evidence/history', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
   addFarmAsset: (
     farmId: string,
     data: AssetData,
