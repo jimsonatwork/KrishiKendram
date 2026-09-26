@@ -22,6 +22,7 @@ import { CreateFarmAssetDto } from './dto/create-farm-asset.dto';
 import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 import { SplitFarmAssetDto } from './dto/split-farm-asset.dto';
+import { MergeFarmAssetsDto } from './dto/merge-farm-assets.dto';
 
 @Injectable()
 export class FarmsService {
@@ -467,6 +468,15 @@ export class FarmsService {
     role: UserRole,
   ) {
     return this.lineage.getFarmAssetLineageHistory(farmId, assetId, userId, role);
+  }
+
+  async mergeFarmAssets(
+    farmId: string,
+    dto: MergeFarmAssetsDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lineage.mergeFarmAssets(farmId, dto, userId, role);
   }
 
   async splitFarmAsset(

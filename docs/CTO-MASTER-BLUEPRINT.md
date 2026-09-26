@@ -1988,3 +1988,11 @@ Farm and FarmAsset lifecycle history is now exposed in the existing frontend wor
 
 ## Checkpoint — 2026-09-26 — ResourceLineage
 The first real lineage workflow is now implemented for quantified FarmAsset stock/resource splitting. Ordinary CRUD and ownership transfer remain free of fabricated lineage. Split is transactional: source quantity decreases, a target asset is created, temporal ownership is established, a SPLIT movement is recorded, and a SPLIT_FROM lineage edge links source to target. Lineage history is authorization-aware and exposed in the FarmAsset workspace. Lineage logic is isolated in FarmResourceLineageService; FarmResourceLifecycleService remains focused on movement/evidence lifecycle concerns.
+
+### 26 September 2026 — FarmAsset Merge Lineage checkpoint
+
+The FarmAsset lineage workflow now supports quantified resource merging in addition to splitting. A merge requires at least two distinct quantified assets from the same farm, matching type/unit, and a common active owner. The operation is transactional: a new target asset receives the combined quantity, source assets are reduced to zero and their active relationships are terminated, a target temporal OWNER relationship is created, each source emits a MERGE movement, and each source is linked to the target with a MERGED_FROM lineage edge.
+
+This keeps lineage reserved for genuine resource continuity transformations while preserving temporal ownership and movement history. Focused merge tests pass and the full backend regression remains green at 32/32 suites and 302/302 tests.
+
+Current execution frontier: expose merge as a first-class FarmAsset workspace action, then complete the next domain adoption pass for FarmRecord/Crop where the lifecycle semantics are appropriate.

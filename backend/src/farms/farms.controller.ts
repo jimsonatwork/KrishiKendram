@@ -22,6 +22,7 @@ import { CreateFarmAssetDto } from './dto/create-farm-asset.dto';
 import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 import { SplitFarmAssetDto } from './dto/split-farm-asset.dto';
+import { MergeFarmAssetsDto } from './dto/merge-farm-assets.dto';
 
 @Controller('farms')
 @UseGuards(JwtAuthGuard)
@@ -197,6 +198,20 @@ create(
     return this.farmsService.getFarmAssetLineageHistory(
       farmId,
       assetId,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Post(':farmId/assets/merge')
+  mergeAssets(
+    @Param('farmId') farmId: string,
+    @CurrentUser() user: any,
+    @Body() dto: MergeFarmAssetsDto,
+  ) {
+    return this.farmsService.mergeFarmAssets(
+      farmId,
+      dto,
       user.userId,
       user.role as UserRole,
     );

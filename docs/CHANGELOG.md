@@ -376,3 +376,10 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Added FarmAsset lineage-history endpoint and lazy lineage-history UI.
 - Extracted lineage lifecycle logic into FarmResourceLineageService to keep FarmResourceLifecycleService within the project service-size guardrail.
 - Full backend regression: 32 suites / 301 tests passed; backend production build and frontend production build passed.
+
+### 2026-09-26 — FarmAsset merge lineage lifecycle
+- Added a transactional FarmAsset merge workflow for two or more quantified assets.
+- Merge requires matching asset type/unit and a common active owner.
+- Source quantities are closed to zero, source OWNER relationships are terminated, and a new target asset receives the combined quantity.
+- Each source produces a MERGE movement and MERGED_FROM lineage edge to the target.
+- Added focused merge lifecycle coverage; full backend regression is 32/32 suites and 302/302 tests passing.
