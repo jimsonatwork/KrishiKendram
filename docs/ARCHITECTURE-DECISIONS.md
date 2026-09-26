@@ -220,4 +220,70 @@ Target:
 Authorization → permitted context → AI abstraction → provider.
 
 AI does not bypass platform authorization.
+---
 
+## ADR-016 — Resource Movement Is Business History
+
+**Status:** ACTIVE
+
+ResourceMovement is a first-class business-history layer separate from technical AuditEvent records and temporal ResourceRelationship records.
+
+The movement foundation must preserve, where applicable:
+
+- affected resource identity;
+- source and destination user/resource references;
+- movement type;
+- effective business time and recorded system time;
+- quantity or portion for partial movement;
+- previous-movement linkage;
+- transaction and evidence references;
+- creator/updater attribution.
+
+Movement records must not silently rewrite prior relationship history. Partial sale and transfer scenarios will use movement history together with ResourceLineage to preserve continuity.
+
+
+---
+
+## ADR-017 — Evidence Is a Secure Reference Layer
+
+**Status:** ACTIVE
+
+Relationship and movement evidence must be represented as controlled reference
+metadata, not as an uncontrolled document-content store.
+
+ResourceEvidence may preserve:
+
+- evidence type;
+- reference type and reference value;
+- document/transaction number;
+- issuer and relevant dates;
+- integrity hash;
+- structured metadata;
+- creator/updater attribution.
+
+Evidence may be linked to temporal relationships and business movements.
+
+Actual document/file storage remains a separate concern. Authorization must
+govern access to any underlying document or external record.
+
+This keeps relationship truth, evidence references, file storage, and technical
+audit as distinct platform responsibilities.
+
+---
+
+## ADR-018 — Temporal Relationship Is Authoritative for New Farm Access
+
+**Status:** ACTIVE
+
+For Farm access, the temporal ResourceRelationship context is evaluated before
+the legacy Farm.ownerId compatibility field.
+
+The existing Farm.ownerId remains a compatibility fallback only when no
+temporal relationship history exists for the farm.
+
+This prevents a stale current-state owner field from silently overriding an
+explicit relationship lifecycle such as transfer, termination, or revocation.
+
+The rule preserves backward compatibility for pre-relationship farms while
+making the V0.3 relationship model authoritative as soon as relationship
+history exists.

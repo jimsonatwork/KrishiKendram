@@ -10,6 +10,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 import { AuthorizationAction, AuthorizationScope } from './authorization.types';
 import { FieldPolicyEvaluationService } from './field-policy-evaluation.service';
+import { FarmAccessService } from './farm-access.service';
+import type { FarmAccessContext } from './farm-access.service';
 import { PermissionService } from './permission.service';
 import type {
   FieldPolicyEvaluation,
@@ -21,7 +23,29 @@ export interface AuthorizationContext {
   role: UserRole;
 }
 
-export interface AuthorizationRequest {
+/**
+ * Explicit ownership authorization context.
+ *
+ * OWN scope evaluates this context only. It must never be inferred from
+ * farmId or another resource boundary.
+ */
+export interface AuthorizationOwnershipContext {
+  ownerId?: string;
+}
+
+/**
+ * Explicit farm-boundary authorization context.
+ *
+ * FARM scope evaluates this context only. It must never be inferred from
+ * ownerId or another ownership boundary.
+ */
+export interface AuthorizationFarmContext {
+  farmId?: string;
+}
+
+export interface AuthorizationRequest
+  extends AuthorizationOwnershipContext,
+    AuthorizationFarmContext {
   user: AuthorizationContext;
 
   module: string;
@@ -38,6 +62,15 @@ export interface AuthorizationRequest {
 
 export interface AuthorizationDecision {
   allowed: boolean;
+
+  /**
+   * Farm-boundary context used when a FARM-scoped permission authorizes
+   * the request.
+   *
+   * The context preserves the farm-access source and relationship facts
+   * without translating relationship facts into roles or permissions.
+   */
+  farmAccess?: FarmAccessContext;
 
   /**
    * Exact permission that produced the successful authorization decision.
@@ -68,6 +101,7 @@ export class AuthorizationService {
     private readonly prisma: PrismaService,
     private readonly fieldPolicyEvaluationService: FieldPolicyEvaluationService,
     private readonly permissionService: PermissionService,
+    private readonly farmAccessService: FarmAccessService,
   ) {}
 
   /**
@@ -154,8 +188,16 @@ export class AuthorizationService {
         return this.allowedDecision(permission);
       }
 
-      if (await this.scopeMatches(permission.scope, request)) {
-        return this.allowedDecision(permission);
+      const scopeMatch = await this.scopeMatches(
+        permission.scope,
+        request,
+      );
+
+      if (scopeMatch.matched) {
+        return this.allowedDecision(
+          permission,
+          scopeMatch.farmAccess,
+        );
       }
     }
 
@@ -220,17 +262,21 @@ export class AuthorizationService {
     }
   }
 
-  private allowedDecision(permission: {
-    id: string;
-    module: string;
-    section: string | null;
-    resource: string | null;
-    action: string;
-    scope: string;
-  }): AuthorizationDecision {
+  private allowedDecision(
+    permission: {
+      id: string;
+      module: string;
+      section: string | null;
+      resource: string | null;
+      action: string;
+      scope: string;
+    },
+    farmAccess?: FarmAccessContext,
+  ): AuthorizationDecision {
     return {
       allowed: true,
       permissionId: permission.id,
+      ...(farmAccess ? { farmAccess } : {}),
       metadata: {
         module: permission.module,
         section: permission.section,
@@ -262,39 +308,77 @@ export class AuthorizationService {
   private async scopeMatches(
     scope: string,
     request: AuthorizationRequest,
-  ): Promise<boolean> {
+  ): Promise<{
+    matched: boolean;
+    farmAccess?: FarmAccessContext;
+  }> {
     switch (scope) {
       case AuthorizationScope.GLOBAL:
-        return true;
+        return { matched: true };
 
       case AuthorizationScope.OWN:
-        return !!request.ownerId && request.ownerId === request.user.userId;
+        return {
+          matched: this.matchesOwnershipContext(request),
+        };
 
       case AuthorizationScope.FARM:
-        if (!request.farmId) {
-          return false;
-        }
-
-        const farm = await this.prisma.farm.findUnique({
-          where: {
-            id: request.farmId,
-          },
-          select: {
-            ownerId: true,
-          },
-        });
-
-        return farm?.ownerId === request.user.userId;
+        return this.matchesFarmContext(request);
 
       case AuthorizationScope.ASSIGNED:
       case AuthorizationScope.ORGANIZATION:
       case AuthorizationScope.SHARED:
       case AuthorizationScope.PUBLIC:
-        return false;
+        return { matched: false };
 
       default:
-        return false;
+        return { matched: false };
     }
+  }
+
+  /**
+   * Evaluates the ownership authorization boundary.
+   *
+   * OWN authorization is intentionally independent from farm access.
+   */
+  private matchesOwnershipContext(
+    request: AuthorizationRequest,
+  ): boolean {
+    return (
+      !!request.ownerId &&
+      request.ownerId === request.user.userId
+    );
+  }
+
+  /**
+   * Evaluates the farm authorization boundary.
+   *
+   * FARM authorization is intentionally delegated to FarmAccessService so
+   * AuthorizationService does not interpret farm ownership/relationships.
+   */
+  private async matchesFarmContext(
+    request: AuthorizationRequest,
+  ): Promise<{
+    matched: boolean;
+    farmAccess?: FarmAccessContext;
+  }> {
+    if (!request.farmId) {
+      return { matched: false };
+    }
+
+    const farmAccessContext =
+      await this.farmAccessService.resolveAccess(
+        request.user.userId,
+        request.farmId,
+      );
+
+    if (!farmAccessContext.allowed) {
+      return { matched: false };
+    }
+
+    return {
+      matched: true,
+      farmAccess: farmAccessContext,
+    };
   }
 
   private grantMatches(

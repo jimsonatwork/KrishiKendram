@@ -43,6 +43,12 @@ describe('UsersService - centralized field policy', () => {
       errors: [],
     });
 
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: undefined,
+      errors: [],
+    });
+
     service = new UsersService(
       prisma,
       registry,
@@ -60,6 +66,11 @@ describe('UsersService - centralized field policy', () => {
       .mockReturnValueOnce({
         valid: true,
         value: 'normalized@example.com',
+        errors: [],
+      })
+      .mockReturnValueOnce({
+        valid: true,
+        value: 'FARMER',
         errors: [],
       });
 
@@ -97,6 +108,15 @@ describe('UsersService - centralized field policy', () => {
       'user',
       'email',
       '  ORIGINAL@EXAMPLE.COM  ',
+    );
+
+    expect(
+      registry.validateResourceField,
+    ).toHaveBeenNthCalledWith(
+      3,
+      'user',
+      'role',
+      'FARMER',
     );
 
     expect(prisma.user.create).toHaveBeenCalledWith({

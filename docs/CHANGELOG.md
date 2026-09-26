@@ -109,6 +109,93 @@ rewriting the established authorization core.
 **Permission → Authorization integration / automatic administrative capability**
 
 ---
+
+## 2026-09-26 — ResourceMovement Foundation Checkpoint
+
+### Git checkpoint
+
+7750fc6 — Add ResourceMovement foundation
+
+### Completed architectural work
+
+- Added the ResourceMovement Prisma persistence model and migration.
+- Added the PMD movement vocabulary, including partial sale and partial transfer.
+- Preserved source/destination user and resource references.
+- Preserved effective business time separately from recorded system time.
+- Added quantity/unit support for partial portions.
+- Added previous-movement linkage for connected business history.
+- Preserved transaction and evidence references without coupling them to a future document implementation.
+- Added a platform movement resolver with effective-date window support.
+- Kept movement history separate from authorization and technical audit.
+
+### Verification
+
+- Prisma migration applied successfully.
+- Prisma migration status: database schema up to date.
+- Focused regression: 10 suites, 87 tests passed.
+- Backend TypeScript build: PASS.
+
+### Next target
+
+**ResourceMovement business creation/lifecycle semantics, followed by ResourceLineage and RelationshipEvidence.**
+
+---
+
+## 2026-09-26 — ResourceLineage Foundation Checkpoint
+
+### Git checkpoint
+
+Pending commit after final documentation and regression verification.
+
+### Completed architectural work
+
+- Added ResourceLineage persistence with generic source and target resource identities.
+- Added DERIVED_FROM, SPLIT_FROM, MERGED_FROM, and TRANSFERRED_FROM lineage types.
+- Linked lineage to ResourceMovement where a movement caused the continuity event.
+- Preserved quantity/unit and effective business time for resource portions.
+- Added inbound, outbound, and bidirectional lineage resolution with date-window filtering.
+- Kept lineage separate from movement history and technical audit.
+
+### Verification
+
+- Prisma migration applied successfully.
+- Prisma migration status: database schema up to date.
+- Full backend regression: 28 suites, 289 tests passed.
+- Backend TypeScript build: PASS.
+
+### Next target
+
+**RelationshipEvidence foundation for secure document/reference metadata and verification state.**
+
+---
+
+## 2026-09-26 — RelationshipEvidence Foundation Checkpoint
+
+### Git checkpoint
+
+`7d6904b` — Add RelationshipEvidence foundation
+
+### Completed architectural work
+
+- Added ResourceEvidence persistence for controlled reference metadata without embedding document content.
+- Added evidence type, reference type/value, document number, issuer, dates, integrity hash, metadata, and actor attribution.
+- Linked evidence references to ResourceRelationship and ResourceMovement.
+- Added a platform evidence resolver supporting relationship, movement, resource, type, and reference filtering.
+- Preserved evidence as a reference layer separate from file/document storage and technical audit.
+
+### Verification
+
+- Prisma migration applied successfully and database schema is in sync.
+- Focused RelationshipEvidence tests: 2/2 PASS.
+- Full backend regression: 29 suites, 291 tests PASS.
+- TypeScript no-emit build check: PASS.
+- Backend production build: PASS.
+
+### Next target
+
+**Farm integration foundation: connect temporal relationship, movement, lineage, and evidence context to Farm without removing Farm.ownerId compatibility.**
+
+---
 ## Versioning Rule
 
 At every coherent architectural milestone:
@@ -121,3 +208,38 @@ At every coherent architectural milestone:
 6. Update this changelog.
 7. Record any changed architectural decision.
 
+
+---
+
+## 2026-09-26 — Farm Relationship Integration Foundation
+
+### Git checkpoint
+
+Pending commit after documentation and regression verification.
+
+### Completed architectural work
+
+- Added a centralized ResourceRelationship lifecycle service.
+- Farm creation now atomically establishes an OWNER relationship with a
+  1000-year practical non-expiry horizon.
+- Farm deletion atomically terminates open Farm relationships before deletion.
+- FarmAsset creation now atomically establishes an OWNER relationship using
+  the Farm's current owner as the compatibility source.
+- FarmAsset deletion atomically terminates its open relationship history.
+- Farm access now evaluates temporal relationship context before falling back
+  to Farm.ownerId for legacy farms with no relationship history.
+- Preserved the existing AuthorizationService and fail-closed behavior.
+
+### Verification
+
+- Focused Farm + relationship tests: 40/40 PASS.
+- Farm access regression: 9/9 PASS.
+- Full backend regression: 30 suites, 293 tests PASS.
+- TypeScript no-emit build check: PASS.
+- Backend production build: PASS.
+
+### Next target
+
+**Complete Farm lifecycle integration for FarmAsset/FarmRecord/Crop where
+relationship, movement, lineage, or evidence context is materially required,
+then promote the proven Farm foundation through B → A.**

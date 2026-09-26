@@ -8,6 +8,7 @@ import { UserRole } from '@prisma/client';
 
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { RegistryService } from '../platform/registry/registry.service';
+import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
@@ -23,6 +24,7 @@ export class FarmsService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly registry: RegistryService,
+    private readonly relationships: ResourceRelationshipService,
   ) {}
 
   async create(ownerId: string, role: UserRole, dto: CreateFarmDto) {
@@ -46,7 +48,7 @@ export class FarmsService {
         },
       });
 
-      return tx.farm.create({
+      const farm = await tx.farm.create({
         data: {
           ...validatedData,
           name: validatedData.name as string,
@@ -54,6 +56,16 @@ export class FarmsService {
           entityId: entity.id,
         },
       });
+
+      await this.relationships.createOwnerRelationship(
+        tx,
+        'farm',
+        farm.id,
+        ownerId,
+        farm.createdAt,
+      );
+
+      return farm;
     });
   }
 
@@ -311,12 +323,24 @@ export class FarmsService {
 
     const validatedData = this.validateFarmAssetFields(dto);
 
-    return this.prisma.farmAsset.create({
-      data: {
-        farmId,
-        ...validatedData,
-        type: validatedData.type as string,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const asset = await tx.farmAsset.create({
+        data: {
+          farmId,
+          ...validatedData,
+          type: validatedData.type as string,
+        },
+      });
+
+      await this.relationships.createOwnerRelationship(
+        tx,
+        'farmAsset',
+        asset.id,
+        farmContext.ownerId,
+        asset.createdAt,
+      );
+
+      return asset;
     });
   }
 
@@ -425,10 +449,20 @@ export class FarmsService {
       ownerId: assetContext.farm.ownerId,
     });
 
-    return this.prisma.farmAsset.delete({
-      where: {
-        id: assetId,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const endedAt = new Date();
+
+      await this.relationships.terminateResourceRelationships(
+        tx,
+        'farmAsset',
+        assetId,
+        endedAt,
+        'Farm asset deleted',
+      );
+
+      return tx.farmAsset.delete({
+        where: { id: assetId },
+      });
     });
   }
 
@@ -542,10 +576,20 @@ export class FarmsService {
       ownerId: farmContext.ownerId,
     });
 
-    return this.prisma.farm.delete({
-      where: {
+    return this.prisma.$transaction(async (tx) => {
+      const endedAt = new Date();
+
+      await this.relationships.terminateResourceRelationships(
+        tx,
+        'farm',
         id,
-      },
+        endedAt,
+        'Farm deleted',
+      );
+
+      return tx.farm.delete({
+        where: { id },
+      });
     });
   }
 }
