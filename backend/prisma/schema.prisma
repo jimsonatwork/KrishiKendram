@@ -146,8 +146,18 @@ model User {
   farms       Farm[]
   auditEvents AuditEvent[] @relation("AuditActor")
 
-  userHistoryEntries UserHistory[] @relation("UserHistoryUser")
-  userHistoryActions UserHistory[] @relation("UserHistoryActor")
+  userHistoryEntries       UserHistory[]      @relation("UserHistoryUser")
+  userHistoryActions       UserHistory[]      @relation("UserHistoryActor")
+  resourceMovementsCreated ResourceMovement[] @relation("ResourceMovementCreatedBy")
+  resourceMovementsUpdated ResourceMovement[] @relation("ResourceMovementUpdatedBy")
+  resourceEvidenceCreated  ResourceEvidence[] @relation("ResourceEvidenceCreatedBy")
+  resourceEvidenceUpdated  ResourceEvidence[] @relation("ResourceEvidenceUpdatedBy")
+  resourceLineagesCreated  ResourceLineage[]  @relation("ResourceLineageCreatedBy")
+  resourceLineagesUpdated  ResourceLineage[]  @relation("ResourceLineageUpdatedBy")
+
+  resourceRelationships        ResourceRelationship[] @relation("ResourceRelationshipUser")
+  createdResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipCreatedBy")
+  updatedResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipUpdatedBy")
 }
 
 // ============================================================
@@ -346,6 +356,230 @@ model UserHistory {
 // ============================================================
 // PART 10 - USER ROLES
 // ============================================================
+
+// ============================================================
+// PART 05 - RESOURCE RELATIONSHIPS
+// ============================================================
+
+model ResourceRelationship {
+  id String @id @default(cuid())
+
+  resourceType String
+  resourceId   String
+  userId       String
+
+  relationshipType ResourceRelationshipType
+  status           ResourceRelationshipStatus
+
+  validFrom   DateTime
+  validUntil  DateTime?
+  endedAt     DateTime?
+  endedReason String?
+  evidenceId  String?
+
+  createdBy String
+  updatedBy String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User              @relation("ResourceRelationshipUser", fields: [userId], references: [id], onDelete: Restrict)
+  creator  User              @relation("ResourceRelationshipCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater  User              @relation("ResourceRelationshipUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+  evidence ResourceEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+
+  @@index([resourceType, resourceId])
+  @@index([userId])
+  @@index([relationshipType])
+  @@index([status])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([evidenceId])
+}
+
+model ResourceEvidence {
+  id String @id @default(cuid())
+
+  evidenceType   ResourceEvidenceType
+  referenceType  String
+  referenceValue String
+  documentNumber String?
+  issuer         String?
+  issuedAt       DateTime?
+  expiresAt      DateTime?
+  integrityHash  String?
+  metadata       Json?
+
+  createdBy String
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator       User                   @relation("ResourceEvidenceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater       User                   @relation("ResourceEvidenceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+  relationships ResourceRelationship[]
+  movements     ResourceMovement[]
+
+  @@index([evidenceType])
+  @@index([referenceType, referenceValue])
+  @@index([documentNumber])
+  @@index([issuedAt])
+  @@index([expiresAt])
+  @@index([createdBy])
+  @@index([updatedBy])
+}
+
+// ============================================================
+// PART 05 END
+// ============================================================
+
+model ResourceMovement {
+  id String @id @default(cuid())
+
+  resourceType String
+  resourceId   String
+  movementType ResourceMovementType
+
+  sourceUserId            String?
+  destinationUserId       String?
+  sourceResourceType      String?
+  sourceResourceId        String?
+  destinationResourceType String?
+  destinationResourceId   String?
+
+  sourceRelationshipId      String?
+  destinationRelationshipId String?
+  previousMovementId        String?
+
+  quantity      Float?
+  unit          String?
+  effectiveAt   DateTime
+  recordedAt    DateTime @default(now())
+  reason        String?
+  transactionId String?
+  evidenceId    String?
+  metadata      Json?
+
+  createdBy String
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator          User               @relation("ResourceMovementCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater          User               @relation("ResourceMovementUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+  previousMovement ResourceMovement?  @relation("ResourceMovementChain", fields: [previousMovementId], references: [id], onDelete: SetNull)
+  nextMovements    ResourceMovement[] @relation("ResourceMovementChain")
+  lineages         ResourceLineage[]
+  evidence         ResourceEvidence?  @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+
+  @@index([resourceType, resourceId])
+  @@index([movementType])
+  @@index([sourceUserId])
+  @@index([destinationUserId])
+  @@index([sourceResourceType, sourceResourceId])
+  @@index([destinationResourceType, destinationResourceId])
+  @@index([effectiveAt])
+  @@index([recordedAt])
+  @@index([previousMovementId])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([evidenceId])
+}
+
+model ResourceLineage {
+  id String @id @default(cuid())
+
+  sourceResourceType String
+  sourceResourceId   String
+  targetResourceType String
+  targetResourceId   String
+
+  lineageType ResourceLineageType
+  movementId  String?
+
+  quantity    Float?
+  unit        String?
+  effectiveAt DateTime
+  reason      String?
+  metadata    Json?
+
+  createdBy String
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movement ResourceMovement? @relation(fields: [movementId], references: [id], onDelete: SetNull)
+  creator  User              @relation("ResourceLineageCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater  User              @relation("ResourceLineageUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@index([sourceResourceType, sourceResourceId])
+  @@index([targetResourceType, targetResourceId])
+  @@index([lineageType])
+  @@index([movementId])
+  @@index([effectiveAt])
+  @@index([createdBy])
+  @@index([updatedBy])
+}
+
+enum ResourceEvidenceType {
+  DOCUMENT
+  TRANSACTION
+  REGISTRY
+  RECORD
+  PROOF
+}
+
+enum ResourceLineageType {
+  DERIVED_FROM
+  SPLIT_FROM
+  MERGED_FROM
+  TRANSFERRED_FROM
+}
+
+enum ResourceMovementType {
+  SALE
+  PARTIAL_SALE
+  TRANSFER
+  PARTIAL_TRANSFER
+  LEASE
+  LEASE_END
+  INHERITANCE
+  GIFT
+  DONATION
+  ALLOCATION
+  REALLOCATION
+  RETURN
+  MERGE
+  SPLIT
+  RECOVERY
+  LOCATION_CHANGE
+  CUSTODY_CHANGE
+}
+
+enum ResourceRelationshipType {
+  OWNER
+  CO_OWNER
+  LESSEE
+  MANAGER
+  WORKER
+  CUSTODIAN
+  CARETAKER
+  SERVICE_PROVIDER
+  ADVISOR
+  VETERINARIAN
+  AUTHORIZED_OPERATOR
+}
+
+enum ResourceRelationshipStatus {
+  ACTIVE
+  EXPIRED
+  TRANSFERRED
+  REVOKED
+  TERMINATED
+  SUSPENDED
+}
 
 enum UserRole {
   SUPER_ADMIN

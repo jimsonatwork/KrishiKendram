@@ -12,15 +12,15 @@
 
 | Item | Current State |
 |---|---|
-| Repository | `/home/jj/Dev/KrishiKendram` |
+| Repository | `/home/jj/Dev/KrishiKendram-Development` (active C) |
 | Branch | `main` |
-| Current checkpoint | `32b502d` |
-| Current checkpoint message | Move permission persistence into PermissionService |
-| Current primary phase | Phase 3 — Registry / Capability Architecture |
-| Current platform priority | Permission persistence → automatic administrative capability / stronger authorization integration |
+| Current checkpoint | `7d6904b` |
+| Current checkpoint message | Add RelationshipEvidence foundation |
+| Current primary phase | V0.3 — Farm Integration Foundation |
+| Current platform priority | Farm integration of temporal relationship, movement, lineage, and evidence context |
 | Working-tree state at blueprint creation | Checked by this script |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Registry → Capability → Permission → automatic Super Admin capability |
+| Next major target | Farm integration → relationship-aware lifecycle semantics → authorized history |
 
 ## Current Status
 
@@ -996,8 +996,10 @@ Legacy implementation no longer belongs after migration.
 Current verified checkpoint:
 
 ```text
-32b502d  Move permission persistence into PermissionService
-3906ca5  Connect registry capabilities to permission seeding
+7d6904b  Add RelationshipEvidence foundation
+9b14cd3  Add ResourceLineage foundation
+7750fc6  Add ResourceMovement foundation
+7dfe070  Complete UsersService field policy migration
 5a7921c  Add first-class registry capability contracts
 c019c1b  Add CTO master blueprint and architecture control docs
 a061cc3  Refactor Auth validation through shared helper
@@ -1006,12 +1008,12 @@ a061cc3  Refactor Auth validation through shared helper
 This blueprint is currently aligned with checkpoint:
 
 ```text
-32b502d
+7d6904b
 ```
 
 The current engineering frontier is:
 
-**Permission persistence → automatic administrative capability / stronger authorization integration**
+**Farm integration → relationship-aware lifecycle semantics → authorized history UI**
 
 The product-direction baseline remains PMD v0.2 — 23 Sep 2026.
 # 20. Versioning Protocol
@@ -1700,6 +1702,8 @@ The first implementation should be intentionally small and testable.
 
 The exact database schema must be derived from the current Prisma model and existing conventions.
 
+The relationship foundation now includes ResourceRelationship, ResourceMovement, ResourceLineage, and ResourceEvidence persistence/resolution layers. ResourceEvidence stores controlled reference metadata and integrity information; it does not embed uncontrolled document content.
+
 ### Phase D — Integrate Farm
 
 Farm is the first domain integration target.
@@ -1836,7 +1840,7 @@ and:
 
 # CTO EXECUTION DASHBOARD — V0.3 BASELINE
 
-**Dashboard date:** 25 September 2026
+**Dashboard date:** 26 September 2026
 **Architecture:** V0.3
 **Status:** Architecture aligned — implementation ready
 
@@ -1882,20 +1886,19 @@ This does not mean those capabilities are already implemented.
 
 The dashboard therefore continues to represent implementation reality rather than architectural ambition.
 
+As of 26 September 2026, the ResourceMovement foundation is implemented as a platform persistence and resolution layer. ResourceLineage and ResourceEvidence foundations are now also implemented and verified. Evidence provides controlled reference metadata and integrity information linked to relationships and movements. Business lifecycle creation workflows and Farm integration remain pending.
+
 ## Current V0.3 Priority Order
 
 The current execution priority is:
 
-1. Complete the active `UsersService` validation migration.
-2. Establish a clean Git checkpoint.
-3. Verify existing History/Audit/Provenance foundations.
-4. Inspect existing Farm ownership implementation.
-5. Design the minimum Resource Relationship foundation against the actual Prisma schema.
-6. Introduce Movement, Lineage, and Evidence as compatible extensions.
-7. Integrate Farm first.
-8. Extend AuthorizationService without replacing the permission system.
-9. Upgrade existing resource pages progressively.
-10. Expand to additional domains only after the Farm implementation is proven.
+1. Integrate ResourceRelationship with Farm ownership/access context while preserving `Farm.ownerId` compatibility.
+2. Connect ResourceMovement, ResourceLineage, and ResourceEvidence to Farm lifecycle events.
+3. Verify authorization-aware relationship resolution at Farm operation boundaries.
+4. Add focused Farm integration tests and full regression coverage.
+5. Extend the same platform capability to FarmAsset, FarmRecord, and Crop progressively.
+6. Upgrade existing resource pages with authorized relationship, movement, lineage, and evidence history.
+7. Expand to additional domains only after the Farm implementation is proven.
 
 ## V0.3 Architecture Principle
 
@@ -1905,6 +1908,6 @@ These concepts are related and must be connected, but they must not be collapsed
 
 ## V0.3 Final Status
 
-**V0.3 Status: ARCHITECTURE ALIGNED — IMPLEMENTATION READY**
+**V0.3 Status: ARCHITECTURE ALIGNED — FARM INTEGRATION ACTIVE**
 
-The platform is ready to begin the V0.3 implementation sequence after the current UsersService foundation work is completed and checkpointed.
+The V0.3 implementation sequence is active. UsersService and Registry / Authorization foundations are checkpointed; ResourceRelationship, ResourceMovement, ResourceLineage, and ResourceEvidence foundations are implemented and verified. The current engineering frontier is Farm integration and business lifecycle semantics.

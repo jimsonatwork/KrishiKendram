@@ -3,12 +3,20 @@ import { UserRole } from '@prisma/client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PermissionService } from '../src/platform/authorization/permission.service';
 import { AuthorizationAction } from '../src/platform/authorization/authorization.types';
-
-const prisma = new PrismaService();
-const permissionService = new PermissionService(prisma);
-
+import { FieldValidationService } from '../src/platform/registry/field-validation.service';
+import { RegistryService } from '../src/platform/registry/registry.service';
 import { RESOURCE_DEFINITIONS } from '../src/platform/registry/definitions/resources';
 import { ResourceDefinition } from '../src/platform/registry/resource-definition.interface';
+
+const prisma = new PrismaService();
+const fieldValidation = new FieldValidationService();
+const registry = new RegistryService(fieldValidation);
+
+for (const definition of RESOURCE_DEFINITIONS) {
+  registry.register(definition);
+}
+
+const permissionService = new PermissionService(prisma, registry);
 
 const CRUD_ACTIONS: AuthorizationAction[] = [
   AuthorizationAction.READ,
@@ -25,41 +33,9 @@ const ADMINISTRATIVE_ROLES: UserRole[] = [
 const ALL_USER_ROLES: UserRole[] = Object.values(UserRole);
 
 const userPermissions = [
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'READ',
-    scope: 'OWN',
-    roles: ALL_USER_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'READ',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'CREATE',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'UPDATE',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
-  {
-    module: 'platform',
-    resource: 'user',
-    action: 'DELETE',
-    scope: 'GLOBAL',
-    roles: ADMINISTRATIVE_ROLES,
-  },
+  // Non-CRUD administrative capabilities remain explicit until their
+  // persistence path is fully generalized through Registry capability
+  // reconciliation.
   {
     module: 'platform',
     resource: 'user',

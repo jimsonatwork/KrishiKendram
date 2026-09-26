@@ -39,13 +39,28 @@ describe('FarmsService', () => {
     validateResourceField: jest.fn(),
   } as any;
 
+  const relationships = {
+    createOwnerRelationship: jest.fn(),
+    terminateResourceRelationships: jest.fn(),
+  } as any;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: any) => Promise<unknown>) =>
+        callback({
+          entity: prisma.entity,
+          farm: prisma.farm,
+          farmAsset: prisma.farmAsset,
+          farmRecord: prisma.farmRecord,
+        }),
+    );
 
     service = new FarmsService(
       prisma,
       authorization,
       registry,
+      relationships,
     );
   });
 
@@ -270,6 +285,7 @@ describe('FarmsService', () => {
       name: 'Green Valley',
       ownerId: 'user-1',
       entityId: 'entity-1',
+      createdAt: new Date('2026-09-26T00:00:00Z'),
     };
 
     prisma.$transaction.mockImplementation(
@@ -301,6 +317,13 @@ describe('FarmsService', () => {
     );
 
     expect(result).toEqual(createdFarm);
+    expect(relationships.createOwnerRelationship).toHaveBeenCalledWith(
+      expect.anything(),
+      'farm',
+      'farm-1',
+      'user-1',
+      createdFarm.createdAt,
+    );
 
     const transactionCallback =
       prisma.$transaction.mock.calls[0][0];
@@ -556,9 +579,13 @@ describe('FarmsService', () => {
       ownerId: 'user-1',
     });
 
-    prisma.farm.delete.mockResolvedValue({
+    const txDelete = jest.fn().mockResolvedValue({
       id: 'farm-1',
     });
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: any) => Promise<unknown>) =>
+        callback({ farm: { delete: txDelete } }),
+    );
 
     await service.remove(
       'farm-1',
@@ -589,10 +616,17 @@ describe('FarmsService', () => {
     });
 
     expect(
-      authorization.assertCan.mock.invocationCallOrder[0],
-    ).toBeLessThan(
-      prisma.farm.delete.mock.invocationCallOrder[0],
+      relationships.terminateResourceRelationships,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      'farm',
+      'farm-1',
+      expect.any(Date),
+      'Farm deleted',
     );
+    expect(txDelete).toHaveBeenCalledWith({
+      where: { id: 'farm-1' },
+    });
   });
 
   it('does not delete a farm when removal authorization is denied', async () => {

@@ -208,24 +208,18 @@ export class UsersService {
       12,
     )
 
-    const defaultRoleResult =
-      this.registry.validateField(
-        'userRole',
+    const role =
+      this.validateUserField(
+        'role',
         UserRole.FARMER,
-      )
-
-    if (!defaultRoleResult.valid) {
-      throw new BadRequestException(
-        defaultRoleResult.errors.join(' '),
-      )
-    }
+      ) as UserRole
 
     const user = await this.prisma.user.create({
       data: {
         name,
         email,
         passwordHash,
-        role: UserRole.FARMER,
+        role,
       },
     })
 
@@ -815,32 +809,79 @@ export class UsersService {
             current,
           )
 
+        const restoredName =
+          this.validateUserField(
+            'name',
+            snapshot.name,
+          ) as string
+        const restoredEmail =
+          this.validateUserField(
+            'email',
+            snapshot.email,
+          ) as string | null
+        const restoredMobile =
+          this.validateUserField(
+            'mobile',
+            snapshot.mobile,
+          ) as string | null
+        const restoredRole =
+          this.validateUserField(
+            'role',
+            snapshot.role,
+          ) as UserRole
+        const restoredStatus =
+          this.validateUserField(
+            'status',
+            snapshot.status,
+          ) as UserStatus
+        const restoredPreferredLanguage =
+          this.validateUserField(
+            'preferredLanguage',
+            snapshot.preferredLanguage,
+          ) as string | null
+        const restoredPreferredInputMethod =
+          this.validateUserField(
+            'preferredInputMethod',
+            snapshot.preferredInputMethod,
+          ) as InputMethod
+        const restoredProfileCompletion =
+          this.validateUserField(
+            'profileCompletion',
+            snapshot.profileCompletion,
+          ) as number
+        const restoredIsVerified =
+          this.validateUserField(
+            'isVerified',
+            snapshot.isVerified,
+          ) as boolean
+
         const updateData: Record<
           string,
           unknown
         > = {
-          name: snapshot.name,
-          email: snapshot.email,
-          mobile: snapshot.mobile,
-          role: snapshot.role,
-          status: snapshot.status,
+          name: restoredName,
+          email: restoredEmail,
+          mobile: restoredMobile,
+          role: restoredRole,
+          status: restoredStatus,
           preferredLanguage:
-            snapshot.preferredLanguage,
+            restoredPreferredLanguage,
           preferredInputMethod:
-            snapshot.preferredInputMethod,
+            restoredPreferredInputMethod,
           profileCompletion:
-            snapshot.profileCompletion,
+            restoredProfileCompletion,
           isVerified:
-            snapshot.isVerified,
+            restoredIsVerified,
           deletionRequested:
-            snapshot.status ===
+            restoredStatus ===
             UserStatus.PENDING_DELETE,
           deletionRequestedAt:
-            snapshot.status ===
+            restoredStatus ===
             UserStatus.PENDING_DELETE
               ? current.deletionRequestedAt
               : null,
         }
+
 
 // Passwords are intentionally excluded from
 // historical snapshots and can never be restored
@@ -1071,7 +1112,10 @@ updateData.refreshTokenHash = null
               },
               data: {
                 status:
-                  UserStatus.PENDING_DELETE,
+                  this.validateUserField(
+                    'status',
+                    UserStatus.PENDING_DELETE,
+                  ) as UserStatus,
                 deletionRequested:
                   true,
                 deletionRequestedAt:
@@ -1235,7 +1279,11 @@ updateData.refreshTokenHash = null
           await tx.user.update({
             where: { id },
             data: {
-              status,
+              status:
+                this.validateUserField(
+                  'status',
+                  status,
+                ) as UserStatus,
               deletionRequested:
                 status ===
                 UserStatus.PENDING_DELETE,
