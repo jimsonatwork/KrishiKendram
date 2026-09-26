@@ -2,12 +2,17 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { UserRole, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { ResourceRelationshipService } from './relationship.service';
 import { CreateTransferRequestDto } from './dto/create-transfer-request.dto';
 
 @Injectable()
 export class ResourceTransferRequestService {
-  constructor(private readonly prisma: PrismaService, private readonly relationships: ResourceRelationshipService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly relationships: ResourceRelationshipService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(dto: CreateTransferRequestDto, actorId: string, role: UserRole) {
     const source = await this.prisma.resourceRelationship.findFirst({
@@ -29,7 +34,7 @@ export class ResourceTransferRequestService {
     }
 
     const requestNumber = await this.nextRequestNumber();
-    return this.prisma.resourceTransferRequest.create({
+    const created = await this.prisma.resourceTransferRequest.create({
       data: {
         requestNumber, resourceType: dto.resourceType, resourceId: dto.resourceId,
         sourceUserId: source.userId, destinationUserId: dto.destinationUserId,
@@ -40,6 +45,12 @@ export class ResourceTransferRequestService {
         createdBy: actorId, updatedBy: actorId,
       },
     });
+    await this.audit.create({
+      actorId, action: 'RESOURCE_TRANSFER_REQUESTED', resourceType: dto.resourceType, resourceId: dto.resourceId,
+      description: 'Transfer request created.',
+      metadata: { requestId: created.id, destinationUserId: dto.destinationUserId, quantity: dto.quantity ?? null, unit: dto.unit ?? null },
+    });
+    return created;
   }
 
   listIncoming(userId: string) {
@@ -56,6 +67,24 @@ export class ResourceTransferRequestService {
     });
   }
 
+  listIncomingPending(userId: string) {
+    return this.prisma.resourceTransferRequest.findMany({
+      where: { destinationUserId: userId, status: 'PENDING' },
+      orderBy: { requestedAt: 'asc' },
+      include: {
+        sourceUser: { select: { id: true, memberId: true, name: true } },
+        destinationUser: { select: { id: true, memberId: true, name: true } },
+      },
+    });
+  }
+
+  async getPendingCount(userId: string) {
+    const count = await this.prisma.resourceTransferRequest.count({
+      where: { destinationUserId: userId, status: 'PENDING' },
+    });
+    return { count };
+  }
+
   async accept(id: string, actorId: string) { return this.complete(id, actorId, false); }
 
   async approve(id: string, actorId: string, role: UserRole, approvalReason?: string) {
@@ -66,17 +95,21 @@ export class ResourceTransferRequestService {
   async reject(id: string, actorId: string) {
     const request = await this.getPending(id);
     if (request.destinationUserId !== actorId) throw new ForbiddenException('Only the destination user can reject this request.');
-    return this.prisma.resourceTransferRequest.update({
+    const updated = await this.prisma.resourceTransferRequest.update({
       where: { id }, data: { status: 'REJECTED', rejectedAt: new Date(), rejectedBy: actorId, updatedBy: actorId },
     });
+    await this.audit.create({ actorId, action: 'RESOURCE_TRANSFER_REJECTED', resourceType: request.resourceType, resourceId: request.resourceId, description: 'Transfer request rejected.', metadata: { requestId: id } });
+    return updated;
   }
 
   async cancel(id: string, actorId: string) {
     const request = await this.getPending(id);
     if (request.sourceUserId !== actorId) throw new ForbiddenException('Only the source user can cancel this request.');
-    return this.prisma.resourceTransferRequest.update({
+    const updated = await this.prisma.resourceTransferRequest.update({
       where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date(), updatedBy: actorId },
     });
+    await this.audit.create({ actorId, action: 'RESOURCE_TRANSFER_CANCELLED', resourceType: request.resourceType, resourceId: request.resourceId, description: 'Transfer request cancelled.', metadata: { requestId: id } });
+    return updated;
   }
 
   private async complete(id: string, actorId: string, administrative: boolean, approvalReason?: string) {
@@ -118,9 +151,15 @@ export class ResourceTransferRequestService {
         }
       }
 
-      return tx.resourceTransferRequest.update({
+      const completed = await tx.resourceTransferRequest.update({
         where: { id }, data: { status: 'COMPLETED', completedAt: new Date(), effectiveAt, updatedBy: actorId },
       });
+      await this.audit.create({
+        actorId, action: 'RESOURCE_TRANSFER_COMPLETED', resourceType: request.resourceType, resourceId: request.resourceId,
+        description: 'Transfer request completed.',
+        metadata: { requestId: id, sourceUserId: request.sourceUserId, destinationUserId: request.destinationUserId, quantity: request.quantity ?? null, unit: request.unit ?? null, partial: request.quantity !== null && request.quantity !== undefined },
+      });
+      return completed;
     });
   }
 

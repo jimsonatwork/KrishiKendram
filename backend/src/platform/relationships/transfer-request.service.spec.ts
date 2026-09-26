@@ -4,6 +4,7 @@ import { ResourceTransferRequestService } from './transfer-request.service';
 
 describe('ResourceTransferRequestService', () => {
   const relationships = { createOwnerRelationship: jest.fn(), transferOwnerRelationship: jest.fn() } as any;
+  const audit = { create: jest.fn() } as any;
   const tx = {
     resourceTransferRequest: { updateMany: jest.fn(), update: jest.fn() },
     resourceRelationship: { findFirst: jest.fn() },
@@ -22,7 +23,7 @@ describe('ResourceTransferRequestService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ResourceTransferRequestService(prisma, relationships);
+    service = new ResourceTransferRequestService(prisma, relationships, audit);
     prisma.$transaction.mockImplementation((cb: any) => cb(tx));
     tx.resourceTransferRequest.updateMany.mockResolvedValue({ count: 1 });
     tx.resourceTransferRequest.update.mockResolvedValue({ id: 'request-1', status: 'COMPLETED' });

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
+import { AuditModule } from '../audit/audit.module';
 
 import {
   RESOURCE_RELATIONSHIP_RESOLVER,
@@ -12,7 +13,7 @@ import { ResourceTransferRequestController } from './transfer-request.controller
 import { ResourceTransferRequestService } from './transfer-request.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, AuditModule],
   controllers: [ResourceTransferRequestController],
   providers: [
     RelationshipAccessPolicy,

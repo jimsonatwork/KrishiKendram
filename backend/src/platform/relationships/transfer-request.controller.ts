@@ -21,6 +21,16 @@ export class ResourceTransferRequestController {
     return this.transfers.listIncoming(user.userId);
   }
 
+  @Get('incoming/pending')
+  incomingPending(@CurrentUser() user: any) {
+    return this.transfers.listIncomingPending(user.userId);
+  }
+
+  @Get('pending/count')
+  pendingCount(@CurrentUser() user: any) {
+    return this.transfers.getPendingCount(user.userId);
+  }
+
   @Get('outgoing')
   outgoing(@CurrentUser() user: any) {
     return this.transfers.listOutgoing(user.userId);
