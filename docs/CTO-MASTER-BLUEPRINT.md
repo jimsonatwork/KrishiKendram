@@ -2085,3 +2085,12 @@ Current execution frontier: expose pending transfer actions in the frontend, the
 - This closes a frontend/backend contract mismatch without changing the FarmRecord persistence model or inventing new lifecycle semantics.
 - Verification: FarmsService 38/38 tests PASS; frontend TypeScript/Vite production build PASS; git diff --check PASS.
 - Current execution frontier: final runtime/end-to-end smoke coverage and Registry/permission consistency review before any new domain is introduced.
+
+### 26 September 2026 — FarmRecord capability consistency checkpoint
+
+- Registry capabilities for FarmRecord now reflect its actual lifecycle: READ and CREATE only.
+- UPDATE and DELETE were removed from the declared capability/permission surface because FarmRecord is intentionally immutable historical observation data and has no corresponding mutation endpoints.
+- PermissionService remains authoritative: persisted stale permission rows cannot become active resource capabilities because authorization filters against current Registry declarations.
+- No database migration was introduced; the correction is additive at the Registry/authorization decision layer.
+- Verification: Registry + Permission focused tests 57/57 PASS; backend production build PASS; frontend production build PASS; git diff --check PASS.
+- Current execution frontier: final runtime/end-to-end smoke coverage, then close the V0.3 lifecycle checkpoint and select the next real domain capability.

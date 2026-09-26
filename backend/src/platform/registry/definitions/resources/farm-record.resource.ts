@@ -60,29 +60,11 @@ export const farmRecordResource: ResourceDefinition = {
         AuthorizationScope.GLOBAL,
       ],
     },
-    {
-      action: AuthorizationAction.UPDATE,
-      scopes: [
-        AuthorizationScope.OWN,
-        AuthorizationScope.FARM,
-        AuthorizationScope.GLOBAL,
-      ],
-    },
-    {
-      action: AuthorizationAction.DELETE,
-      scopes: [
-        AuthorizationScope.OWN,
-        AuthorizationScope.FARM,
-        AuthorizationScope.GLOBAL,
-      ],
-    },
   ],
 
   permissions: [
     'READ',
     'CREATE',
-    'UPDATE',
-    'DELETE',
   ],
 
   scopes: [

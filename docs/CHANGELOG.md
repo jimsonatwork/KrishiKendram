@@ -525,3 +525,20 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 ### Next target
 
 **Final runtime/end-to-end smoke coverage → Registry/permission consistency review → next real domain only.**
+
+## 2026-09-26 — FarmRecord Capability Consistency
+
+- Reduced declared FarmRecord capabilities to READ + CREATE, matching its immutable historical-observation lifecycle.
+- Removed unsupported UPDATE/DELETE capability declarations without introducing a schema migration.
+- Kept PermissionService as the authoritative runtime filter against current Registry declarations.
+
+### Verification
+
+- Registry + Permission focused tests: 57/57 passed.
+- Backend production build: passed.
+- Frontend production build: passed.
+- `git diff --check`: passed.
+
+### Next target
+
+**Final runtime/end-to-end smoke coverage → close V0.3 lifecycle checkpoint → next real domain capability.**
