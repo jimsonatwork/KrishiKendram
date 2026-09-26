@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `resource-transfer-request-foundation` |
-| Current checkpoint message | Member identity + governed resource transfer workflow foundation |
+| Current checkpoint | `farm-lifecycle-v0.3-hardened` |
+| Current checkpoint message | Farm/FarmAsset/Crop/FarmRecord lifecycle adoption with governed transfer, lineage, evidence and history |
 | Current primary phase | V0.3 — Relationship & Resource Lifecycle Integration |
-| Current platform priority | Resource identity → relationship ownership → transfer request → acceptance/approval → movement/lineage |
-| Working-tree state at blueprint creation | Checked by this script |
+| Current platform priority | Final lifecycle smoke verification → Registry/permission consistency → next real domain capability |
+| Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Partial transfer execution → notification/pending-action UX → resource timeline |
+| Next major target | Close V0.3 lifecycle checkpoint, then adopt the next domain only where concrete lifecycle semantics exist |
 
 ## Current Status
 
@@ -1937,9 +1937,9 @@ These concepts are related and must be connected, but they must not be collapsed
 
 ## V0.3 Final Status
 
-**V0.3 Status: ARCHITECTURE ALIGNED — FARM INTEGRATION ACTIVE**
+**V0.3 Status: FARM LIFECYCLE INTEGRATION HARDENED — FINAL SMOKE CHECKPOINT**
 
-The V0.3 implementation sequence is active. UsersService and Registry / Authorization foundations are checkpointed; ResourceRelationship, ResourceMovement, ResourceLineage, and ResourceEvidence foundations are implemented and verified. The current engineering frontier is Farm integration and business lifecycle semantics.
+The V0.3 implementation sequence has now covered the concrete Farm lifecycle: temporal ownership, governed transfer requests, full and partial transfer execution, movement, evidence, split/merge lineage, authorization-aware history, Crop relationship history, and immutable FarmRecord observation handling. Registry capability consistency has also been tightened. The remaining checkpoint is final runtime/end-to-end smoke verification and recovery validation before selecting the next real domain capability.
 
 ### 2026-09-26 — Farm child lifecycle checkpoint
 

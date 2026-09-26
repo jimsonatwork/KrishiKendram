@@ -542,3 +542,13 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 ### Next target
 
 **Final runtime/end-to-end smoke coverage → close V0.3 lifecycle checkpoint → next real domain capability.**
+
+## 2026-09-26 — V0.3 Farm Lifecycle Hardened
+
+The CTO Master Blueprint now reflects the actual implementation frontier rather than the older transfer-foundation baseline.
+
+- Farm, FarmAsset and Crop relationship/lifecycle integration is established.
+- Transfer, partial transfer, split, merge, movement, evidence and history surfaces are integrated.
+- FarmRecord remains immutable observation data.
+- Registry capability consistency has been tightened.
+- Final remaining V0.3 checkpoint: runtime/end-to-end smoke verification and recovery validation.
