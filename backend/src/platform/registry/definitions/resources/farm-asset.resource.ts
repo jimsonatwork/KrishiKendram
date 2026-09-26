@@ -81,6 +81,14 @@ export const farmAssetResource: ResourceDefinition = {
         AuthorizationScope.GLOBAL,
       ],
     },
+    {
+      action: AuthorizationAction.ASSIGN,
+      scopes: [
+        AuthorizationScope.OWN,
+        AuthorizationScope.FARM,
+        AuthorizationScope.GLOBAL,
+      ],
+    },
   ],
 
   permissions: [
@@ -88,6 +96,7 @@ export const farmAssetResource: ResourceDefinition = {
     'CREATE',
     'UPDATE',
     'DELETE',
+    'ASSIGN',
   ],
 
   scopes: [

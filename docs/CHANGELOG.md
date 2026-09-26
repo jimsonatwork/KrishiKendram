@@ -572,3 +572,27 @@ The CTO Master Blueprint now reflects the actual implementation frontier rather 
 ### Next target
 
 **V0.4 concrete domain adoption using existing lifecycle primitives; no speculative domain model or parallel ownership/movement/history system.**
+
+
+## 2026-09-27 — V0.4 FarmAsset Custody
+
+### Completed
+
+- Added FarmAsset custody assignment using the existing temporal `CUSTODIAN` relationship type.
+- Added atomic `CUSTODY_CHANGE` movement recording with optional evidence and transaction reference.
+- Added Registry `ASSIGN` capability for FarmAsset with OWN/FARM/GLOBAL scopes.
+- Generalized resource capability seeding to persist the supported non-CRUD `ASSIGN` capability.
+- Exposed authenticated custody assignment through the Farms API without introducing a new Prisma resource model.
+
+### Verification
+
+- Backend regression: 34/34 suites, 316/316 tests passed.
+- Registry + Permission focused tests: 61/61 passed.
+- Backend production build: passed.
+- Frontend production build: passed.
+- Database seed: passed.
+- `git diff --check`: passed.
+
+### Next target
+
+**Focused custody-service coverage → runtime route verification → next concrete operational lifecycle.**

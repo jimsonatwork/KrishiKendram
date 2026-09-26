@@ -236,6 +236,105 @@ export class ResourceRelationshipService {
     return { previousRelationship: current, destinationRelationship, movement };
   }
 
+  async assignCustodian(
+    tx: Prisma.TransactionClient,
+    resourceType: string,
+    resourceId: string,
+    destinationUserId: string,
+    effectiveAt: Date,
+    actorUserId: string,
+    reason: string | undefined,
+    transactionId: string | undefined,
+    evidenceInput?: {
+      referenceType: string;
+      referenceValue: string;
+      documentNumber?: string;
+      issuer?: string;
+    },
+  ) {
+    const current = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        relationshipType: ResourceRelationshipType.CUSTODIAN,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    if (current?.userId === destinationUserId) {
+      throw new Error('Destination user is already the active custodian.');
+    }
+
+    const evidence = evidenceInput
+      ? await tx.resourceEvidence.create({
+          data: {
+            evidenceType: transactionId ? 'TRANSACTION' : 'DOCUMENT',
+            referenceType: evidenceInput.referenceType,
+            referenceValue: evidenceInput.referenceValue,
+            documentNumber: evidenceInput.documentNumber,
+            issuer: evidenceInput.issuer,
+            createdBy: actorUserId,
+            updatedBy: actorUserId,
+          },
+        })
+      : undefined;
+
+    if (current) {
+      await tx.resourceRelationship.update({
+        where: { id: current.id },
+        data: {
+          status: ResourceRelationshipStatus.TERMINATED,
+          endedAt: effectiveAt,
+          validUntil: effectiveAt,
+          endedReason: reason ?? 'Custodian changed',
+          evidenceId: evidence?.id,
+        },
+      });
+    }
+
+    const destinationRelationship = await tx.resourceRelationship.create({
+      data: {
+        resourceType,
+        resourceId,
+        userId: destinationUserId,
+        relationshipType: ResourceRelationshipType.CUSTODIAN,
+        status: ResourceRelationshipStatus.ACTIVE,
+        validFrom: effectiveAt,
+        validUntil: this.defaultValidUntil(effectiveAt),
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+        evidenceId: evidence?.id,
+      },
+    });
+
+    const previousMovement = await tx.resourceMovement.findFirst({
+      where: { resourceType, resourceId },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const movement = await tx.resourceMovement.create({
+      data: {
+        resourceType,
+        resourceId,
+        movementType: ResourceMovementType.CUSTODY_CHANGE,
+        sourceUserId: current?.userId,
+        destinationUserId,
+        sourceRelationshipId: current?.id,
+        destinationRelationshipId: destinationRelationship.id,
+        previousMovementId: previousMovement?.id,
+        effectiveAt,
+        reason: reason ?? 'Custodian assigned',
+        transactionId,
+        evidenceId: evidence?.id,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      },
+    });
+
+    return { previousRelationship: current, destinationRelationship, movement, evidence };
+  }
+
   private toDomainRelationshipType(value: string): ResourceRelationshipType {
     const relationshipType = Object.values(ResourceRelationshipType).find(
       (candidate) => candidate === value,

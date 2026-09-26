@@ -2116,3 +2116,19 @@ V0.3 therefore becomes the recovered baseline for the next execution phase. No a
 The next capability will be selected from a concrete lifecycle already represented by the current platform primitives. Implementation will reuse ResourceRelationship, ResourceMovement, ResourceEvidence, ResourceLineage, Registry, and Authorization rather than creating parallel lifecycle systems.
 
 Selection rule: introduce a new domain/model only when there is an actual business lifecycle contract; otherwise extend an existing resource capability with the smallest reversible change.
+
+
+### 27 September 2026 — V0.4 FarmAsset Custody Capability
+
+The first V0.4 capability reuses the existing relationship/movement/evidence architecture for a real operational lifecycle: FarmAsset custody.
+
+- FarmAsset now declares `ASSIGN` as a Registry capability across OWN/FARM/GLOBAL scopes.
+- Active `CUSTODIAN` relationships are temporal and replaced transactionally when custody changes.
+- Each custody change records a `CUSTODY_CHANGE` ResourceMovement and can carry ResourceEvidence.
+- Authorization is evaluated against the active FarmAsset owner before custody mutation.
+- Seed reconciliation now persists declared resource capabilities beyond CRUD for the supported `ASSIGN` action.
+- No new Prisma resource model or parallel lifecycle mechanism was introduced.
+
+Verification: backend 34/34 suites, 316/316 tests; backend build PASS; frontend build PASS; `git diff --check` PASS; authorization/Registry focused tests PASS; database seed PASS.
+
+Current execution frontier: add focused custody-service coverage and runtime route verification, then extend only the next concrete operational lifecycle that fits the existing platform primitives.

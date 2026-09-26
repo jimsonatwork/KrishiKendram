@@ -4,6 +4,11 @@ describe('ResourceRelationshipService', () => {
   const create = jest.fn();
   const updateMany = jest.fn();
   const findMany = jest.fn();
+  const findFirst = jest.fn();
+  const update = jest.fn();
+  const evidenceCreate = jest.fn();
+  const movementFindFirst = jest.fn();
+  const movementCreate = jest.fn();
 
   const prisma = {
     resourceRelationship: {
@@ -15,6 +20,15 @@ describe('ResourceRelationshipService', () => {
     resourceRelationship: {
       create,
       updateMany,
+      findFirst,
+      update,
+    },
+    resourceEvidence: {
+      create: evidenceCreate,
+    },
+    resourceMovement: {
+      findFirst: movementFindFirst,
+      create: movementCreate,
     },
   } as any;
 
@@ -123,5 +137,62 @@ describe('ResourceRelationshipService', () => {
         updatedBy: 'user-1',
       },
     ]);
+  });
+
+  it('changes custodian atomically and records custody movement', async () => {
+    const effectiveAt = new Date('2026-09-27T00:00:00Z');
+    findFirst.mockResolvedValue({ id: 'custody-1', userId: 'user-old' });
+    evidenceCreate.mockResolvedValue({ id: 'evidence-1' });
+    create.mockResolvedValue({ id: 'custody-2', userId: 'user-new' });
+    movementFindFirst.mockResolvedValue({ id: 'movement-previous' });
+    movementCreate.mockResolvedValue({ id: 'movement-1' });
+
+    const service = new ResourceRelationshipService(prisma);
+    const result = await service.assignCustodian(
+      tx,
+      'farmAsset',
+      'asset-1',
+      'user-new',
+      effectiveAt,
+      'actor-1',
+      'Reassigned equipment',
+      'TX-1',
+      {
+        referenceType: 'DOCUMENT',
+        referenceValue: 'DOC-1',
+      },
+    );
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'custody-1' },
+      data: expect.objectContaining({
+        status: 'TERMINATED',
+        endedAt: effectiveAt,
+        evidenceId: 'evidence-1',
+      }),
+    }));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        resourceType: 'farmAsset',
+        resourceId: 'asset-1',
+        userId: 'user-new',
+        relationshipType: 'CUSTODIAN',
+        status: 'ACTIVE',
+        validFrom: effectiveAt,
+        evidenceId: 'evidence-1',
+      }),
+    }));
+    expect(movementCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        movementType: 'CUSTODY_CHANGE',
+        sourceUserId: 'user-old',
+        destinationUserId: 'user-new',
+        sourceRelationshipId: 'custody-1',
+        destinationRelationshipId: 'custody-2',
+        previousMovementId: 'movement-previous',
+        evidenceId: 'evidence-1',
+      }),
+    }));
+    expect(result.destinationRelationship.id).toBe('custody-2');
   });
 });

@@ -7,6 +7,7 @@ import { FarmsController } from './farms.controller';
 import { FarmsService } from './farms.service';
 import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service';
 import { FarmResourceLineageService } from './farm-resource-lineage.service';
+import { FarmAssetCustodyService } from './farm-asset-custody.service';
 
 
 @Module({
@@ -24,6 +25,7 @@ providers:[
  FarmsService,
  FarmResourceLifecycleService,
  FarmResourceLineageService,
+ FarmAssetCustodyService,
 ],
 
 exports:[

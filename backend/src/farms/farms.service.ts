@@ -13,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service';
 import { FarmResourceLineageService } from './farm-resource-lineage.service';
+import { FarmAssetCustodyService } from './farm-asset-custody.service';
 
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 
@@ -33,6 +34,7 @@ export class FarmsService {
     private readonly relationships: ResourceRelationshipService,
     private readonly lifecycle: FarmResourceLifecycleService,
     private readonly lineage: FarmResourceLineageService,
+    private readonly custody: FarmAssetCustodyService,
   ) {}
 
   async create(ownerId: string, role: UserRole, dto: CreateFarmDto) {
@@ -354,6 +356,22 @@ export class FarmsService {
     role: UserRole,
   ) {
     return this.lifecycle.transferFarmAsset(
+      farmId,
+      assetId,
+      dto,
+      userId,
+      role,
+    );
+  }
+
+  async assignFarmAssetCustodian(
+    farmId: string,
+    assetId: string,
+    dto: TransferResourceDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.custody.assignCustodian(
       farmId,
       assetId,
       dto,

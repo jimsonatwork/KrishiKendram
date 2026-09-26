@@ -18,11 +18,12 @@ for (const definition of RESOURCE_DEFINITIONS) {
 
 const permissionService = new PermissionService(prisma, registry);
 
-const CRUD_ACTIONS: AuthorizationAction[] = [
+const RESOURCE_CAPABILITY_ACTIONS: AuthorizationAction[] = [
   AuthorizationAction.READ,
   AuthorizationAction.CREATE,
   AuthorizationAction.UPDATE,
   AuthorizationAction.DELETE,
+  AuthorizationAction.ASSIGN,
 ];
 
 const ADMINISTRATIVE_ROLES: UserRole[] = [
@@ -107,15 +108,15 @@ async function reconcileRolePermissions(
   );
 }
 
-async function seedResourceCrudCapabilities() {
+async function seedResourceCapabilities() {
   for (const resource of RESOURCE_DEFINITIONS) {
     const module = getResourceModule(resource);
 
     // First-class Registry capabilities are the source of truth for
     // capability persistence. Legacy metadata remains available during
-    // the incremental migration but no longer drives CRUD persistence.
+    // the incremental migration but no longer drives persistence.
     for (const capability of resource.capabilities ?? []) {
-      if (CRUD_ACTIONS.indexOf(capability.action) === -1) {
+      if (RESOURCE_CAPABILITY_ACTIONS.indexOf(capability.action) === -1) {
         continue;
       }
 
@@ -168,7 +169,7 @@ async function seedUserPlatformCapabilities() {
 }
 
 async function main() {
-  await seedResourceCrudCapabilities();
+  await seedResourceCapabilities();
   await seedUserPlatformCapabilities();
 
   console.log(

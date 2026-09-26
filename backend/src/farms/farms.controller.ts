@@ -189,6 +189,22 @@ create(
     );
   }
 
+  @Post(':farmId/assets/:assetId/custodian')
+  assignAssetCustodian(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+    @Body() dto: TransferResourceDto,
+  ) {
+    return this.farmsService.assignFarmAssetCustodian(
+      farmId,
+      assetId,
+      dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Get(':farmId/assets/:assetId/lineage/history')
   getAssetLineageHistory(
     @Param('farmId') farmId: string,
