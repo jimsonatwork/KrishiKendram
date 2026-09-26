@@ -88,6 +88,25 @@ export type UpdateAdminUserData = {
 // ADMIN USER UPDATE DATA END
 // ============================================================
 
+export type TransferRequest = {
+  id: string
+  requestNumber: string
+  resourceType: string
+  resourceId: string
+  sourceUserId: string
+  destinationUserId: string
+  quantity: number | null
+  unit: string | null
+  status: string
+  requestedAt: string
+  effectiveAt: string | null
+  expiresAt: string | null
+  reason: string | null
+  transactionId: string | null
+  sourceUser?: { id: string; memberId: string | null; name: string }
+  destinationUser?: { id: string; memberId: string | null; name: string }
+}
+
 export type AuditEvent = {
   id: string
   actorId: string | null
@@ -304,6 +323,28 @@ export const api = {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+    }),
+
+  transferIncomingPending: (token: string) =>
+    request<TransferRequest[]>('/resource-transfers/requests/incoming/pending', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  transferPendingCount: (token: string) =>
+    request<{ count: number }>('/resource-transfers/requests/pending/count', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  acceptTransfer: (id: string, token: string) =>
+    request<TransferRequest>('/resource-transfers/requests/' + id + '/accept', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  rejectTransfer: (id: string, token: string) =>
+    request<TransferRequest>('/resource-transfers/requests/' + id + '/reject', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
     }),
 
   cropRelationshipHistory: (id: string, token: string) =>

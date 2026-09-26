@@ -430,3 +430,11 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Added concurrent-request claiming and validation for quantity/unit/full-quantity boundaries.
 - Added 3 focused transfer-service tests covering request creation, the 10-to-5 partial transfer scenario, and full-quantity rejection.
 - Verification: 32/32 backend suites, 302/302 tests, production build, and git diff --check pass.
+
+### 2026-09-26 — Transfer actions and authoritative timeline
+
+- Added pending incoming transfer and pending-count APIs.
+- Added transfer audit events across request/reject/cancel/complete lifecycle actions.
+- Added History workspace Accept/Reject transfer actions.
+- Added movement/lineage-backed lifecycle events to the History timeline with authorization-safe skipping.
+- Verification: backend 33/33 suites, 305/305 tests; backend build PASS; frontend build PASS.

@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Check,
   Clock3,
   FileText,
+  X,
   Sprout,
   Wheat,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 
-import { api } from '@/lib/api'
+import { api, type TransferRequest } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+
+type FarmAsset = {
+  id: string
+  type?: string
+  name?: string
+  quantity?: number | null
+  unit?: string | null
+}
 
 type FarmRecord = {
   id: string
@@ -25,6 +36,7 @@ type Farm = {
   createdAt?: string
   updatedAt?: string
   records?: FarmRecord[]
+  assets?: FarmAsset[]
 }
 
 type Crop = {
@@ -50,7 +62,7 @@ type HistoryItem = {
   title: string
   description: string
   context: string
-  kind: 'farm' | 'crop' | 'record'
+  kind: 'farm' | 'crop' | 'record' | 'lifecycle'
 }
 
 function formatEnum(value?: string) {
@@ -86,6 +98,10 @@ function iconFor(kind: HistoryItem['kind']) {
     return <Wheat className="size-4" />
   }
 
+  if (kind === 'lifecycle') {
+    return <Clock3 className="size-4" />
+  }
+
   if (kind === 'record') {
     return <FileText className="size-4" />
   }
@@ -98,6 +114,9 @@ export function HistoryPage() {
   const [crops, setCrops] = useState<Crop[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [transfers, setTransfers] = useState<TransferRequest[]>([])
+  const [lifecycleEvents, setLifecycleEvents] = useState<any[]>([])
+  const [transferBusy, setTransferBusy] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -115,10 +134,11 @@ export function HistoryPage() {
         setLoading(true)
         setError('')
 
-        const [farmResult, cropResult] =
+        const [farmResult, cropResult, transferResult] =
           await Promise.all([
             api.farms(token),
             api.crops(token),
+            api.transferIncomingPending(token),
           ])
 
         if (cancelled) return
@@ -134,6 +154,45 @@ export function HistoryPage() {
             ? (cropResult as Crop[])
             : [],
         )
+
+        setTransfers(
+          Array.isArray(transferResult)
+            ? transferResult
+            : [],
+        )
+
+        const eventGroups = await Promise.all(
+          (Array.isArray(farmResult) ? farmResult : []).flatMap((farm) =>
+            ((farm as Farm).assets ?? []).map(async (asset) => {
+              const farmId = (farm as Farm).id
+              const [movementResult, lineageResult] = await Promise.all([
+                api.farmAssetMovementHistory(farmId, asset.id, token),
+                api.farmAssetLineageHistory(farmId, asset.id, token),
+              ])
+              const movements = (movementResult as any)?.movements ?? []
+              const lineages = (lineageResult as any)?.lineages ?? []
+              return [
+                ...(Array.isArray(movements) ? movements : []).map((event: any) => ({
+                  id: 'movement-' + event.id,
+                  timestamp: event.effectiveAt || event.recordedAt,
+                  title: formatEnum(event.movementType) + ': ' + (asset.name || asset.type || 'Asset'),
+                  description: event.reason || 'Resource movement recorded.',
+                  context: (farm as Farm).name,
+                  kind: 'lifecycle' as const,
+                })),
+                ...(Array.isArray(lineages) ? lineages : []).map((event: any) => ({
+                  id: 'lineage-' + event.id,
+                  timestamp: event.effectiveAt,
+                  title: formatEnum(event.lineageType) + ': ' + (asset.name || asset.type || 'Asset'),
+                  description: event.reason || 'Resource lineage recorded.',
+                  context: (farm as Farm).name,
+                  kind: 'lifecycle' as const,
+                })),
+              ]
+            }),
+          ).map((promise) => promise.catch(() => [])),
+        )
+        setLifecycleEvents(eventGroups.flat())
       } catch (err) {
         if (cancelled) return
 
@@ -273,12 +332,43 @@ export function HistoryPage() {
       }
     }
 
+    items.push(...lifecycleEvents)
+
     return items.sort(
       (a, b) =>
         new Date(b.timestamp).getTime() -
         new Date(a.timestamp).getTime(),
     )
-  }, [crops, farms])
+  }, [crops, farms, lifecycleEvents])
+
+  async function handleTransferAction(
+    requestId: string,
+    action: 'accept' | 'reject',
+  ) {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      setTransferBusy(action + ':' + requestId)
+      setError('')
+      if (action === 'accept') {
+        await api.acceptTransfer(requestId, token)
+      } else {
+        await api.rejectTransfer(requestId, token)
+      }
+      setTransfers((current) =>
+        current.filter((item) => item.id !== requestId),
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to ' + action + ' transfer request.',
+      )
+    } finally {
+      setTransferBusy('')
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -301,6 +391,75 @@ export function HistoryPage() {
       {error && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {transfers.length > 0 && (
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium text-primary">Pending transfers</div>
+              <h2 className="mt-1 text-xl font-semibold">Action required</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Review ownership or quantity transfers waiting for your response.
+              </p>
+            </div>
+            <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+              {transfers.length} pending
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {transfers.map((item) => {
+              const busy = transferBusy === 'accept:' + item.id || transferBusy === 'reject:' + item.id
+              const sourceName = item.sourceUser?.name || 'Another member'
+              const sourceMember = item.sourceUser?.memberId
+              const quantity =
+                item.quantity === null
+                  ? 'Full resource'
+                  : item.quantity + ' ' + (item.unit || 'units')
+
+              return (
+                <div key={item.id} className="rounded-xl border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium">
+                        {item.resourceType} · {item.resourceId}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        From {sourceName}{sourceMember ? ' · ' + sourceMember : ''} · {quantity}
+                      </p>
+                      {item.reason && (
+                        <p className="mt-2 text-sm">{item.reason}</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void handleTransferAction(item.id, 'reject')}
+                        variant="outline"
+                      >
+                        <X className="mr-1 size-4" />
+                        Reject
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void handleTransferAction(item.id, 'accept')}
+                      >
+                        <Check className="mr-1 size-4" />
+                        Accept
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Request {item.requestNumber} · {formatDate(item.requestedAt)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

@@ -2034,3 +2034,13 @@ The lifecycle explicitly rejects zero/full-quantity transfers as partial transfe
 Verification: transfer-specific 3/3 tests PASS; full backend regression 32/32 suites and 302/302 tests PASS; production build PASS; git diff --check PASS.
 
 Current execution frontier: expose pending transfer actions in the frontend, then unify resource timeline/history presentation across ownership, movement, split, merge, transfer, and evidence events.
+
+### 26 September 2026 — Transfer actions + authoritative timeline checkpoint
+
+- Added authenticated incoming-pending transfer retrieval and pending-count APIs.
+- Added transfer lifecycle audit events for request, rejection, cancellation, and completion.
+- Added History workspace transfer actions with Accept/Reject controls.
+- History now incorporates authoritative farm-asset movement and lineage events instead of relying only on inferred created/updated timestamps.
+- Inaccessible transferred assets are skipped without breaking the overall history workspace.
+- Verification: backend 33/33 suites and 305/305 tests; backend production build PASS; frontend TypeScript/Vite production build PASS; git diff --check PASS.
+- Execution frontier: complete transfer creation UX by Member ID/resource selection, then final lifecycle hardening and end-to-end verification.
