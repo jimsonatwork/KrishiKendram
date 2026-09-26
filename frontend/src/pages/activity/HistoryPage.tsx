@@ -179,7 +179,7 @@ export function HistoryPage() {
             : [],
         )
 
-        const eventGroups = await Promise.all(
+        const assetEventGroups = await Promise.all(
           (Array.isArray(farmResult) ? farmResult : []).flatMap((farm) =>
             ((farm as Farm).assets ?? []).map(async (asset) => {
               const farmId = (farm as Farm).id
@@ -210,7 +210,26 @@ export function HistoryPage() {
             }),
           ).map((promise) => promise.catch(() => [])),
         )
-        setLifecycleEvents(eventGroups.flat())
+
+        const cropRelationshipGroups = await Promise.all(
+          (Array.isArray(cropResult) ? cropResult : []).map(async (crop) => {
+            const relationships = await api.cropRelationshipHistory(crop.id, token)
+            return (Array.isArray(relationships) ? relationships : []).map((relationship: any) => ({
+              id: 'crop-relationship-' + crop.id + '-' + relationship.userId + '-' + relationship.validFrom,
+              timestamp: relationship.endedAt || relationship.validFrom,
+              title: formatEnum(relationship.relationshipType) + ': ' + crop.name,
+              description: relationship.endedAt
+                ? relationship.endedReason || 'Crop relationship ended.'
+                : 'Crop relationship became active.',
+              context: crop.farm?.name || 'Crop',
+              kind: 'lifecycle' as const,
+            }))
+          })
+
+        setLifecycleEvents([
+          ...assetEventGroups.flat(),
+          ...cropRelationshipGroups.flat(),
+        ])
       } catch (err) {
         if (cancelled) return
 
