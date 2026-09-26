@@ -310,6 +310,10 @@ export function CropsPage() {
     useState('ALL')
   const [selectedCropId, setSelectedCropId] =
     useState('')
+  const [relationshipHistory, setRelationshipHistory] =
+    useState<any[]>([])
+  const [historyLoading, setHistoryLoading] =
+    useState(false)
 
   const loadData = async () => {
     if (!token) return
@@ -408,6 +412,19 @@ export function CropsPage() {
       ) || null,
     [crops, selectedCropId],
   )
+
+  useEffect(() => {
+    if (!token || !selectedCropId) {
+      setRelationshipHistory([])
+      return
+    }
+
+    setHistoryLoading(true)
+    api.cropRelationshipHistory(selectedCropId, token)
+      .then((history) => setRelationshipHistory(Array.isArray(history) ? history : []))
+      .catch(() => setRelationshipHistory([]))
+      .finally(() => setHistoryLoading(false))
+  }, [selectedCropId, token])
 
   const selectedCropFarmId = useMemo(() => {
     if (!selectedCrop) {
@@ -1000,6 +1017,37 @@ export function CropsPage() {
                         'Unknown farm'
                       }
                     />
+                  </div>
+
+                  <div className="mt-6 rounded-xl border bg-muted/20 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-medium">Relationship history</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">Temporal ownership and relationship records.</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{relationshipHistory.length} record{relationshipHistory.length === 1 ? '' : 's'}</span>
+                    </div>
+                    {historyLoading ? (
+                      <p className="mt-3 text-sm text-muted-foreground">Loading history…</p>
+                    ) : relationshipHistory.length === 0 ? (
+                      <p className="mt-3 text-sm text-muted-foreground">No relationship history available.</p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {relationshipHistory.map((item, index) => (
+                          <div key={`${item.resourceId || selectedCrop.id}-${index}`} className="rounded-lg border bg-background px-3 py-2 text-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-medium">{String(item.relationshipType || 'Relationship')}</span>
+                              <span className="text-xs text-muted-foreground">{item.status || 'UNKNOWN'}</span>
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {item.validFrom ? new Date(item.validFrom).toLocaleString() : 'Start not recorded'}
+                              {item.validUntil ? ` → ${new Date(item.validUntil).toLocaleString()}` : ' → current/non-expiring'}
+                            </div>
+                            {item.endedReason && <div className="mt-1 text-xs text-muted-foreground">Reason: {item.endedReason}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {selectedCrop.notes && (

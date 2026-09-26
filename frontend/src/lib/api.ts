@@ -306,6 +306,13 @@ export const api = {
       },
     }),
 
+  cropRelationshipHistory: (id: string, token: string) =>
+    request<any[]>(`/crops/${id}/relationships/history`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }),
+
   crops: (token: string) =>
     request<any[]>('/crops', {
       headers: {
