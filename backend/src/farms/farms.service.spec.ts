@@ -20,8 +20,12 @@ describe('FarmsService', () => {
     farmAsset: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+    },
+    crop: {
+      findMany: jest.fn(),
     },
     entity: {
       create: jest.fn(),
@@ -53,6 +57,7 @@ describe('FarmsService', () => {
           farm: prisma.farm,
           farmAsset: prisma.farmAsset,
           farmRecord: prisma.farmRecord,
+          crop: prisma.crop,
         }),
     );
 
@@ -584,8 +589,19 @@ describe('FarmsService', () => {
     });
     prisma.$transaction.mockImplementation(
       async (callback: (tx: any) => Promise<unknown>) =>
-        callback({ farm: { delete: txDelete } }),
+        callback({
+          farm: { delete: txDelete },
+          farmAsset: { findMany: prisma.farmAsset.findMany },
+          crop: { findMany: prisma.crop.findMany },
+        }),
     );
+
+    prisma.farmAsset.findMany.mockResolvedValue([
+      { id: 'asset-1' },
+    ]);
+    prisma.crop.findMany.mockResolvedValue([
+      { id: 'crop-1' },
+    ]);
 
     await service.remove(
       'farm-1',
@@ -623,6 +639,20 @@ describe('FarmsService', () => {
       'farm-1',
       expect.any(Date),
       'Farm deleted',
+    );
+    expect(relationships.terminateResourceRelationships).toHaveBeenCalledWith(
+      expect.anything(),
+      'farmAsset',
+      'asset-1',
+      expect.any(Date),
+      'Parent farm deleted',
+    );
+    expect(relationships.terminateResourceRelationships).toHaveBeenCalledWith(
+      expect.anything(),
+      'crop',
+      'crop-1',
+      expect.any(Date),
+      'Parent farm deleted',
     );
     expect(txDelete).toHaveBeenCalledWith({
       where: { id: 'farm-1' },
