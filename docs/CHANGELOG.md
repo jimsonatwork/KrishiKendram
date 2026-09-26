@@ -173,7 +173,7 @@ Pending commit after final documentation and regression verification.
 
 ### Git checkpoint
 
-Pending commit after final documentation and regression verification.
+`7d6904b` — Add RelationshipEvidence foundation
 
 ### Completed architectural work
 

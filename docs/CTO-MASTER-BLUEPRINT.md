@@ -12,15 +12,15 @@
 
 | Item | Current State |
 |---|---|
-| Repository | `/home/jj/Dev/KrishiKendram` |
+| Repository | `/home/jj/Dev/KrishiKendram-Development` (active C) |
 | Branch | `main` |
-| Current checkpoint | `32b502d` |
-| Current checkpoint message | Move permission persistence into PermissionService |
-| Current primary phase | Phase 3 — Registry / Capability Architecture |
-| Current platform priority | Permission persistence → automatic administrative capability / stronger authorization integration |
+| Current checkpoint | `7d6904b` |
+| Current checkpoint message | Add RelationshipEvidence foundation |
+| Current primary phase | V0.3 — Farm Integration Foundation |
+| Current platform priority | Farm integration of temporal relationship, movement, lineage, and evidence context |
 | Working-tree state at blueprint creation | Checked by this script |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Registry → Capability → Permission → automatic Super Admin capability |
+| Next major target | Farm integration → relationship-aware lifecycle semantics → authorized history |
 
 ## Current Status
 
@@ -996,8 +996,10 @@ Legacy implementation no longer belongs after migration.
 Current verified checkpoint:
 
 ```text
-32b502d  Move permission persistence into PermissionService
-3906ca5  Connect registry capabilities to permission seeding
+7d6904b  Add RelationshipEvidence foundation
+9b14cd3  Add ResourceLineage foundation
+7750fc6  Add ResourceMovement foundation
+7dfe070  Complete UsersService field policy migration
 5a7921c  Add first-class registry capability contracts
 c019c1b  Add CTO master blueprint and architecture control docs
 a061cc3  Refactor Auth validation through shared helper
@@ -1006,12 +1008,12 @@ a061cc3  Refactor Auth validation through shared helper
 This blueprint is currently aligned with checkpoint:
 
 ```text
-32b502d
+7d6904b
 ```
 
 The current engineering frontier is:
 
-**Permission persistence → automatic administrative capability / stronger authorization integration**
+**Farm integration → relationship-aware lifecycle semantics → authorized history UI**
 
 The product-direction baseline remains PMD v0.2 — 23 Sep 2026.
 # 20. Versioning Protocol
@@ -1906,6 +1908,6 @@ These concepts are related and must be connected, but they must not be collapsed
 
 ## V0.3 Final Status
 
-**V0.3 Status: ARCHITECTURE ALIGNED — IMPLEMENTATION READY**
+**V0.3 Status: ARCHITECTURE ALIGNED — FARM INTEGRATION ACTIVE**
 
 The V0.3 implementation sequence is active. UsersService and Registry / Authorization foundations are checkpointed; ResourceRelationship, ResourceMovement, ResourceLineage, and ResourceEvidence foundations are implemented and verified. The current engineering frontier is Farm integration and business lifecycle semantics.
