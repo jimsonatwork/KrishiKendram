@@ -1700,6 +1700,8 @@ The first implementation should be intentionally small and testable.
 
 The exact database schema must be derived from the current Prisma model and existing conventions.
 
+The relationship foundation now includes ResourceRelationship, ResourceMovement, ResourceLineage, and ResourceEvidence persistence/resolution layers. ResourceEvidence stores controlled reference metadata and integrity information; it does not embed uncontrolled document content.
+
 ### Phase D — Integrate Farm
 
 Farm is the first domain integration target.
@@ -1882,22 +1884,19 @@ This does not mean those capabilities are already implemented.
 
 The dashboard therefore continues to represent implementation reality rather than architectural ambition.
 
-As of 26 September 2026, the ResourceMovement foundation is implemented as a platform persistence and resolution layer. It supports movement vocabulary, effective-date history, source/destination user or resource references, partial-portion quantity, transaction/evidence references, and linked previous-movement history. Business creation workflows and Farm integration remain pending.
+As of 26 September 2026, the ResourceMovement foundation is implemented as a platform persistence and resolution layer. ResourceLineage and ResourceEvidence foundations are now also implemented and verified. Evidence provides controlled reference metadata and integrity information linked to relationships and movements. Business lifecycle creation workflows and Farm integration remain pending.
 
 ## Current V0.3 Priority Order
 
 The current execution priority is:
 
-1. Complete the active `UsersService` validation migration.
-2. Establish a clean Git checkpoint.
-3. Verify existing History/Audit/Provenance foundations.
-4. Inspect existing Farm ownership implementation.
-5. Design the minimum Resource Relationship foundation against the actual Prisma schema.
-6. Introduce Movement, Lineage, and Evidence as compatible extensions.
-7. Integrate Farm first.
-8. Extend AuthorizationService without replacing the permission system.
-9. Upgrade existing resource pages progressively.
-10. Expand to additional domains only after the Farm implementation is proven.
+1. Integrate ResourceRelationship with Farm ownership/access context while preserving `Farm.ownerId` compatibility.
+2. Connect ResourceMovement, ResourceLineage, and ResourceEvidence to Farm lifecycle events.
+3. Verify authorization-aware relationship resolution at Farm operation boundaries.
+4. Add focused Farm integration tests and full regression coverage.
+5. Extend the same platform capability to FarmAsset, FarmRecord, and Crop progressively.
+6. Upgrade existing resource pages with authorized relationship, movement, lineage, and evidence history.
+7. Expand to additional domains only after the Farm implementation is proven.
 
 ## V0.3 Architecture Principle
 
@@ -1909,4 +1908,4 @@ These concepts are related and must be connected, but they must not be collapsed
 
 **V0.3 Status: ARCHITECTURE ALIGNED — IMPLEMENTATION READY**
 
-The V0.3 implementation sequence is active. UsersService and Registry / Authorization foundations are checkpointed; ResourceRelationship and ResourceMovement foundations are implemented, while business lifecycle integration, lineage, evidence, and Farm adoption remain.
+The V0.3 implementation sequence is active. UsersService and Registry / Authorization foundations are checkpointed; ResourceRelationship, ResourceMovement, ResourceLineage, and ResourceEvidence foundations are implemented and verified. The current engineering frontier is Farm integration and business lifecycle semantics.

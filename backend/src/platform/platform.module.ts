@@ -5,6 +5,7 @@ import { RegistryModule } from './registry';
 import { RelationshipsModule } from './relationships/relationships.module';
 import { MovementsModule } from './relationships/movements.module';
 import { LineageModule } from './relationships/lineage.module';
+import { EvidenceModule } from './relationships/evidence.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { LineageModule } from './relationships/lineage.module';
     RelationshipsModule,
     MovementsModule,
     LineageModule,
+    EvidenceModule,
   ],
   exports: [
     RegistryModule,
@@ -20,6 +22,7 @@ import { LineageModule } from './relationships/lineage.module';
     RelationshipsModule,
     MovementsModule,
     LineageModule,
+    EvidenceModule,
   ],
 })
 export class PlatformModule {}

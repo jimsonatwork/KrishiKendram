@@ -241,3 +241,30 @@ The movement foundation must preserve, where applicable:
 
 Movement records must not silently rewrite prior relationship history. Partial sale and transfer scenarios will use movement history together with ResourceLineage to preserve continuity.
 
+
+---
+
+## ADR-017 — Evidence Is a Secure Reference Layer
+
+**Status:** ACTIVE
+
+Relationship and movement evidence must be represented as controlled reference
+metadata, not as an uncontrolled document-content store.
+
+ResourceEvidence may preserve:
+
+- evidence type;
+- reference type and reference value;
+- document/transaction number;
+- issuer and relevant dates;
+- integrity hash;
+- structured metadata;
+- creator/updater attribution.
+
+Evidence may be linked to temporal relationships and business movements.
+
+Actual document/file storage remains a separate concern. Authorization must
+govern access to any underlying document or external record.
+
+This keeps relationship truth, evidence references, file storage, and technical
+audit as distinct platform responsibilities.

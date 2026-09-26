@@ -168,6 +168,34 @@ Pending commit after final documentation and regression verification.
 **RelationshipEvidence foundation for secure document/reference metadata and verification state.**
 
 ---
+
+## 2026-09-26 — RelationshipEvidence Foundation Checkpoint
+
+### Git checkpoint
+
+Pending commit after final documentation and regression verification.
+
+### Completed architectural work
+
+- Added ResourceEvidence persistence for controlled reference metadata without embedding document content.
+- Added evidence type, reference type/value, document number, issuer, dates, integrity hash, metadata, and actor attribution.
+- Linked evidence references to ResourceRelationship and ResourceMovement.
+- Added a platform evidence resolver supporting relationship, movement, resource, type, and reference filtering.
+- Preserved evidence as a reference layer separate from file/document storage and technical audit.
+
+### Verification
+
+- Prisma migration applied successfully and database schema is in sync.
+- Focused RelationshipEvidence tests: 2/2 PASS.
+- Full backend regression: 29 suites, 291 tests PASS.
+- TypeScript no-emit build check: PASS.
+- Backend production build: PASS.
+
+### Next target
+
+**Farm integration foundation: connect temporal relationship, movement, lineage, and evidence context to Farm without removing Farm.ownerId compatibility.**
+
+---
 ## Versioning Rule
 
 At every coherent architectural milestone:
