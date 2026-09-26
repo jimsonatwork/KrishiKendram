@@ -117,6 +117,7 @@ export function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [transfers, setTransfers] = useState<TransferRequest[]>([])
+  const [outgoingTransfers, setOutgoingTransfers] = useState<TransferRequest[]>([])
   const [lifecycleEvents, setLifecycleEvents] = useState<any[]>([])
   const [transferBusy, setTransferBusy] = useState('')
   const [transferMemberId, setTransferMemberId] = useState('')
@@ -124,6 +125,7 @@ export function HistoryPage() {
   const [transferResource, setTransferResource] = useState('')
   const [transferQuantity, setTransferQuantity] = useState('')
   const [transferReason, setTransferReason] = useState('')
+  const [transferTransactionId, setTransferTransactionId] = useState('')
   const [transferMemberBusy, setTransferMemberBusy] = useState(false)
   const [transferCreateBusy, setTransferCreateBusy] = useState(false)
 
@@ -143,11 +145,12 @@ export function HistoryPage() {
         setLoading(true)
         setError('')
 
-        const [farmResult, cropResult, transferResult] =
+        const [farmResult, cropResult, transferResult, outgoingTransferResult] =
           await Promise.all([
             api.farms(token),
             api.crops(token),
             api.transferIncomingPending(token),
+            api.transferOutgoing(token),
           ])
 
         if (cancelled) return
@@ -167,6 +170,12 @@ export function HistoryPage() {
         setTransfers(
           Array.isArray(transferResult)
             ? transferResult
+            : [],
+        )
+
+        setOutgoingTransfers(
+          Array.isArray(outgoingTransferResult)
+            ? outgoingTransferResult
             : [],
         )
 
@@ -400,12 +409,14 @@ export function HistoryPage() {
         quantity,
         unit: asset?.unit ?? undefined,
         reason: transferReason.trim() || undefined,
+        transactionId: transferTransactionId.trim() || undefined,
       }, token)
       setTransferMemberId('')
       setTransferMember(null)
       setTransferResource('')
       setTransferQuantity('')
       setTransferReason('')
+      setTransferTransactionId('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create transfer request.')
     } finally {
@@ -436,6 +447,32 @@ export function HistoryPage() {
         err instanceof Error
           ? err.message
           : 'Unable to ' + action + ' transfer request.',
+      )
+    } finally {
+      setTransferBusy('')
+    }
+  }
+
+  async function handleCancelTransfer(requestId: string) {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      setTransferBusy('cancel:' + requestId)
+      setError('')
+      await api.cancelTransfer(requestId, token)
+      setOutgoingTransfers((current) =>
+        current.map((item) =>
+          item.id === requestId
+            ? { ...item, status: 'CANCELLED' }
+            : item,
+        ),
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to cancel transfer request.',
       )
     } finally {
       setTransferBusy('')
@@ -544,6 +581,16 @@ export function HistoryPage() {
             </label>
           )}
 
+          <label className="space-y-2 text-sm">
+            <span className="font-medium">Transaction / document reference <span className="text-muted-foreground">(optional)</span></span>
+            <input
+              value={transferTransactionId}
+              onChange={(event) => setTransferTransactionId(event.target.value)}
+              placeholder="Sale deed, receipt, agreement number…"
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </label>
+
           <label className="space-y-2 text-sm md:col-span-2">
             <span className="font-medium">Reason <span className="text-muted-foreground">(optional)</span></span>
             <input
@@ -627,6 +674,74 @@ export function HistoryPage() {
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     Request {item.requestNumber} · {formatDate(item.requestedAt)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {outgoingTransfers.length > 0 && (
+        <div className="rounded-2xl border bg-card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium text-primary">Sent transfers</div>
+              <h2 className="mt-1 text-xl font-semibold">Transfer requests</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Track requests you sent and cancel pending requests before they are accepted.
+              </p>
+            </div>
+            <div className="rounded-full bg-muted px-3 py-1 text-sm font-medium">
+              {outgoingTransfers.filter((item) => item.status === 'PENDING').length} pending
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {outgoingTransfers.slice(0, 20).map((item) => {
+              const pending = item.status === 'PENDING'
+              const busy = transferBusy === 'cancel:' + item.id
+              const destinationName = item.destinationUser?.name || 'Another member'
+              const destinationMember = item.destinationUser?.memberId
+              const quantity =
+                item.quantity === null
+                  ? 'Full resource'
+                  : item.quantity + ' ' + (item.unit || 'units')
+
+              return (
+                <div key={item.id} className="rounded-xl border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium">
+                        {item.resourceType} · {item.resourceId}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        To {destinationName}{destinationMember ? ' · ' + destinationMember : ''} · {quantity}
+                      </p>
+                      {item.reason && (
+                        <p className="mt-2 text-sm">{item.reason}</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+                        {formatEnum(item.status)}
+                      </span>
+                      {pending && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => void handleCancelTransfer(item.id)}
+                        >
+                          <X className="mr-1 size-4" />
+                          {busy ? 'Cancelling…' : 'Cancel'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Request {item.requestNumber} · {formatDate(item.requestedAt)}
+                    {item.transactionId ? ' · ' + item.transactionId : ''}
                   </div>
                 </div>
               )

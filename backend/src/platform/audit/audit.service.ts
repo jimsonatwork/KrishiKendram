@@ -38,6 +38,24 @@ export class AuditService {
     });
   }
 
+  async createInTransaction(
+    tx: Prisma.TransactionClient,
+    input: CreateAuditEventInput,
+  ): Promise<AuditEvent> {
+    return tx.auditEvent.create({
+      data: {
+        actorId: input.actorId ?? null,
+        action: input.action,
+        resourceType: input.resourceType,
+        resourceId: input.resourceId ?? null,
+        description: input.description ?? null,
+        metadata: input.metadata ?? undefined,
+        ipAddress: input.ipAddress ?? null,
+        userAgent: input.userAgent ?? null,
+      },
+    });
+  }
+
   async getUserActivity(
     userId: string,
     limit = 50,

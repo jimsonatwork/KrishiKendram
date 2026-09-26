@@ -371,6 +371,17 @@ export const api = {
       headers: { Authorization: 'Bearer ' + token },
     }),
 
+  cancelTransfer: (id: string, token: string) =>
+    request<TransferRequest>('/resource-transfers/requests/' + id + '/cancel', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  transferOutgoing: (token: string) =>
+    request<TransferRequest[]>('/resource-transfers/requests/outgoing', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
   cropRelationshipHistory: (id: string, token: string) =>
     request<any[]>(`/crops/${id}/relationships/history`, {
       headers: {

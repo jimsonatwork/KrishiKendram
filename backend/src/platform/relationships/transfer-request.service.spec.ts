@@ -4,7 +4,7 @@ import { ResourceTransferRequestService } from './transfer-request.service';
 
 describe('ResourceTransferRequestService', () => {
   const relationships = { createOwnerRelationship: jest.fn(), transferOwnerRelationship: jest.fn() } as any;
-  const audit = { create: jest.fn() } as any;
+  const audit = { create: jest.fn(), createInTransaction: jest.fn() } as any;
   const tx = {
     resourceTransferRequest: { updateMany: jest.fn(), update: jest.fn() },
     resourceRelationship: { findFirst: jest.fn() },
@@ -45,6 +45,55 @@ describe('ResourceTransferRequestService', () => {
       where: { memberId: 'IN-1234567890', status: 'ACTIVE' },
       select: { id: true, memberId: true, name: true },
     });
+  });
+
+  it('rejects an expired transfer request at creation', async () => {
+    prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'jim' });
+    prisma.user.findUnique.mockResolvedValue({ id: 'cto', status: 'ACTIVE' });
+
+    await expect(service.create({
+      resourceType: 'farm', resourceId: 'farm-1', destinationUserId: 'cto',
+      expiresAt: new Date(Date.now() - 60_000).toISOString(),
+    }, 'jim', UserRole.FARMER)).rejects.toThrow('Transfer expiry must be in the future.');
+    expect(prisma.resourceTransferRequest.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects an expiry that is not after the effective time', async () => {
+    prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'jim' });
+    prisma.user.findUnique.mockResolvedValue({ id: 'cto', status: 'ACTIVE' });
+    prisma.resourceTransferRequest.create.mockResolvedValue({ id: 'request-1' });
+    const effectiveAt = new Date(Date.now() + 60_000);
+
+    await expect(service.create({
+      resourceType: 'farm', resourceId: 'farm-1', destinationUserId: 'cto',
+      effectiveAt: effectiveAt.toISOString(),
+      expiresAt: new Date(effectiveAt.getTime() + 30_000).toISOString(),
+    }, 'jim', UserRole.FARMER)).resolves.toBeDefined();
+
+    prisma.resourceTransferRequest.create.mockClear();
+    await expect(service.create({
+      resourceType: 'farm', resourceId: 'farm-1', destinationUserId: 'cto',
+      effectiveAt: effectiveAt.toISOString(),
+      expiresAt: effectiveAt.toISOString(),
+    }, 'jim', UserRole.FARMER)).rejects.toThrow('Transfer expiry must be after the effective time.');
+  });
+
+  it('records completion audit inside the acceptance transaction', async () => {
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farm', resourceId: 'farm-1',
+      sourceUserId: 'jim', destinationUserId: 'cto', quantity: null,
+      status: 'PENDING', effectiveAt: null, expiresAt: null,
+      reason: 'Farm transfer', transactionId: null,
+    });
+
+    await service.accept('request-1', 'cto');
+
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      action: 'RESOURCE_TRANSFER_COMPLETED',
+      resourceType: 'farm',
+      resourceId: 'farm-1',
+    }));
+    expect(audit.create).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'RESOURCE_TRANSFER_COMPLETED' }));
   });
 
   it('creates a pending partial farm-asset transfer request', async () => {

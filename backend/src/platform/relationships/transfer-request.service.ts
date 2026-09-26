@@ -28,6 +28,15 @@ export class ResourceTransferRequestService {
     });
     if (!destination || destination.status !== UserStatus.ACTIVE) throw new BadRequestException('Destination user is not active.');
 
+    const effectiveAt = dto.effectiveAt ? new Date(dto.effectiveAt) : null;
+    const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
+    if (effectiveAt && expiresAt && expiresAt <= effectiveAt) {
+      throw new BadRequestException('Transfer expiry must be after the effective time.');
+    }
+    if (expiresAt && expiresAt <= new Date()) {
+      throw new BadRequestException('Transfer expiry must be in the future.');
+    }
+
     if (dto.quantity !== undefined) {
       if (dto.resourceType !== 'farmAsset') throw new BadRequestException('Partial transfer is currently supported only for farm assets.');
       if (dto.quantity <= 0) throw new BadRequestException('Partial transfer quantity must be greater than zero.');
@@ -39,8 +48,8 @@ export class ResourceTransferRequestService {
         requestNumber, resourceType: dto.resourceType, resourceId: dto.resourceId,
         sourceUserId: source.userId, destinationUserId: dto.destinationUserId,
         quantity: dto.quantity, unit: dto.unit, status: 'PENDING',
-        effectiveAt: dto.effectiveAt ? new Date(dto.effectiveAt) : null,
-        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        effectiveAt,
+        expiresAt,
         reason: dto.reason, transactionId: dto.transactionId,
         createdBy: actorId, updatedBy: actorId,
       },
@@ -167,7 +176,7 @@ export class ResourceTransferRequestService {
       const completed = await tx.resourceTransferRequest.update({
         where: { id }, data: { status: 'COMPLETED', completedAt: new Date(), effectiveAt, updatedBy: actorId },
       });
-      await this.audit.create({
+      await this.audit.createInTransaction(tx, {
         actorId, action: 'RESOURCE_TRANSFER_COMPLETED', resourceType: request.resourceType, resourceId: request.resourceId,
         description: 'Transfer request completed.',
         metadata: { requestId: id, sourceUserId: request.sourceUserId, destinationUserId: request.destinationUserId, quantity: request.quantity ?? null, unit: request.unit ?? null, partial: request.quantity !== null && request.quantity !== undefined },
