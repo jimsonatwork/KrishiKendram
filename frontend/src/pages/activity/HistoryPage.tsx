@@ -3,6 +3,8 @@ import {
   Check,
   Clock3,
   FileText,
+  Send,
+  UserRound,
   X,
   Sprout,
   Wheat,
@@ -117,6 +119,13 @@ export function HistoryPage() {
   const [transfers, setTransfers] = useState<TransferRequest[]>([])
   const [lifecycleEvents, setLifecycleEvents] = useState<any[]>([])
   const [transferBusy, setTransferBusy] = useState('')
+  const [transferMemberId, setTransferMemberId] = useState('')
+  const [transferMember, setTransferMember] = useState<{ id: string; memberId: string; name: string } | null>(null)
+  const [transferResource, setTransferResource] = useState('')
+  const [transferQuantity, setTransferQuantity] = useState('')
+  const [transferReason, setTransferReason] = useState('')
+  const [transferMemberBusy, setTransferMemberBusy] = useState(false)
+  const [transferCreateBusy, setTransferCreateBusy] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -341,6 +350,69 @@ export function HistoryPage() {
     )
   }, [crops, farms, lifecycleEvents])
 
+  async function resolveTransferMember() {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !transferMemberId.trim()) return
+
+    try {
+      setTransferMemberBusy(true)
+      setError('')
+      const member = await api.findTransferMember(transferMemberId.trim(), token)
+      setTransferMember(member)
+    } catch (err) {
+      setTransferMember(null)
+      setError(err instanceof Error ? err.message : 'Unable to find that member.')
+    } finally {
+      setTransferMemberBusy(false)
+    }
+  }
+
+  async function createTransfer() {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !transferMember || !transferResource) return
+
+    const [resourceType, resourceId] = transferResource.split(':')
+    const asset = farms.flatMap((farm) => farm.assets ?? []).find((item) => item.id === resourceId)
+    const quantity = transferQuantity.trim() ? Number(transferQuantity) : undefined
+
+    if (quantity !== undefined && (!Number.isFinite(quantity) || quantity <= 0)) {
+      setError('Transfer quantity must be greater than zero.')
+      return
+    }
+
+    if (quantity !== undefined && resourceType !== 'farmAsset') {
+      setError('Quantity is available only for farm assets.')
+      return
+    }
+
+    if (quantity !== undefined && asset?.quantity != null && quantity >= asset.quantity) {
+      setError('For a partial transfer, quantity must be less than the current asset quantity.')
+      return
+    }
+
+    try {
+      setTransferCreateBusy(true)
+      setError('')
+      await api.createTransfer({
+        resourceType,
+        resourceId,
+        destinationUserId: transferMember.id,
+        quantity,
+        unit: asset?.unit ?? undefined,
+        reason: transferReason.trim() || undefined,
+      }, token)
+      setTransferMemberId('')
+      setTransferMember(null)
+      setTransferResource('')
+      setTransferQuantity('')
+      setTransferReason('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to create transfer request.')
+    } finally {
+      setTransferCreateBusy(false)
+    }
+  }
+
   async function handleTransferAction(
     requestId: string,
     action: 'accept' | 'reject',
@@ -393,6 +465,106 @@ export function HistoryPage() {
           {error}
         </div>
       )}
+
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Send className="size-5" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-primary">Transfer resource</div>
+            <h2 className="mt-1 text-xl font-semibold">Create transfer request</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Select one of your owned resources and send it to another active member by Member ID.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <label className="space-y-2 text-sm">
+            <span className="font-medium">Destination Member ID</span>
+            <div className="flex gap-2">
+              <input
+                value={transferMemberId}
+                onChange={(event) => {
+                  setTransferMemberId(event.target.value.toUpperCase())
+                  setTransferMember(null)
+                }}
+                placeholder="IN-1234567890"
+                className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <Button size="sm" variant="outline" disabled={transferMemberBusy || !transferMemberId.trim()} onClick={() => void resolveTransferMember()}>
+                <UserRound className="mr-1 size-4" />
+                {transferMemberBusy ? 'Finding…' : 'Find'}
+              </Button>
+            </div>
+            {transferMember && (
+              <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs">
+                <span className="font-medium">{transferMember.name}</span> · {transferMember.memberId}
+              </div>
+            )}
+          </label>
+
+          <label className="space-y-2 text-sm">
+            <span className="font-medium">Resource</span>
+            <select
+              value={transferResource}
+              onChange={(event) => {
+                setTransferResource(event.target.value)
+                setTransferQuantity('')
+              }}
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="">Select a resource</option>
+              {farms.map((farm) => (
+                <optgroup key={farm.id} label={`Farm · ${farm.name}`}>
+                  <option value={`farm:${farm.id}`}>Farm · {farm.name}</option>
+                  {(farm.assets ?? []).map((asset) => (
+                    <option key={asset.id} value={`farmAsset:${asset.id}`}>
+                      Asset · {asset.name || asset.type || asset.id}{asset.quantity != null ? ` · ${asset.quantity} ${asset.unit || ''}` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+
+          {transferResource.startsWith('farmAsset:') && (
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Quantity <span className="text-muted-foreground">(leave blank for full transfer)</span></span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={transferQuantity}
+                onChange={(event) => setTransferQuantity(event.target.value)}
+                placeholder="Partial quantity"
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              />
+            </label>
+          )}
+
+          <label className="space-y-2 text-sm md:col-span-2">
+            <span className="font-medium">Reason <span className="text-muted-foreground">(optional)</span></span>
+            <input
+              value={transferReason}
+              onChange={(event) => setTransferReason(event.target.value)}
+              placeholder="Why is this resource being transferred?"
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </label>
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <Button
+            disabled={transferCreateBusy || !transferMember || !transferResource}
+            onClick={() => void createTransfer()}
+          >
+            <Send className="mr-1 size-4" />
+            {transferCreateBusy ? 'Sending…' : 'Send transfer request'}
+          </Button>
+        </div>
+      </div>
 
       {transfers.length > 0 && (
         <div className="rounded-2xl border bg-card p-5">

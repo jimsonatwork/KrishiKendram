@@ -53,6 +53,19 @@ export class ResourceTransferRequestService {
     return created;
   }
 
+  async findActiveMember(memberId: string) {
+    const normalized = memberId.trim().toUpperCase();
+    if (!normalized) throw new BadRequestException('Member ID is required.');
+
+    const member = await this.prisma.user.findFirst({
+      where: { memberId: normalized, status: UserStatus.ACTIVE },
+      select: { id: true, memberId: true, name: true },
+    });
+
+    if (!member) throw new NotFoundException('Active member not found.');
+    return member;
+  }
+
   listIncoming(userId: string) {
     return this.prisma.resourceTransferRequest.findMany({
       where: { destinationUserId: userId }, orderBy: { requestedAt: 'desc' },

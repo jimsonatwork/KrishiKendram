@@ -438,3 +438,24 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Added History workspace Accept/Reject transfer actions.
 - Added movement/lineage-backed lifecycle events to the History timeline with authorization-safe skipping.
 - Verification: backend 33/33 suites, 305/305 tests; backend build PASS; frontend build PASS.
+
+## 2026-09-26 — Transfer Creation UX
+
+### Completed
+
+- Added authenticated Member ID lookup for active transfer recipients.
+- Added History workspace transfer creation using owned Farm/FarmAsset resources.
+- Added full Farm transfer and quantified partial FarmAsset transfer selection.
+- Added reason capture and request submission through the existing transfer API.
+
+### Verification
+
+- Transfer service: 4/4 tests passed.
+- Backend regression: 33/33 suites, 306/306 tests passed.
+- Backend production build: passed.
+- Frontend TypeScript/Vite production build: passed.
+- `git diff --check`: passed.
+
+### Next target
+
+**Final lifecycle hardening → end-to-end verification → next domain adoption pass.**

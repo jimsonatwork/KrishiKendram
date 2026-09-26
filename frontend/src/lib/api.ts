@@ -325,6 +325,30 @@ export const api = {
       },
     }),
 
+  findTransferMember: (memberId: string, token: string) =>
+    request<{ id: string; memberId: string; name: string }>(
+      '/resource-transfers/requests/members/' + encodeURIComponent(memberId),
+      { headers: { Authorization: 'Bearer ' + token } },
+    ),
+
+  createTransfer: (
+    data: {
+      resourceType: string
+      resourceId: string
+      destinationUserId: string
+      quantity?: number
+      unit?: string
+      reason?: string
+      transactionId?: string
+    },
+    token: string,
+  ) =>
+    request<TransferRequest>('/resource-transfers/requests', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: JSON.stringify(data),
+    }),
+
   transferIncomingPending: (token: string) =>
     request<TransferRequest[]>('/resource-transfers/requests/incoming/pending', {
       headers: { Authorization: 'Bearer ' + token },

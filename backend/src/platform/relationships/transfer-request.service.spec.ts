@@ -35,6 +35,18 @@ describe('ResourceTransferRequestService', () => {
     relationships.transferOwnerRelationship.mockResolvedValue({ id: 'transfer-movement' });
   });
 
+  it('resolves an active member by Member ID', async () => {
+    prisma.user.findFirst = jest.fn().mockResolvedValue({ id: 'cto', memberId: 'IN-1234567890', name: 'CTO' });
+
+    await expect(service.findActiveMember(' in-1234567890 ')).resolves.toEqual({
+      id: 'cto', memberId: 'IN-1234567890', name: 'CTO',
+    });
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { memberId: 'IN-1234567890', status: 'ACTIVE' },
+      select: { id: true, memberId: true, name: true },
+    });
+  });
+
   it('creates a pending partial farm-asset transfer request', async () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'jim' });
     prisma.user.findUnique.mockResolvedValue({ id: 'cto', status: 'ACTIVE' });

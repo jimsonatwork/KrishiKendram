@@ -16,6 +16,11 @@ export class ResourceTransferRequestController {
     return this.transfers.create(dto, user.userId, user.role as UserRole);
   }
 
+  @Get('members/:memberId')
+  member(@Param('memberId') memberId: string) {
+    return this.transfers.findActiveMember(memberId);
+  }
+
   @Get('incoming')
   incoming(@CurrentUser() user: any) {
     return this.transfers.listIncoming(user.userId);

@@ -2044,3 +2044,13 @@ Current execution frontier: expose pending transfer actions in the frontend, the
 - Inaccessible transferred assets are skipped without breaking the overall history workspace.
 - Verification: backend 33/33 suites and 305/305 tests; backend production build PASS; frontend TypeScript/Vite production build PASS; git diff --check PASS.
 - Execution frontier: complete transfer creation UX by Member ID/resource selection, then final lifecycle hardening and end-to-end verification.
+
+### 26 September 2026 — Transfer creation UX checkpoint
+
+- Added authenticated Member ID lookup for active transfer recipients, returning only the member identity fields required by the transfer workflow.
+- Added History workspace transfer creation using the authenticated user's owned Farm/FarmAsset resources.
+- Added full Farm transfer and quantified partial FarmAsset transfer selection; quantity is validated client-side before request creation while backend rules remain authoritative.
+- Added reason capture and request submission through the existing ResourceTransferRequest API.
+- Added focused Member ID resolution coverage without changing the transfer lifecycle's ownership, movement, lineage, evidence, or audit boundaries.
+- Verification: transfer service 4/4 tests PASS; full backend regression 33/33 suites and 306/306 tests PASS; backend production build PASS; frontend TypeScript/Vite production build PASS; git diff --check PASS.
+- Current execution frontier: final lifecycle hardening and end-to-end verification, followed by the next domain adoption pass.
