@@ -286,6 +286,48 @@ export class CropsService {
     });
   }
 
+  async getRelationshipHistory(
+    userId: string,
+    role: UserRole,
+    cropId: string,
+  ) {
+    const cropContext = await this.prisma.crop.findFirst({
+      where: {
+        id: cropId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (!cropContext) {
+      throw new NotFoundException('Crop not found.');
+    }
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'crop',
+      action: AuthorizationAction.READ,
+      resourceId: cropContext.id,
+      farmId: cropContext.farmId,
+      ownerId: cropContext.farm.ownerId,
+    });
+
+    return this.relationships.listResourceRelationshipHistory(
+      'crop',
+      cropId,
+    );
+  }
+
   async findOne(
     userId: string,
     role: UserRole,

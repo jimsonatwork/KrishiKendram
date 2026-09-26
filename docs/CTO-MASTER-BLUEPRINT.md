@@ -1920,5 +1920,15 @@ and Crop. Farm deletion explicitly closes child relationship history before
 database cascade deletion. FarmRecord remains classified as historical
 observation data rather than an owned resource.
 
-Next platform target: expose relationship-aware child access/history surfaces
-and then complete the V0.3 A/B/C promotion and recovery checkpoint.
+Next platform target: complete the V0.3 A/B/C promotion and recovery
+checkpoint after validating the relationship-aware child access/history surfaces.
+
+### 2026-09-26 — Relationship-aware child access/history checkpoint
+
+FarmAsset and Crop now expose authorized relationship history through their
+existing READ authorization boundaries. ResourceRelationshipService owns the
+canonical history retrieval and returns domain relationship facts in effective
+chronological order. FarmRecord remains historical observation/provenance data.
+
+Current execution frontier: V0.3 A/B/C promotion validation and recovery
+checkpoint.

@@ -76,6 +76,20 @@ create(
     );
   }
 
+  @Get(':farmId/assets/:assetId/relationships/history')
+  getAssetRelationshipHistory(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.getFarmAssetRelationshipHistory(
+      farmId,
+      assetId,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Post(':id/assets')
   addAsset(
     @Param('id') id: string,

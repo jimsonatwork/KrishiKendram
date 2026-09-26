@@ -422,3 +422,19 @@ These records support one another. None should silently replace another.
 - TypeScript no-emit check and production build: PASS.
 - Exact next segment: relationship-aware child access/history surfaces,
   followed by A/B/C promotion validation and recovery checkpoint.
+
+### 26 Sep 2026 — Relationship-aware Farm child access/history surfaces
+
+- Added canonical ResourceRelationship history retrieval returning domain
+  relationship facts in effective chronological order.
+- Added authorization-aware FarmAsset relationship history access under the
+  existing FarmAsset READ boundary.
+- Added authorization-aware Crop relationship history access under the
+  existing Crop READ boundary.
+- Preserved FarmRecord as historical observation/provenance data; no
+  ownership relationship surface was introduced for records.
+- Focused regression: 55/55 tests PASS.
+- Full backend regression: 30/30 suites, 294/294 tests PASS.
+- Backend production build and git diff --check: PASS.
+- Exact execution position: V0.3 A/B/C promotion validation and recovery
+  checkpoint.

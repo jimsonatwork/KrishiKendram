@@ -285,6 +285,46 @@ export class FarmsService {
     });
   }
 
+  async getFarmAssetRelationshipHistory(
+    farmId: string,
+    assetId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    const assetContext = await this.prisma.farmAsset.findUnique({
+      where: { id: assetId },
+      select: {
+        id: true,
+        farmId: true,
+        farm: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (!assetContext || assetContext.farmId !== farmId) {
+      throw new NotFoundException('Asset not found');
+    }
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.READ,
+      resourceId: assetContext.id,
+      farmId: assetContext.farmId,
+      ownerId: assetContext.farm.ownerId,
+    });
+
+    return this.relationships.listResourceRelationshipHistory(
+      'farmAsset',
+      assetId,
+    );
+  }
+
   async addAsset(
     farmId: string,
     dto: CreateFarmAssetDto,

@@ -267,3 +267,29 @@ then promote the proven Farm foundation through B → A.**
 
 **Complete relationship-aware Farm child access/history surfaces, then execute
 the V0.3 A/B/C promotion validation and recovery checkpoint.**
+
+---
+
+## 2026-09-26 — Relationship-aware Farm Child Access/History Surfaces
+
+### Completed
+
+- Added canonical ResourceRelationship history retrieval returning domain
+  relationship facts in effective chronological order.
+- Added authorization-aware FarmAsset relationship history access under the
+  existing FarmAsset READ boundary.
+- Added authorization-aware Crop relationship history access under the
+  existing Crop READ boundary.
+- Preserved FarmRecord as historical observation/provenance data.
+- No ownership semantics were introduced for FarmRecord.
+
+### Verification
+
+- Focused relationship/Farm/Crop regression: 55/55 PASS.
+- Full backend regression: 30 suites, 294 tests PASS.
+- Backend production build: PASS.
+- git diff --check: PASS.
+
+### Next target
+
+**Execute the V0.3 A/B/C promotion validation and recovery checkpoint.**

@@ -46,6 +46,18 @@ export class CropsController {
     );
   }
 
+  @Get(':id/relationships/history')
+  getRelationshipHistory(
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    return this.cropsService.getRelationshipHistory(
+      req.user.userId,
+      req.user.role,
+      id,
+    );
+  }
+
   @Get(':id')
   findOne(
     @Req() req: any,
