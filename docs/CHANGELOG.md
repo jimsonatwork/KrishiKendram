@@ -596,3 +596,14 @@ The CTO Master Blueprint now reflects the actual implementation frontier rather 
 ### Next target
 
 **Focused custody-service coverage → runtime route verification → next concrete operational lifecycle.**
+
+
+## 2026-09-27 — Custody Verification Close
+
+- Added focused FarmAsset custody service tests for authorization ordering and transaction delegation.
+- Full backend regression: 35/35 suites, 318/318 tests passed.
+- Runtime health returned HTTP 200.
+- Protected custody route returned HTTP 401 without authentication.
+- Existing backend/frontend production builds remain green.
+
+**V0.4 custody slice verified and checkpoint-ready.**

@@ -2132,3 +2132,16 @@ The first V0.4 capability reuses the existing relationship/movement/evidence arc
 Verification: backend 34/34 suites, 316/316 tests; backend build PASS; frontend build PASS; `git diff --check` PASS; authorization/Registry focused tests PASS; database seed PASS.
 
 Current execution frontier: add focused custody-service coverage and runtime route verification, then extend only the next concrete operational lifecycle that fits the existing platform primitives.
+
+
+### 27 September 2026 — V0.4 Custody Verification Close
+
+Focused custody orchestration coverage is now in place for authorization-before-transaction behavior and successful delegation into the canonical relationship service.
+
+- Focused custody + relationship tests: 6/6 PASS.
+- Full backend regression: 35/35 suites, 318/318 tests PASS.
+- Runtime health: HTTP 200.
+- Protected custody route: HTTP 401 without authentication.
+- Backend production build and frontend production build remain PASS.
+
+The custody capability is therefore a verified V0.4 slice. Next work should target another concrete operational lifecycle only after inspecting whether its semantics already exist in the current platform primitives.
