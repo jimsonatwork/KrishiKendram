@@ -12,6 +12,7 @@ import {
 
 import { PrismaService } from '../prisma/prisma.service';
 import { RegistryService } from '../platform/registry/registry.service';
+import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 
 import {
   AuthorizationAction,
@@ -29,6 +30,7 @@ export class CropsService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly registry: RegistryService,
+    private readonly relationships: ResourceRelationshipService,
   ) {}
 
   async create(
@@ -217,27 +219,39 @@ export class CropsService {
       }
     }
 
-    return this.prisma.crop.create({
-      data: {
-        farmId: farm.id,
-        name: normalizedName,
-        variety: input.variety,
-        season:
-          input.season ??
-          options.defaultSeason,
-        status:
-          input.status ??
-          options.defaultStatus,
-        sowingDate:
-          sowingDate ??
-          (options.preserveNullDates ? null : undefined),
-        harvestDate:
-          input.harvestDate ??
-          (options.preserveNullDates ? null : undefined),
-        area: input.area,
-        unit: input.unit,
-        notes: input.notes,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const crop = await tx.crop.create({
+        data: {
+          farmId: farm.id,
+          name: normalizedName,
+          variety: input.variety,
+          season:
+            input.season ??
+            options.defaultSeason,
+          status:
+            input.status ??
+            options.defaultStatus,
+          sowingDate:
+            sowingDate ??
+            (options.preserveNullDates ? null : undefined),
+          harvestDate:
+            input.harvestDate ??
+            (options.preserveNullDates ? null : undefined),
+          area: input.area,
+          unit: input.unit,
+          notes: input.notes,
+        },
+      });
+
+      await this.relationships.createOwnerRelationship(
+        tx,
+        'crop',
+        crop.id,
+        farm.ownerId,
+        crop.createdAt,
+      );
+
+      return crop;
     });
   }
 
@@ -467,13 +481,21 @@ export class CropsService {
       ownerId: cropContext.farm.ownerId,
     });
 
-    return this.prisma.crop.update({
-      where: {
-        id: cropId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const endedAt = new Date();
+
+      await this.relationships.terminateResourceRelationships(
+        tx,
+        'crop',
+        cropId,
+        endedAt,
+        'Crop archived',
+      );
+
+      return tx.crop.update({
+        where: { id: cropId },
+        data: { deletedAt: endedAt },
+      });
     });
   }
 }

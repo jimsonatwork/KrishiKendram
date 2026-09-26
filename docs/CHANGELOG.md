@@ -243,3 +243,27 @@ Pending commit after documentation and regression verification.
 **Complete Farm lifecycle integration for FarmAsset/FarmRecord/Crop where
 relationship, movement, lineage, or evidence context is materially required,
 then promote the proven Farm foundation through B → A.**
+
+---
+
+## 2026-09-26 — Farm Child Lifecycle Closure
+
+### Completed
+
+- Crop creation now atomically establishes an OWNER ResourceRelationship.
+- Crop archive now atomically terminates its open relationship before soft deletion.
+- Farm deletion now closes relationship history for the Farm itself and all
+  cascading FarmAsset/Crop children before the database cascade executes.
+- Preserved FarmRecord as historical observation data rather than inventing
+  ownership semantics for records.
+
+### Verification
+
+- Full backend regression: 30/30 suites, 293/293 tests PASS.
+- TypeScript no-emit check: PASS.
+- Backend production build: PASS.
+
+### Next target
+
+**Complete relationship-aware Farm child access/history surfaces, then execute
+the V0.3 A/B/C promotion validation and recovery checkpoint.**
