@@ -7,10 +7,7 @@ import { CreateTransferRequestDto } from './dto/create-transfer-request.dto';
 
 @Injectable()
 export class ResourceTransferRequestService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly relationships: ResourceRelationshipService,
-  ) {}
+  constructor(private readonly prisma: PrismaService, private readonly relationships: ResourceRelationshipService) {}
 
   async create(dto: CreateTransferRequestDto, actorId: string, role: UserRole) {
     const source = await this.prisma.resourceRelationship.findFirst({
@@ -20,15 +17,23 @@ export class ResourceTransferRequestService {
     if (!source) throw new NotFoundException('Active resource owner not found.');
     if (source.userId !== actorId && !this.isPrivileged(role)) throw new ForbiddenException('Only the active owner or administrator can request a transfer.');
     if (dto.destinationUserId === source.userId) throw new BadRequestException('Destination user already owns this resource.');
-    const destination = await this.prisma.user.findUnique({ where: { id: dto.destinationUserId }, select: { id: true, status: true } });
+
+    const destination = await this.prisma.user.findUnique({
+      where: { id: dto.destinationUserId }, select: { id: true, status: true },
+    });
     if (!destination || destination.status !== UserStatus.ACTIVE) throw new BadRequestException('Destination user is not active.');
-    if (dto.quantity !== undefined) throw new BadRequestException('Partial transfer requests require the partial-transfer lifecycle and are not yet executable.');
+
+    if (dto.quantity !== undefined) {
+      if (dto.resourceType !== 'farmAsset') throw new BadRequestException('Partial transfer is currently supported only for farm assets.');
+      if (dto.quantity <= 0) throw new BadRequestException('Partial transfer quantity must be greater than zero.');
+    }
+
     const requestNumber = await this.nextRequestNumber();
     return this.prisma.resourceTransferRequest.create({
       data: {
         requestNumber, resourceType: dto.resourceType, resourceId: dto.resourceId,
         sourceUserId: source.userId, destinationUserId: dto.destinationUserId,
-        unit: dto.unit, status: 'PENDING',
+        quantity: dto.quantity, unit: dto.unit, status: 'PENDING',
         effectiveAt: dto.effectiveAt ? new Date(dto.effectiveAt) : null,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
         reason: dto.reason, transactionId: dto.transactionId,
@@ -50,6 +55,7 @@ export class ResourceTransferRequestService {
       include: { sourceUser: { select: { id: true, memberId: true, name: true } }, destinationUser: { select: { id: true, memberId: true, name: true } } },
     });
   }
+
   async accept(id: string, actorId: string) { return this.complete(id, actorId, false); }
 
   async approve(id: string, actorId: string, role: UserRole, approvalReason?: string) {
@@ -60,50 +66,119 @@ export class ResourceTransferRequestService {
   async reject(id: string, actorId: string) {
     const request = await this.getPending(id);
     if (request.destinationUserId !== actorId) throw new ForbiddenException('Only the destination user can reject this request.');
-    return this.prisma.resourceTransferRequest.update({ where: { id }, data: { status: 'REJECTED', rejectedAt: new Date(), rejectedBy: actorId, updatedBy: actorId } });
+    return this.prisma.resourceTransferRequest.update({
+      where: { id }, data: { status: 'REJECTED', rejectedAt: new Date(), rejectedBy: actorId, updatedBy: actorId },
+    });
   }
 
   async cancel(id: string, actorId: string) {
     const request = await this.getPending(id);
     if (request.sourceUserId !== actorId) throw new ForbiddenException('Only the source user can cancel this request.');
-    return this.prisma.resourceTransferRequest.update({ where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date(), updatedBy: actorId } });
+    return this.prisma.resourceTransferRequest.update({
+      where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date(), updatedBy: actorId },
+    });
   }
 
   private async complete(id: string, actorId: string, administrative: boolean, approvalReason?: string) {
     const request = await this.getPending(id);
-    if (!administrative && request.destinationUserId !== actorId) throw new ForbiddenException('Only the destination user can accept this request.');
+    if (!administrative && request.destinationUserId !== actorId) {
+      throw new ForbiddenException('Only the destination user can accept this request.');
+    }
     const effectiveAt = request.effectiveAt ?? new Date();
     if (request.expiresAt && request.expiresAt < new Date()) throw new BadRequestException('Transfer request has expired.');
 
     return this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.resourceTransferRequest.updateMany({
+        where: { id, status: { in: ['PENDING', 'APPROVED'] } },
+        data: {
+          status: 'ACCEPTED', acceptedAt: new Date(),
+          acceptedBy: administrative ? undefined : actorId,
+          approvedBy: administrative ? actorId : undefined,
+          approvalReason: administrative ? approvalReason : undefined,
+          updatedBy: actorId,
+        },
+      });
+      if (claimed.count !== 1) throw new BadRequestException('Transfer request is no longer pending.');
+
       const currentOwner = await tx.resourceRelationship.findFirst({
         where: { resourceType: request.resourceType, resourceId: request.resourceId, userId: request.sourceUserId, relationshipType: 'OWNER', endedAt: null },
         orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
       });
       if (!currentOwner) throw new BadRequestException('Source ownership is no longer active.');
-      await this.relationships.transferOwnerRelationship(
-        tx, request.resourceType, request.resourceId,
-        request.sourceUserId, request.destinationUserId,
-        effectiveAt, request.reason ?? 'Transfer request accepted',
-        request.transactionId ?? undefined,
-      );
 
-      if (request.resourceType === 'farm') {
-        await tx.farm.update({ where: { id: request.resourceId }, data: { ownerId: request.destinationUserId } });
+      if (request.quantity !== null && request.quantity !== undefined) {
+        await this.completePartialFarmAssetTransfer(tx, request, actorId, effectiveAt, currentOwner.id);
+      } else {
+        await this.relationships.transferOwnerRelationship(
+          tx, request.resourceType, request.resourceId, request.sourceUserId, request.destinationUserId,
+          effectiveAt, request.reason ?? 'Transfer request accepted', request.transactionId ?? undefined,
+        );
+        if (request.resourceType === 'farm') {
+          await tx.farm.update({ where: { id: request.resourceId }, data: { ownerId: request.destinationUserId } });
+        }
       }
 
       return tx.resourceTransferRequest.update({
-        where: { id },
-        data: {
-          status: 'COMPLETED',
-          acceptedAt: administrative ? request.acceptedAt : new Date(),
-          acceptedBy: administrative ? null : actorId,
-          approvedBy: administrative ? actorId : request.approvedBy,
-          approvalReason: administrative ? approvalReason : request.approvalReason,
-          completedAt: new Date(), effectiveAt, updatedBy: actorId,
-        },
+        where: { id }, data: { status: 'COMPLETED', completedAt: new Date(), effectiveAt, updatedBy: actorId },
       });
     });
+  }
+
+  private async completePartialFarmAssetTransfer(tx: any, request: any, actorId: string, effectiveAt: Date, sourceRelationshipId: string) {
+    if (request.resourceType !== 'farmAsset') throw new BadRequestException('Partial transfer is currently supported only for farm assets.');
+
+    const asset = await tx.farmAsset.findUnique({
+      where: { id: request.resourceId },
+      select: { id: true, farmId: true, type: true, name: true, quantity: true, unit: true, metadata: true },
+    });
+    if (!asset) throw new NotFoundException('Farm asset not found.');
+    if (asset.quantity === null || asset.quantity === undefined) throw new BadRequestException('Only quantified farm assets can be partially transferred.');
+    if (request.quantity <= 0 || request.quantity >= asset.quantity) {
+      throw new BadRequestException('Partial transfer quantity must be greater than zero and less than the source quantity.');
+    }
+    if (request.unit && asset.unit && request.unit !== asset.unit) throw new BadRequestException('Transfer unit does not match the asset unit.');
+    if (request.unit && !asset.unit) throw new BadRequestException('The source asset has no unit.');
+
+    const remainingQuantity = asset.quantity - request.quantity;
+    const target = await tx.farmAsset.create({
+      data: { farmId: asset.farmId, type: asset.type, name: asset.name, quantity: request.quantity, unit: asset.unit, metadata: asset.metadata },
+    });
+
+    await this.relationships.createOwnerRelationship(tx, 'farmAsset', target.id, request.sourceUserId, effectiveAt);
+    await tx.farmAsset.update({ where: { id: asset.id }, data: { quantity: remainingQuantity } });
+
+    const previousMovement = await tx.resourceMovement.findFirst({
+      where: { resourceType: 'farmAsset', resourceId: asset.id },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const splitMovement = await tx.resourceMovement.create({
+      data: {
+        resourceType: 'farmAsset', resourceId: target.id, movementType: 'SPLIT',
+        sourceUserId: request.sourceUserId, sourceResourceType: 'farmAsset', sourceResourceId: asset.id,
+        destinationUserId: request.sourceUserId, destinationResourceType: 'farmAsset', destinationResourceId: target.id,
+        sourceRelationshipId: sourceRelationshipId, previousMovementId: previousMovement?.id,
+        quantity: request.quantity, unit: asset.unit, effectiveAt,
+        reason: request.reason ?? 'Partial transfer split', transactionId: request.transactionId,
+        createdBy: actorId, updatedBy: actorId,
+      },
+    });
+
+    await tx.resourceLineage.create({
+      data: {
+        sourceResourceType: 'farmAsset', sourceResourceId: asset.id, targetResourceType: 'farmAsset', targetResourceId: target.id,
+        lineageType: 'SPLIT_FROM', movementId: splitMovement.id, quantity: request.quantity, unit: asset.unit,
+        effectiveAt, reason: request.reason ?? 'Partial transfer split',
+        metadata: { transferRequestId: request.id, sourceRemainingQuantity: remainingQuantity },
+        createdBy: actorId, updatedBy: actorId,
+      },
+    });
+
+    await this.relationships.transferOwnerRelationship(
+      tx, 'farmAsset', target.id, request.sourceUserId, request.destinationUserId,
+      effectiveAt, request.reason ?? 'Partial transfer accepted', request.transactionId ?? undefined,
+    );
+    return target;
   }
 
   private async getPending(id: string) {
@@ -112,6 +187,7 @@ export class ResourceTransferRequestService {
     if (request.status !== 'PENDING' && request.status !== 'APPROVED') throw new BadRequestException('Transfer request is no longer pending.');
     return request;
   }
+
   private isPrivileged(role: UserRole) {
     return role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN || role === UserRole.STATE_ADMIN || role === UserRole.DISTRICT_ADMIN;
   }

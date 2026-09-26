@@ -422,3 +422,11 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Source quantities are closed to zero, source OWNER relationships are terminated, and a new target asset receives the combined quantity.
 - Each source produces a MERGE movement and MERGED_FROM lineage edge to the target.
 - Added focused merge lifecycle coverage; full backend regression is 32/32 suites and 302/302 tests passing.
+
+### 2026-09-26 — Partial Resource Transfer Engine
+- Enabled quantified partial FarmAsset transfer requests instead of rejecting quantity-bearing requests.
+- Acceptance is atomic: source quantity decreases, a target asset is created, SPLIT movement and SPLIT_FROM lineage are recorded, and the target ownership is transferred to the destination member.
+- Destination members do not need a Farm; the transferred quantity remains attached to the existing Farm as a new FarmAsset.
+- Added concurrent-request claiming and validation for quantity/unit/full-quantity boundaries.
+- Added 3 focused transfer-service tests covering request creation, the 10-to-5 partial transfer scenario, and full-quantity rejection.
+- Verification: 32/32 backend suites, 302/302 tests, production build, and git diff --check pass.

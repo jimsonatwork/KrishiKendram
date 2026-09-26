@@ -2024,3 +2024,13 @@ The FarmAsset lineage workflow now supports quantified resource merging in addit
 This keeps lineage reserved for genuine resource continuity transformations while preserving temporal ownership and movement history. Focused merge tests pass and the full backend regression remains green at 32/32 suites and 302/302 tests.
 
 Current execution frontier: expose merge as a first-class FarmAsset workspace action, then complete the next domain adoption pass for FarmRecord/Crop where the lifecycle semantics are appropriate.
+
+### 26 September 2026 — Partial Resource Transfer checkpoint
+
+ResourceTransferRequest now supports quantified partial FarmAsset transfers through the existing temporal relationship, movement, and lineage primitives. A request for a quantity remains PENDING until the destination member accepts it (or an authorized administrator completes it). Acceptance runs atomically: the source asset quantity is reduced, a child asset is created for the transferred quantity, SPLIT movement and SPLIT_FROM lineage are recorded, the child ownership is transferred to the destination member, and the request is completed. The destination member does not require a Farm.
+
+The lifecycle explicitly rejects zero/full-quantity transfers as partial transfers and validates units. Concurrent acceptance is guarded by an atomic request-state claim before resource mutation. The permanent Member ID remains the identity anchor for the request participants.
+
+Verification: transfer-specific 3/3 tests PASS; full backend regression 32/32 suites and 302/302 tests PASS; production build PASS; git diff --check PASS.
+
+Current execution frontier: expose pending transfer actions in the frontend, then unify resource timeline/history presentation across ownership, movement, split, merge, transfer, and evidence events.
