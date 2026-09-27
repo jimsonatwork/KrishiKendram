@@ -2583,6 +2583,7 @@ The canonical UserHistory read contract is now connected to the existing History
 - Added the centralized `api.userHistory()` client method.
 - HistoryPage now loads user history alongside farms, crops, transfers, and user relationship history.
 - User history entries are rendered as timeline events with action, version, timestamp, changed fields, and actor context.
+- Because User `READ_HISTORY` is currently a GLOBAL administrative capability, the user-history request is fail-soft for non-administrative users; their authorized relationship/lifecycle history remains available instead of the page failing on a legitimate 403.
 - No backend behavior, authorization rule, persistence model, or duplicate history engine was introduced.
 - Frontend TypeScript: PASS.
 - Frontend production build: PASS; 2311 modules transformed.

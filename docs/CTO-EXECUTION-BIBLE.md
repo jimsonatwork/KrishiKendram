@@ -631,7 +631,7 @@ Verification: Farm-focused tests 66/66; full backend regression 36 suites / 325 
 
 Exact next segment: **V0.5.11 application-wide runtime lifecycle verification and module coverage reconciliation**, using existing contracts only.
 
-## 2026-09-27 ºw^~)Þt V0.5.11 Application Runtime Verification
+## 2026-09-27 ï¿½w^~)ï¿½t V0.5.11 Application Runtime Verification
 
 Application-wide runtime verification is now closed for the current segment. A permanent E2E smoke layer covers versioned health, Registry module/lifecycle visibility, protected Farm access, and protected permission administration. The runtime pass also exposed and fixed a real missing JWT guard on PermissionAdminController; the existing JwtAuthGuard is now the sole boundary before its authorization checks. No new persistence model or parallel authorization path was introduced.
 
@@ -639,7 +639,7 @@ Verification: E2E 4/4; backend regression 36 suites / 325 tests; backend TypeScr
 
 Exact next segment: **V0.5.12 application-wide module coverage reconciliation and remaining runtime contract hardening**, using existing contracts only.
 
-## 2026-09-27 ºw^~)Þt V0.5.12 Registry Coverage Reconciliation
+## 2026-09-27 ï¿½w^~)ï¿½t V0.5.12 Registry Coverage Reconciliation
 
 Registry coverage is now executable rather than documentary: every resource must reference a registered module, and legacy permission declarations must remain covered by first-class capabilities with valid scopes. First-class capabilities remain canonical during the incremental legacy migration. No new abstraction was introduced.
 
@@ -722,6 +722,7 @@ Canonical UserHistory is now connected to the existing History workspace. The fr
 - Added `api.userHistory()` using the existing authenticated API transport.
 - HistoryPage now loads user history with farms, crops, transfers and relationship history.
 - Version, action, timestamp, changed fields and actor context are presented in the existing timeline.
+- User `READ_HISTORY` is currently GLOBAL/admin-only, so the user-history request is fail-soft for non-administrative users; authorized relationship/lifecycle history remains available.
 - No duplicate history engine, persistence model, authorization path, or backend rule was added.
 
 ### Verification

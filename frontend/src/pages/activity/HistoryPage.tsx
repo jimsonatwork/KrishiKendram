@@ -154,7 +154,7 @@ export function HistoryPage() {
             api.crops(token),
             api.transferIncomingPending(token),
             api.transferOutgoing(token),
-            api.userHistory(currentUserId, token),
+            api.userHistory(currentUserId, token).catch(() => []),
             api.userRelationshipHistory(currentUserId, token),
           ])
 
