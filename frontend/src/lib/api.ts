@@ -488,6 +488,26 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  returnFarmAssetCustody: (
+    farmId: string,
+    assetId: string,
+    data: {
+      effectiveAt?: string
+      reason?: string
+      transactionId?: string
+      evidenceReferenceType?: string
+      evidenceReferenceValue?: string
+      evidenceDocumentNumber?: string
+      evidenceIssuer?: string
+    },
+    token: string,
+  ) =>
+    request(`/farms/${farmId}/assets/${assetId}/custodian/return`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    }),
+
   assignFarmAssetCustodian: (
     farmId: string,
     assetId: string,

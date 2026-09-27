@@ -667,3 +667,15 @@ Authenticated end-to-end lifecycle smoke coverage, then the next concrete backen
 
 - Lease + custody focused suites: 6/6 tests PASS.
 
+
+
+## 2026-09-27 — FarmAsset Custody Return Lifecycle
+
+- Added explicit custody return using the existing CUSTODIAN relationship and RETURN movement type.
+- Added protected custody-return API and Farm workspace control.
+- Reused existing ASSIGN authorization, relationship, movement, evidence, and transaction primitives.
+
+### Verification
+
+- Custody + lease focused coverage: 7/7 tests PASS.
+

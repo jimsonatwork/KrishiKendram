@@ -335,6 +335,103 @@ export class ResourceRelationshipService {
     return { previousRelationship: current, destinationRelationship, movement, evidence };
   }
 
+  async returnCustodian(
+    tx: Prisma.TransactionClient,
+    resourceType: string,
+    resourceId: string,
+    ownerUserId: string,
+    effectiveAt: Date,
+    actorUserId: string,
+    reason: string | undefined,
+    transactionId: string | undefined,
+    evidenceInput?: {
+      referenceType: string;
+      referenceValue: string;
+      documentNumber?: string;
+      issuer?: string;
+    },
+  ) {
+    const current = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        relationshipType: ResourceRelationshipType.CUSTODIAN,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!current) {
+      throw new Error('Active custodian not found.');
+    }
+
+    if (effectiveAt < current.validFrom) {
+      throw new Error('Custody return cannot precede custody start.');
+    }
+
+    const owner = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        relationshipType: ResourceRelationshipType.OWNER,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    const evidence = evidenceInput
+      ? await tx.resourceEvidence.create({
+          data: {
+            evidenceType: transactionId ? 'TRANSACTION' : 'DOCUMENT',
+            referenceType: evidenceInput.referenceType,
+            referenceValue: evidenceInput.referenceValue,
+            documentNumber: evidenceInput.documentNumber,
+            issuer: evidenceInput.issuer,
+            createdBy: actorUserId,
+            updatedBy: actorUserId,
+          },
+        })
+      : undefined;
+
+    const ended = await tx.resourceRelationship.update({
+      where: { id: current.id },
+      data: {
+        status: ResourceRelationshipStatus.TERMINATED,
+        endedAt: effectiveAt,
+        validUntil: effectiveAt,
+        endedReason: reason ?? 'Custody returned to owner',
+        evidenceId: evidence?.id,
+        updatedBy: actorUserId,
+      },
+    });
+
+    const previousMovement = await tx.resourceMovement.findFirst({
+      where: { resourceType, resourceId },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const movement = await tx.resourceMovement.create({
+      data: {
+        resourceType,
+        resourceId,
+        movementType: ResourceMovementType.RETURN,
+        sourceUserId: current.userId,
+        destinationUserId: owner?.userId ?? ownerUserId,
+        sourceRelationshipId: current.id,
+        destinationRelationshipId: owner?.id,
+        previousMovementId: previousMovement?.id,
+        effectiveAt,
+        reason: reason ?? 'Custody returned to owner',
+        transactionId,
+        evidenceId: evidence?.id,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      },
+    });
+
+    return { relationship: ended, owner, movement, evidence };
+  }
+
   async assignLessee(
     tx: Prisma.TransactionClient,
     resourceType: string,

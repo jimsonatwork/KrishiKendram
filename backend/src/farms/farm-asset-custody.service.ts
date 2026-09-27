@@ -17,6 +17,95 @@ export class FarmAssetCustodyService {
     private readonly relationships: ResourceRelationshipService,
   ) {}
 
+  async returnCustody(
+    farmId: string,
+    assetId: string,
+    dto: TransferResourceDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    const asset = await this.prisma.farmAsset.findUnique({
+      where: { id: assetId },
+      select: {
+        id: true,
+        farmId: true,
+        createdAt: true,
+        farm: { select: { ownerId: true } },
+      },
+    });
+
+    if (!asset || asset.farmId !== farmId) {
+      throw new NotFoundException('Asset not found');
+    }
+
+    const owner = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.ASSIGN,
+      resourceId: assetId,
+      farmId,
+      ownerId: owner?.userId ?? asset.farm.ownerId,
+    });
+
+    const effectiveAt = dto.effectiveAt ? new Date(dto.effectiveAt) : new Date();
+    if (Number.isNaN(effectiveAt.getTime()) || effectiveAt < asset.createdAt) {
+      throw new BadRequestException('Custody return effectiveAt is invalid.');
+    }
+
+    const hasEvidenceType = Boolean(dto.evidenceReferenceType);
+    const hasEvidenceValue = Boolean(dto.evidenceReferenceValue);
+    if (hasEvidenceType !== hasEvidenceValue) {
+      throw new BadRequestException(
+        'Evidence reference type and value must be supplied together.',
+      );
+    }
+
+    const evidenceInput = hasEvidenceType
+      ? {
+          referenceType: dto.evidenceReferenceType as string,
+          referenceValue: dto.evidenceReferenceValue as string,
+          documentNumber: dto.evidenceDocumentNumber,
+          issuer: dto.evidenceIssuer,
+        }
+      : undefined;
+
+    return this.prisma.$transaction(async (tx) => {
+      const result = await this.relationships.returnCustodian(
+        tx,
+        'farmAsset',
+        assetId,
+        owner?.userId ?? asset.farm.ownerId,
+        effectiveAt,
+        userId,
+        dto.reason,
+        dto.transactionId,
+        evidenceInput,
+      );
+
+      return {
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        movementType: ResourceMovementType.RETURN,
+        previousCustodian: result.relationship.userId,
+        owner: result.owner?.userId,
+        movement: result.movement,
+        evidence: result.evidence,
+      };
+    });
+  }
+
   async assignCustodian(
     farmId: string,
     assetId: string,

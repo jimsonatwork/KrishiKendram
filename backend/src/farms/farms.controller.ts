@@ -206,6 +206,22 @@ create(
     );
   }
 
+  @Post(':farmId/assets/:assetId/custodian/return')
+  returnAssetCustody(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+    @Body() dto: TransferResourceDto,
+  ) {
+    return this.farmsService.returnFarmAssetCustody(
+      farmId,
+      assetId,
+      dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Post(':farmId/assets/:assetId/lease')
   leaseAsset(
     @Param('farmId') farmId: string,

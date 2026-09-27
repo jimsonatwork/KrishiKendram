@@ -9,6 +9,7 @@ describe('FarmAssetCustodyService', () => {
   const assertCan = jest.fn();
   const transaction = jest.fn();
   const assignCustodian = jest.fn();
+  const returnCustodian = jest.fn();
   const findDestination = jest.fn();
 
   const prisma = {
@@ -23,6 +24,7 @@ describe('FarmAssetCustodyService', () => {
 
   const relationships = {
     assignCustodian,
+    returnCustodian,
   } as any;
 
   beforeEach(() => {
@@ -45,6 +47,12 @@ describe('FarmAssetCustodyService', () => {
     transaction.mockImplementation(async (callback: (tx: any) => unknown) =>
       callback({ user: { findUnique: findDestination } }),
     );
+    returnCustodian.mockResolvedValue({
+      relationship: { userId: 'custodian-1' },
+      owner: { userId: 'owner-1' },
+      movement: { id: 'movement-return' },
+      evidence: undefined,
+    });
     assignCustodian.mockResolvedValue({
       previousRelationship: { userId: 'old-custodian' },
       destinationRelationship: { id: 'relationship-2', userId: 'custodian-1' },
@@ -94,6 +102,37 @@ describe('FarmAssetCustodyService', () => {
     );
     expect(result.custodian).toBe('custodian-1');
     expect(result.movementType).toBe('CUSTODY_CHANGE');
+  });
+
+  it('returns custody to the owner through the canonical relationship service', async () => {
+    const service = new FarmAssetCustodyService(
+      prisma,
+      authorization,
+      relationships,
+    );
+
+    const result = await service.returnCustody(
+      'farm-1',
+      'asset-1',
+      { reason: 'Equipment returned' },
+      'owner-1',
+      'FARMER' as any,
+    );
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(returnCustodian).toHaveBeenCalledWith(
+      expect.anything(),
+      'farmAsset',
+      'asset-1',
+      'owner-1',
+      expect.any(Date),
+      'owner-1',
+      'Equipment returned',
+      undefined,
+      undefined,
+    );
+    expect(result.owner).toBe('owner-1');
+    expect(result.movementType).toBe('RETURN');
   });
 
   it('does not enter the transaction when authorization fails', async () => {

@@ -382,6 +382,16 @@ export class FarmsService {
     );
   }
 
+  async returnFarmAssetCustody(
+    farmId: string,
+    assetId: string,
+    dto: TransferResourceDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.custody.returnCustody(farmId, assetId, dto, userId, role);
+  }
+
   async leaseFarmAsset(
     farmId: string,
     assetId: string,

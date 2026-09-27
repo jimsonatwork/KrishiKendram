@@ -28,6 +28,7 @@ export function FarmAssetLeasePanel({ farmId, asset, token, onComplete, onError 
   const [saving, setSaving] = useState(false)
   const [ending, setEnding] = useState(false)
   const [custodySaving, setCustodySaving] = useState(false)
+  const [custodyReturning, setCustodyReturning] = useState(false)
 
   const validUntilIso = useMemo(() => {
     if (!validUntil) return ''
@@ -71,6 +72,23 @@ export function FarmAssetLeasePanel({ farmId, asset, token, onComplete, onError 
       onError(error instanceof Error ? error.message : 'Unable to assign custodian.')
     } finally {
       setCustodySaving(false)
+    }
+  }
+
+  const returnCustody = async () => {
+    if (!token) return
+    try {
+      setCustodyReturning(true)
+      onError('')
+      await api.returnFarmAssetCustody(farmId, asset.id, {
+        reason: reason.trim() || 'Asset returned to owner',
+      }, token)
+      setReason('')
+      await onComplete()
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Unable to return custody.')
+    } finally {
+      setCustodyReturning(false)
     }
   }
 
@@ -138,6 +156,9 @@ export function FarmAssetLeasePanel({ farmId, asset, token, onComplete, onError 
           <div className="mt-3 flex flex-wrap justify-end gap-2">
             <Button type="button" size="sm" variant="outline" disabled={ending} onClick={() => void endLease()}>
               {ending ? 'Ending…' : 'End active lease'}
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={custodyReturning} onClick={() => void returnCustody()}>
+              {custodyReturning ? 'Returning…' : 'Return to owner'}
             </Button>
             <Button type="button" size="sm" variant="outline" disabled={custodySaving || !memberId.trim()} onClick={() => void assignCustodian()}>
               {custodySaving ? 'Assigning…' : 'Assign custodian'}
