@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `79821f0` |
-| Current checkpoint message | FarmAsset lease lifecycle foundation |
+| Current checkpoint | `a94efe1` |
+| Current checkpoint message | FarmAsset lease lifecycle coverage + workspace controls |
 | Current primary phase | V0.4 — Concrete Domain Lifecycle Adoption |
-| Current platform priority | Close FarmAsset lease lifecycle → runtime verification → next concrete lifecycle only where existing primitives fit |
+| Current platform priority | Runtime lifecycle smoke verification → next concrete lifecycle only where existing primitives fit |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Close V0.3 lifecycle checkpoint, then adopt the next domain only where concrete lifecycle semantics exist |
+| Next major target | Runtime lifecycle verification, then next concrete domain capability |
 
 ## Current Status
 
