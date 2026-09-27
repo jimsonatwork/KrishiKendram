@@ -1027,6 +1027,7 @@ function PortalLayout({
             variant="ghost"
             size="icon"
             className="ml-auto md:hidden"
+            aria-label="Close navigation menu"
             onClick={() =>
               setMobileOpen(false)
             }
@@ -1111,6 +1112,7 @@ function PortalLayout({
             variant="ghost"
             size="icon"
             className="md:hidden"
+            aria-label="Open navigation menu"
             onClick={() =>
               setMobileOpen(true)
             }
