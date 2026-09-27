@@ -2188,3 +2188,16 @@ Completed the frontend adoption of the existing atomic FarmAsset split lifecycle
 Verification: FarmResourceLineageService 4/4 tests PASS; frontend production build PASS; `git diff --check` PASS.
 
 Next frontier: continue only with the next explicit business lifecycle that fits the established platform primitives; otherwise keep the architecture stable and use the planned verification pass.
+
+### 27 September 2026 — User Resource Relationship History checkpoint
+
+Completed the documented User Profile Relationship History segment using the existing temporal ResourceRelationship persistence model.
+
+- Added an authorization-protected GET /users/:id/relationships/history read path.
+- History is bounded to a maximum of 200 records and ordered by relationship start time, preserving the temporal model without creating a second history system.
+- Exposes relationship type/status, resource identity, validity window, termination reason, evidence reference, and attribution metadata.
+- Integrated the result into the existing Users Activity workspace alongside audit activity.
+- Added focused UsersService coverage for bounded relationship-history retrieval.
+- No schema migration, new resource model, or parallel authorization/history mechanism was introduced.
+
+Current execution frontier: continue concrete module adoption only where the existing platform contract is explicit; otherwise move to the planned full regression/runtime verification pass.

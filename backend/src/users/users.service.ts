@@ -1403,6 +1403,42 @@ updateData.refreshTokenHash = null
     )
   }
 
+  async getRelationshipHistory(id: string, limit = 100) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    })
+
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    return this.prisma.resourceRelationship.findMany({
+      where: { userId: id },
+      orderBy: [
+        { validFrom: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      take: Math.min(Math.max(limit, 1), 200),
+      select: {
+        id: true,
+        resourceType: true,
+        resourceId: true,
+        relationshipType: true,
+        status: true,
+        validFrom: true,
+        validUntil: true,
+        endedAt: true,
+        endedReason: true,
+        evidenceId: true,
+        createdBy: true,
+        updatedBy: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+  }
+
   // ==========================================================
   // PART 09 END
   // ==========================================================

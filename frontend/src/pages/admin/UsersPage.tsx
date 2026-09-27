@@ -42,6 +42,7 @@ import {
   api,
   type AdminUser,
   type AuditEvent,
+  type UserRelationshipHistory,
   type UpdateAdminUserData,
 } from '@/lib/api'
 
@@ -287,6 +288,9 @@ export function UsersPage() {
 
   const [activity, setActivity] =
     useState<AuditEvent[]>([])
+
+  const [relationships, setRelationships] =
+    useState<UserRelationshipHistory[]>([])
 
   const [isActivityLoading, setIsActivityLoading] =
     useState(false)
@@ -921,17 +925,17 @@ export function UsersPage() {
 
     setActivityUser(user)
     setActivity([])
+    setRelationships([])
     setIsActivityLoading(true)
 
     try {
-      const result =
-        await api.userActivity(
-          user.id,
-          accessToken,
-          50,
-        )
+      const [activityResult, relationshipResult] = await Promise.all([
+        api.userActivity(user.id, accessToken, 50),
+        api.userRelationshipHistory(user.id, accessToken, 100),
+      ])
 
-      setActivity(result)
+      setActivity(activityResult)
+      setRelationships(relationshipResult)
     } catch (err) {
       setError(
         err instanceof Error
@@ -950,6 +954,7 @@ export function UsersPage() {
 
     setActivityUser(null)
     setActivity([])
+    setRelationships([])
   }
 
   // ==========================================================
@@ -1265,6 +1270,7 @@ export function UsersPage() {
       <UserActivityDialog
         user={activityUser}
         activity={activity}
+        relationships={relationships}
         isLoading={isActivityLoading}
         onClose={closeActivity}
         formatRole={formatRole}

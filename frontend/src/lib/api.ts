@@ -107,6 +107,23 @@ export type TransferRequest = {
   destinationUser?: { id: string; memberId: string | null; name: string }
 }
 
+export type UserRelationshipHistory = {
+  id: string
+  resourceType: string
+  resourceId: string
+  relationshipType: string
+  status: string
+  validFrom: string
+  validUntil: string | null
+  endedAt: string | null
+  endedReason: string | null
+  evidenceId: string | null
+  createdBy: string
+  updatedBy: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type AuditEvent = {
   id: string
   actorId: string | null
@@ -230,6 +247,20 @@ export const api = {
       {
         headers: {
           Authorization: `Bearer ${token}`,
+        },
+      },
+    ),
+
+  userRelationshipHistory: (
+    id: string,
+    token: string,
+    limit = 100,
+  ) =>
+    request<UserRelationshipHistory[]>(
+      '/users/' + id + '/relationships/history?limit=' + limit,
+      {
+        headers: {
+          Authorization: 'Bearer ' + token,
         },
       },
     ),

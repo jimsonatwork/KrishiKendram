@@ -1,3 +1,10 @@
+## 2026-09-27 — User Resource Relationship History
+
+- Added an authorization-protected user relationship-history endpoint backed by the canonical ResourceRelationship model.
+- Added bounded retrieval and temporal ordering for historical ownership/custody/lease and other resource relationships.
+- Surfaced relationship history in the existing Users Activity workspace.
+- Added focused service coverage; backend build, frontend production build, and git diff --check passed.
+
 # KrishiKendram — CTO Changelog
 
 This is the concise operational history of architectural milestones.

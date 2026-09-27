@@ -467,3 +467,11 @@ These records support one another. None should silently replace another.
 - Existing Git checkpoints are the recovery mechanism; no additional recovery framework added.
 - V0.3 promotion/recovery checkpoint CLOSED.
 
+### 27 Sep 2026 — User Resource Relationship History segment
+
+- Completed the documented User Profile Relationship History segment.
+- Added an authorization-protected, bounded user relationship-history read path over the canonical ResourceRelationship table.
+- Reused the existing Users Activity workspace for presentation; no parallel history engine was introduced.
+- Focused UsersService/controller coverage passed; frontend production build passed; backend TypeScript build passed.
+- Module status remains conservative: the Users product module is still PARTIAL overall, while this relationship-history segment is COMPLETE.
+- Next controlled activity remains concrete lifecycle/module adoption only where a real contract exists, followed by the deferred full regression/runtime verification pass.

@@ -10,6 +10,9 @@ describe('UsersService - centralized field policy', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    resourceRelationship: {
+      findMany: jest.fn(),
+    },
     $transaction: jest.fn(async (callback) =>
       callback(prisma),
     ),
@@ -387,6 +390,39 @@ describe('UsersService - centralized field policy', () => {
       ),
     ).rejects.toThrow(
       BadRequestException,
+    )
+  })
+
+  it('returns a bounded chronological resource relationship history for a user', async () => {
+    const relationships = [
+      {
+        id: 'relationship-1',
+        resourceType: 'farmAsset',
+        resourceId: 'asset-1',
+        relationshipType: 'OWNER',
+        status: 'TERMINATED',
+        validFrom: new Date('2026-09-01T00:00:00.000Z'),
+        validUntil: new Date('2026-09-20T00:00:00.000Z'),
+        endedAt: new Date('2026-09-20T00:00:00.000Z'),
+        endedReason: 'Transferred',
+        evidenceId: null,
+        createdBy: 'actor-1',
+        updatedBy: 'actor-1',
+        createdAt: new Date('2026-09-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-09-20T00:00:00.000Z'),
+      },
+    ]
+
+    prisma.resourceRelationship.findMany.mockResolvedValue(relationships)
+
+    const result = await service.getRelationshipHistory('user-id', 999)
+
+    expect(result).toEqual(relationships)
+    expect(prisma.resourceRelationship.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user-id' },
+        take: 200,
+      }),
     )
   })
 

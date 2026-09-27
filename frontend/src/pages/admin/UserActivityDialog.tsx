@@ -16,11 +16,13 @@ import {
 import type {
   AdminUser,
   AuditEvent,
+  UserRelationshipHistory,
 } from '@/lib/api'
 
 type UserActivityDialogProps = {
   user: AdminUser | null
   activity: AuditEvent[]
+  relationships: UserRelationshipHistory[]
   isLoading: boolean
   onClose: () => void
   formatRole: (value: string) => string
@@ -32,6 +34,7 @@ type UserActivityDialogProps = {
 export function UserActivityDialog({
   user,
   activity,
+  relationships,
   isLoading,
   onClose,
   formatRole,
@@ -52,12 +55,15 @@ export function UserActivityDialog({
     >
       {isLoading ? (
         <LoadingState />
-      ) : activity.length === 0 ? (
-        <EmptyState
-          title="No recent activity"
-          description="No activity records were returned for this user."
-        />
       ) : (
+        <>
+          <RelationshipHistorySection relationships={relationships} formatDateTime={formatDateTime} />
+          {activity.length === 0 ? (
+            <EmptyState
+              title="No recent activity"
+              description="No activity records were returned for this user."
+            />
+          ) : (
         <div className="divide-y rounded-lg border">
           {activity.map(
             (event, index) => (
@@ -78,9 +84,54 @@ export function UserActivityDialog({
             ),
           )}
         </div>
+          )}
+        </>
       )}
     </Modal>
   )
+}
+
+
+function RelationshipHistorySection({
+  relationships,
+  formatDateTime,
+}: {
+  relationships: UserRelationshipHistory[]
+  formatDateTime: (value?: string | null) => string
+}) {
+  return (
+    <section className="mb-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold">Resource relationships</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Temporal ownership, custody, lease and other resource relationships.</p>
+        </div>
+        <span className="text-xs text-muted-foreground">{relationships.length} record{relationships.length === 1 ? '' : 's'}</span>
+      </div>
+      {relationships.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No resource relationships recorded for this user.</div>
+      ) : (
+        <div className="divide-y rounded-lg border">
+          {relationships.map((item) => (
+            <div key={item.id} className="p-3">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm font-medium">{formatEnum(item.relationshipType)} · {item.resourceType}</div>
+                <div className="text-xs text-muted-foreground">{formatDateTime(item.validFrom)}</div>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">Resource: {item.resourceId} · Status: {formatEnum(item.status)}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{item.endedAt ? 'Ended: ' + formatDateTime(item.endedAt) : item.validUntil ? 'Valid until: ' + formatDateTime(item.validUntil) : 'No scheduled end'}</div>
+              {item.endedReason ? <div className="mt-1 text-xs text-muted-foreground">Reason: {item.endedReason}</div> : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function formatEnum(value?: string) {
+  if (!value) return '—'
+  return value.toLowerCase().split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
 }
 
 // ============================================================

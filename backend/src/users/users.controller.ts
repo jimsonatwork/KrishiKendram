@@ -123,6 +123,25 @@ export class UsersController {
   //
   // ==========================================================
 
+  @Get(':id/relationships/history')
+  async getRelationshipHistory(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    await this.authorizationService.assertCan({
+      user: req.user,
+      module: 'platform',
+      resource: 'user',
+      action: AuthorizationAction.READ_HISTORY,
+    })
+
+    return this.usersService.getRelationshipHistory(
+      id,
+      limit ? Number(limit) : 100,
+    )
+  }
+
   @Get(':id/history')
   async getHistory(
     @Req() req: any,
