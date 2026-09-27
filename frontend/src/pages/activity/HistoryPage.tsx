@@ -829,6 +829,9 @@ export function HistoryPage() {
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     Request {item.requestNumber} · {formatDate(item.requestedAt)}
+                    {item.effectiveAt ? ' · Effective ' + formatDate(item.effectiveAt) : ''}
+                    {item.expiresAt ? ' · Expires ' + formatDate(item.expiresAt) : ''}
+                    {item.evidenceId ? ' · Evidence linked' : ''}
                   </div>
                 </div>
               )
@@ -897,6 +900,9 @@ export function HistoryPage() {
                   <div className="mt-2 text-xs text-muted-foreground">
                     Request {item.requestNumber} · {formatDate(item.requestedAt)}
                     {item.transactionId ? ' · ' + item.transactionId : ''}
+                    {item.effectiveAt ? ' · Effective ' + formatDate(item.effectiveAt) : ''}
+                    {item.expiresAt ? ' · Expires ' + formatDate(item.expiresAt) : ''}
+                    {item.evidenceId ? ' · Evidence linked' : ''}
                   </div>
                 </div>
               )
