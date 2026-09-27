@@ -335,7 +335,7 @@ Current authoritative sequence:
 4. **Next controlled activity:** choose the next concrete operational lifecycle only from an explicit product/business contract that fits existing primitives. Do not add a new domain model merely because an enum or relationship type exists.
 5. **Deferred verification pass:** full backend regression and runtime lifecycle smoke verification remains a dedicated checking pass, not a reason to block implementation while the user has explicitly asked to continue execution.
 
-Latest repository checkpoint: `723f159`.
+Latest repository checkpoint: `2dfc2c5`.
 
 Latest coherent implementation flow remains:
 

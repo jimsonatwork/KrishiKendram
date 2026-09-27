@@ -14,8 +14,8 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `723f159` |
-| Current checkpoint message | Unified resource history timeline + CTO execution-position synchronization |
+| Current checkpoint | `2dfc2c5` |
+| Current checkpoint message | Expose FarmAsset split lifecycle in Farm workspace |
 | Current primary phase | V0.4 — Concrete Domain Lifecycle Adoption |
 | Current platform priority | Runtime lifecycle smoke verification → next concrete lifecycle only where existing primitives fit |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
