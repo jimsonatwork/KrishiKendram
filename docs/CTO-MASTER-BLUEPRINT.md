@@ -2158,6 +2158,6 @@ Extended the existing FarmAsset lifecycle with leasing using already-defined pla
 - Added protected `POST /farms/:farmId/assets/:assetId/lease` route.
 - No new Prisma resource model or parallel lifecycle mechanism introduced.
 
-Verification: focused Farms/Relationship tests 42/42 PASS; full backend regression 35/35 suites, 318/318 tests PASS; backend build PASS.
+Verification: focused Farms/Relationship tests 42/42 PASS; full backend regression 35/35 suites, 318/318 tests PASS; backend build PASS. Dedicated lease/custody service coverage: 6/6 PASS.
 
 Next frontier: verify lease runtime boundary and then expose the completed lifecycle through the existing Farm workspace.

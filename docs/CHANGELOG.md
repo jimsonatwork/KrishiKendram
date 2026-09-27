@@ -656,3 +656,14 @@ Runtime lease/lease-end boundary verification, then the next concrete lifecycle 
 ### Next target
 
 Authenticated end-to-end lifecycle smoke coverage, then the next concrete backend/frontend lifecycle slice.
+
+
+## 2026-09-27 — FarmAsset Lease/Custody Focused Coverage
+
+- Added dedicated FarmAsset lease orchestration tests covering bounded validity, canonical relationship delegation, lease termination, and authorization ordering.
+- Existing custody focused coverage remains green.
+
+### Verification
+
+- Lease + custody focused suites: 6/6 tests PASS.
+
