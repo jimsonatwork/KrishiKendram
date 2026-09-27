@@ -710,7 +710,7 @@ The authenticated history/relationship read segment is now closed using existing
 Proceed to the planned **UI/runtime integration pass** across the completed module contracts, using existing APIs and centralized capability/field-policy presentation without introducing duplicate backend rules or new infrastructure.
 
 
-## 2026-09-27 — V0.5.18 User History UI/Runtime Integration
+## 2026-09-27 — V0.5.19 User History UI/Runtime Integration
 
 ### COMPLETE
 
@@ -737,3 +737,22 @@ Canonical UserHistory is now connected to the existing History workspace. The fr
 ### Next execution target
 
 **Cross-module UI/runtime coverage and compatibility pass.** Continue closing real integration gaps only; preserve existing working UI, centralized contracts, and compatibility guardrails. Avoid speculative redesign or new infrastructure.
+
+
+## 2026-09-27 — V0.5.20 UI Compatibility & Runtime Readiness
+
+### COMPLETE
+
+The cross-module UI/runtime completion pass is closed for the current scope without redesigning stable surfaces.
+
+- Verified responsive mobile navigation, horizontal overflow protection, safe-area handling, reduced-motion support, and visual-effects off support.
+- Added accessible labels to mobile navigation open/close controls.
+- Reviewed major loading, empty, and error-state patterns; existing coverage is sufficient, so no duplicate retry framework was introduced.
+- Runtime API health: /api/v1/health returned status ok.
+- Frontend TypeScript and production build PASS; 2311 modules transformed.
+- git diff --check PASS; working tree clean after checkpoint.
+- Existing ~608 kB frontend bundle warning remains deferred to a dedicated performance pass.
+
+### Next execution target
+
+**Production hardening pass:** verify remaining backend/frontend runtime boundaries, security/authorization regressions, and release checks without speculative infrastructure.

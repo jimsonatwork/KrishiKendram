@@ -2595,3 +2595,22 @@ The canonical UserHistory read contract is now connected to the existing History
 ### Next target
 
 **Cross-module UI/runtime coverage and compatibility pass** across the completed contracts, prioritizing real integration gaps and preserving the existing compact/futuristic UI rather than redesigning working surfaces.
+
+
+## 2026-09-27 — V0.5.20 UI Compatibility & Runtime Readiness
+
+### COMPLETE
+
+The cross-module UI/runtime completion pass is closed for the current scope without redesigning stable surfaces.
+
+- Verified the shared shell has responsive mobile navigation, horizontal overflow protection, safe-area handling, reduced-motion support, and an explicit visual-effects off path.
+- Added accessible labels to the mobile navigation open/close controls.
+- Reviewed major page loading, empty, and error-state coverage; existing patterns are sufficient, so no duplicate global retry framework was introduced.
+- Runtime API health verified: /api/v1/health returned status ok.
+- Frontend TypeScript and production build PASS; 2311 modules transformed.
+- git diff --check PASS; working tree clean after checkpoint.
+- Existing ~608 kB frontend bundle warning remains a deliberate future performance item.
+
+### Next execution target
+
+**Production hardening pass:** exercise the remaining backend/frontend runtime boundaries, focusing on real defects, security/authorization regressions, and release checks—not speculative infrastructure.
