@@ -622,3 +622,11 @@ Next: V0.5.9 Intake/FarmRecord completion gate and module-wide history/provenanc
 Intake/FarmRecord is closed for the current gate. Intake is interpretation-only; authorization precedes extraction; Crop creation delegates to CropsService; FarmRecord creation delegates to FarmsService; FarmRecord remains immutable with READ/CREATE Registry capabilities. Verification: IntakeService 8/8; Crop focused gate 17/17; frontend production build PASS.
 
 Next: V0.5.10 Farm module completion gate.
+
+## 2026-09-27 — V0.5.10 Farm Module Completion Gate
+
+Farm has passed the current completion gate. Farm lifecycle ownership remains canonical; FarmAsset custody/lease/lineage capabilities use the existing relationship, movement, lineage, and evidence primitives; FarmRecord remains immutable historical data; and authorization/Registry remain centralized.
+
+Verification: Farm-focused tests 66/66; full backend regression 36 suites / 325 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS. Two stale Farm specs were updated to the current constructor/DTO contracts; no production implementation change was required.
+
+Exact next segment: **V0.5.11 application-wide runtime lifecycle verification and module coverage reconciliation**, using existing contracts only.

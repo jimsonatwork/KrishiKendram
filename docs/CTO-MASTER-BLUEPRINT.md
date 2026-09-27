@@ -2458,3 +2458,20 @@ Intake/FarmRecord passed the current completion gate. Intake remains an interpre
 ### Next target
 
 V0.5.10 — Farm module completion gate: farm lifecycle, asset/record/crop composition, relationship/movement/history consistency, and Super Admin contract coverage.
+
+## 2026-09-27 — V0.5.10 Farm Module Completion Gate
+
+The Farm module has passed the current completion gate without introducing a second lifecycle, authorization, or history path.
+
+- Farm lifecycle remains canonical in `FarmsService` and `FarmResourceLifecycleService`.
+- FarmAsset custody/lease lifecycles use the existing relationship, movement, lineage, and evidence primitives.
+- FarmAsset lineage/merge/split behavior remains centralized in `FarmResourceLineageService`.
+- FarmRecord remains immutable historical observation/provenance data; no artificial UPDATE/DELETE lifecycle was introduced.
+- Farm and child access remain behind centralized Authorization/Registry contracts.
+- Frontend Farm workspace remains connected to the canonical APIs and lifecycle surfaces.
+- Verification: Farm-focused backend tests 66/66; full backend regression 36 suites / 325 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS.
+- Two stale Farm spec contracts were reconciled with the current service/DTO signatures; no production implementation change was required.
+
+### Next target
+
+V0.5.11 — application-wide runtime lifecycle verification and module coverage reconciliation, using existing contracts only.

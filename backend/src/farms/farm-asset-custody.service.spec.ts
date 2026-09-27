@@ -114,7 +114,7 @@ describe('FarmAssetCustodyService', () => {
     const result = await service.returnCustody(
       'farm-1',
       'asset-1',
-      { reason: 'Equipment returned' },
+      { destinationUserId: 'owner-1', reason: 'Equipment returned' },
       'owner-1',
       'FARMER' as any,
     );

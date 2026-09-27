@@ -66,6 +66,10 @@ describe('FarmsService', () => {
       authorization,
       registry,
       relationships,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
     );
   });
 
