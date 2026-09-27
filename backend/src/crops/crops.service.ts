@@ -480,6 +480,24 @@ export class CropsService {
     return result.value as string;
   }
 
+  async restore(
+    userId: string,
+    role: UserRole,
+    cropId: string,
+  ) {
+    const cropContext = await this.prisma.crop.findFirst({
+      where: { id: cropId, deletedAt: { not: null } },
+      select: { id: true, farmId: true, farm: { select: { id: true, ownerId: true } } },
+    });
+    if (!cropContext) throw new NotFoundException('Archived crop not found.');
+    await this.authorization.assertCan({ user: { userId, role }, module: 'farms', resource: 'crop', action: AuthorizationAction.RESTORE, resourceId: cropContext.id, farmId: cropContext.farmId, ownerId: cropContext.farm.ownerId });
+    return this.prisma.$transaction(async (tx) => {
+      const crop = await tx.crop.update({ where: { id: cropId }, data: { deletedAt: null } });
+      await this.relationships.createOwnerRelationship(tx, 'crop', crop.id, cropContext.farm.ownerId, new Date());
+      return crop;
+    });
+  }
+
   async archive(
     userId: string,
     role: UserRole,

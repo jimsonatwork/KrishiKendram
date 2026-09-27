@@ -74,6 +74,14 @@ export const cropResource: ResourceDefinition = {
         AuthorizationScope.GLOBAL,
       ],
     },
+    {
+      action: AuthorizationAction.RESTORE,
+      scopes: [
+        AuthorizationScope.OWN,
+        AuthorizationScope.FARM,
+        AuthorizationScope.GLOBAL,
+      ],
+    },
   ],
 
   permissions: [
@@ -81,6 +89,7 @@ export const cropResource: ResourceDefinition = {
     'CREATE',
     'UPDATE',
     'DELETE',
+    'RESTORE',
   ],
 
   scopes: [

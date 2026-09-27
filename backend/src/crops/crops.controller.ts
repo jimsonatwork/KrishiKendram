@@ -84,6 +84,18 @@ export class CropsController {
     );
   }
 
+  @Post(':id/restore')
+  restore(
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    return this.cropsService.restore(
+      req.user.userId,
+      req.user.role,
+      id,
+    );
+  }
+
   @Delete(':id')
   archive(
     @Req() req: any,
