@@ -5,12 +5,14 @@ import {
   Param,
 } from '@nestjs/common';
 
+import { ModuleLifecycleService } from './module-lifecycle.service';
 import { RegistryService } from './registry.service';
 
 @Controller('registry')
 export class RegistryController {
   constructor(
     private readonly registry: RegistryService,
+    private readonly lifecycle: ModuleLifecycleService,
   ) {}
 
   @Get()
@@ -26,6 +28,13 @@ export class RegistryController {
   @Get('fields')
   getFields() {
     return this.registry.getAllFields();
+  }
+
+  @Get('modules/status')
+  getModuleStatuses() {
+    return this.registry.getAllModules().map((module) =>
+      this.lifecycle.getStatus(module.id),
+    );
   }
 
   @Get(':name')

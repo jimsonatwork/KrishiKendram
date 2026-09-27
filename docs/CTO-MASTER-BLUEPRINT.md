@@ -2383,3 +2383,10 @@ Verification: TypeScript build PASS; git diff --check PASS. Vite production bund
 - Frontend TypeScript verification passes. Backend TypeScript verification still reports two pre-existing unrelated test compile errors in FarmAsset custody/FarmsService specs; no new error was reported from the permission administration changes.
 
 Next: continue platform administration integration and progressively expose safe control actions only where their existing backend mutation/audit paths are already authoritative.
+
+### V0.5.6.1 — Platform administration continuation
+
+- **Roles workspace:** `/app/roles` now exposes persisted role-to-permission coverage from the protected Permission Administration API.
+- **Module operational status:** `GET /api/v1/registry/modules/status` exposes the existing ModuleLifecycleService evaluation, including lifecycle state, operational state, and unavailable dependencies.
+- **Architecture guardrail:** role presentation does not become a second authorization engine, and module lifecycle presentation does not become a second frontend lifecycle engine.
+- **Lifecycle mutation guardrail:** current registry module definitions are in-memory/static contracts; no fake persistence controls were added. Mutation will be introduced only when a canonical persisted lifecycle owner exists.

@@ -1,5 +1,5 @@
 import { request } from '@/lib/api'
-import type { FieldDefinition, ModuleDefinition, ResourceDefinition } from './contracts'
+import type { FieldDefinition, ModuleDefinition, ModuleLifecycleStatus, ResourceDefinition } from './contracts'
 
 export const platformRegistry = {
   resources: (token: string) =>
@@ -12,6 +12,10 @@ export const platformRegistry = {
     }),
   modules: (token: string) =>
     request<ModuleDefinition[]>('/registry/modules', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  moduleStatuses: (token: string) =>
+    request<ModuleLifecycleStatus[]>('/registry/modules/status', {
       headers: { Authorization: `Bearer ${token}` },
     }),
   fields: (token: string) =>

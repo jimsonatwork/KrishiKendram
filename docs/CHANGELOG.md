@@ -825,3 +825,11 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Reused existing PermissionService and AuthorizationService; no duplicate policy engine.
 - Frontend TypeScript PASS.
 - Backend TypeScript reports two unrelated existing test compilation errors; permission files introduced no reported TypeScript errors.
+
+## 2026-09-27 — V0.5.6.1 Platform administration continuation
+
+- Added a Super Admin Roles workspace at `/app/roles`.
+- Roles are derived from the protected Permission Administration API rather than introducing a second role/authorization engine.
+- Added `GET /api/v1/registry/modules/status` for canonical module lifecycle/operational status and dependency visibility.
+- Reused the existing `ModuleLifecycleService`; no new lifecycle persistence model was introduced.
+- Kept lifecycle mutation out of the frontend because current module lifecycle definitions are registry-owned/static contracts; the UI does not pretend to persist transitions it cannot own.

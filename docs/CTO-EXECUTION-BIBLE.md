@@ -582,3 +582,10 @@ Verification: TypeScript build PASS; git diff --check PASS. Vite production bund
 ## 2026-09-27 — V0.5.6 Permission Administration Checkpoint
 
 Permission administration is now connected end-to-end as a read-only control surface: Registry declaration → seeded Permission → Authorization decision → protected API → Super Admin Permission Matrix. Mutation controls are intentionally deferred until an existing authoritative backend mutation/audit path is available.
+
+### V0.5.6.1 — Platform administration continuation
+
+- **Roles workspace:** `/app/roles` now exposes persisted role-to-permission coverage from the protected Permission Administration API.
+- **Module operational status:** `GET /api/v1/registry/modules/status` exposes the existing ModuleLifecycleService evaluation, including lifecycle state, operational state, and unavailable dependencies.
+- **Architecture guardrail:** role presentation does not become a second authorization engine, and module lifecycle presentation does not become a second frontend lifecycle engine.
+- **Lifecycle mutation guardrail:** current registry module definitions are in-memory/static contracts; no fake persistence controls were added. Mutation will be introduced only when a canonical persisted lifecycle owner exists.
