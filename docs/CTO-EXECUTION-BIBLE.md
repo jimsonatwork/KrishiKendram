@@ -531,3 +531,23 @@ Implemented the Super Admin Modules workspace using canonical module/resource Re
 Verification: git diff --check PASS; frontend build initiated with the repository Node toolchain.
 
 Next: capability and field administration.
+
+
+## 2026-09-27 — V0.5.5 Capability + Field Administration
+
+### Completed
+
+- Added the Super Admin Capabilities & Fields workspace at /app/capabilities.
+- Exposed the canonical Module → Resource → Capability/Scope → Field contract in one workspace.
+- Added resolved field-policy inspection using reusable field definitions and permitted resource overrides.
+- Tightened the frontend field-policy adapter so FIXED fields and non-declared override characteristics are not treated as mutable UI policy.
+- Kept backend Registry, PermissionService and AuthorizationService as the authoritative owners; no second policy engine or speculative persistence layer was introduced.
+
+### Verification
+
+- Frontend TypeScript/Vite production build: PASS (2305 modules transformed).
+- git diff --check: PASS.
+
+### Next target
+
+V0.5.6 platform administration integration: connect capability/field visibility to existing permission and module-control surfaces without duplicating backend authority.

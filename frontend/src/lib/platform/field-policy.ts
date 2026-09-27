@@ -1,12 +1,25 @@
 import type { FieldDefinition, FieldReference, ResourceDefinition } from './contracts'
+
 export type ResolvedFieldPolicy = FieldDefinition & { resource: string; required: boolean }
-export function resolveFieldPolicy(resource: ResourceDefinition, fieldName: string, fields: readonly FieldDefinition[]): ResolvedFieldPolicy | undefined {
+
+export function resolveFieldPolicy(
+  resource: ResourceDefinition,
+  fieldName: string,
+  fields: readonly FieldDefinition[],
+): ResolvedFieldPolicy | undefined {
   const reference: FieldReference | undefined = resource.fields?.[fieldName]
   if (!reference) return undefined
+
   const base = fields.find((field) => field.name === reference.definition)
   if (!base) return undefined
-  const validation = { ...base.validation, ...reference.override?.validation }
-  return { ...base, validation, resource: resource.name, required: validation.required === true }
+
+  const override = reference.override?.validation
+  const mode = base.overrideMode ?? 'FIXED'
+  const allowed = new Set(base.overridableValidation ?? [])
+  const permitted = mode !== 'FIXED' && Object.keys(override ?? {}).every((key) => allowed.has(key as keyof NonNullable<FieldDefinition['validation']>))
+  const validation = permitted ? { ...base.validation, ...override } : base.validation
+
+  return { ...base, validation, resource: resource.name, required: validation?.required === true }
 }
 export function validateFieldValue(policy: ResolvedFieldPolicy, value: unknown): string[] {
   const validation = policy.validation ?? {}; const errors: string[] = []

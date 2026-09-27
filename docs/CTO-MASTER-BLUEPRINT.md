@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.4 Module workspace working tree |
-| Current checkpoint message | V0.5.4 Module workspace |
-| Current primary phase | V0.5.4 — Module Workspace |
-| Current platform priority | Frontend Contract → Field Policy → Resources → Modules → platform administration |
+| Current checkpoint | V0.5.5 Capability + Field Administration working tree |
+| Current checkpoint message | V0.5.5 Capability + Field Administration |
+| Current primary phase | V0.5.5 — Capability + Field Administration |
+| Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | V0.5.5 capability and field administration |
+| Next major target | V0.5.6 platform administration integration |
 
 ## Current Status
 
@@ -2314,3 +2314,23 @@ V0.5.4 — contract-driven platform administration expansion: modules, dependenc
 - Existing module/resource definitions remain declarative and centralized.
 
 Next target: V0.5.5 capability and field administration using the same contract boundary.
+
+
+## 2026-09-27 — V0.5.5 Capability + Field Administration
+
+### Completed
+
+- Added the Super Admin Capabilities & Fields workspace at /app/capabilities.
+- Exposed the canonical Module → Resource → Capability/Scope → Field contract in one workspace.
+- Added resolved field-policy inspection using reusable field definitions and permitted resource overrides.
+- Tightened the frontend field-policy adapter so FIXED fields and non-declared override characteristics are not treated as mutable UI policy.
+- Kept backend Registry, PermissionService and AuthorizationService as the authoritative owners; no second policy engine or speculative persistence layer was introduced.
+
+### Verification
+
+- Frontend TypeScript/Vite production build: PASS (2305 modules transformed).
+- git diff --check: PASS.
+
+### Next target
+
+V0.5.6 platform administration integration: connect capability/field visibility to existing permission and module-control surfaces without duplicating backend authority.

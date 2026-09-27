@@ -1,6 +1,7 @@
 import { UsersPage } from '@/pages/admin/UsersPage'
 import { ResourcesPage } from '@/pages/admin/ResourcesPage'
 import { ModulesPage } from '@/pages/admin/ModulesPage'
+import { CapabilitiesPage } from '@/pages/admin/CapabilitiesPage'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -18,6 +19,7 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
+  Boxes,
   CheckCircle2,
   ChevronRight,
   CircleUserRound,
@@ -37,6 +39,7 @@ import {
   Palette,
   Shield,
   ShieldCheck,
+  SlidersHorizontal,
   Sprout,
   Tractor,
   Users,
@@ -862,6 +865,11 @@ function PortalLayout({
               icon: <Boxes />,
             },
             {
+              label: 'Capabilities',
+              href: '/app/capabilities',
+              icon: <SlidersHorizontal />,
+            },
+            {
               label: 'System',
               href: '/app/system',
               icon: <Settings />,
@@ -942,6 +950,8 @@ function PortalLayout({
     content = <ResourcesPage />
   } else if (location.pathname === '/app/modules') {
     content = <ModulesPage />
+  } else if (location.pathname === '/app/capabilities') {
+    content = <CapabilitiesPage />
   } else if (location.pathname === '/app/system') {
     content = <ComingSoon title="System" />
   }
