@@ -833,3 +833,10 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Added `GET /api/v1/registry/modules/status` for canonical module lifecycle/operational status and dependency visibility.
 - Reused the existing `ModuleLifecycleService`; no new lifecycle persistence model was introduced.
 - Kept lifecycle mutation out of the frontend because current module lifecycle definitions are registry-owned/static contracts; the UI does not pretend to persist transitions it cannot own.
+
+## 2026-09-27 — V0.5.6.2 Audit administration
+
+- Added protected Super Admin audit visibility at `GET /api/v1/platform/audit/recent`.
+- Added the read-only `/app/audit` workspace using the canonical platform AuditService.
+- Registered the `platform.audit` resource with READ/GLOBAL capability so authorization remains centralized.
+- No second history/audit engine was introduced; this exposes the existing audit stream.

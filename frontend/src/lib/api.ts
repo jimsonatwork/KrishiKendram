@@ -176,6 +176,17 @@ export async function request<T>(
   return data as T
 }
 
+export type PlatformAuditEvent = {
+  id: string
+  actorId?: string | null
+  action: string
+  resourceType: string
+  resourceId?: string | null
+  description?: string | null
+  metadata?: unknown
+  createdAt: string
+}
+
 export type PlatformPermission = {
   id: string
   module: string
@@ -191,6 +202,10 @@ export type PlatformPermission = {
 export const api = {
   platformPermissions: (token: string) =>
     request<PlatformPermission[]>('/platform/permissions', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+  platformAuditRecent: (token: string, limit = 100) =>
+    request<PlatformAuditEvent[]>('/platform/audit/recent?limit=' + limit, {
       headers: { Authorization: 'Bearer ' + token },
     }),
 

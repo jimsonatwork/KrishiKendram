@@ -2390,3 +2390,10 @@ Next: continue platform administration integration and progressively expose safe
 - **Module operational status:** `GET /api/v1/registry/modules/status` exposes the existing ModuleLifecycleService evaluation, including lifecycle state, operational state, and unavailable dependencies.
 - **Architecture guardrail:** role presentation does not become a second authorization engine, and module lifecycle presentation does not become a second frontend lifecycle engine.
 - **Lifecycle mutation guardrail:** current registry module definitions are in-memory/static contracts; no fake persistence controls were added. Mutation will be introduced only when a canonical persisted lifecycle owner exists.
+
+## 2026-09-27 — V0.5.6.2 Audit administration
+
+- Added protected Super Admin audit visibility at `GET /api/v1/platform/audit/recent`.
+- Added the read-only `/app/audit` workspace using the canonical platform AuditService.
+- Registered the `platform.audit` resource with READ/GLOBAL capability so authorization remains centralized.
+- No second history/audit engine was introduced; this exposes the existing audit stream.

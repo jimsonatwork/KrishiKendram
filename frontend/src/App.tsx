@@ -4,6 +4,7 @@ import { ModulesPage } from '@/pages/admin/ModulesPage'
 import { CapabilitiesPage } from '@/pages/admin/CapabilitiesPage'
 import { PermissionsPage } from '@/pages/admin/PermissionsPage'
 import { RolesPage } from '@/pages/admin/RolesPage'
+import { AuditPage } from '@/pages/admin/AuditPage'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -884,6 +885,11 @@ function PortalLayout({
               icon: <Shield />,
             },
             {
+              label: 'Audit',
+              href: '/app/audit',
+              icon: <Activity />,
+            },
+            {
               label: 'Permissions',
               href: '/app/permissions',
               icon: <ShieldCheck />,
@@ -974,6 +980,8 @@ function PortalLayout({
   content = <UsersPage />
   } else if (location.pathname === '/app/roles') {
     content = <RolesPage />
+  } else if (location.pathname === '/app/audit') {
+    content = <AuditPage />
   } else if (
     location.pathname === '/app/permissions'
   ) {
