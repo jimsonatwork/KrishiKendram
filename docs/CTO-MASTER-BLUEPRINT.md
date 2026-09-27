@@ -2145,3 +2145,19 @@ Focused custody orchestration coverage is now in place for authorization-before-
 - Backend production build and frontend production build remain PASS.
 
 The custody capability is therefore a verified V0.4 slice. Next work should target another concrete operational lifecycle only after inspecting whether its semantics already exist in the current platform primitives.
+
+
+### 27 September 2026 — V0.4 FarmAsset Lease Lifecycle
+
+Extended the existing FarmAsset lifecycle with leasing using already-defined platform semantics.
+
+- Added lease validity (`validUntil`) to the existing transfer-resource DTO.
+- Added FarmAsset lease orchestration with owner-aware `ASSIGN` authorization.
+- Added temporal `LESSEE` relationship creation/replacement.
+- Added canonical `LEASE` ResourceMovement and optional ResourceEvidence.
+- Added protected `POST /farms/:farmId/assets/:assetId/lease` route.
+- No new Prisma resource model or parallel lifecycle mechanism introduced.
+
+Verification: focused Farms/Relationship tests 42/42 PASS; full backend regression 35/35 suites, 318/318 tests PASS; backend build PASS.
+
+Next frontier: verify lease runtime boundary and then evaluate lease termination using the existing `LEASE_END` movement type before introducing any unrelated domain work.

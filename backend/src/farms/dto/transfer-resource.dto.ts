@@ -13,6 +13,10 @@ export class TransferResourceDto {
   effectiveAt?: string;
 
   @IsOptional()
+  @IsDateString()
+  validUntil?: string;
+
+  @IsOptional()
   @IsString()
   reason?: string;
 

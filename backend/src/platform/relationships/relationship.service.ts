@@ -335,6 +335,106 @@ export class ResourceRelationshipService {
     return { previousRelationship: current, destinationRelationship, movement, evidence };
   }
 
+  async assignLessee(
+    tx: Prisma.TransactionClient,
+    resourceType: string,
+    resourceId: string,
+    destinationUserId: string,
+    effectiveAt: Date,
+    validUntil: Date,
+    actorUserId: string,
+    reason: string | undefined,
+    transactionId: string | undefined,
+    evidenceInput?: {
+      referenceType: string;
+      referenceValue: string;
+      documentNumber?: string;
+      issuer?: string;
+    },
+  ) {
+    if (validUntil <= effectiveAt) {
+      throw new Error('Lease validUntil must be after effectiveAt.');
+    }
+
+    const current = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        relationshipType: ResourceRelationshipType.LESSEE,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    const evidence = evidenceInput
+      ? await tx.resourceEvidence.create({
+          data: {
+            evidenceType: transactionId ? 'TRANSACTION' : 'DOCUMENT',
+            referenceType: evidenceInput.referenceType,
+            referenceValue: evidenceInput.referenceValue,
+            documentNumber: evidenceInput.documentNumber,
+            issuer: evidenceInput.issuer,
+            createdBy: actorUserId,
+            updatedBy: actorUserId,
+          },
+        })
+      : undefined;
+
+    if (current) {
+      await tx.resourceRelationship.update({
+        where: { id: current.id },
+        data: {
+          status: ResourceRelationshipStatus.TERMINATED,
+          endedAt: effectiveAt,
+          validUntil: effectiveAt,
+          endedReason: reason ?? 'Lease replaced',
+          evidenceId: evidence?.id,
+        },
+      });
+    }
+
+    const destinationRelationship = await tx.resourceRelationship.create({
+      data: {
+        resourceType,
+        resourceId,
+        userId: destinationUserId,
+        relationshipType: ResourceRelationshipType.LESSEE,
+        status: ResourceRelationshipStatus.ACTIVE,
+        validFrom: effectiveAt,
+        validUntil,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+        evidenceId: evidence?.id,
+      },
+    });
+
+    const previousMovement = await tx.resourceMovement.findFirst({
+      where: { resourceType, resourceId },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const movement = await tx.resourceMovement.create({
+      data: {
+        resourceType,
+        resourceId,
+        movementType: ResourceMovementType.LEASE,
+        sourceUserId: current?.userId,
+        destinationUserId,
+        sourceRelationshipId: current?.id,
+        destinationRelationshipId: destinationRelationship.id,
+        previousMovementId: previousMovement?.id,
+        effectiveAt,
+        reason: reason ?? 'Asset leased',
+        transactionId,
+        evidenceId: evidence?.id,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      },
+    });
+
+    return { previousRelationship: current, destinationRelationship, movement, evidence };
+  }
+
   private toDomainRelationshipType(value: string): ResourceRelationshipType {
     const relationshipType = Object.values(ResourceRelationshipType).find(
       (candidate) => candidate === value,

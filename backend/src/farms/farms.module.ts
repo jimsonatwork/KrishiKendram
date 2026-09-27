@@ -8,6 +8,7 @@ import { FarmsService } from './farms.service';
 import { FarmResourceLifecycleService } from './farm-resource-lifecycle.service';
 import { FarmResourceLineageService } from './farm-resource-lineage.service';
 import { FarmAssetCustodyService } from './farm-asset-custody.service';
+import { FarmAssetLeaseService } from './farm-asset-lease.service';
 
 
 @Module({
@@ -26,6 +27,7 @@ providers:[
  FarmResourceLifecycleService,
  FarmResourceLineageService,
  FarmAssetCustodyService,
+ FarmAssetLeaseService,
 ],
 
 exports:[

@@ -205,6 +205,22 @@ create(
     );
   }
 
+  @Post(':farmId/assets/:assetId/lease')
+  leaseAsset(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+    @Body() dto: TransferResourceDto,
+  ) {
+    return this.farmsService.leaseFarmAsset(
+      farmId,
+      assetId,
+      dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Get(':farmId/assets/:assetId/lineage/history')
   getAssetLineageHistory(
     @Param('farmId') farmId: string,

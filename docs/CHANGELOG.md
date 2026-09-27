@@ -607,3 +607,14 @@ The CTO Master Blueprint now reflects the actual implementation frontier rather 
 - Existing backend/frontend production builds remain green.
 
 **V0.4 custody slice verified and checkpoint-ready.**
+
+
+## 2026-09-27 — FarmAsset Lease Lifecycle
+
+- Added bounded FarmAsset leasing with `LESSEE` relationship history.
+- Added `LEASE` movement recording with evidence support.
+- Added lease validity validation through `validUntil`.
+- Added protected FarmAsset lease API route using existing `ASSIGN` authorization.
+- No new resource model introduced.
+
+Verification: focused tests 42/42 passed; full backend regression 35/35 suites, 318/318 tests passed; backend build passed.
