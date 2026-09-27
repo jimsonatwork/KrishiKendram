@@ -708,3 +708,31 @@ The authenticated history/relationship read segment is now closed using existing
 ### Next target
 
 Proceed to the planned **UI/runtime integration pass** across the completed module contracts, using existing APIs and centralized capability/field-policy presentation without introducing duplicate backend rules or new infrastructure.
+
+
+## 2026-09-27 — V0.5.18 User History UI/Runtime Integration
+
+### COMPLETE
+
+Canonical UserHistory is now connected to the existing History workspace. The frontend consumes the existing authenticated user-history endpoint and merges its versioned events into the established lifecycle timeline; ResourceRelationship history remains a separate canonical relationship stream.
+
+### Implementation
+
+- Added `UserHistoryEvent` frontend typing matching the backend response shape.
+- Added `api.userHistory()` using the existing authenticated API transport.
+- HistoryPage now loads user history with farms, crops, transfers and relationship history.
+- Version, action, timestamp, changed fields and actor context are presented in the existing timeline.
+- No duplicate history engine, persistence model, authorization path, or backend rule was added.
+
+### Verification
+
+- Frontend TypeScript: PASS.
+- Frontend Vite production build: PASS; 2311 modules transformed.
+- Backend TypeScript no-emit: PASS.
+- Full backend regression: 36/36 suites, 327/327 tests PASS.
+- `git diff --check`: PASS.
+- Existing frontend bundle-size warning remains PLANNED for a later performance pass and is not part of this milestone.
+
+### Next execution target
+
+**Cross-module UI/runtime coverage and compatibility pass.** Continue closing real integration gaps only; preserve existing working UI, centralized contracts, and compatibility guardrails. Avoid speculative redesign or new infrastructure.

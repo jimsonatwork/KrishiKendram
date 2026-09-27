@@ -148,12 +148,13 @@ export function HistoryPage() {
         setLoading(true)
         setError('')
 
-        const [farmResult, cropResult, transferResult, outgoingTransferResult, userRelationshipResult] =
+        const [farmResult, cropResult, transferResult, outgoingTransferResult, userHistoryResult, userRelationshipResult] =
           await Promise.all([
             api.farms(token),
             api.crops(token),
             api.transferIncomingPending(token),
             api.transferOutgoing(token),
+            api.userHistory(currentUserId, token),
             api.userRelationshipHistory(currentUserId, token),
           ])
 
@@ -300,7 +301,19 @@ export function HistoryPage() {
           kind: 'lifecycle' as const,
         }))
 
+        const userHistoryEvents = (Array.isArray(userHistoryResult) ? userHistoryResult : []).map((event: any) => ({
+          id: 'user-history-' + event.id,
+          timestamp: event.createdAt,
+          title: 'User ' + formatEnum(event.action) + ' · v' + event.version,
+          description: Array.isArray(event.changedFields) && event.changedFields.length > 0
+            ? 'Changed: ' + event.changedFields.join(', ')
+            : 'User profile history recorded.',
+          context: event.actor?.name ? 'By ' + event.actor.name : 'User history',
+          kind: 'lifecycle' as const,
+        }))
+
         setLifecycleEvents([
+          ...userHistoryEvents,
           ...assetEventGroups.flat(),
           ...farmMovementGroups.flat(),
           ...farmEvidenceGroups.flat(),

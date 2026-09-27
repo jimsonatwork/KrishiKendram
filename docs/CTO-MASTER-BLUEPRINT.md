@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.17 Authenticated History/Relationship Read Coverage |
-| Current checkpoint message | V0.5.17 Authenticated History/Relationship Read Coverage |
-| Current primary phase | V0.5.17 ‚Äî Registry-Permission Reconciliation |
+| Current checkpoint | V0.5.18 User History UI/Runtime Integration |
+| Current checkpoint message | V0.5.18 User History UI/Runtime Integration |
+| Current primary phase | V0.5.18 ‚Äî UI/Runtime Integration |
 | Current platform priority | Frontend Contract ‚Üí Field Policy ‚Üí Resources ‚Üí Modules ‚Üí Capabilities/Fields ‚Üí platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | UI/runtime integration pass across completed module contracts |
+| Next major target | Cross-module UI/runtime coverage and compatibility pass |
 
 ## Current Status
 
@@ -2476,7 +2476,7 @@ The Farm module has passed the current completion gate without introducing a sec
 
 V0.5.11 ‚Äî application-wide runtime lifecycle verification and module coverage reconciliation, using existing contracts only.
 
-## 2026-09-27 ∫w^~)ﬁt V0.5.11 Application Runtime Verification
+## 2026-09-27 ÔøΩw^~)ÔøΩt V0.5.11 Application Runtime Verification
 
 The application-wide runtime verification segment is closed using the existing contracts only.
 
@@ -2488,9 +2488,9 @@ The application-wide runtime verification segment is closed using the existing c
 
 ### Next target
 
-V0.5.12 ∫w^~)ﬁt application-wide module coverage reconciliation and remaining runtime contract hardening, using existing Registry, authorization, lifecycle, audit, relationship, and frontend contracts only.
+V0.5.12 ÔøΩw^~)ÔøΩt application-wide module coverage reconciliation and remaining runtime contract hardening, using existing Registry, authorization, lifecycle, audit, relationship, and frontend contracts only.
 
-## 2026-09-27 ∫w^~)ﬁt V0.5.12 Registry Coverage Reconciliation
+## 2026-09-27 ÔøΩw^~)ÔøΩt V0.5.12 Registry Coverage Reconciliation
 
 The Registry coverage reconciliation segment is closed.
 
@@ -2502,7 +2502,7 @@ The Registry coverage reconciliation segment is closed.
 
 ### Next target
 
-V0.5.13+ßuÁ‚ùÁT runtime module/API coverage reconciliation across the remaining application surfaces, with production-route smoke checks and no duplicate contracts.
+V0.5.13+ÔøΩuÔøΩÔøΩÔøΩT runtime module/API coverage reconciliation across the remaining application surfaces, with production-route smoke checks and no duplicate contracts.
 
 ## 2026-09-27 ‚Äî V0.5.13 Runtime Module/API Coverage Reconciliation
 
@@ -2572,4 +2572,25 @@ The authenticated history/relationship read segment is now closed using existing
 
 ### Next target
 
-Proceed to the planned **UI/runtime integration pass** across the completed module contracts, using existing APIs and centralized capability/field-policy presentation without introducing duplicate backend rules or new infrastructure.
+Proceed to the planned **cross-module UI/runtime coverage and compatibility pass**, using existing APIs and centralized capability/field-policy presentation without introducing duplicate backend rules or new infrastructure.
+
+
+## 2026-09-27 ‚Äî V0.5.18 User History UI/Runtime Integration
+
+The canonical UserHistory read contract is now connected to the existing History workspace. The frontend does not create a parallel history model: it consumes `GET /api/v1/users/:id/history`, maps versioned user changes into the existing lifecycle timeline, and retains ResourceRelationship history as the separate relationship stream.
+
+- Added the typed `UserHistoryEvent` frontend contract matching the backend UserHistory response.
+- Added the centralized `api.userHistory()` client method.
+- HistoryPage now loads user history alongside farms, crops, transfers, and user relationship history.
+- User history entries are rendered as timeline events with action, version, timestamp, changed fields, and actor context.
+- No backend behavior, authorization rule, persistence model, or duplicate history engine was introduced.
+- Frontend TypeScript: PASS.
+- Frontend production build: PASS; 2311 modules transformed.
+- Backend TypeScript no-emit: PASS.
+- Full backend regression: 36/36 suites, 327/327 tests PASS.
+- `git diff --check`: PASS.
+- Existing frontend bundle-size warning remains a future performance item and is not expanded into this milestone.
+
+### Next target
+
+**Cross-module UI/runtime coverage and compatibility pass** across the completed contracts, prioritizing real integration gaps and preserving the existing compact/futuristic UI rather than redesigning working surfaces.
