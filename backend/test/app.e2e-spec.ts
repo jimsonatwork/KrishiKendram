@@ -146,6 +146,40 @@ describe('Application runtime smoke (e2e)', () => {
       });
   });
 
+  it('supports an authenticated Crop collection read for an existing authorized user', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const fixture = await prisma.crop.findFirst({
+      where: {
+        farm: {
+          owner: {
+            status: 'ACTIVE',
+            role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+          },
+        },
+      },
+      select: {
+        farm: { select: { ownerId: true, owner: { select: { role: true } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(fixture).toBeTruthy();
+
+    const accessToken = await jwt.signAsync({
+      sub: fixture!.farm.ownerId,
+      role: fixture!.farm.owner.role,
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/v1/crops')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(Array.isArray(body)).toBe(true);
+      });
+  });
+
   afterEach(async () => {
     await app.close();
   });
