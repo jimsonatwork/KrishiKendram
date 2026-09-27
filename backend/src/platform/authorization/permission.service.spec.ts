@@ -18,6 +18,7 @@ describe('PermissionService', () => {
 
   const registry = {
     get: jest.fn(),
+    getAll: jest.fn(),
   };
 
   let service: PermissionService;
@@ -487,6 +488,40 @@ describe('PermissionService', () => {
           role: UserRole.SUPER_ADMIN,
           permissionId: 'permission-1',
         },
+      });
+    });
+  });
+
+  describe('getRegistryReconciliation', () => {
+    it('reports declared coverage and stale persisted permissions', async () => {
+      registry.getAll.mockReturnValue([
+        {
+          name: 'farm',
+          module: 'farms',
+          capabilities: [
+            { action: 'READ', scopes: ['OWN', 'FARM'] },
+            { action: 'CREATE', scopes: ['FARM'] },
+          ],
+        },
+      ]);
+      prisma.permission.findMany.mockResolvedValue([
+        { id: 'permission-read-own', module: 'farms', resource: 'farm', action: 'READ', scope: 'OWN' },
+        { id: 'permission-stale', module: 'farms', resource: 'farm', action: 'DELETE', scope: 'FARM' },
+      ]);
+
+      const result = await service.getRegistryReconciliation();
+
+      expect(result.summary).toEqual({
+        declaredCount: 3,
+        persistedResourcePermissionCount: 2,
+        coveredCount: 1,
+        missingCount: 2,
+        staleCount: 1,
+      });
+      expect(result.stale).toHaveLength(1);
+      expect(result.declared.find((item) => item.action === 'READ' && item.scope === 'OWN')).toMatchObject({
+        persisted: true,
+        permissionId: 'permission-read-own',
       });
     });
   });

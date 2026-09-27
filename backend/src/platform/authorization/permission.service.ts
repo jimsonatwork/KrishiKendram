@@ -201,6 +201,66 @@ export class PermissionService {
     });
   }
 
+  async getRegistryReconciliation() {
+    const resources = this.registry.getAll();
+    const persisted = await this.prisma.permission.findMany({
+      where: { resource: { not: null } },
+      select: { id: true, module: true, resource: true, action: true, scope: true },
+    });
+
+    const declared: Array<{
+      module: string;
+      resource: string;
+      action: string;
+      scope: string;
+      persisted: boolean;
+      permissionId: string | null;
+    }> = [];
+    const declaredKeys = new Set<string>();
+
+    for (const resource of resources) {
+      for (const capability of resource.capabilities ?? []) {
+        for (const scope of capability.scopes) {
+          const key = [resource.module, resource.name, capability.action, scope].join("|");
+          declaredKeys.add(key);
+          const match = persisted.find((permission) =>
+            permission.module === resource.module &&
+            permission.resource === resource.name &&
+            permission.action === capability.action &&
+            permission.scope === scope,
+          );
+          declared.push({
+            module: resource.module,
+            resource: resource.name,
+            action: capability.action,
+            scope,
+            persisted: Boolean(match),
+            permissionId: match?.id ?? null,
+          });
+        }
+      }
+    }
+
+    const stale = persisted.filter((permission) =>
+      !declaredKeys.has(
+        [permission.module, permission.resource, permission.action, permission.scope].join("|"),
+      ),
+    );
+    const coveredCount = declared.filter((item) => item.persisted).length;
+
+    return {
+      summary: {
+        declaredCount: declared.length,
+        persistedResourcePermissionCount: persisted.length,
+        coveredCount,
+        missingCount: declared.length - coveredCount,
+        staleCount: stale.length,
+      },
+      declared,
+      stale,
+    };
+  }
+
   async reconcileRolePermissions(
     permissionId: string,
     roles: UserRole[],

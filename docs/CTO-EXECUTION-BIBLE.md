@@ -596,3 +596,13 @@ Permission administration is now connected end-to-end as a read-only control sur
 - Added the read-only `/app/audit` workspace using the canonical platform AuditService.
 - Registered the `platform.audit` resource with READ/GLOBAL capability so authorization remains centralized.
 - No second history/audit engine was introduced; this exposes the existing audit stream.
+
+## 2026-09-27 — V0.5.6.3 Registry-Permission Reconciliation
+
+### Verification boundary
+
+A read-only reconciliation endpoint now compares Registry-declared resource capabilities/scopes with persisted resource permissions. It is protected by the existing platform/permission/READ authorization path and delegates to PermissionService; it does not create a second authorization engine or mutate permissions.
+
+### Result
+
+The next execution segment is a platform coverage dashboard built from existing Registry, permission, module-status, and audit contracts. No new persistence model is required.

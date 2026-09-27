@@ -17,6 +17,18 @@ export class PermissionAdminController {
     private readonly permissions: PermissionService,
   ) {}
 
+  @Get('reconciliation')
+  async getReconciliation(@Req() request: AuthenticatedRequest) {
+    await this.authorization.assertCan({
+      user: request.user,
+      module: 'platform',
+      resource: 'permission',
+      action: AuthorizationAction.READ,
+    });
+
+    return this.permissions.getRegistryReconciliation();
+  }
+
   @Get()
   async getAll(@Req() request: AuthenticatedRequest) {
     await this.authorization.assertCan({

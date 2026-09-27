@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.5 Capability + Field Administration working tree |
-| Current checkpoint message | V0.5.5 Capability + Field Administration |
-| Current primary phase | V0.5.5 — Capability + Field Administration |
+| Current checkpoint | V0.5.6.3 Registry-Permission Reconciliation |
+| Current checkpoint message | V0.5.6.3 Registry-Permission Reconciliation |
+| Current primary phase | V0.5.6.3 — Registry-Permission Reconciliation |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | V0.5.6 platform administration integration |
+| Next major target | V0.5.6.4 platform coverage dashboard |
 
 ## Current Status
 
@@ -2397,3 +2397,19 @@ Next: continue platform administration integration and progressively expose safe
 - Added the read-only `/app/audit` workspace using the canonical platform AuditService.
 - Registered the `platform.audit` resource with READ/GLOBAL capability so authorization remains centralized.
 - No second history/audit engine was introduced; this exposes the existing audit stream.
+
+## 2026-09-27 — V0.5.6.3 Registry-Permission Reconciliation
+
+The platform administration boundary now has a read-only reconciliation path between Registry-declared resource capabilities and persisted resource permissions. It reuses RegistryService and PermissionService and remains behind the existing platform permission authorization path.
+
+### Completed
+
+- Added GET /platform/permissions/reconciliation.
+- Compared every Registry capability/scope against persisted resource permission rows.
+- Reported declared, covered, missing, and stale entries without mutating authorization state.
+- Preserved AuthorizationService as the only runtime authorization decision engine.
+- Added no Prisma model and no second audit/history engine.
+
+### Next target
+
+V0.5.6.4 platform coverage dashboard using the existing Registry, permission, module-status, and audit contracts.
