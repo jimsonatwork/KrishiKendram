@@ -51,6 +51,7 @@ import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { platformRegistry } from '@/lib/platform/registry'
 import {
   useAuthStore,
   type AuthUser,
@@ -1367,6 +1368,39 @@ function AdminDashboard({
 }: {
   user: AuthUser
 }) {
+  const [platformStats, setPlatformStats] = useState({
+    resources: 0,
+    modules: 0,
+    capabilities: 0,
+    fields: 0,
+  })
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken')
+
+    if (!token) return
+
+    Promise.all([
+      platformRegistry.resources(token),
+      platformRegistry.modules(token),
+      platformRegistry.fields(token),
+    ])
+      .then(([resources, modules, fields]) => {
+        setPlatformStats({
+          resources: resources.length,
+          modules: modules.length,
+          capabilities: resources.reduce(
+            (total, resource) => total + (resource.capabilities?.length ?? 0),
+            0,
+          ),
+          fields: fields.length,
+        })
+      })
+      .catch(() => {
+        setPlatformStats({ resources: 0, modules: 0, capabilities: 0, fields: 0 })
+      })
+  }, [])
+
   const adminCards = [
     {
       label: 'Users',
@@ -1406,8 +1440,9 @@ function AdminDashboard({
 description={`Welcome, ${user.name}. Manage the KrishiKendram platform from one secure control surface.`}
       />
 
-      <div className="rounded-2xl border bg-card p-6">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center">
+      <div className="relative overflow-hidden rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="pointer-events-none absolute -right-16 -top-16 size-40 rounded-full bg-[radial-gradient(circle,color-mix(in_oklch,var(--ai)_24%,transparent),transparent_68%)] blur-2xl" />
+        <div className="relative flex flex-col gap-5 md:flex-row md:items-center">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <ShieldCheck className="size-6" />
           </div>
@@ -1435,6 +1470,21 @@ description={`Welcome, ${user.name}. Manage the KrishiKendram platform from one 
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ['Modules', platformStats.modules],
+          ['Resources', platformStats.resources],
+          ['Capabilities', platformStats.capabilities],
+          ['Field contracts', platformStats.fields],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-2xl border bg-card/80 p-4 backdrop-blur-sm">
+            <div className="text-xs text-muted-foreground">{label}</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+            <div className="mt-1 text-[11px] text-muted-foreground">Registry-backed context</div>
+          </div>
+        ))}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

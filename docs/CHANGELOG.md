@@ -807,3 +807,12 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Preserved all existing theme modes and colour themes.
 - TypeScript build PASS; git diff --check PASS.
 - Vite production bundling is currently blocked by the connected terminal's mixed Windows/WSL Node dependency environment and missing native Rolldown binding; no dependency/lockfile changes were made.
+
+
+## 2026-09-27 — V0.5.6 Platform Administration Integration
+
+- Connected the Super Admin dashboard to the canonical Registry API.
+- Added live counts for modules, resources, declared capabilities and field contracts.
+- Added an AI-ready platform context presentation without inventing AI results.
+- Preserved detailed Resources, Modules and Capabilities administration workspaces.
+- TypeScript build PASS; git diff --check PASS.
