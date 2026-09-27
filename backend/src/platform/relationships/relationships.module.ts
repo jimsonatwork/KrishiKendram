@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuditModule } from '../audit/audit.module';
@@ -13,7 +13,7 @@ import { ResourceTransferRequestController } from './transfer-request.controller
 import { ResourceTransferRequestService } from './transfer-request.service';
 
 @Module({
-  imports: [PrismaModule, AuditModule],
+  imports: [PrismaModule, forwardRef(() => AuditModule)],
   controllers: [ResourceTransferRequestController],
   providers: [
     RelationshipAccessPolicy,

@@ -2417,3 +2417,13 @@ V0.5.6.4 platform coverage dashboard using the existing Registry, permission, mo
 ## 2026-09-27 — V0.5.6.4 Platform Coverage Dashboard
 
 The Super Admin landing workspace now surfaces platform health from existing canonical contracts: Registry modules/resources, module lifecycle status, persisted permissions, Registry-permission reconciliation, and recent audit activity. The dashboard is read-only and does not introduce a second control plane.
+
+
+## V0.5.7 — Registry/Permission Administration Hardening — 27 Sep 2026
+
+- Live Prisma seed/reconciliation executed successfully against the current database.
+- Registry-declared CRUD/ASSIGN capabilities are reconciled through the canonical PermissionService path.
+- User-specific administrative capabilities (READ_ACTIVITY, READ_HISTORY, RESTORE) remain intentionally explicit until generalized capability persistence is expanded; no duplicate authorization engine introduced.
+- Permission reconciliation remains read-only and reports declared, covered, missing, and stale persisted resource permissions.
+- Verification: PermissionService 17/17; backend production build PASS; frontend production build PASS; git diff --check PASS; working tree clean.
+- Generated backend/frontend build artifacts were root-owned from an earlier environment run; ownership was corrected at the WSL filesystem level. No application source workaround was added.

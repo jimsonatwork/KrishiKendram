@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { forwardRef, Global, Module } from '@nestjs/common';
 import { PermissionAdminController } from './permission-admin.controller';
 
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -20,7 +20,7 @@ import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
   imports: [
     PrismaModule,
     RegistryModule,
-    RelationshipsModule,
+    forwardRef(() => RelationshipsModule),
   ],
   providers: [
     AuthorizationService,
