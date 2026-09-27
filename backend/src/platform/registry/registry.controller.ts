@@ -18,6 +18,16 @@ export class RegistryController {
     return this.registry.getAll();
   }
 
+  @Get('modules')
+  getModules() {
+    return this.registry.getAllModules();
+  }
+
+  @Get('fields')
+  getFields() {
+    return this.registry.getAllFields();
+  }
+
   @Get(':name')
   getOne(@Param('name') name: string) {
     const resource = this.registry.get(name);
