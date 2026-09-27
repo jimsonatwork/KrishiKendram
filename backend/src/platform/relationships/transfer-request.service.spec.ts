@@ -7,6 +7,7 @@ describe('ResourceTransferRequestService', () => {
   const audit = { create: jest.fn(), createInTransaction: jest.fn() } as any;
   const tx = {
     resourceTransferRequest: { create: jest.fn(), updateMany: jest.fn(), update: jest.fn(), findUnique: jest.fn() },
+    resourceEvidence: { create: jest.fn(), findUnique: jest.fn() },
     resourceRelationship: { findFirst: jest.fn() },
     farmAsset: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     resourceMovement: { findFirst: jest.fn(), create: jest.fn() },
@@ -84,11 +85,15 @@ describe('ResourceTransferRequestService', () => {
       id: 'request-1', resourceType: 'farm', resourceId: 'farm-1',
       sourceUserId: 'jim', destinationUserId: 'cto', quantity: null,
       status: 'PENDING', effectiveAt: null, expiresAt: null,
-      reason: 'Farm transfer', transactionId: null,
+      reason: 'Farm transfer', transactionId: null, evidenceId: 'evidence-1',
     });
 
     await service.accept('request-1', 'cto');
 
+    expect(relationships.transferOwnerRelationship).toHaveBeenCalledWith(
+      tx, 'farm', 'farm-1', 'jim', 'cto', expect.any(Date), 'Farm transfer', undefined,
+      undefined, 'evidence-1',
+    );
     expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
       action: 'RESOURCE_TRANSFER_COMPLETED',
       resourceType: 'farm',
@@ -116,6 +121,35 @@ describe('ResourceTransferRequestService', () => {
       }),
     });
     expect(result).toEqual({ id: 'request-1', quantity: 5 });
+  });
+
+  it('persists transfer evidence with the request and reuses it on completion', async () => {
+    prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'jim' });
+    prisma.user.findUnique.mockResolvedValue({ id: 'cto', status: 'ACTIVE' });
+    tx.resourceEvidence.create.mockResolvedValue({ id: 'evidence-1' });
+    tx.resourceTransferRequest.create.mockResolvedValue({ id: 'request-1', evidenceId: 'evidence-1' });
+    jest.spyOn<any, any>(service, 'nextRequestNumber').mockResolvedValue('TR-20260927-654321');
+
+    await service.create({
+      resourceType: 'farm', resourceId: 'farm-1', destinationUserId: 'cto',
+      transactionId: 'TX-42', evidenceReferenceType: 'SALE_DEED',
+      evidenceReferenceValue: 'SD-42', evidenceDocumentNumber: 'DOC-42',
+      evidenceIssuer: 'Registration Office',
+    }, 'jim', UserRole.FARMER);
+
+    expect(tx.resourceEvidence.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        evidenceType: 'TRANSACTION',
+        referenceType: 'SALE_DEED',
+        referenceValue: 'SD-42',
+        documentNumber: 'DOC-42',
+        issuer: 'Registration Office',
+        createdBy: 'jim',
+      }),
+    });
+    expect(tx.resourceTransferRequest.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ evidenceId: 'evidence-1' }),
+    });
   });
 
   it('keeps transfer request creation and audit in one transaction', async () => {
@@ -210,6 +244,7 @@ describe('ResourceTransferRequestService', () => {
     });
     expect(relationships.transferOwnerRelationship).toHaveBeenCalledWith(
       tx, 'farmAsset', 'asset-2', 'jim', 'cto', expect.any(Date), 'Transfer five hens', 'TX-1',
+      undefined, undefined,
     );
     expect(result).toEqual({ id: 'request-1', status: 'COMPLETED' });
   });

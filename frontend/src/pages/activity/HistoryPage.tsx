@@ -129,6 +129,12 @@ export function HistoryPage() {
   const [transferQuantity, setTransferQuantity] = useState('')
   const [transferReason, setTransferReason] = useState('')
   const [transferTransactionId, setTransferTransactionId] = useState('')
+  const [transferEvidenceType, setTransferEvidenceType] = useState('')
+  const [transferEvidenceValue, setTransferEvidenceValue] = useState('')
+  const [transferEvidenceDocument, setTransferEvidenceDocument] = useState('')
+  const [transferEvidenceIssuer, setTransferEvidenceIssuer] = useState('')
+  const [transferEffectiveAt, setTransferEffectiveAt] = useState('')
+  const [transferExpiresAt, setTransferExpiresAt] = useState('')
   const [transferMemberBusy, setTransferMemberBusy] = useState(false)
   const [transferCreateBusy, setTransferCreateBusy] = useState(false)
 
@@ -520,6 +526,12 @@ export function HistoryPage() {
         unit: asset?.unit ?? undefined,
         reason: transferReason.trim() || undefined,
         transactionId: transferTransactionId.trim() || undefined,
+        evidenceReferenceType: transferEvidenceType.trim() || undefined,
+        evidenceReferenceValue: transferEvidenceValue.trim() || undefined,
+        evidenceDocumentNumber: transferEvidenceDocument.trim() || undefined,
+        evidenceIssuer: transferEvidenceIssuer.trim() || undefined,
+        effectiveAt: transferEffectiveAt ? new Date(transferEffectiveAt).toISOString() : undefined,
+        expiresAt: transferExpiresAt ? new Date(transferExpiresAt).toISOString() : undefined,
       }, token)
       setTransferMemberId('')
       setTransferMember(null)
@@ -527,6 +539,12 @@ export function HistoryPage() {
       setTransferQuantity('')
       setTransferReason('')
       setTransferTransactionId('')
+      setTransferEvidenceType('')
+      setTransferEvidenceValue('')
+      setTransferEvidenceDocument('')
+      setTransferEvidenceIssuer('')
+      setTransferEffectiveAt('')
+      setTransferExpiresAt('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create transfer request.')
     } finally {
@@ -700,6 +718,33 @@ export function HistoryPage() {
               className="h-9 w-full rounded-md border bg-background px-3 text-sm"
             />
           </label>
+
+          <div className="grid gap-4 md:grid-cols-2 md:col-span-2">
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Effective from <span className="text-muted-foreground">(optional)</span></span>
+              <input type="datetime-local" value={transferEffectiveAt} onChange={(event) => setTransferEffectiveAt(event.target.value)} className="h-9 w-full rounded-md border bg-background px-3 text-sm" />
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Request expires <span className="text-muted-foreground">(optional)</span></span>
+              <input type="datetime-local" value={transferExpiresAt} onChange={(event) => setTransferExpiresAt(event.target.value)} className="h-9 w-full rounded-md border bg-background px-3 text-sm" />
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Evidence type</span>
+              <input value={transferEvidenceType} onChange={(event) => setTransferEvidenceType(event.target.value)} placeholder="SALE_DEED / RECEIPT" className="h-9 w-full rounded-md border bg-background px-3 text-sm" />
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Evidence reference</span>
+              <input value={transferEvidenceValue} onChange={(event) => setTransferEvidenceValue(event.target.value)} placeholder="Reference value" className="h-9 w-full rounded-md border bg-background px-3 text-sm" />
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Document number</span>
+              <input value={transferEvidenceDocument} onChange={(event) => setTransferEvidenceDocument(event.target.value)} placeholder="Document number" className="h-9 w-full rounded-md border bg-background px-3 text-sm" />
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Issuer</span>
+              <input value={transferEvidenceIssuer} onChange={(event) => setTransferEvidenceIssuer(event.target.value)} placeholder="Issuing authority / party" className="h-9 w-full rounded-md border bg-background px-3 text-sm" />
+            </label>
+          </div>
 
           <label className="space-y-2 text-sm md:col-span-2">
             <span className="font-medium">Reason <span className="text-muted-foreground">(optional)</span></span>

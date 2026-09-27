@@ -98,6 +98,7 @@ export class ResourceRelationshipService {
       documentNumber?: string;
       issuer?: string;
     },
+    existingEvidenceId?: string,
   ) {
     const current = await tx.resourceRelationship.findFirst({
       where: {
@@ -116,20 +117,24 @@ export class ResourceRelationshipService {
       );
     }
 
-    if (evidenceInput) {
-      const evidence = await tx.resourceEvidence.create({
+    if (evidenceInput || existingEvidenceId) {
+      const evidence = existingEvidenceId
+        ? await tx.resourceEvidence.findUnique({ where: { id: existingEvidenceId } })
+        : await tx.resourceEvidence.create({
         data: {
           evidenceType: transactionId
             ? 'TRANSACTION'
             : 'DOCUMENT',
-          referenceType: evidenceInput.referenceType,
-          referenceValue: evidenceInput.referenceValue,
-          documentNumber: evidenceInput.documentNumber,
-          issuer: evidenceInput.issuer,
+          referenceType: evidenceInput!.referenceType,
+          referenceValue: evidenceInput!.referenceValue,
+          documentNumber: evidenceInput!.documentNumber,
+          issuer: evidenceInput!.issuer,
           createdBy: sourceUserId,
           updatedBy: sourceUserId,
         },
       });
+
+      if (!evidence) throw new Error('Transfer evidence not found.');
 
       await tx.resourceRelationship.update({
         where: { id: current.id },

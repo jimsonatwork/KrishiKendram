@@ -37,6 +37,12 @@ export class ResourceTransferRequestService {
       throw new BadRequestException('Transfer expiry must be in the future.');
     }
 
+    const hasEvidenceType = Boolean(dto.evidenceReferenceType);
+    const hasEvidenceValue = Boolean(dto.evidenceReferenceValue);
+    if (hasEvidenceType !== hasEvidenceValue) {
+      throw new BadRequestException('Evidence reference type and value must be supplied together.');
+    }
+
     if (dto.quantity !== undefined) {
       if (dto.resourceType !== 'farmAsset') throw new BadRequestException('Partial transfer is currently supported only for farm assets.');
       if (dto.quantity <= 0) throw new BadRequestException('Partial transfer quantity must be greater than zero.');
@@ -44,6 +50,20 @@ export class ResourceTransferRequestService {
 
     const requestNumber = await this.nextRequestNumber();
     return this.prisma.$transaction(async (tx) => {
+      const evidence = hasEvidenceType
+        ? await tx.resourceEvidence.create({
+            data: {
+              evidenceType: dto.transactionId ? 'TRANSACTION' : 'DOCUMENT',
+              referenceType: dto.evidenceReferenceType!,
+              referenceValue: dto.evidenceReferenceValue!,
+              documentNumber: dto.evidenceDocumentNumber,
+              issuer: dto.evidenceIssuer,
+              createdBy: actorId,
+              updatedBy: actorId,
+            },
+          })
+        : null;
+
       const created = await tx.resourceTransferRequest.create({
         data: {
           requestNumber, resourceType: dto.resourceType, resourceId: dto.resourceId,
@@ -52,6 +72,7 @@ export class ResourceTransferRequestService {
           effectiveAt,
           expiresAt,
           reason: dto.reason, transactionId: dto.transactionId,
+          evidenceId: evidence?.id,
           createdBy: actorId, updatedBy: actorId,
         },
       });
@@ -197,6 +218,7 @@ export class ResourceTransferRequestService {
         await this.relationships.transferOwnerRelationship(
           tx, request.resourceType, request.resourceId, request.sourceUserId, request.destinationUserId,
           effectiveAt, request.reason ?? 'Transfer request accepted', request.transactionId ?? undefined,
+          undefined, request.evidenceId ?? undefined,
         );
         if (request.resourceType === 'farm') {
           await tx.farm.update({ where: { id: request.resourceId }, data: { ownerId: request.destinationUserId } });
@@ -231,6 +253,7 @@ export class ResourceTransferRequestService {
     if (request.unit && !asset.unit) throw new BadRequestException('The source asset has no unit.');
 
     const remainingQuantity = asset.quantity - request.quantity;
+    const evidenceId = request.evidenceId ?? undefined;
     const target = await tx.farmAsset.create({
       data: { farmId: asset.farmId, type: asset.type, name: asset.name, quantity: request.quantity, unit: asset.unit, metadata: asset.metadata },
     });
@@ -250,7 +273,7 @@ export class ResourceTransferRequestService {
         destinationUserId: request.sourceUserId, destinationResourceType: 'farmAsset', destinationResourceId: target.id,
         sourceRelationshipId: sourceRelationshipId, previousMovementId: previousMovement?.id,
         quantity: request.quantity, unit: asset.unit, effectiveAt,
-        reason: request.reason ?? 'Partial transfer split', transactionId: request.transactionId,
+        reason: request.reason ?? 'Partial transfer split', transactionId: request.transactionId, evidenceId,
         createdBy: actorId, updatedBy: actorId,
       },
     });
@@ -268,6 +291,7 @@ export class ResourceTransferRequestService {
     await this.relationships.transferOwnerRelationship(
       tx, 'farmAsset', target.id, request.sourceUserId, request.destinationUserId,
       effectiveAt, request.reason ?? 'Partial transfer accepted', request.transactionId ?? undefined,
+      undefined, evidenceId,
     );
     return target;
   }

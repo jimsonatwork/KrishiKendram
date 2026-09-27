@@ -103,6 +103,7 @@ export type TransferRequest = {
   expiresAt: string | null
   reason: string | null
   transactionId: string | null
+  evidenceId: string | null
   sourceUser?: { id: string; memberId: string | null; name: string }
   destinationUser?: { id: string; memberId: string | null; name: string }
 }
@@ -440,6 +441,12 @@ export const api = {
       unit?: string
       reason?: string
       transactionId?: string
+      evidenceReferenceType?: string
+      evidenceReferenceValue?: string
+      evidenceDocumentNumber?: string
+      evidenceIssuer?: string
+      effectiveAt?: string
+      expiresAt?: string
     },
     token: string,
   ) =>

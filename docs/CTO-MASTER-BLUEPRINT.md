@@ -2654,3 +2654,25 @@ Release-readiness verification exposed and closed two runtime issues outside ord
 ### Next execution target
 
 **Release-readiness sweep:** perform one final canonical-workspace verification of backend health, frontend build, repository cleanliness, and checkpoint state, then move to the next product milestone.
+
+
+## 2026-09-27 — V0.5.23 Transfer Evidence & Temporal UX Closure
+
+### COMPLETE
+
+Transfer requests now preserve the same evidence and temporal context as direct resource lifecycle transfers.
+
+- Transfer-request DTO accepts evidence reference type/value, document number and issuer.
+- Transfer request creation persists a single `ResourceEvidence` record and links it through the existing `evidenceId` relation.
+- Acceptance reuses that evidence record when creating the ownership transfer relationship and movement; partial farm-asset transfers also attach the evidence to the transfer movement.
+- History workspace now exposes optional effective-from and expiry times plus evidence type/reference/document/issuer fields.
+- Existing authorization, audit, relationship, movement and lineage foundations were reused; no duplicate evidence system was introduced.
+- Backend TypeScript: PASS.
+- Full backend regression: 36 suites / 328 tests PASS.
+- Transfer request focused coverage: 12 tests PASS, including evidence persistence/reuse.
+- Frontend TypeScript and production build: PASS; 2311 modules transformed.
+- `git diff --check`: PASS.
+
+### Next execution target
+
+Continue product-domain completion from the existing lifecycle foundation, prioritizing concrete missing user-facing workflows and cross-module integration over speculative infrastructure.

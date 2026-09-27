@@ -796,3 +796,21 @@ Release-readiness verification exposed and closed two runtime issues outside ord
 ### Next execution target
 
 **Release-readiness sweep:** perform one final canonical-workspace verification of backend health, frontend build, repository cleanliness, and checkpoint state, then move to the next product milestone.
+
+
+## 2026-09-27 — V0.5.23 Transfer Evidence & Temporal UX Closure
+
+### COMPLETE
+
+- Extended transfer requests with evidence reference metadata and persisted the existing `ResourceEvidence` entity at request creation.
+- Reused the same evidence ID through ownership transfer completion and partial farm-asset transfer movement.
+- Added History workspace controls for effective time, expiry, evidence type/reference/document/issuer.
+- Added focused regression coverage for evidence persistence and reuse.
+- Backend TypeScript: PASS; full regression: 36 suites / 328 tests PASS.
+- Frontend TypeScript/build: PASS; 2311 modules transformed.
+- `git diff --check`: PASS.
+- Existing bundle-size warning remains deferred to the dedicated performance pass.
+
+### Next execution target
+
+**Product-domain completion:** continue closing concrete user-facing lifecycle and cross-module gaps using the existing centralized foundations, with no speculative infrastructure expansion.
