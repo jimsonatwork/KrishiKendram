@@ -489,6 +489,18 @@ export const api = {
       headers: { Authorization: 'Bearer ' + token },
     }),
 
+  transferAdministrativePending: (token: string) =>
+    request<TransferRequest[]>('/resource-transfers/requests/admin/pending', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  approveTransfer: (id: string, token: string, reason?: string) =>
+    request<TransferRequest>('/resource-transfers/requests/' + id + '/approve', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
+
   cropRelationshipHistory: (id: string, token: string) =>
     request<any[]>(`/crops/${id}/relationships/history`, {
       headers: {

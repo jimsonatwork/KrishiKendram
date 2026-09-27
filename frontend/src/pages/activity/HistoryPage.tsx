@@ -115,12 +115,15 @@ function iconFor(kind: HistoryItem['kind']) {
 export function HistoryPage() {
   const accessToken = useAuthStore((state) => state.accessToken)
   const currentUserId = useAuthStore((state) => state.user?.id)
+  const currentUserRole = useAuthStore((state) => state.user?.role)
+  const canApproveTransfers = ['SUPER_ADMIN', 'ADMIN', 'STATE_ADMIN', 'DISTRICT_ADMIN'].includes(currentUserRole ?? '')
   const [farms, setFarms] = useState<Farm[]>([])
   const [crops, setCrops] = useState<Crop[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [transfers, setTransfers] = useState<TransferRequest[]>([])
   const [outgoingTransfers, setOutgoingTransfers] = useState<TransferRequest[]>([])
+  const [administrativeTransfers, setAdministrativeTransfers] = useState<TransferRequest[]>([])
   const [lifecycleEvents, setLifecycleEvents] = useState<any[]>([])
   const [transferBusy, setTransferBusy] = useState('')
   const [transferMemberId, setTransferMemberId] = useState('')
@@ -154,12 +157,13 @@ export function HistoryPage() {
         setLoading(true)
         setError('')
 
-        const [farmResult, cropResult, transferResult, outgoingTransferResult, userHistoryResult, userRelationshipResult] =
+        const [farmResult, cropResult, transferResult, outgoingTransferResult, administrativeTransferResult, userHistoryResult, userRelationshipResult] =
           await Promise.all([
             api.farms(token),
             api.crops(token),
             api.transferIncomingPending(token),
             api.transferOutgoing(token),
+            canApproveTransfers ? api.transferAdministrativePending(token) : Promise.resolve([]),
             api.userHistory(currentUserId, token).catch(() => []),
             api.userRelationshipHistory(currentUserId, token),
           ])
@@ -187,6 +191,12 @@ export function HistoryPage() {
         setOutgoingTransfers(
           Array.isArray(outgoingTransferResult)
             ? outgoingTransferResult
+            : [],
+        )
+
+        setAdministrativeTransfers(
+          Array.isArray(administrativeTransferResult)
+            ? administrativeTransferResult
             : [],
         )
 
@@ -581,6 +591,20 @@ export function HistoryPage() {
     }
   }
 
+  async function handleApproveTransfer(requestId: string) {
+    if (!accessToken || !canApproveTransfers) return
+
+    try {
+      setTransferBusy('approve:' + requestId)
+      await api.approveTransfer(requestId, accessToken)
+      setAdministrativeTransfers((current) => current.filter((item) => item.id !== requestId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to approve transfer request.')
+    } finally {
+      setTransferBusy('')
+    }
+  }
+
   async function handleCancelTransfer(requestId: string) {
     const token = accessToken
     if (!token) return
@@ -831,6 +855,57 @@ export function HistoryPage() {
                     Request {item.requestNumber} · {formatDate(item.requestedAt)}
                     {item.effectiveAt ? ' · Effective ' + formatDate(item.effectiveAt) : ''}
                     {item.expiresAt ? ' · Expires ' + formatDate(item.expiresAt) : ''}
+                    {item.evidenceId ? ' · Evidence linked' : ''}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {canApproveTransfers && administrativeTransfers.length > 0 && (
+        <div className="rounded-2xl border border-primary/20 bg-card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium text-primary">Platform review</div>
+              <h2 className="mt-1 text-xl font-semibold">Transfer approvals</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Pending transfer workflows that require an authorized administrative decision.
+              </p>
+            </div>
+            <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+              {administrativeTransfers.length} pending
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {administrativeTransfers.map((item) => {
+              const busy = transferBusy === 'approve:' + item.id
+              const source = item.sourceUser?.name || 'Source member'
+              const destination = item.destinationUser?.name || 'Destination member'
+              const quantity = item.quantity === null ? 'Full resource' : item.quantity + ' ' + (item.unit || 'units')
+
+              return (
+                <div key={item.id} className="rounded-xl border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium">
+                        {item.resourceType} · {item.resourceId}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {source} → {destination} · {quantity}
+                      </p>
+                      {item.reason && <p className="mt-2 text-sm">{item.reason}</p>}
+                    </div>
+                    <Button size="sm" disabled={busy} onClick={() => void handleApproveTransfer(item.id)}>
+                      <Check className="mr-1 size-4" />
+                      {busy ? 'Approving…' : 'Approve & complete'}
+                    </Button>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Request {item.requestNumber} · {formatDate(item.requestedAt)}
+                    {item.effectiveAt ? ' · Effective ' + formatDate(item.effectiveAt) : ''}
                     {item.evidenceId ? ' · Evidence linked' : ''}
                   </div>
                 </div>

@@ -41,6 +41,11 @@ export class ResourceTransferRequestController {
     return this.transfers.listOutgoing(user.userId);
   }
 
+  @Get('admin/pending')
+  administrativePending(@CurrentUser() user: any) {
+    return this.transfers.listAdministrativePending(user.role as UserRole);
+  }
+
   @Post(':id/accept')
   accept(@Param('id') id: string, @CurrentUser() user: any) {
     return this.transfers.accept(id, user.userId);

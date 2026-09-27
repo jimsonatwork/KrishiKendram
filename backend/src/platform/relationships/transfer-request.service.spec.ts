@@ -249,6 +249,29 @@ describe('ResourceTransferRequestService', () => {
     expect(result).toEqual({ id: 'request-1', status: 'COMPLETED' });
   });
 
+  it('lists pending transfer requests for privileged administrators', async () => {
+    prisma.resourceTransferRequest.findMany.mockResolvedValue([{ id: 'request-1', status: 'PENDING' }])
+
+    await expect(service.listAdministrativePending(UserRole.ADMIN)).resolves.toEqual([
+      { id: 'request-1', status: 'PENDING' },
+    ])
+    expect(prisma.resourceTransferRequest.findMany).toHaveBeenCalledWith({
+      where: { status: 'PENDING' },
+      orderBy: { requestedAt: 'asc' },
+      include: {
+        sourceUser: { select: { id: true, memberId: true, name: true } },
+        destinationUser: { select: { id: true, memberId: true, name: true } },
+      },
+    })
+  })
+
+  it('blocks administrative pending transfer access for regular members', async () => {
+    await expect(service.listAdministrativePending(UserRole.FARMER)).rejects.toThrow(
+      'Administrator access is required.',
+    )
+    expect(prisma.resourceTransferRequest.findMany).not.toHaveBeenCalled()
+  })
+
   it('rejects a partial transfer equal to the full source quantity', async () => {
     prisma.resourceTransferRequest.findUnique.mockResolvedValue({
       id: 'request-1', resourceType: 'farmAsset', resourceId: 'asset-1',

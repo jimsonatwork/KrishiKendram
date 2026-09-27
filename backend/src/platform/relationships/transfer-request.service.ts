@@ -130,6 +130,21 @@ export class ResourceTransferRequestService {
     return { count };
   }
 
+  async listAdministrativePending(role: UserRole) {
+    if (!this.isPrivileged(role)) {
+      throw new ForbiddenException('Administrator access is required.');
+    }
+
+    return this.prisma.resourceTransferRequest.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { requestedAt: 'asc' },
+      include: {
+        sourceUser: { select: { id: true, memberId: true, name: true } },
+        destinationUser: { select: { id: true, memberId: true, name: true } },
+      },
+    });
+  }
+
   async accept(id: string, actorId: string) { return this.complete(id, actorId, false); }
 
   async approve(id: string, actorId: string, role: UserRole, approvalReason?: string) {

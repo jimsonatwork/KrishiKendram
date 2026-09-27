@@ -14,9 +14,9 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.18 User History UI/Runtime Integration |
-| Current checkpoint message | V0.5.18 User History UI/Runtime Integration |
-| Current primary phase | V0.5.18 — UI/Runtime Integration |
+| Current checkpoint | V0.5.19 Transfer Administration Workflow |
+| Current checkpoint message | V0.5.19 Transfer Administration Workflow |
+| Current primary phase | V0.5.19 — UI/Runtime Integration + Lifecycle Administration |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
@@ -46,7 +46,10 @@
 - Users validation through shared Field Policy helper.
 - Auth registration validation through shared Field Policy helper.
 - Super Admin administrative protections currently implemented.
+- Transfer lifecycle workflow now exposes pending administrative approvals through an authorization-checked API and History workspace UI.
 - Existing authorization tests currently passing: 56/56.
+- Backend full test suite currently passing: 330/330.
+- Frontend production TypeScript/Vite build currently passing.
 
 ### Current Architectural Position
 
@@ -79,6 +82,22 @@ Architectural rule:
 > A transfer request is a workflow; the transfer itself is a governed change to
 > resource relationships. Ownership is not represented by editing a farm or
 > member profile.
+
+### 2026-09-28 Transfer Administration Checkpoint
+
+The existing transfer workflow already supported administrator approval in the service layer, but the platform did not expose a safe administrative pending queue to the frontend. This checkpoint closes that integration gap without changing the established ownership/movement/evidence model.
+
+Implemented:
+
+- Authorization-checked administrative pending transfer query.
+- Frontend API contract for pending administrative transfers.
+- History workspace approval queue for privileged roles.
+- Approval action wired to the existing atomic transfer completion lifecycle.
+- Focused transfer tests expanded to cover privileged listing and regular-member denial.
+- Full backend validation: 36 suites / 330 tests passed.
+- Frontend production build passed.
+
+Architectural guardrail: administrative approval remains a workflow action; it does not bypass the canonical relationship, movement, lineage, evidence, audit, or authorization services.
 
 The current execution frontier is V0.4 concrete lifecycle adoption:
 
