@@ -2413,3 +2413,7 @@ The platform administration boundary now has a read-only reconciliation path bet
 ### Next target
 
 V0.5.6.4 platform coverage dashboard using the existing Registry, permission, module-status, and audit contracts.
+
+## 2026-09-27 — V0.5.6.4 Platform Coverage Dashboard
+
+The Super Admin landing workspace now surfaces platform health from existing canonical contracts: Registry modules/resources, module lifecycle status, persisted permissions, Registry-permission reconciliation, and recent audit activity. The dashboard is read-only and does not introduce a second control plane.

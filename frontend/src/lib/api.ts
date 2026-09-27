@@ -187,6 +187,12 @@ export type PlatformAuditEvent = {
   createdAt: string
 }
 
+export type PlatformPermissionReconciliation = {
+  summary: { declaredCount: number; persistedResourcePermissionCount: number; coveredCount: number; missingCount: number; staleCount: number }
+  declared: { module: string; resource: string; action: string; scope: string; persisted: boolean; permissionId: string | null }[]
+  stale: { id: string; module: string; resource: string | null; action: string; scope: string }[]
+}
+
 export type PlatformPermission = {
   id: string
   module: string
@@ -202,6 +208,10 @@ export type PlatformPermission = {
 export const api = {
   platformPermissions: (token: string) =>
     request<PlatformPermission[]>('/platform/permissions', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+  platformPermissionReconciliation: (token: string) =>
+    request<PlatformPermissionReconciliation>('/platform/permissions/reconciliation', {
       headers: { Authorization: 'Bearer ' + token },
     }),
   platformAuditRecent: (token: string, limit = 100) =>

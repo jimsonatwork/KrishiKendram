@@ -5,6 +5,7 @@ import { CapabilitiesPage } from '@/pages/admin/CapabilitiesPage'
 import { PermissionsPage } from '@/pages/admin/PermissionsPage'
 import { RolesPage } from '@/pages/admin/RolesPage'
 import { AuditPage } from '@/pages/admin/AuditPage'
+import { PlatformDashboardPage } from '@/pages/admin/PlatformDashboardPage'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -960,7 +961,9 @@ function PortalLayout({
     <FarmerDashboard user={user} />
   )
 
-  if (location.pathname === '/app/farms') {
+  if (location.pathname === '/app' && isAdmin) {
+    content = <PlatformDashboardPage />
+  } else if (location.pathname === '/app/farms') {
     content = <FarmsPage />
   } else if (location.pathname === '/app/crops') {
     content = <CropsPage />
