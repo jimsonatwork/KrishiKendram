@@ -495,3 +495,17 @@ These records support one another. None should silently replace another.
 - Git checkpoint: 57bc097 — Expose registry module and field contracts.
 - Exact next segment: V0.5.2 frontend canonical contract and centralized
   field-policy adapter consuming the verified backend Registry contract.
+
+
+### 27 Sep 2026 — V0.5.2 Frontend Canonical Contract Foundation
+
+- Added a lightweight frontend platform contract boundary under frontend/src/lib/platform.
+- Added TypeScript contracts mirroring the backend Registry module, resource, field and capability metadata.
+- Added a dedicated Registry client for resources, modules and fields.
+- Added a centralized field-policy adapter resolving reusable field definitions with resource-specific validation overrides.
+- Kept backend validation authoritative; the frontend adapter is UX/contract consumption, not a second business-validation engine.
+- Existing business API clients and screens were left untouched.
+- Frontend production build: PASS.
+- Backend Registry/Field/Module focused coverage remains 65/65 PASS; full backend regression remains 36/36 suites, 324/324 tests PASS from the preceding backend contract checkpoint.
+- Live API curl was not repeated because the local backend runtime was not running; no background runtime was left behind.
+- Exact next segment: integrate the contract/field-policy adapter into the first Super Admin Resources workspace without duplicating Registry metadata.

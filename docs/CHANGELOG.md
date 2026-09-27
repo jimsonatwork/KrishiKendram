@@ -734,3 +734,23 @@ Authenticated end-to-end lifecycle smoke coverage, then the next concrete backen
 ### Next target
 
 V0.5.2 frontend canonical contract and centralized field-policy adapter.
+
+
+## 2026-09-27 — Frontend Canonical Contract Foundation
+
+- Added a lightweight frontend platform contract layer under frontend/src/lib/platform.
+- Added typed Registry contracts for modules, resources, fields and capabilities.
+- Added a centralized field-policy resolver/UX validator using backend Registry metadata and resource-specific overrides.
+- Added a dedicated Registry API client for resources, modules and fields.
+- Existing business API clients and screens remain unchanged.
+
+### Verification
+
+- Frontend TypeScript/Vite production build: PASS.
+- Backend contract regression remains 65/65 focused tests PASS.
+- Full backend regression remains 36/36 suites, 324/324 tests PASS.
+- Live API runtime verification was deferred because the local backend process was not running in the session.
+
+### Next target
+
+Super Admin Resources workspace consuming the canonical contract layer.

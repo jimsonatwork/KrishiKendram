@@ -16,8 +16,8 @@
 | Branch | `main` |
 | Current checkpoint | `57bc097` |
 | Current checkpoint message | Expose registry module and field contracts |
-| Current primary phase | V0.5.1 — Backend Platform Contract Foundation |
-| Current platform priority | Frontend Policy / Contract Boundary → Resources → Fields → Modules → platform administration |
+| Current primary phase | V0.5.2 — Frontend Canonical Contract Foundation |
+| Current platform priority | Frontend Contract → Field Policy → Resources → Modules → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
 | Next major target | V0.5.2 canonical frontend contract and centralized field-policy adapter |
