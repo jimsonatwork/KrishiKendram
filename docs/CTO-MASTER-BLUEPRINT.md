@@ -2427,3 +2427,20 @@ The Super Admin landing workspace now surfaces platform health from existing can
 - Permission reconciliation remains read-only and reports declared, covered, missing, and stale persisted resource permissions.
 - Verification: PermissionService 17/17; backend production build PASS; frontend production build PASS; git diff --check PASS; working tree clean.
 - Generated backend/frontend build artifacts were root-owned from an earlier environment run; ownership was corrected at the WSL filesystem level. No application source workaround was added.
+
+## 2026-09-27 — V0.5.8 Crop Module Completion Gate
+
+The Crop module has passed its current architecture and delivery gate without introducing a second lifecycle or authorization path.
+
+- Canonical Crop mutation ownership remains in CropsService.
+- AI Intake delegates Crop persistence to CropsService.createFromIntake().
+- Authorization occurs before protected Crop payload access and before Registry validation.
+- Crop names use centralized Registry field validation/normalization.
+- Crop ownership relationships are created and terminated through the canonical relationship service.
+- Archive is implemented as the existing soft-delete lifecycle; no speculative duplicate restore engine was introduced.
+- Frontend Crop workspace is connected to the canonical Crop API and relationship-history surface.
+- Verification: Crop/module focused backend tests 17/17; frontend production build PASS.
+
+### Next target
+
+V0.5.9 — Intake/FarmRecord completion gate and module-wide history/provenance verification.

@@ -610,3 +610,9 @@ The next execution segment is a platform coverage dashboard built from existing 
 ## 2026-09-27 — V0.5.6.4 Platform Coverage Dashboard
 
 The platform landing surface composes existing Registry, authorization, module lifecycle, and audit contracts into an operational coverage view. No new persistence, authorization engine, lifecycle engine, or audit/history implementation was introduced.
+
+## V0.5.8 — Crop Module Completion Gate — 27 Sep 2026
+
+Crop is closed for the current completion gate. CropsService is the canonical mutation owner; Intake delegates to it; Registry validation and AuthorizationService remain centralized; ownership relationship lifecycle remains canonical; frontend is connected. Verification: 17/17 focused Crop/module tests and frontend production build PASS.
+
+Next: V0.5.9 Intake/FarmRecord completion gate and module-wide history/provenance verification.
