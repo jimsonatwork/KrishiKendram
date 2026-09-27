@@ -680,3 +680,15 @@ Authenticated Crop read coverage is now closed for the current segment.
 Verification: E2E 13/13.
 
 Exact next segment: **V0.5.16 authenticated read coverage for relationship/transfer and history surfaces where existing fixtures permit it; otherwise begin the planned UI/runtime integration pass.**
+
+## 2026-09-27 — V0.5.16 Authenticated Transfer Read Coverage
+
+Authenticated transfer-request read coverage is now closed for the stable incoming/outgoing collection routes.
+
+- E2E verifies /api/v1/resource-transfers/requests/incoming and /api/v1/resource-transfers/requests/outgoing with an existing active user and a real JWT.
+- The test does not create, accept, reject, cancel, or otherwise mutate transfer requests.
+- Empty collections remain a valid runtime result; the contract is the authenticated collection boundary.
+
+Verification: E2E 14/14.
+
+Exact next segment: **V0.5.17 authenticated history/relationship read coverage where a clean existing route and authorization contract are available; otherwise move into the planned UI/runtime integration pass.**

@@ -2544,3 +2544,16 @@ The next authenticated read contract is closed using existing fixtures and autho
 ### Next target
 
 V0.5.16 — authenticated read coverage for relationship/transfer and history surfaces where existing fixtures permit it; otherwise begin the planned UI/runtime integration pass.
+
+## 2026-09-27 — V0.5.16 Authenticated Transfer Read Coverage
+
+Relationship/transfer runtime read coverage is now closed for the currently stable transfer-request surface.
+
+- Added authenticated E2E coverage for incoming and outgoing resource-transfer request reads using an existing active user.
+- The test exercises the real JWT boundary and existing transfer-request controller/service; it does not create or mutate transfer fixtures.
+- Empty collections are valid and are asserted as arrays, so this milestone does not depend on seeded transfer-request data.
+- Verification: E2E 14/14; no new fixture framework or alternate authorization path introduced.
+
+### Next target
+
+V0.5.17 — authenticated history/relationship read coverage where a clean existing route and authorization contract are available; otherwise move into the planned UI/runtime integration pass.

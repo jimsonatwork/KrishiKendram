@@ -180,6 +180,36 @@ describe('Application runtime smoke (e2e)', () => {
       });
   });
 
+  it('supports authenticated transfer-request reads using an existing active user', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const user = await prisma.user.findFirst({
+      where: { status: 'ACTIVE' },
+      select: { id: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(user).toBeTruthy();
+
+    const accessToken = await jwt.signAsync({
+      sub: user!.id,
+      role: user!.role,
+    });
+
+    const incoming = await request(app.getHttpServer())
+      .get('/api/v1/resource-transfers/requests/incoming')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200);
+
+    const outgoing = await request(app.getHttpServer())
+      .get('/api/v1/resource-transfers/requests/outgoing')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200);
+
+    expect(Array.isArray(incoming.body)).toBe(true);
+    expect(Array.isArray(outgoing.body)).toBe(true);
+  });
+
   afterEach(async () => {
     await app.close();
   });
