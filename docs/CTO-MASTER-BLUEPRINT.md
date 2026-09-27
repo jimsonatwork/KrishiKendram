@@ -2160,4 +2160,4 @@ Extended the existing FarmAsset lifecycle with leasing using already-defined pla
 
 Verification: focused Farms/Relationship tests 42/42 PASS; full backend regression 35/35 suites, 318/318 tests PASS; backend build PASS.
 
-Next frontier: verify lease runtime boundary and then evaluate lease termination using the existing `LEASE_END` movement type before introducing any unrelated domain work.
+Next frontier: verify lease runtime boundary and then expose the completed lifecycle through the existing Farm workspace.

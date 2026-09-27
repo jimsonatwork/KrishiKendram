@@ -640,3 +640,19 @@ Verification: focused tests 42/42 passed; full backend regression 35/35 suites, 
 ### Next target
 
 Runtime lease/lease-end boundary verification, then the next concrete lifecycle only where existing relationship/movement/lineage primitives provide a clean fit.
+
+
+## 2026-09-27 — FarmAsset Lifecycle UI Exposure
+
+- Added frontend API clients for lease, lease termination, and custody assignment.
+- Added compact FarmAsset lifecycle controls to the existing Farm workspace.
+- Lease start/end and custody assignment delegate lifecycle truth to the backend.
+- Reused Member ID and reason contracts without introducing parallel frontend lifecycle rules.
+
+### Verification
+
+- Frontend TypeScript/Vite production build: PASS.
+
+### Next target
+
+Authenticated end-to-end lifecycle smoke coverage, then the next concrete backend/frontend lifecycle slice.
