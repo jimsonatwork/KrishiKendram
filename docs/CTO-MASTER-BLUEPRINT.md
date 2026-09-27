@@ -2503,3 +2503,17 @@ The Registry coverage reconciliation segment is closed.
 ### Next target
 
 V0.5.13+ßuÁ‚ùÁT runtime module/API coverage reconciliation across the remaining application surfaces, with production-route smoke checks and no duplicate contracts.
+
+## 2026-09-27 ‚Äî V0.5.13 Runtime Module/API Coverage Reconciliation
+
+The remaining high-value application API boundaries now have runtime smoke coverage using existing contracts only.
+
+- Added E2E checks for Auth, Users, Crops, Intake, Resource Transfer requests, and Audit in addition to the existing Health, Registry, Farm, and permission-administration checks.
+- Protected surfaces consistently reject unauthenticated access with HTTP 401 at the runtime boundary.
+- No duplicate API abstraction, authorization path, persistence model, or lifecycle model was introduced.
+- Verification: E2E 10/10; full backend regression 36 suites / 327 tests; backend TypeScript PASS; frontend TypeScript PASS; frontend production build PASS; diff check PASS.
+- Existing frontend bundle-size warning remains non-blocking and is not being expanded into this milestone.
+
+### Next target
+
+V0.5.14 ‚Äî authenticated runtime happy-path verification for the smallest stable read contracts, reusing existing test fixtures and avoiding mutation-heavy E2E coverage unless it catches a real contract gap.

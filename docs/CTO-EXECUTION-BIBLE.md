@@ -646,3 +646,11 @@ Registry coverage is now executable rather than documentary: every resource must
 Verification: backend 36 suites / 327 tests; backend TypeScript PASS; frontend TypeScript PASS; frontend production build PASS.
 
 Exact next segment: **V0.5.13 runtime module/API coverage reconciliation across remaining application surfaces**, using existing contracts only.
+
+## 2026-09-27 — V0.5.13 Runtime Module/API Coverage Reconciliation
+
+Runtime smoke coverage now spans the remaining high-value application boundaries: Auth, Users, Farms, Crops, Intake, Resource Transfer requests, Audit, Registry, Health, and permission administration. Protected endpoints reject unauthenticated access at runtime with 401.
+
+No duplicate contract or new abstraction was introduced. Verification: E2E 10/10; backend 36 suites / 327 tests; backend TypeScript PASS; frontend TypeScript PASS; frontend production build PASS; diff check PASS. The existing frontend bundle-size warning remains a future performance item, not a reason to expand this milestone.
+
+Exact next segment: **V0.5.14 authenticated runtime happy-path verification for the smallest stable read contracts**, using existing fixtures and avoiding mutation-heavy E2E coverage unless a real gap is found.

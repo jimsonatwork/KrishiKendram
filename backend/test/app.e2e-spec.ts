@@ -60,6 +60,31 @@ describe('Application runtime smoke (e2e)', () => {
       .get('/api/v1/platform/permissions/reconciliation')
       .expect(401));
 
+  it('keeps Auth current-user access behind JWT authentication', () =>
+    request(app.getHttpServer()).get('/api/v1/auth/me').expect(401));
+
+  it('keeps Users access behind JWT authentication', () =>
+    request(app.getHttpServer()).get('/api/v1/users/me').expect(401));
+
+  it('keeps Crops access behind JWT authentication', () =>
+    request(app.getHttpServer()).get('/api/v1/crops').expect(401));
+
+  it('keeps Intake creation behind JWT authentication', () =>
+    request(app.getHttpServer())
+      .post('/api/v1/intake')
+      .send({})
+      .expect(401));
+
+  it('keeps Resource Transfer requests behind JWT authentication', () =>
+    request(app.getHttpServer())
+      .get('/api/v1/resource-transfers/requests/incoming')
+      .expect(401));
+
+  it('keeps Audit activity behind authorization authentication', () =>
+    request(app.getHttpServer())
+      .get('/api/v1/platform/audit/recent')
+      .expect(401));
+
   afterEach(async () => {
     await app.close();
   });
