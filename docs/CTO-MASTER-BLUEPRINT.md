@@ -2444,3 +2444,17 @@ The Crop module has passed its current architecture and delivery gate without in
 ### Next target
 
 V0.5.9 — Intake/FarmRecord completion gate and module-wide history/provenance verification.
+
+## 2026-09-27 — V0.5.9 Intake/FarmRecord Completion Gate
+
+Intake/FarmRecord passed the current completion gate. Intake remains an interpretation boundary only: authorization occurs before extraction, Crop mutations delegate to CropsService, and FarmRecord persistence delegates to FarmsService.addRecord(). FarmRecord remains immutable historical data with Registry-defined READ/CREATE only; no UPDATE/DELETE lifecycle was introduced.
+
+- FarmRecord Registry contract: READ + CREATE, OWN/FARM/GLOBAL.
+- FarmRecord validation/normalization remains centralized in the Registry-backed FarmsService path.
+- Original intake content remains preserved in the record data payload through the extractor's aw value.
+- Activity/History frontend already surfaces FarmRecord input method and record context.
+- Verification: IntakeService 8/8 focused tests; Crop gate 17/17 remains green; frontend production build PASS.
+
+### Next target
+
+V0.5.10 — Farm module completion gate: farm lifecycle, asset/record/crop composition, relationship/movement/history consistency, and Super Admin contract coverage.

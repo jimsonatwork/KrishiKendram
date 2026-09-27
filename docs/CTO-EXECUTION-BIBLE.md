@@ -616,3 +616,9 @@ The platform landing surface composes existing Registry, authorization, module l
 Crop is closed for the current completion gate. CropsService is the canonical mutation owner; Intake delegates to it; Registry validation and AuthorizationService remain centralized; ownership relationship lifecycle remains canonical; frontend is connected. Verification: 17/17 focused Crop/module tests and frontend production build PASS.
 
 Next: V0.5.9 Intake/FarmRecord completion gate and module-wide history/provenance verification.
+
+## V0.5.9 — Intake/FarmRecord Completion Gate — 27 Sep 2026
+
+Intake/FarmRecord is closed for the current gate. Intake is interpretation-only; authorization precedes extraction; Crop creation delegates to CropsService; FarmRecord creation delegates to FarmsService; FarmRecord remains immutable with READ/CREATE Registry capabilities. Verification: IntakeService 8/8; Crop focused gate 17/17; frontend production build PASS.
+
+Next: V0.5.10 Farm module completion gate.
