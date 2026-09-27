@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { PermissionAdminController } from './permission-admin.controller';
 
 import { PrismaModule } from '../../prisma/prisma.module';
 
@@ -15,6 +16,7 @@ import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
 
 @Global()
 @Module({
+  controllers: [PermissionAdminController],
   imports: [
     PrismaModule,
     RegistryModule,

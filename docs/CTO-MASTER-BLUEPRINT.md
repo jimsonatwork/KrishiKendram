@@ -2371,3 +2371,15 @@ V0.5.6 platform administration integration, while continuing the visual system t
 - Backend Registry remains authoritative and frontend data remains presentation-only.
 
 Verification: TypeScript build PASS; git diff --check PASS. Vite production bundling remains environment-blocked by the mixed Windows/WSL dependency environment and missing native Rolldown binding documented in the previous checkpoint.
+
+
+## 2026-09-27 — V0.5.6 Permission Administration Surface
+
+- Added a Registry-declared `permission` platform resource with READ/GLOBAL capability.
+- Added a protected `GET /api/v1/platform/permissions` administration surface backed by the existing PermissionService and AuthorizationService.
+- Added a read-only Super Admin Permission Matrix workspace at `/app/permissions` showing persisted permission scope, role assignments and field effects.
+- No second authorization engine was introduced; backend Authorization remains the sole decision engine.
+- The new permission capability participates in the existing additive Registry/seed reconciliation path so ADMIN and SUPER_ADMIN receive declared GLOBAL capability access.
+- Frontend TypeScript verification passes. Backend TypeScript verification still reports two pre-existing unrelated test compile errors in FarmAsset custody/FarmsService specs; no new error was reported from the permission administration changes.
+
+Next: continue platform administration integration and progressively expose safe control actions only where their existing backend mutation/audit paths are already authoritative.

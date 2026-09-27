@@ -176,7 +176,24 @@ export async function request<T>(
   return data as T
 }
 
+export type PlatformPermission = {
+  id: string
+  module: string
+  section: string | null
+  resource: string | null
+  action: string
+  scope: string
+  inherited: boolean
+  rolePermissions: { role: string }[]
+  fieldPermissions: { field: string; effect: string }[]
+}
+
 export const api = {
+  platformPermissions: (token: string) =>
+    request<PlatformPermission[]>('/platform/permissions', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
   register: (data: {
     name: string
     email: string

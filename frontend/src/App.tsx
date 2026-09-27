@@ -2,6 +2,7 @@ import { UsersPage } from '@/pages/admin/UsersPage'
 import { ResourcesPage } from '@/pages/admin/ResourcesPage'
 import { ModulesPage } from '@/pages/admin/ModulesPage'
 import { CapabilitiesPage } from '@/pages/admin/CapabilitiesPage'
+import { PermissionsPage } from '@/pages/admin/PermissionsPage'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -975,7 +976,7 @@ function PortalLayout({
   } else if (
     location.pathname === '/app/permissions'
   ) {
-    content = <ComingSoon title="Permissions" />
+    content = <PermissionsPage />
   } else if (
     location.pathname === '/app/resources'
   ) {

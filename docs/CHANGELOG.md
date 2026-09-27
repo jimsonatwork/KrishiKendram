@@ -816,3 +816,12 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Added an AI-ready platform context presentation without inventing AI results.
 - Preserved detailed Resources, Modules and Capabilities administration workspaces.
 - TypeScript build PASS; git diff --check PASS.
+
+
+## 2026-09-27 — V0.5.6 Permission Administration
+
+- Added Registry-declared permission resource and protected permission administration API.
+- Added Super Admin Permission Matrix with role/scope/field visibility and filtering.
+- Reused existing PermissionService and AuthorizationService; no duplicate policy engine.
+- Frontend TypeScript PASS.
+- Backend TypeScript reports two unrelated existing test compilation errors; permission files introduced no reported TypeScript errors.

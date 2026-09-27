@@ -179,6 +179,28 @@ export class PermissionService {
     });
   }
 
+  async listForAdministration() {
+    return this.prisma.permission.findMany({
+      orderBy: [
+        { module: 'asc' },
+        { resource: 'asc' },
+        { action: 'asc' },
+        { scope: 'asc' },
+      ],
+      select: {
+        id: true,
+        module: true,
+        section: true,
+        resource: true,
+        action: true,
+        scope: true,
+        inherited: true,
+        rolePermissions: { select: { role: true }, orderBy: { role: 'asc' } },
+        fieldPermissions: { select: { field: true, effect: true }, orderBy: { field: 'asc' } },
+      },
+    });
+  }
+
   async reconcileRolePermissions(
     permissionId: string,
     roles: UserRole[],

@@ -5,9 +5,11 @@ import { farmAssetResource } from './farm-asset.resource';
 import { farmRecordResource } from './farm-record.resource';
 import { farmResource } from './farm.resource';
 import { userResource } from './user.resource';
+import { permissionResource } from './permission.resource';
 
 export const RESOURCE_DEFINITIONS: ResourceDefinition[] = [
   userResource,
+  permissionResource,
   farmResource,
   cropResource,
   farmAssetResource,
@@ -20,4 +22,5 @@ export {
   farmRecordResource,
   farmResource,
   userResource,
+  permissionResource,
 };
