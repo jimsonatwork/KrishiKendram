@@ -766,3 +766,13 @@ Super Admin Resources workspace consuming the canonical contract layer.
 - No new backend model or authorization engine introduced.
 
 Verification: frontend TypeScript build PASS; Vite production build PASS; git diff --check PASS.
+
+
+## 2026-09-27 — V0.5.4 Module Workspace
+
+- Added frontend/src/pages/admin/ModulesPage.tsx.
+- Added Super Admin Modules navigation and /app/modules route.
+- Exposed Registry module lifecycle, dependencies and attached resources.
+- Kept module lifecycle ownership in the backend ModuleLifecycleService.
+
+Next checkpoint: V0.5.5 capability and field administration.

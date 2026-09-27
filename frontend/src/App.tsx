@@ -1,5 +1,6 @@
 import { UsersPage } from '@/pages/admin/UsersPage'
 import { ResourcesPage } from '@/pages/admin/ResourcesPage'
+import { ModulesPage } from '@/pages/admin/ModulesPage'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -856,6 +857,11 @@ function PortalLayout({
               icon: <Database />,
             },
             {
+              label: 'Modules',
+              href: '/app/modules',
+              icon: <Boxes />,
+            },
+            {
               label: 'System',
               href: '/app/system',
               icon: <Settings />,
@@ -934,6 +940,8 @@ function PortalLayout({
     location.pathname === '/app/resources'
   ) {
     content = <ResourcesPage />
+  } else if (location.pathname === '/app/modules') {
+    content = <ModulesPage />
   } else if (location.pathname === '/app/system') {
     content = <ComingSoon title="System" />
   }

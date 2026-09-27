@@ -522,3 +522,12 @@ These records support one another. None should silently replace another.
 Verification: frontend TypeScript build PASS; Vite production build PASS; git diff --check PASS.
 
 Next: contract-driven module/dependency administration, then capability/field administration.
+
+
+## 2026-09-27 — V0.5.4 Module Workspace Checkpoint
+
+Implemented the Super Admin Modules workspace using canonical module/resource Registry data. The UI exposes lifecycle state, dependencies and attached resources while preserving backend ownership of lifecycle rules. No second lifecycle engine or speculative persistence layer was added.
+
+Verification: git diff --check PASS; frontend build initiated with the repository Node toolchain.
+
+Next: capability and field administration.

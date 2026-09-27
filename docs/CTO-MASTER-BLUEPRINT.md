@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `863a2a8` + V0.5.3 Resources workspace working tree |
-| Current checkpoint message | V0.5.3 Super Admin Resources workspace |
-| Current primary phase | V0.5.3 — Super Admin Resources Workspace |
+| Current checkpoint | V0.5.4 Module workspace working tree |
+| Current checkpoint message | V0.5.4 Module workspace |
+| Current primary phase | V0.5.4 — Module Workspace |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | V0.5.4 contract-driven platform administration expansion |
+| Next major target | V0.5.5 capability and field administration |
 
 ## Current Status
 
@@ -2304,3 +2304,13 @@ Current execution frontier: continue concrete module adoption only where the exi
 ### Next target
 
 V0.5.4 — contract-driven platform administration expansion: modules, dependencies and governed capability/field administration using the same canonical boundary.
+
+
+## 2026-09-27 — V0.5.4 Module Workspace
+
+- Added the Super Admin Modules workspace at /app/modules.
+- Module lifecycle, stable ID, dependencies and attached resources are presented from the canonical Registry contracts.
+- Lifecycle transition logic remains backend-owned by ModuleLifecycleService; no frontend lifecycle engine or mutation model was introduced.
+- Existing module/resource definitions remain declarative and centralized.
+
+Next target: V0.5.5 capability and field administration using the same contract boundary.
