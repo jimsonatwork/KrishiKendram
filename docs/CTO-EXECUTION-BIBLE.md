@@ -323,6 +323,26 @@ Example:
 The phrase **"continue"** must always resume from this recorded position unless
 a new decision is explicitly made.
 
+### 27 Sep 2026 — V0.4 execution position synchronized
+
+The execution position has advanced beyond the historical V0.3 recovery text in this document.
+
+Current authoritative sequence:
+
+1. **V0.3 lifecycle baseline — COMPLETE:** Farm ownership/child lifecycle, ResourceRelationship, ResourceMovement, ResourceLineage, RelationshipEvidence, transfer workflow, partial FarmAsset transfer, merge/split lineage, and authorization-aware history foundations are implemented and checkpointed.
+2. **V0.4 concrete lifecycle adoption — ACTIVE:** FarmAsset custody and lease lifecycles are implemented using the existing relationship/movement/evidence primitives.
+3. **History integration — COMPLETE:** the existing History workspace now surfaces farm movement plus asset relationship/movement/lineage/evidence and crop relationship events.
+4. **Next controlled activity:** choose the next concrete operational lifecycle only from an explicit product/business contract that fits existing primitives. Do not add a new domain model merely because an enum or relationship type exists.
+5. **Deferred verification pass:** full backend regression and runtime lifecycle smoke verification remains a dedicated checking pass, not a reason to block implementation while the user has explicitly asked to continue execution.
+
+Latest repository checkpoint: `723f159`.
+
+Latest coherent implementation flow remains:
+
+**Inspect enough → Implement → Focused test → Build → Git checkpoint → Update Blueprint/Changelog/Bible → Reassess.**
+
+No parallel authorization/history system, destructive migration, broad domain migration, or speculative lifecycle is authorized by this execution position.
+
 ## 14. Evidence Standard
 
 Preferred evidence, in order:

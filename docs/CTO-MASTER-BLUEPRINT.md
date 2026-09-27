@@ -14,8 +14,8 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `9ff3633` |
-| Current checkpoint message | FarmAsset custody return lifecycle + unified history timeline integration |
+| Current checkpoint | `723f159` |
+| Current checkpoint message | Unified resource history timeline + CTO execution-position synchronization |
 | Current primary phase | V0.4 — Concrete Domain Lifecycle Adoption |
 | Current platform priority | Runtime lifecycle smoke verification → next concrete lifecycle only where existing primitives fit |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
@@ -72,8 +72,7 @@ Implemented foundation:
 - Accepted/approved requests execute the existing temporal ownership,
   movement, and evidence lifecycle rather than directly rewriting ownership.
 - Farm ownership transfer also updates the canonical `Farm.ownerId` field.
-- Partial transfer quantity is intentionally blocked until the partial-transfer
-  lifecycle is wired to split + transfer atomically.
+- Quantified partial FarmAsset transfer is implemented atomically through split + transfer lifecycle semantics.
 
 Architectural rule:
 
@@ -81,23 +80,23 @@ Architectural rule:
 > resource relationships. Ownership is not represented by editing a farm or
 > member profile.
 
-The next work should concentrate on platform integration:
+The current execution frontier is V0.4 concrete lifecycle adoption:
 
 ```text
-Registry
-   ↓
-Module Definition
-   ↓
-Resource Registration
-   ↓
-Capability Registration
-   ↓
-Permission Generation
-   ↓
-Role / Grant Assignment
-   ↓
-AuthorizationService
+Existing platform primitives
+        ↓
+Concrete business lifecycle
+        ↓
+Authorization + relationship + movement/evidence/lineage
+        ↓
+Focused tests + frontend exposure
+        ↓
+Git checkpoint + execution-record synchronization
+        ↓
+Next concrete lifecycle
 ```
+
+The Registry → Capability → Permission → Authorization foundation is established and should not be reopened without evidence of a real gap.
 
 ---
 
