@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useState,
 } from 'react'
 
 import {
@@ -36,6 +37,7 @@ export function ThemeProvider({
   const visualEffects = useThemeStore(
     (state) => state.visualEffects,
   )
+  const [reducedMotion, setReducedMotion] = useState(false)
 
   const resolvedMode = useMemo(() => {
     if (mode === 'system') {
@@ -48,7 +50,7 @@ export function ThemeProvider({
   useEffect(() => {
     const root = document.documentElement
 
-    root.classList.toggle('effects-off', !visualEffects)
+    root.classList.toggle('effects-off', !visualEffects || reducedMotion)
 
     root.classList.remove('light', 'dark')
 
@@ -65,7 +67,16 @@ export function ThemeProvider({
         `theme-${colourTheme}`,
       )
     }
-  }, [resolvedMode, colourTheme, visualEffects])
+   }, [resolvedMode, colourTheme, visualEffects, reducedMotion])
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => setReducedMotion(media.matches)
+
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
 
   useEffect(() => {
     if (mode !== 'system') {
