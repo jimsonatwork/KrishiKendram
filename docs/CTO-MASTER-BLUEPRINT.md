@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.6.3 Registry-Permission Reconciliation |
-| Current checkpoint message | V0.5.6.3 Registry-Permission Reconciliation |
-| Current primary phase | V0.5.6.3 — Registry-Permission Reconciliation |
+| Current checkpoint | V0.5.17 Authenticated History/Relationship Read Coverage |
+| Current checkpoint message | V0.5.17 Authenticated History/Relationship Read Coverage |
+| Current primary phase | V0.5.17 — Registry-Permission Reconciliation |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | V0.5.6.4 platform coverage dashboard |
+| Next major target | UI/runtime integration pass across completed module contracts |
 
 ## Current Status
 
@@ -2557,3 +2557,19 @@ Relationship/transfer runtime read coverage is now closed for the currently stab
 ### Next target
 
 V0.5.17 — authenticated history/relationship read coverage where a clean existing route and authorization contract are available; otherwise move into the planned UI/runtime integration pass.
+
+
+## 2026-09-27 — V0.5.17 Authenticated History/Relationship Read Coverage
+
+The authenticated history/relationship read segment is now closed using existing routes, fixtures, and authorization contracts only.
+
+- E2E verifies /api/v1/users/:id/history for an existing active user.
+- E2E verifies /api/v1/users/:id/relationships/history for the same existing active user.
+- The checks exercise the real JWT and existing authorization/relationship services; no alternate authorization path, fixture framework, or mutation-heavy setup was introduced.
+- Empty collections remain valid runtime results; the contract being verified is the authenticated collection boundary.
+- Verification: E2E 15/15; full backend regression 36 suites / 327 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS; git diff --check PASS.
+- The existing frontend bundle-size warning remains a future performance item and is not expanded into this checkpoint.
+
+### Next target
+
+Proceed to the planned **UI/runtime integration pass** across the completed module contracts, using existing APIs and centralized capability/field-policy presentation without introducing duplicate backend rules or new infrastructure.
