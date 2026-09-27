@@ -915,3 +915,24 @@ describe('RegistryService - module integrity', () => {
   });
 
 });
+
+
+import { MODULE_DEFINITIONS } from './definitions/modules';
+import { RESOURCE_DEFINITIONS } from './definitions/resources';
+
+describe('RegistryService - platform coverage invariants', () => {
+  it('keeps every declared resource attached to a registered module', () => {
+    const modules = new Set(MODULE_DEFINITIONS.map((module) => module.id));
+    for (const resource of RESOURCE_DEFINITIONS) expect(modules.has(resource.module)).toBe(true);
+  });
+  it('keeps legacy permission declarations covered by first-class capabilities', () => {
+    for (const resource of RESOURCE_DEFINITIONS) {
+      const actions = new Set<string>((resource.capabilities ?? []).map((capability) => capability.action));
+      for (const permission of resource.permissions ?? []) expect(actions.has(permission)).toBe(true);
+      for (const capability of resource.capabilities ?? []) {
+        expect(capability.scopes.length).toBeGreaterThan(0);
+        expect(capability.scopes.every((scope) => (resource.scopes ?? []).includes(scope))).toBe(true);
+      }
+    }
+  });
+});

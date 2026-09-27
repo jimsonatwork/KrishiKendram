@@ -2489,3 +2489,17 @@ The application-wide runtime verification segment is closed using the existing c
 ### Next target
 
 V0.5.12 ∫w^~)ﬁt application-wide module coverage reconciliation and remaining runtime contract hardening, using existing Registry, authorization, lifecycle, audit, relationship, and frontend contracts only.
+
+## 2026-09-27 ∫w^~)ﬁt V0.5.12 Registry Coverage Reconciliation
+
+The Registry coverage reconciliation segment is closed.
+
+- Added executable invariants proving every declared resource references a registered module.
+- Added executable invariants proving legacy permission declarations remain covered by first-class capabilities and every declared capability has valid, registered scopes.
+- The test deliberately treats first-class capability metadata as the canonical contract while preserving legacy permission metadata during migration; newer capability actions such as READ_ACTIVITY/READ_HISTORY are therefore not incorrectly forced into the legacy list.
+- No new Registry, authorization, or persistence abstraction was introduced.
+- Verification: full backend regression 36 suites / 327 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS; diff check PASS.
+
+### Next target
+
+V0.5.13+ßuÁ‚ùÁT runtime module/API coverage reconciliation across the remaining application surfaces, with production-route smoke checks and no duplicate contracts.

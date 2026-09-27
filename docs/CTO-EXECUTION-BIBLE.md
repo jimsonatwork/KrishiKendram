@@ -638,3 +638,11 @@ Application-wide runtime verification is now closed for the current segment. A p
 Verification: E2E 4/4; backend regression 36 suites / 325 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS.
 
 Exact next segment: **V0.5.12 application-wide module coverage reconciliation and remaining runtime contract hardening**, using existing contracts only.
+
+## 2026-09-27 ºw^~)Þt V0.5.12 Registry Coverage Reconciliation
+
+Registry coverage is now executable rather than documentary: every resource must reference a registered module, and legacy permission declarations must remain covered by first-class capabilities with valid scopes. First-class capabilities remain canonical during the incremental legacy migration. No new abstraction was introduced.
+
+Verification: backend 36 suites / 327 tests; backend TypeScript PASS; frontend TypeScript PASS; frontend production build PASS.
+
+Exact next segment: **V0.5.13 runtime module/API coverage reconciliation across remaining application surfaces**, using existing contracts only.
