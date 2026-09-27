@@ -14,8 +14,8 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `a94efe1` |
-| Current checkpoint message | FarmAsset lease lifecycle coverage + workspace controls |
+| Current checkpoint | `9ff3633` |
+| Current checkpoint message | FarmAsset custody return lifecycle + unified history timeline integration |
 | Current primary phase | V0.4 — Concrete Domain Lifecycle Adoption |
 | Current platform priority | Runtime lifecycle smoke verification → next concrete lifecycle only where existing primitives fit |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
@@ -2161,3 +2161,17 @@ Extended the existing FarmAsset lifecycle with leasing using already-defined pla
 Verification: focused Farms/Relationship tests 42/42 PASS; full backend regression 35/35 suites, 318/318 tests PASS; backend build PASS. Dedicated lease/custody service coverage: 6/6 PASS.
 
 Next frontier: verify lease runtime boundary and then expose the completed lifecycle through the existing Farm workspace.
+
+
+### 27 September 2026 — Unified Resource History Timeline checkpoint
+
+Extended the existing History workspace to consume the lifecycle foundations already present in the platform.
+
+- Asset history now includes temporal relationship history alongside movement, lineage, and evidence.
+- Farm history now includes farm-level ResourceMovement events alongside farm evidence.
+- The existing timeline remains the presentation layer; no duplicate history or lifecycle engine was introduced.
+- Existing authorization-protected history APIs are reused unchanged.
+
+Verification: frontend production build PASS; `git diff --check` PASS. Full regression/runtime verification remains deferred to the planned checking pass.
+
+Next frontier: continue concrete lifecycle adoption only where existing relationship, movement, lineage, evidence, and authorization primitives fit; then perform the deferred full regression/runtime verification.

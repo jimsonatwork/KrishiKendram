@@ -679,3 +679,17 @@ Authenticated end-to-end lifecycle smoke coverage, then the next concrete backen
 
 - Custody + lease focused coverage: 7/7 tests PASS.
 
+
+
+## 2026-09-27 — Unified Resource History Timeline
+
+- Extended the existing History workspace with FarmAsset relationship history.
+- Added farm-level ResourceMovement events to the unified timeline.
+- Kept movement, lineage, evidence, and relationship data sourced from existing protected APIs.
+- No new lifecycle or history persistence layer introduced.
+
+### Verification
+
+- Frontend TypeScript/Vite production build: PASS.
+- `git diff --check`: PASS.
+- Full regression/runtime verification remains deferred to the planned checking pass.

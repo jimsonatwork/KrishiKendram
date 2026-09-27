@@ -183,14 +183,18 @@ export function HistoryPage() {
           (Array.isArray(farmResult) ? farmResult : []).flatMap((farm) =>
             ((farm as Farm).assets ?? []).map(async (asset) => {
               const farmId = (farm as Farm).id
-              const [movementResult, lineageResult, evidenceResult] = await Promise.all([
+              const [movementResult, lineageResult, evidenceResult, relationshipResult] = await Promise.all([
                 api.farmAssetMovementHistory(farmId, asset.id, token),
                 api.farmAssetLineageHistory(farmId, asset.id, token),
                 api.farmAssetEvidenceHistory(farmId, asset.id, token),
+                api.farmAssetRelationshipHistory(farmId, asset.id, token),
               ])
               const movements = (movementResult as any)?.movements ?? []
               const lineages = (lineageResult as any)?.lineages ?? []
               const evidence = (evidenceResult as any)?.evidence ?? []
+              const relationships = Array.isArray(relationshipResult)
+                ? relationshipResult
+                : []
               return [
                 ...(Array.isArray(movements) ? movements : []).map((event: any) => ({
                   id: 'movement-' + event.id,
@@ -208,6 +212,16 @@ export function HistoryPage() {
                   context: (farm as Farm).name,
                   kind: 'lifecycle' as const,
                 })),
+                ...relationships.map((event: any) => ({
+                  id: 'relationship-' + event.id,
+                  timestamp: event.validFrom || event.endedAt,
+                  title: formatEnum(event.relationshipType) + ': ' + (asset.name || asset.type || 'Asset'),
+                  description: event.endedAt
+                    ? event.endedReason || 'Resource relationship ended.'
+                    : 'Resource relationship became active.',
+                  context: (farm as Farm).name,
+                  kind: 'lifecycle' as const,
+                })),
                 ...(Array.isArray(evidence) ? evidence : []).map((event: any) => ({
                   id: 'evidence-' + event.id,
                   timestamp: event.issuedAt || event.createdAt,
@@ -221,6 +235,20 @@ export function HistoryPage() {
               ]
             }),
           ).map((promise) => promise.catch(() => [])),
+        )
+
+        const farmMovementGroups = await Promise.all(
+          (Array.isArray(farmResult) ? farmResult : []).map(async (farm) => {
+            const result = await api.farmMovementHistory((farm as Farm).id, token)
+            return ((result as any)?.movements ?? []).map((event: any) => ({
+              id: 'farm-movement-' + event.id,
+              timestamp: event.effectiveAt || event.recordedAt,
+              title: formatEnum(event.movementType) + ': ' + (farm as Farm).name,
+              description: event.reason || 'Farm resource movement recorded.',
+              context: 'Farm',
+              kind: 'lifecycle' as const,
+            }))
+          })
         )
 
         const farmEvidenceGroups = await Promise.all(
@@ -259,6 +287,7 @@ export function HistoryPage() {
 
         setLifecycleEvents([
           ...assetEventGroups.flat(),
+          ...farmMovementGroups.flat(),
           ...farmEvidenceGroups.flat(),
           ...cropRelationshipGroups.flat(),
         ])
