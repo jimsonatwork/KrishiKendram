@@ -105,7 +105,9 @@ The UsersService Field Policy migration segment has now been completed and verif
 The Registry / Authorization foundation has also been verified through the R1.17 regression.
 The ResourceMovement persistence/resolution foundation has now been implemented and checkpointed.
 The ResourceLineage persistence/resolution foundation has now been implemented and checkpointed.
-The next controlled activity is RelationshipEvidence foundation implementation.
+The transfer workflow has now been exposed end-to-end for privileged administrative approval, including an authorization-checked pending queue, frontend action, and regression coverage.
+Latest checkpoint: `18f44b8` — Complete administrative transfer approval workflow.
+The next controlled activity is cross-module lifecycle UI/runtime coverage and compatibility hardening; do not reopen established authorization/relationship foundations unless a concrete regression is found.
 
 ## 6. Historical Work Already Completed
 
