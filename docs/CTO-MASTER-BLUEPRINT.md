@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `2dfc2c5` |
-| Current checkpoint message | Expose FarmAsset split lifecycle in Farm workspace |
+| Current checkpoint | `15dc34a` |
+| Current checkpoint message | Synchronize current V0.4 execution position after FarmAsset split adoption |
 | Current primary phase | V0.4 — Concrete Domain Lifecycle Adoption |
-| Current platform priority | Runtime lifecycle smoke verification → next concrete lifecycle only where existing primitives fit |
+| Current platform priority | Concrete lifecycle adoption where an explicit business contract exists → deferred verification pass |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Runtime lifecycle verification, then next concrete domain capability |
+| Next major target | Next justified lifecycle; then deferred full regression/runtime verification |
 
 ## Current Status
 
