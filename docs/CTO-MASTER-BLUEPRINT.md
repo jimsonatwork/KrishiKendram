@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `15dc34a` |
-| Current checkpoint message | Synchronize current V0.4 execution position after FarmAsset split adoption |
-| Current primary phase | V0.4 — Concrete Domain Lifecycle Adoption |
-| Current platform priority | Concrete lifecycle adoption where an explicit business contract exists → deferred verification pass |
+| Current checkpoint | `57bc097` |
+| Current checkpoint message | Expose registry module and field contracts |
+| Current primary phase | V0.5.1 — Backend Platform Contract Foundation |
+| Current platform priority | Frontend Policy / Contract Boundary → Resources → Fields → Modules → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Next justified lifecycle; then deferred full regression/runtime verification |
+| Next major target | V0.5.2 canonical frontend contract and centralized field-policy adapter |
 
 ## Current Status
 
@@ -194,6 +194,86 @@ The application should feel like an actual product rather than an exposed
 backend CRUD interface.
 
 ---
+
+## V0.5 Frontend Policy — Platform-Controlled UI Foundation
+
+The frontend is governed by a central platform policy so backend evolution and
+frontend evolution remain contract-driven rather than requiring screens to be
+dismantled and refitted.
+
+### Policy Ownership
+The platform control plane is the canonical owner of Module, Resource, Field,
+Validation/Normalization, Capability/Authorization, UI, Navigation,
+Dependency, Segment and Lifecycle/History contracts. The frontend consumes
+these contracts and must not become the hidden owner of backend business rules.
+
+### Centralized Field Policy
+Every registered field should centrally define stable identity, type,
+required/optional state, nullability, limits, allowed values, defaults,
+search/sort behavior, label/help text, control hints, visibility/editability,
+sensitivity, normalization and dependencies. Backend validation remains the
+final authority; frontend validation is an adapter over this canonical
+contract, never a second business-validation system.
+
+### Layered UI Policy
+Canonical Field Policy flows through Global/Default -> Module -> Screen/
+Workspace -> Segment/User-Context -> Runtime Authorization. Overrides may
+control visibility, editability, required state, ordering, grouping, control
+type, help and contextual restrictions, but never replace authorization.
+
+### Inclusive Segment UI
+Different roles, user categories, module audiences and operational contexts
+must be supported without duplicating screens. Example: FarmAsset.quantity
+can be globally numeric/minimum-zero, required on create, constrained by
+available quantity on transfer, and read-only on lease screens.
+
+### Module Attach / Detach
+Modules declare identity, enabled state, dependencies, resources, capabilities,
+permissions, navigation, UI policies and lifecycle/history participation.
+**Detach means disable, not delete:** hide navigation/block new operations
+while preserving data, relationships, movements, evidence, lineage and history.
+Reactivation must remain possible.
+
+### Super Admin Platform Control
+Super Admin must have governed platform-wide inspection of every registered
+resource, including parent/child records, relationships, ownership/custody/
+lease, movements, evidence, lineage, history, dependencies, authorization,
+field policy and module membership. Capability-driven actions may include
+View/Create/Edit/Delete/Archive/Restore/History/Dependencies/Relationships/
+Transfer/Assign/Lease-Return and controlled temporary restrictions.
+AuthorizationService remains the final enforcement point.
+
+### Dependency-Aware Administration
+Before change/delete, expose registered parents, children, active/historical
+relationships, movements, evidence, lineage and cross-resource references.
+Distinguish permitted, permitted-with-warning, lifecycle-first and invariant-
+blocked operations. This must be server-enforced, not just a UI dialog.
+
+### Contract-Driven Navigation and Actions
+Avoid scattered hardcoded role checks. Navigation, buttons, actions and field
+editability consume centralized capability/policy results. Frontend checks
+improve UX only; backend authorization remains authoritative.
+
+### Stable Frontend Contract Boundary
+Before UI work: inspect domain behavior; confirm Registry resources/fields;
+confirm authorization; confirm lifecycle/history; confirm DTO/API contract;
+define frontend TypeScript contract; connect centralized field-policy
+adapters; reuse generic controls; add specialized UI only for genuine domain
+behavior; run focused tests/build/runtime verification; checkpoint and sync
+Blueprint/Bible/Changelog. The UI is the final consumer, not the contract owner.
+
+### Generic vs Specialized UI
+Shared controls cover common field rendering, validation, capabilities,
+history, relationships, dependencies, evidence, movements and standard
+states. Specialized controls remain for genuine workflows such as FarmAsset
+split, transfer, lease and crop-specific operations.
+
+### V0.5 Guardrails
+Extend existing Registry, Authorization, Relationship, Movement, Lineage and
+History foundations. Do not add a second authorization/validation engine,
+speculative rules engine, duplicate lifecycle model, frontend-only security,
+or module deletion-as-disablement. Prefer lightweight contract adapters and
+reusable metadata over heavy code generation/configuration.
 
 # 4. Core Architecture Principle
 

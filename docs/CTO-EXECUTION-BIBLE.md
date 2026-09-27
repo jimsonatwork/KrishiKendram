@@ -475,3 +475,23 @@ These records support one another. None should silently replace another.
 - Focused UsersService/controller coverage passed; frontend production build passed; backend TypeScript build passed.
 - Module status remains conservative: the Users product module is still PARTIAL overall, while this relationship-history segment is COMPLETE.
 - Next controlled activity remains concrete lifecycle/module adoption only where a real contract exists, followed by the deferred full regression/runtime verification pass.
+
+
+### 27 Sep 2026 — V0.5.1 Backend Platform Contract Foundation
+
+- Inspected the canonical Registry, module definitions, resource definitions,
+  field definitions, capability declarations, validation/normalization and
+  module lifecycle foundation before changing implementation.
+- Confirmed the backend already owns the required contract authority; no new
+  validation engine, authorization engine, Prisma model, or UI rules engine
+  was justified.
+- Exposed explicit read surfaces for registered modules and registered fields
+  through the existing Registry controller: GET /registry/modules and
+  GET /registry/fields.
+- Preserved the existing GET /registry resource catalog and resource lookup.
+- Focused Registry/Field/Module regression: 65/65 tests PASS.
+- Full backend regression: 36/36 suites, 324/324 tests PASS.
+- Backend production build: PASS.
+- Git checkpoint: 57bc097 — Expose registry module and field contracts.
+- Exact next segment: V0.5.2 frontend canonical contract and centralized
+  field-policy adapter consuming the verified backend Registry contract.

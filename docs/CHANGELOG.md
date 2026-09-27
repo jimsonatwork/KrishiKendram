@@ -714,3 +714,23 @@ Authenticated end-to-end lifecycle smoke coverage, then the next concrete backen
 - FarmResourceLineageService focused suite: 1/1 suite, 4/4 tests PASS.
 - Frontend TypeScript/Vite production build: PASS.
 - `git diff --check`: PASS.
+
+
+## 2026-09-27 — Backend Platform Contract Foundation
+
+- Verified the existing Registry as the canonical backend contract authority
+  for modules, resources, fields, validation/normalization and capabilities.
+- Added explicit read endpoints for registered modules and registered fields.
+- Reused the existing Registry controller/service; no new persistence or
+  authorization engine was introduced.
+
+### Verification
+
+- Registry/Field/Module focused coverage: 65/65 tests PASS.
+- Full backend regression: 36/36 suites, 324/324 tests PASS.
+- Backend production build: PASS.
+- Git checkpoint: 57bc097.
+
+### Next target
+
+V0.5.2 frontend canonical contract and centralized field-policy adapter.
