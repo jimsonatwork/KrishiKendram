@@ -669,3 +669,14 @@ Verification: E2E 12/12; backend 36 suites / 327 tests; backend build PASS; fron
 The existing frontend bundle-size warning remains a future performance item and is not part of this milestone.
 
 Exact next segment: **V0.5.15 authenticated read coverage for the next smallest stable domain surfaces**, only where existing fixtures and authorization contracts already support it; otherwise move to the planned UI/runtime integration pass without adding new infrastructure.
+
+## 2026-09-27 — V0.5.15 Authenticated Read Coverage
+
+Authenticated Crop read coverage is now closed for the current segment.
+
+- E2E verifies protected `/api/v1/crops` with an existing active authorized user and existing Crop data.
+- No new fixture framework, persistence model, authorization engine, or mutation-heavy E2E workflow was introduced.
+
+Verification: E2E 13/13.
+
+Exact next segment: **V0.5.16 authenticated read coverage for relationship/transfer and history surfaces where existing fixtures permit it; otherwise begin the planned UI/runtime integration pass.**

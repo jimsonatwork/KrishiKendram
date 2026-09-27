@@ -2532,3 +2532,15 @@ The authenticated runtime happy-path segment is closed using existing fixtures a
 ### Next target
 
 V0.5.15 — authenticated read coverage for the next smallest stable domain surfaces, only where existing fixtures and authorization contracts already support it; otherwise proceed to the planned UI/runtime integration pass without introducing new infrastructure.
+
+## 2026-09-27 — V0.5.15 Authenticated Read Coverage
+
+The next authenticated read contract is closed using existing fixtures and authorization contracts only.
+
+- Added E2E verification for the protected Crop collection read (`/api/v1/crops`) using an existing active authorized user and an existing Crop fixture.
+- No mutation-heavy E2E setup, new fixture framework, or alternate authorization path was introduced.
+- Verification: E2E 13/13; the preceding full backend regression remains 36 suites / 327 tests; backend/frontend production builds remain green from the preceding gate.
+
+### Next target
+
+V0.5.16 — authenticated read coverage for relationship/transfer and history surfaces where existing fixtures permit it; otherwise begin the planned UI/runtime integration pass.
