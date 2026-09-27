@@ -180,6 +180,27 @@ describe('Application runtime smoke (e2e)', () => {
       });
   });
 
+  it('supports authenticated user history and relationship-history reads for an existing active user', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const user = await prisma.user.findFirst({
+      where: { status: 'ACTIVE', role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
+      select: { id: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(user).toBeTruthy();
+
+    const accessToken = await jwt.signAsync({ sub: user!.id, role: user!.role });
+
+    const history = await request(app.getHttpServer()).get('/api/v1/users/' + user!.id + '/history').set('Authorization', 'Bearer ' + accessToken).expect(200);
+
+    const relationships = await request(app.getHttpServer()).get('/api/v1/users/' + user!.id + '/relationships/history').set('Authorization', 'Bearer ' + accessToken).expect(200);
+
+    expect(Array.isArray(history.body)).toBe(true);
+    expect(Array.isArray(relationships.body)).toBe(true);
+  });
+
   it('supports authenticated transfer-request reads using an existing active user', async () => {
     const prisma = app.get(PrismaService);
     const jwt = app.get(JwtService);
