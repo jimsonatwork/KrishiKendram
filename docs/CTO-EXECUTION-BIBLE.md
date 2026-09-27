@@ -779,3 +779,20 @@ The first production-hardening pass is closed with concrete runtime/security imp
 ### Next execution target
 
 **Release-readiness verification:** validate the hardened auth/runtime paths against the live development stack, then close the remaining release checklist items without expanding scope into speculative infrastructure.
+
+
+## 2026-09-27 — V0.5.22 Runtime Workspace & CORS Closure
+
+### COMPLETE
+
+Release-readiness verification exposed and closed two runtime issues outside ordinary unit coverage.
+
+- The canonical workspace is `/home/jj/Dev/KrishiKendram`; development helper commands were still targeting the retired `KrishiKendram-Development` copy and were redirected to the canonical workspace.
+- A live Nest startup check initially exposed stale-module wiring in the retired copy; the canonical workspace already contains the required `RelationshipsModule` import for `CropsService`.
+- CORS now uses an explicit origin callback against the configured allowlist rather than relying on array reflection behavior.
+- The hardened auth/CORS changes compile and the full backend regression remains 36/36 suites, 327/327 tests PASS.
+- The current workspace starts through Nest application initialization successfully with all major routes mapped.
+
+### Next execution target
+
+**Release-readiness sweep:** perform one final canonical-workspace verification of backend health, frontend build, repository cleanliness, and checkpoint state, then move to the next product milestone.
