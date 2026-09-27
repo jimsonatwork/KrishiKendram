@@ -435,6 +435,90 @@ export class ResourceRelationshipService {
     return { previousRelationship: current, destinationRelationship, movement, evidence };
   }
 
+  async endLease(
+    tx: Prisma.TransactionClient,
+    resourceType: string,
+    resourceId: string,
+    actorUserId: string,
+    effectiveAt: Date,
+    reason: string | undefined,
+    transactionId: string | undefined,
+    evidenceInput?: {
+      referenceType: string;
+      referenceValue: string;
+      documentNumber?: string;
+      issuer?: string;
+    },
+  ) {
+    const current = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        relationshipType: ResourceRelationshipType.LESSEE,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!current) {
+      throw new Error('Active lease not found.');
+    }
+
+    if (effectiveAt < current.validFrom) {
+      throw new Error('Lease end cannot precede lease start.');
+    }
+
+    const evidence = evidenceInput
+      ? await tx.resourceEvidence.create({
+          data: {
+            evidenceType: transactionId ? 'TRANSACTION' : 'DOCUMENT',
+            referenceType: evidenceInput.referenceType,
+            referenceValue: evidenceInput.referenceValue,
+            documentNumber: evidenceInput.documentNumber,
+            issuer: evidenceInput.issuer,
+            createdBy: actorUserId,
+            updatedBy: actorUserId,
+          },
+        })
+      : undefined;
+
+    const ended = await tx.resourceRelationship.update({
+      where: { id: current.id },
+      data: {
+        status: ResourceRelationshipStatus.TERMINATED,
+        endedAt: effectiveAt,
+        validUntil: effectiveAt,
+        endedReason: reason ?? 'Lease ended',
+        evidenceId: evidence?.id,
+        updatedBy: actorUserId,
+      },
+    });
+
+    const previousMovement = await tx.resourceMovement.findFirst({
+      where: { resourceType, resourceId },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const movement = await tx.resourceMovement.create({
+      data: {
+        resourceType,
+        resourceId,
+        movementType: ResourceMovementType.LEASE_END,
+        sourceUserId: current.userId,
+        sourceRelationshipId: current.id,
+        previousMovementId: previousMovement?.id,
+        effectiveAt,
+        reason: reason ?? 'Lease ended',
+        transactionId,
+        evidenceId: evidence?.id,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
+      },
+    });
+
+    return { relationship: ended, movement, evidence };
+  }
+
   private toDomainRelationshipType(value: string): ResourceRelationshipType {
     const relationshipType = Object.values(ResourceRelationshipType).find(
       (candidate) => candidate === value,

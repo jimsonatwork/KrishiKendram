@@ -392,6 +392,16 @@ export class FarmsService {
     return this.lease.leaseAsset(farmId, assetId, dto, userId, role);
   }
 
+  async endFarmAssetLease(
+    farmId: string,
+    assetId: string,
+    dto: import('./dto/end-resource-lease.dto').EndResourceLeaseDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.lease.endLease(farmId, assetId, dto, userId, role);
+  }
+
   async getFarmAssetRelationshipHistory(
     farmId: string,
     assetId: string,

@@ -85,4 +85,65 @@ export class FarmAssetLeaseService {
       };
     });
   }
+
+  async endLease(
+    farmId: string,
+    assetId: string,
+    dto: import('./dto/end-resource-lease.dto').EndResourceLeaseDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    const asset = await this.prisma.farmAsset.findUnique({
+      where: { id: assetId },
+      select: { id: true, farmId: true, createdAt: true, farm: { select: { ownerId: true } } },
+    });
+    if (!asset || asset.farmId !== farmId) throw new NotFoundException('Asset not found');
+
+    const owner = await this.prisma.resourceRelationship.findFirst({
+      where: { resourceType: 'farmAsset', resourceId: assetId, relationshipType: 'OWNER', endedAt: null },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.ASSIGN,
+      resourceId: assetId,
+      farmId,
+      ownerId: owner?.userId ?? asset.farm.ownerId,
+    });
+
+    const effectiveAt = dto.effectiveAt ? new Date(dto.effectiveAt) : new Date();
+    if (Number.isNaN(effectiveAt.getTime()) || effectiveAt < asset.createdAt) {
+      throw new BadRequestException('Lease end effectiveAt is invalid.');
+    }
+
+    const evidenceType = Boolean(dto.evidenceReferenceType);
+    const evidenceValue = Boolean(dto.evidenceReferenceValue);
+    if (evidenceType !== evidenceValue) {
+      throw new BadRequestException('Evidence reference type and value must be supplied together.');
+    }
+
+    const evidenceInput = evidenceType
+      ? { referenceType: dto.evidenceReferenceType!, referenceValue: dto.evidenceReferenceValue!, documentNumber: dto.evidenceDocumentNumber, issuer: dto.evidenceIssuer }
+      : undefined;
+
+    return this.prisma.$transaction(async (tx) => {
+      const result = await this.relationships.endLease(
+        tx, 'farmAsset', assetId, userId, effectiveAt,
+        dto.reason, dto.transactionId, evidenceInput,
+      );
+      return {
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        movementType: ResourceMovementType.LEASE_END,
+        lessee: result.relationship.userId,
+        endedAt: result.relationship.endedAt,
+        movement: result.movement,
+        evidence: result.evidence,
+      };
+    });
+  }
 }

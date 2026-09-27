@@ -14,10 +14,10 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `farm-lifecycle-v0.3-hardened` |
-| Current checkpoint message | Farm/FarmAsset/Crop/FarmRecord lifecycle adoption with governed transfer, lineage, evidence and history |
-| Current primary phase | V0.3 — Relationship & Resource Lifecycle Integration |
-| Current platform priority | Final lifecycle smoke verification → Registry/permission consistency → next real domain capability |
+| Current checkpoint | `79821f0` |
+| Current checkpoint message | FarmAsset lease lifecycle foundation |
+| Current primary phase | V0.4 — Concrete Domain Lifecycle Adoption |
+| Current platform priority | Close FarmAsset lease lifecycle → runtime verification → next concrete lifecycle only where existing primitives fit |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
 | Next major target | Close V0.3 lifecycle checkpoint, then adopt the next domain only where concrete lifecycle semantics exist |

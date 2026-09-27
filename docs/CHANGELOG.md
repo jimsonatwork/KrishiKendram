@@ -618,3 +618,25 @@ The CTO Master Blueprint now reflects the actual implementation frontier rather 
 - No new resource model introduced.
 
 Verification: focused tests 42/42 passed; full backend regression 35/35 suites, 318/318 tests passed; backend build passed.
+
+
+## 2026-09-27 — FarmAsset Lease Termination
+
+### Completed
+
+- Added explicit FarmAsset lease termination using the existing temporal `LESSEE` relationship.
+- Lease termination closes the active lessee with `TERMINATED` status, effective end time, optional reason, transaction reference, and evidence.
+- Added `LEASE_END` ResourceMovement with previous-movement linkage and relationship reference.
+- Reused existing FarmAsset `ASSIGN` authorization; no new permission or resource model introduced.
+- Added protected `POST /api/v1/farms/:farmId/assets/:assetId/lease/end` route.
+
+### Verification
+
+- Focused Farms + relationship regression: 42/42 tests passed.
+- Full backend regression: 35/35 suites, 318/318 tests passed.
+- Backend production build: passed.
+- `git diff --check`: passed.
+
+### Next target
+
+Runtime lease/lease-end boundary verification, then the next concrete lifecycle only where existing relationship/movement/lineage primitives provide a clean fit.

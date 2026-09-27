@@ -21,6 +21,7 @@ import { UpdateFarmDto } from './dto/update-farm.dto';
 import { CreateFarmAssetDto } from './dto/create-farm-asset.dto';
 import { CreateFarmRecordDto } from './dto/create-farm-record.dto';
 import { TransferResourceDto } from './dto/transfer-resource.dto';
+import { EndResourceLeaseDto } from './dto/end-resource-lease.dto';
 import { SplitFarmAssetDto } from './dto/split-farm-asset.dto';
 import { MergeFarmAssetsDto } from './dto/merge-farm-assets.dto';
 
@@ -213,6 +214,22 @@ create(
     @Body() dto: TransferResourceDto,
   ) {
     return this.farmsService.leaseFarmAsset(
+      farmId,
+      assetId,
+      dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Post(':farmId/assets/:assetId/lease/end')
+  endAssetLease(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+    @Body() dto: EndResourceLeaseDto,
+  ) {
+    return this.farmsService.endFarmAssetLease(
       farmId,
       assetId,
       dto,
