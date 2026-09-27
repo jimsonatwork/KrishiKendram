@@ -1,4 +1,5 @@
 import { UsersPage } from '@/pages/admin/UsersPage'
+import { ResourcesPage } from '@/pages/admin/ResourcesPage'
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -932,7 +933,7 @@ function PortalLayout({
   } else if (
     location.pathname === '/app/resources'
   ) {
-    content = <ComingSoon title="Resources" />
+    content = <ResourcesPage />
   } else if (location.pathname === '/app/system') {
     content = <ComingSoon title="System" />
   }

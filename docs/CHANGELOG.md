@@ -754,3 +754,15 @@ V0.5.2 frontend canonical contract and centralized field-policy adapter.
 ### Next target
 
 Super Admin Resources workspace consuming the canonical contract layer.
+
+
+## 2026-09-27 — V0.5.3 Super Admin Resources Workspace
+
+- Added frontend/src/pages/admin/ResourcesPage.tsx for canonical Registry inspection.
+- Added module-grouped resource navigation and resource contract details.
+- Added capability/scope inspection and resolved field-policy inspection.
+- Reused the centralized API request transport from frontend/src/lib/api.ts.
+- Replaced the /app/resources placeholder with the live Resources workspace.
+- No new backend model or authorization engine introduced.
+
+Verification: frontend TypeScript build PASS; Vite production build PASS; git diff --check PASS.

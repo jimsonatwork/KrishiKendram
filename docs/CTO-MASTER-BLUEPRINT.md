@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | `4ae8365` |
-| Current checkpoint message | Add frontend platform contract boundary |
-| Current primary phase | V0.5.2 — Frontend Canonical Contract Foundation |
+| Current checkpoint | `863a2a8` + V0.5.3 Resources workspace working tree |
+| Current checkpoint message | V0.5.3 Super Admin Resources workspace |
+| Current primary phase | V0.5.3 — Super Admin Resources Workspace |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | V0.5.3 Super Admin Resources workspace consuming the canonical contract layer |
+| Next major target | V0.5.4 contract-driven platform administration expansion |
 
 ## Current Status
 
@@ -2281,3 +2281,26 @@ Completed the documented User Profile Relationship History segment using the exi
 - No schema migration, new resource model, or parallel authorization/history mechanism was introduced.
 
 Current execution frontier: continue concrete module adoption only where the existing platform contract is explicit; otherwise move to the planned full regression/runtime verification pass.
+
+
+## 2026-09-27 — V0.5.3 Super Admin Resources Workspace
+
+### Completed
+
+- Added the first Super Admin Resources workspace at /app/resources.
+- Workspace consumes the canonical frontend Registry contract layer rather than defining resource metadata locally.
+- Resource selection is grouped by registered module and exposes model, owner, soft-delete, search/sort, features and lifecycle context.
+- Capability declarations and scopes are displayed directly from Registry contracts.
+- Resource fields are resolved through the centralized field-policy adapter, including resource-specific validation overrides.
+- Registry transport now reuses the existing frontend API request boundary instead of maintaining a second fetch transport.
+- Existing domain screens and lifecycle APIs remain unchanged.
+
+### Verification
+
+- Frontend TypeScript project build: PASS.
+- Frontend Vite production build: PASS (2303 modules transformed).
+- git diff --check: PASS.
+
+### Next target
+
+V0.5.4 — contract-driven platform administration expansion: modules, dependencies and governed capability/field administration using the same canonical boundary.
