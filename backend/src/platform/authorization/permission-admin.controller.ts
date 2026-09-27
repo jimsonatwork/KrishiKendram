@@ -1,7 +1,8 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import type { Request } from 'express';
 
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthorizationAction } from './authorization.types';
 import { AuthorizationService } from './authorization.service';
 import { PermissionService } from './permission.service';
@@ -11,6 +12,7 @@ interface AuthenticatedRequest extends Request {
 }
 
 @Controller('platform/permissions')
+@UseGuards(JwtAuthGuard)
 export class PermissionAdminController {
   constructor(
     private readonly authorization: AuthorizationService,

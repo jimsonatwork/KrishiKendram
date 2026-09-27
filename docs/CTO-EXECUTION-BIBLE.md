@@ -630,3 +630,11 @@ Farm has passed the current completion gate. Farm lifecycle ownership remains ca
 Verification: Farm-focused tests 66/66; full backend regression 36 suites / 325 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS. Two stale Farm specs were updated to the current constructor/DTO contracts; no production implementation change was required.
 
 Exact next segment: **V0.5.11 application-wide runtime lifecycle verification and module coverage reconciliation**, using existing contracts only.
+
+## 2026-09-27 ºw^~)Þt V0.5.11 Application Runtime Verification
+
+Application-wide runtime verification is now closed for the current segment. A permanent E2E smoke layer covers versioned health, Registry module/lifecycle visibility, protected Farm access, and protected permission administration. The runtime pass also exposed and fixed a real missing JWT guard on PermissionAdminController; the existing JwtAuthGuard is now the sole boundary before its authorization checks. No new persistence model or parallel authorization path was introduced.
+
+Verification: E2E 4/4; backend regression 36 suites / 325 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS.
+
+Exact next segment: **V0.5.12 application-wide module coverage reconciliation and remaining runtime contract hardening**, using existing contracts only.

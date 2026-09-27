@@ -2475,3 +2475,17 @@ The Farm module has passed the current completion gate without introducing a sec
 ### Next target
 
 V0.5.11 â€” application-wide runtime lifecycle verification and module coverage reconciliation, using existing contracts only.
+
+## 2026-09-27 ºw^~)Þt V0.5.11 Application Runtime Verification
+
+The application-wide runtime verification segment is closed using the existing contracts only.
+
+- Added reproducible E2E smoke coverage for the versioned health endpoint, canonical Registry module/lifecycle surfaces, protected Farm access, and protected platform permission administration.
+- Discovered and corrected a real authorization boundary defect: Permission administration now uses the existing JwtAuthGuard before invoking AuthorizationService, preventing unauthenticated requests from reaching authorization with an undefined user and returning 500.
+- Registry lifecycle status is verified through the canonical ModuleLifecycleService contract; no duplicate coverage model was introduced.
+- Live runtime verification confirmed the API health endpoint and Registry endpoints respond successfully, while protected Farm access rejects unauthenticated requests with 401.
+- Verification: E2E smoke 4/4; full backend regression 36 suites / 325 tests; backend TypeScript no-emit PASS; frontend TypeScript PASS; frontend production build PASS.
+
+### Next target
+
+V0.5.12 ºw^~)Þt application-wide module coverage reconciliation and remaining runtime contract hardening, using existing Registry, authorization, lifecycle, audit, relationship, and frontend contracts only.
