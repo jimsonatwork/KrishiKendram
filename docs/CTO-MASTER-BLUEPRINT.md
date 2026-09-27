@@ -2517,3 +2517,18 @@ The remaining high-value application API boundaries now have runtime smoke cover
 ### Next target
 
 V0.5.14 — authenticated runtime happy-path verification for the smallest stable read contracts, reusing existing test fixtures and avoiding mutation-heavy E2E coverage unless it catches a real contract gap.
+
+## 2026-09-27 — V0.5.14 Authenticated Runtime Happy-Path Verification
+
+The authenticated runtime happy-path segment is closed using existing fixtures and canonical contracts only.
+
+- Added E2E verification for an authenticated `/api/v1/auth/me` read using an existing active user and the application's canonical JwtService.
+- Added E2E verification for an authenticated `/api/v1/farms/my` collection read using an existing active Farmer with an existing Farm relationship.
+- The tests intentionally avoid creating, mutating, or deleting test users/farms; no mutation-heavy E2E infrastructure was introduced.
+- Authorization remains the existing centralized boundary; the runtime checks exercise the real JWT and authorization path rather than bypassing it with mocked guards.
+- Verification: E2E 12/12; full backend regression 36 suites / 327 tests; backend build PASS; frontend TypeScript + production build PASS.
+- The existing frontend bundle-size warning remains non-blocking and is not expanded into this milestone.
+
+### Next target
+
+V0.5.15 — authenticated read coverage for the next smallest stable domain surfaces, only where existing fixtures and authorization contracts already support it; otherwise proceed to the planned UI/runtime integration pass without introducing new infrastructure.

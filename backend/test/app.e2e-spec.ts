@@ -3,6 +3,8 @@ import { INestApplication, VersioningType } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from './../src/prisma/prisma.service';
 
 describe('Application runtime smoke (e2e)', () => {
   let app: INestApplication<App>;
@@ -84,6 +86,65 @@ describe('Application runtime smoke (e2e)', () => {
     request(app.getHttpServer())
       .get('/api/v1/platform/audit/recent')
       .expect(401));
+
+  it('supports an authenticated current-user read path using an existing active user', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const user = await prisma.user.findFirst({
+      where: { status: 'ACTIVE' },
+      select: { id: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(user).toBeTruthy();
+
+    const accessToken = await jwt.signAsync({
+      sub: user!.id,
+      role: user!.role,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/auth/me')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: user!.id,
+        role: user!.role,
+        status: 'ACTIVE',
+      }),
+    );
+  });
+
+  it('supports an authenticated Farm collection read for an existing Farmer', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const user = await prisma.user.findFirst({
+      where: {
+        status: 'ACTIVE',
+        role: 'FARMER',
+        farms: { some: {} },
+      },
+      select: { id: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(user).toBeTruthy();
+
+    const accessToken = await jwt.signAsync({
+      sub: user!.id,
+      role: user!.role,
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/v1/farms/my')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(Array.isArray(body)).toBe(true);
+      });
+  });
 
   afterEach(async () => {
     await app.close();

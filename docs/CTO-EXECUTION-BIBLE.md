@@ -654,3 +654,18 @@ Runtime smoke coverage now spans the remaining high-value application boundaries
 No duplicate contract or new abstraction was introduced. Verification: E2E 10/10; backend 36 suites / 327 tests; backend TypeScript PASS; frontend TypeScript PASS; frontend production build PASS; diff check PASS. The existing frontend bundle-size warning remains a future performance item, not a reason to expand this milestone.
 
 Exact next segment: **V0.5.14 authenticated runtime happy-path verification for the smallest stable read contracts**, using existing fixtures and avoiding mutation-heavy E2E coverage unless a real gap is found.
+
+## 2026-09-27 — V0.5.14 Authenticated Runtime Happy-Path Verification
+
+Authenticated runtime verification is now closed for the smallest stable read contracts.
+
+- E2E now verifies authenticated `/api/v1/auth/me` using an existing active user and the application's canonical JwtService.
+- E2E now verifies authenticated `/api/v1/farms/my` using an existing active Farmer with an existing Farm relationship.
+- No test user/farm creation, cleanup workflow, mock authorization layer, or parallel authentication path was introduced.
+- The existing JWT and AuthorizationService boundaries are exercised directly.
+
+Verification: E2E 12/12; backend 36 suites / 327 tests; backend build PASS; frontend TypeScript PASS; frontend production build PASS.
+
+The existing frontend bundle-size warning remains a future performance item and is not part of this milestone.
+
+Exact next segment: **V0.5.15 authenticated read coverage for the next smallest stable domain surfaces**, only where existing fixtures and authorization contracts already support it; otherwise move to the planned UI/runtime integration pass without adding new infrastructure.
