@@ -13,6 +13,7 @@ import { motion } from 'motion/react'
 
 import { api, type TransferRequest } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { useAuthStore } from '@/stores/auth.store'
 
 type FarmAsset = {
   id: string
@@ -112,6 +113,8 @@ function iconFor(kind: HistoryItem['kind']) {
 }
 
 export function HistoryPage() {
+  const accessToken = useAuthStore((state) => state.accessToken)
+  const currentUserId = useAuthStore((state) => state.user?.id)
   const [farms, setFarms] = useState<Farm[]>([])
   const [crops, setCrops] = useState<Crop[]>([])
   const [loading, setLoading] = useState(true)
@@ -133,9 +136,9 @@ export function HistoryPage() {
     let cancelled = false
 
     async function load() {
-      const token = localStorage.getItem('accessToken')
+      const token = accessToken
 
-      if (!token) {
+      if (!token || !currentUserId) {
         setError('Your session has expired.')
         setLoading(false)
         return
@@ -145,12 +148,13 @@ export function HistoryPage() {
         setLoading(true)
         setError('')
 
-        const [farmResult, cropResult, transferResult, outgoingTransferResult] =
+        const [farmResult, cropResult, transferResult, outgoingTransferResult, userRelationshipResult] =
           await Promise.all([
             api.farms(token),
             api.crops(token),
             api.transferIncomingPending(token),
             api.transferOutgoing(token),
+            api.userRelationshipHistory(currentUserId, token),
           ])
 
         if (cancelled) return
@@ -285,11 +289,23 @@ export function HistoryPage() {
 
         )
 
+        const userRelationshipEvents = (Array.isArray(userRelationshipResult) ? userRelationshipResult : []).map((relationship: any) => ({
+          id: 'user-relationship-' + relationship.id,
+          timestamp: relationship.endedAt || relationship.validFrom,
+          title: formatEnum(relationship.relationshipType) + ': Your resource relationship',
+          description: relationship.endedAt
+            ? relationship.endedReason || 'Your resource relationship ended.'
+            : 'Your resource relationship became active.',
+          context: formatEnum(relationship.resourceType) + ' · ' + relationship.resourceId,
+          kind: 'lifecycle' as const,
+        }))
+
         setLifecycleEvents([
           ...assetEventGroups.flat(),
           ...farmMovementGroups.flat(),
           ...farmEvidenceGroups.flat(),
           ...cropRelationshipGroups.flat(),
+          ...userRelationshipEvents,
         ])
       } catch (err) {
         if (cancelled) return
@@ -441,7 +457,7 @@ export function HistoryPage() {
   }, [crops, farms, lifecycleEvents])
 
   async function resolveTransferMember() {
-    const token = localStorage.getItem('accessToken')
+    const token = accessToken
     if (!token || !transferMemberId.trim()) return
 
     try {
@@ -458,7 +474,7 @@ export function HistoryPage() {
   }
 
   async function createTransfer() {
-    const token = localStorage.getItem('accessToken')
+    const token = accessToken
     if (!token || !transferMember || !transferResource) return
 
     const [resourceType, resourceId] = transferResource.split(':')
@@ -509,7 +525,7 @@ export function HistoryPage() {
     requestId: string,
     action: 'accept' | 'reject',
   ) {
-    const token = localStorage.getItem('accessToken')
+    const token = accessToken
     if (!token) return
 
     try {
@@ -535,7 +551,7 @@ export function HistoryPage() {
   }
 
   async function handleCancelTransfer(requestId: string) {
-    const token = localStorage.getItem('accessToken')
+    const token = accessToken
     if (!token) return
 
     try {
