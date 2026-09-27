@@ -488,6 +488,24 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  splitFarmAsset: (
+    farmId: string,
+    assetId: string,
+    data: {
+      quantity: number
+      name?: string
+      metadata?: Record<string, unknown>
+      effectiveAt?: string
+      reason?: string
+    },
+    token: string,
+  ) =>
+    request(`/farms/${farmId}/assets/${assetId}/split`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    }),
+
   returnFarmAssetCustody: (
     farmId: string,
     assetId: string,

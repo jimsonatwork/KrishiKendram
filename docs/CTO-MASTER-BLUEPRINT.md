@@ -2174,3 +2174,17 @@ Extended the existing History workspace to consume the lifecycle foundations alr
 Verification: frontend production build PASS; `git diff --check` PASS. Full regression/runtime verification remains deferred to the planned checking pass.
 
 Next frontier: continue concrete lifecycle adoption only where existing relationship, movement, lineage, evidence, and authorization primitives fit; then perform the deferred full regression/runtime verification.
+
+
+### 27 September 2026 — FarmAsset Split Workspace Control
+
+Completed the frontend adoption of the existing atomic FarmAsset split lifecycle.
+
+- Added the FarmAsset split API client.
+- Added compact split controls to the existing Farm workspace asset cards.
+- Quantity validation prevents zero/negative/full-source splits in the UI while the backend remains authoritative.
+- Existing relationship, movement, lineage, authorization, and transaction semantics remain canonical.
+
+Verification: FarmResourceLineageService 4/4 tests PASS; frontend production build PASS; `git diff --check` PASS.
+
+Next frontier: continue only with the next explicit business lifecycle that fits the established platform primitives; otherwise keep the architecture stable and use the planned verification pass.

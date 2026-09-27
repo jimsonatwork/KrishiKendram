@@ -20,6 +20,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { FarmAssetMergePanel } from './FarmAssetMergePanel'
+import { FarmAssetSplitPanel } from './FarmAssetSplitPanel'
 import { FarmAssetLeasePanel } from './FarmAssetLeasePanel'
 
 type FarmAsset = {
@@ -1003,6 +1004,13 @@ function FarmSubsection({
                 <EvidenceHistoryPanel
                   label="asset evidence history"
                   loader={(token) => api.farmAssetEvidenceHistory(farm.id, asset.id, token)}
+                />
+                <FarmAssetSplitPanel
+                  farmId={farm.id}
+                  asset={asset}
+                  token={token}
+                  onComplete={onFarmReload}
+                  onError={onFarmError}
                 />
                 <FarmAssetLeasePanel
                   farmId={farm.id}

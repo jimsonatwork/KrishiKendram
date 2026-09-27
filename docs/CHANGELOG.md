@@ -693,3 +693,17 @@ Authenticated end-to-end lifecycle smoke coverage, then the next concrete backen
 - Frontend TypeScript/Vite production build: PASS.
 - `git diff --check`: PASS.
 - Full regression/runtime verification remains deferred to the planned checking pass.
+
+
+## 2026-09-27 — FarmAsset Split Workspace Control
+
+- Exposed the existing atomic FarmAsset split lifecycle in the Farm workspace.
+- Added the frontend API client for `POST /farms/:farmId/assets/:assetId/split`.
+- Added quantity validation so the requested child quantity must remain below the source quantity.
+- Reused existing SPLIT movement and SPLIT_FROM lineage behavior; no backend lifecycle rewrite was introduced.
+
+### Verification
+
+- FarmResourceLineageService focused suite: 1/1 suite, 4/4 tests PASS.
+- Frontend TypeScript/Vite production build: PASS.
+- `git diff --check`: PASS.
