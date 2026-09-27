@@ -1,4 +1,6 @@
-import { Controller, Get, Query, Req } from '@nestjs/common'
+import { Controller, Get, Query, Req, UnauthorizedException } from '@nestjs/common'
+import { UserRole } from '@prisma/client'
+
 import { AuditService } from './audit.service'
 import { AuthorizationService } from '../authorization/authorization.service'
 import { AuthorizationAction } from '../authorization/authorization.types'
@@ -11,13 +13,24 @@ export class AuditAdminController {
   ) {}
 
   @Get('recent')
-  async recent(@Req() request: { user?: { id?: string; role?: string } }, @Query('limit') limit?: string) {
+  async recent(
+    @Req() request: { user?: { userId?: string; role?: UserRole } },
+    @Query('limit') limit?: string,
+  ) {
+    if (!request.user?.userId || !request.user.role) {
+      throw new UnauthorizedException('Authentication required.')
+    }
+
     await this.authorization.assertCan({
-      user: request.user,
+      user: {
+        userId: request.user.userId,
+        role: request.user.role,
+      },
       module: 'platform',
       resource: 'audit',
       action: AuthorizationAction.READ,
     })
+
     const parsed = Number(limit)
     return this.audit.getRecentActivity(Number.isFinite(parsed) ? parsed : 50)
   }
