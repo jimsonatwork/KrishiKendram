@@ -419,3 +419,128 @@ RESPONSIVE FOUNDATION
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
+/*
+=========================================================
+KRISHIKENDRAM VISUAL INTELLIGENCE LAYER
+=========================================================
+Global polish is additive: existing layouts/components remain
+intact while the shell gains depth, ambient light and focus.
+The root effects-off class removes the expensive layer instantly.
+=========================================================
+*/
+
+html { background: var(--background); }
+
+body {
+  min-width: 320px;
+  background: var(--background);
+  color: var(--foreground);
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--ai) 28%, transparent);
+  color: var(--foreground);
+}
+
+.kk-app-shell {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+.kk-app-shell::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 12%, color-mix(in oklch, var(--primary) 13%, transparent), transparent 32%),
+    radial-gradient(circle at 86% 18%, color-mix(in oklch, var(--ai) 10%, transparent), transparent 30%),
+    radial-gradient(circle at 55% 92%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 34%);
+  filter: blur(36px);
+  animation: kk-ambient-drift 18s ease-in-out infinite alternate;
+}
+
+.kk-app-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(color-mix(in oklch, var(--foreground) 7%, transparent) 0.7px, transparent 0.7px);
+  background-size: 24px 24px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+  opacity: 0.18;
+}
+@keyframes kk-ambient-drift {
+  from { transform: translate3d(-1%, -1%, 0) scale(1); }
+  to { transform: translate3d(1%, 1%, 0) scale(1.04); }
+}
+
+.kk-sidebar,
+.kk-topbar {
+  box-shadow: 0 1px 0 color-mix(in oklch, var(--foreground) 5%, transparent), 0 12px 40px color-mix(in oklch, var(--background) 70%, transparent);
+}
+
+.kk-topbar {
+  box-shadow: 0 10px 30px color-mix(in oklch, var(--background) 65%, transparent);
+}
+
+.kk-main > * {
+  animation: kk-content-in 420ms ease-out both;
+}
+
+@keyframes kk-content-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.kk-app-shell [class*="rounded-xl"],
+.kk-app-shell [class*="rounded-2xl"] {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.kk-app-shell [class*="rounded-xl"]:hover,
+.kk-app-shell [class*="rounded-2xl"]:hover {
+  border-color: color-mix(in oklch, var(--primary) 22%, var(--border));
+}
+.effects-off .kk-app-shell::before,
+.effects-off .kk-app-shell::after {
+  display: none;
+}
+
+.effects-off .kk-main > *,
+.effects-off .kk-app-shell [class*="rounded-xl"],
+.effects-off .kk-app-shell [class*="rounded-2xl"] {
+  animation: none !important;
+  transition: none !important;
+}
+
+.effects-off .kk-sidebar,
+.effects-off .kk-topbar {
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .kk-app-shell::before {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .kk-app-shell::after {
+    display: none;
+  }
+}

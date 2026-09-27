@@ -40,6 +40,7 @@ import {
   Shield,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Sprout,
   Tractor,
   Users,
@@ -180,6 +181,12 @@ function AppearanceControl() {
   const setColourTheme = useThemeStore(
     (state) => state.setColourTheme,
   )
+  const visualEffects = useThemeStore(
+    (state) => state.visualEffects,
+  )
+  const setVisualEffects = useThemeStore(
+    (state) => state.setVisualEffects,
+  )
 
   return (
     <div className="relative">
@@ -239,6 +246,30 @@ function AppearanceControl() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="size-3.5" />
+                  Visual effects
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={visualEffects}
+                  onClick={() => setVisualEffects(!visualEffects)}
+                  className={`relative h-5 w-9 rounded-full transition ${
+                    visualEffects ? 'bg-primary' : 'bg-muted-foreground/30'
+                  }`}
+                  title="Toggle visual effects for performance"
+                >
+                  <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${visualEffects ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Turn off ambient motion, glow and depth effects on slower devices.
+              </p>
             </div>
 
             <div>
@@ -957,7 +988,7 @@ function PortalLayout({
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="kk-app-shell min-h-screen bg-muted/30">
       {mobileOpen && (
         <button
           aria-label="Close navigation"
@@ -969,7 +1000,7 @@ function PortalLayout({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-background transition-transform md:translate-x-0 ${
+        className={`kk-sidebar fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-background transition-transform md:translate-x-0 ${
           mobileOpen
             ? 'translate-x-0'
             : '-translate-x-full'
@@ -1061,7 +1092,7 @@ function PortalLayout({
       </aside>
 
       <div className="min-h-screen md:pl-72">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/90 px-4 backdrop-blur md:px-8">
+        <header className="kk-topbar sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/90 px-4 backdrop-blur md:px-8">
           <Button
             variant="ghost"
             size="icon"
@@ -1112,7 +1143,7 @@ function PortalLayout({
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1600px] p-4 md:p-8">
+        <main className="kk-main mx-auto max-w-[1600px] p-4 md:p-8">
           {content}
         </main>
       </div>

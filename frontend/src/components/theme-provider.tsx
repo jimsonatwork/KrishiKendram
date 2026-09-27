@@ -33,6 +33,9 @@ export function ThemeProvider({
   const colourTheme = useThemeStore(
     (state) => state.colourTheme,
   )
+  const visualEffects = useThemeStore(
+    (state) => state.visualEffects,
+  )
 
   const resolvedMode = useMemo(() => {
     if (mode === 'system') {
@@ -44,6 +47,8 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = document.documentElement
+
+    root.classList.toggle('effects-off', !visualEffects)
 
     root.classList.remove('light', 'dark')
 
@@ -60,7 +65,7 @@ export function ThemeProvider({
         `theme-${colourTheme}`,
       )
     }
-  }, [resolvedMode, colourTheme])
+  }, [resolvedMode, colourTheme, visualEffects])
 
   useEffect(() => {
     if (mode !== 'system') {

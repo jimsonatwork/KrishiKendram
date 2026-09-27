@@ -12,8 +12,10 @@ export type ColourTheme =
 type ThemeState = {
   mode: ThemeMode
   colourTheme: ColourTheme
+  visualEffects: boolean
   setMode: (mode: ThemeMode) => void
   setColourTheme: (theme: ColourTheme) => void
+  setVisualEffects: (enabled: boolean) => void
 }
 
 export const useThemeStore = create<ThemeState>()(
@@ -21,11 +23,15 @@ export const useThemeStore = create<ThemeState>()(
     (set) => ({
       mode: 'system',
       colourTheme: 'krishi',
+      visualEffects: true,
 
       setMode: (mode) => set({ mode }),
 
       setColourTheme: (colourTheme) =>
         set({ colourTheme }),
+
+      setVisualEffects: (visualEffects) =>
+        set({ visualEffects }),
     }),
     {
       name: 'krishikendram-theme',

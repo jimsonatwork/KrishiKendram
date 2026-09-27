@@ -2334,3 +2334,29 @@ Next target: V0.5.5 capability and field administration using the same contract 
 ### Next target
 
 V0.5.6 platform administration integration: connect capability/field visibility to existing permission and module-control surfaces without duplicating backend authority.
+
+
+## 2026-09-27 — V0.5.6 Visual Intelligence Layer + Performance Control
+
+### Completed
+
+- Added an additive visual layer to the application shell without dismantling existing screens or workflows.
+- Added ambient depth, subtle AI-accented light, fine-grain texture, content entrance motion, and refined shell shadows through centralized CSS.
+- Added a persistent Visual Effects control in Appearance settings so users can disable ambient motion, glow, depth and related transitions on constrained devices.
+- Preserved existing light/dark modes and Krishi/Ocean/Harvest/Midnight colour themes.
+- Added reduced-motion handling through the platform preference as an additional accessibility safeguard.
+- Kept visual effects cosmetic only: no business decision, authorization rule, AI result or backend contract is implied by the visual layer.
+
+### Verification
+
+- Frontend TypeScript build: PASS (tsc -b).
+- git diff --check: PASS.
+- Vite production bundling was attempted but the connected terminal currently resolves Node/npm through the Windows interop toolchain while the repository dependencies are Linux/WSL-oriented; Vite reported a missing native Rolldown binding. No dependency tree or lockfile was altered to work around this environment issue.
+
+### Standing UI requirement
+
+The visual intelligence layer now applies to the entire application incrementally. Future screens should inherit the same AI-ready visual language, responsive depth and performance-off path rather than receiving isolated redesigns.
+
+### Next target
+
+V0.5.6 platform administration integration, while continuing the visual system through existing and new screens without dismantling domain UI.

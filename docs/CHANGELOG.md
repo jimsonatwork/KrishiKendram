@@ -796,3 +796,14 @@ Next checkpoint: V0.5.5 capability and field administration.
 ### Next target
 
 V0.5.6 platform administration integration: connect capability/field visibility to existing permission and module-control surfaces without duplicating backend authority.
+
+
+## 2026-09-27 — V0.5.6 Visual Intelligence Layer + Performance Control
+
+- Added additive application-wide ambient visual effects without replacing existing UI layouts.
+- Added subtle AI-accented visual language, depth, texture and content motion at the shell level.
+- Added persistent Visual Effects on/off control under Appearance for lower-capability devices.
+- Added reduced-motion support and an effects-off CSS path that removes animation, glow, backdrop and shadow overhead.
+- Preserved all existing theme modes and colour themes.
+- TypeScript build PASS; git diff --check PASS.
+- Vite production bundling is currently blocked by the connected terminal's mixed Windows/WSL Node dependency environment and missing native Rolldown binding; no dependency/lockfile changes were made.

@@ -551,3 +551,18 @@ Next: capability and field administration.
 ### Next target
 
 V0.5.6 platform administration integration: connect capability/field visibility to existing permission and module-control surfaces without duplicating backend authority.
+
+
+## 2026-09-27 — V0.5.6 Visual Intelligence Layer Checkpoint
+
+- Visual polish is now a cross-application requirement, not a separate redesign phase.
+- Existing layouts remain intact; visual effects are additive and centralized.
+- Shell-level ambient gradients, subtle texture, depth, entrance motion and hover refinement were added through index.css and stable shell hooks.
+- Appearance settings now expose a persistent Visual Effects switch for constrained devices.
+- prefers-reduced-motion is respected independently of the user switch.
+- Visual effects must never imply that an AI computation, recommendation, authorization decision or backend state exists when it does not.
+- Future AI surfaces should use the same visual language while clearly separating real intelligence from presentation.
+
+Verification: TypeScript build PASS; git diff --check PASS. Vite bundling is environment-blocked by the current mixed Windows/WSL Node dependency resolution and missing native Rolldown binding; no lockfile/node_modules repair was performed.
+
+Next: V0.5.6 platform administration integration.
