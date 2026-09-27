@@ -5,6 +5,7 @@ import {
   Body,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 import { AuthService } from './auth.service';
 
@@ -22,16 +23,22 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ auth: { limit: 5, ttl: 60_000 } })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
   @Post('refresh')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ auth: { limit: 20, ttl: 60_000 } })
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto);
   }

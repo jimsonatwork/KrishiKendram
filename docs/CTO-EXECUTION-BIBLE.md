@@ -756,3 +756,26 @@ The cross-module UI/runtime completion pass is closed for the current scope with
 ### Next execution target
 
 **Production hardening pass:** verify remaining backend/frontend runtime boundaries, security/authorization regressions, and release checks without speculative infrastructure.
+
+
+## 2026-09-27 — V0.5.21 Production Hardening
+
+### COMPLETE
+
+The first production-hardening pass is closed with concrete runtime/security improvements only.
+
+- Restricted backend CORS to the configured origin allowlist instead of reflecting arbitrary origins.
+- Added configurable `CORS_ORIGINS`; development defaults remain compatible with the frontend on port 4000.
+- Added auth-endpoint throttling using the existing NestJS throttler dependency: register 5/minute, login 10/minute, refresh 20/minute.
+- Existing JWT expiry and active-user checks remain enforced; no duplicate session/auth system was introduced.
+- Backend TypeScript no-emit: PASS.
+- Full backend regression: 36/36 suites, 327/327 tests PASS.
+- Frontend TypeScript: PASS.
+- Frontend production build: PASS; 2311 modules transformed.
+- Runtime health: PASS.
+- CORS runtime check: PASS for configured frontend origin.
+- `git diff --check`: PASS.
+
+### Next execution target
+
+**Release-readiness verification:** validate the hardened auth/runtime paths against the live development stack, then close the remaining release checklist items without expanding scope into speculative infrastructure.

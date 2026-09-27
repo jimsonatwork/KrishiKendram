@@ -19,8 +19,14 @@ async function bootstrap() {
 
   app.use(helmet());
 
+  const corsOrigins = (config.get<string>('CORS_ORIGINS') ??
+    'http://localhost:4000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: true,
+    origin: corsOrigins,
     credentials: true,
   });
 
