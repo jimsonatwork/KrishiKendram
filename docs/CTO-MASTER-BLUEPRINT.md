@@ -2846,3 +2846,8 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Crop READ, UPDATE, archive, and relationship-history authorization resolves the active `resourceRelationship` OWNER first, falling back to the parent farm owner only when no active Crop OWNER relationship exists.
 - Crop creation semantics remain farm-owned; no unsupported Crop transfer endpoint was introduced.
 - Focused CropService regression suite: 15/15 passed.
+
+### V0.5.31 — Crop Restore Ownership Continuity
+- Crop restore now resolves the last recorded OWNER relationship before authorization and re-establishes that owner after restore, falling back to the parent farm owner only when no ownership history exists.
+- Added regression coverage for restoring a transferred/temporally owned Crop.
+- CropService regression: 16/16 passed; backend build completed successfully.

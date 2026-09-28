@@ -697,6 +697,37 @@ describe('CropsService', () => {
     );
   });
 
+  it('restores a crop to its last temporal owner after archive', async () => {
+    prisma.crop.findFirst.mockResolvedValueOnce({
+      id: 'crop-1',
+      farmId: 'farm-1',
+      farm: { id: 'farm-1', ownerId: 'legacy-owner' },
+    });
+    prisma.resourceRelationship.findFirst.mockResolvedValueOnce({
+      userId: 'temporal-owner',
+    });
+    prisma.crop.update.mockResolvedValueOnce({ id: 'crop-1', farmId: 'farm-1' });
+
+    await service.restore('restorer', UserRole.FARMER, 'crop-1');
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: { userId: 'restorer', role: UserRole.FARMER },
+      module: 'farms',
+      resource: 'crop',
+      action: AuthorizationAction.RESTORE,
+      resourceId: 'crop-1',
+      farmId: 'farm-1',
+      ownerId: 'temporal-owner',
+    });
+    expect(relationships.createOwnerRelationship).toHaveBeenCalledWith(
+      expect.anything(),
+      'crop',
+      'crop-1',
+      'temporal-owner',
+      expect.any(Date),
+    );
+  });
+
   it('does not archive when crop authorization is denied', async () => {
     prisma.crop.findFirst.mockResolvedValueOnce({
       id: 'crop-1',

@@ -517,10 +517,30 @@ export class CropsService {
       select: { id: true, farmId: true, farm: { select: { id: true, ownerId: true } } },
     });
     if (!cropContext) throw new NotFoundException('Archived crop not found.');
-    await this.authorization.assertCan({ user: { userId, role }, module: 'farms', resource: 'crop', action: AuthorizationAction.RESTORE, resourceId: cropContext.id, farmId: cropContext.farmId, ownerId: cropContext.farm.ownerId });
+
+    const lastOwnerRelationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'crop',
+        resourceId: cropContext.id,
+        relationshipType: 'OWNER',
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+    const ownerId = lastOwnerRelationship?.userId ?? cropContext.farm.ownerId;
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'crop',
+      action: AuthorizationAction.RESTORE,
+      resourceId: cropContext.id,
+      farmId: cropContext.farmId,
+      ownerId,
+    });
     return this.prisma.$transaction(async (tx) => {
       const crop = await tx.crop.update({ where: { id: cropId }, data: { deletedAt: null } });
-      await this.relationships.createOwnerRelationship(tx, 'crop', crop.id, cropContext.farm.ownerId, new Date());
+      await this.relationships.createOwnerRelationship(tx, 'crop', crop.id, ownerId, new Date());
       return crop;
     });
   }

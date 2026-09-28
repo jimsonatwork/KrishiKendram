@@ -919,3 +919,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Lifecycle authorization must honor an active temporal OWNER relationship for Crop resources before falling back to the parent farm owner.
 - Do not invent Crop transfer APIs where the canonical transfer workflow does not yet support Crop.
 - Regression verified with the CropService suite (15/15).
+
+### V0.5.31 Checkpoint — Crop Restore Continuity
+- Restore is a lifecycle continuation, not a new ownership decision: preserve the last recorded Crop OWNER when relationship history exists.
+- Authorization for RESTORE uses that recovered owner; relationship recreation uses the same owner.
+- No new transfer API or ownership abstraction was introduced.

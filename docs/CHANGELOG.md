@@ -860,3 +860,8 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Aligned Crop lifecycle authorization with active temporal OWNER relationships.
 - Preserved existing Crop creation and transfer boundaries.
 - CropService tests: 15/15 passed.
+
+## 2026-09-28 — V0.5.31 Crop Restore Ownership Continuity
+- Preserved the last recorded temporal Crop owner across archive/restore.
+- Added focused restore regression coverage.
+- CropService tests: 16/16 passed; backend build passed.
