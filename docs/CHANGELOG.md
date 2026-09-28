@@ -909,3 +909,7 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 
 ### V0.5.42
 - Hardened transfer request DTO required identifiers against blank values.
+
+### V0.5.43 — History / Provenance Completeness Sweep
+- Audited the existing history/provenance foundation across audit events, user versions, resource relationships, movements, lineage, evidence, and transfer workflow records.
+- Confirmed the current model already carries actor/time/reason and resource provenance needed by the PMD baseline; no duplicate history subsystem added.

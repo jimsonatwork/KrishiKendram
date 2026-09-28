@@ -2906,3 +2906,9 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Confirmed global ValidationPipe uses whitelist, transformation, and forbidNonWhitelisted.
 - Hardened transfer-request required identifiers with non-empty validation, preventing blank resource/user identifiers from crossing the API boundary.
 - Existing date, enum, numeric and nested object validations remain in place.
+
+### V0.5.43 — History / Provenance Completeness Sweep
+- Audited AuditEvent, UserHistory, ResourceRelationship, ResourceMovement, ResourceLineage, ResourceEvidence, and transfer-request history paths.
+- Confirmed actor attribution, timestamps, reasons, transaction/evidence references, relationship chronology, movement chaining, and lineage provenance are represented by the current domain records.
+- Confirmed transfer acceptance/rejection/cancellation/approval events are transactionally audited where applicable.
+- No isolated history/provenance bypass requiring a new parallel history subsystem was found.

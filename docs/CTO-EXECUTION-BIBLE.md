@@ -974,3 +974,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 
 ### V0.5.42 Checkpoint — API Contract & DTO Validation Sweep
 - Confirmed strict global request validation and strengthened required transfer identifiers with @IsNotEmpty.
+
+### V0.5.43 — History / Provenance Completeness Sweep
+- Completed a controlled audit of the existing history/provenance foundation rather than introducing another generic history layer.
+- AuditEvent/UserHistory cover security and user-version history; ResourceRelationship/Movement/Lineage/Evidence cover resource lifecycle provenance; transfer requests retain workflow state and evidence references.
+- No additional implementation was justified by the current PMD scope.
