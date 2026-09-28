@@ -926,3 +926,8 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 ### V0.5.46 — Cross-module production regression sweep
 - Core cross-module regression: 27 suites / 234 tests passed. Backend and frontend builds passed.
 - No code regression found; performance chunk warning remains a separate planned pass.
+
+### V0.5.47 — Performance and device-compatibility pass
+- Added route-level lazy loading for workspace/admin pages.
+- Aligned FarmsPage with the existing Motion import.
+- Frontend production build passed; initial JS reduced from 616.28 kB to 440.82 kB and the previous chunk warning cleared.
