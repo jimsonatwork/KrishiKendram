@@ -903,3 +903,9 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 ### V0.5.40
 - Completed lifecycle closure integrity audit across Farm, FarmAsset, and Crop destructive paths.
 - Confirmed transactional relationship termination coverage; no additional closure bypass found.
+
+### V0.5.41
+- Completed authorization matrix sweep and secured audit administration with JWT authentication.
+
+### V0.5.42
+- Hardened transfer request DTO required identifiers against blank values.

@@ -1,11 +1,13 @@
-import { Controller, Get, Query, Req, UnauthorizedException } from '@nestjs/common'
+import { Controller, Get, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common'
 import { UserRole } from '@prisma/client'
 
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { AuditService } from './audit.service'
 import { AuthorizationService } from '../authorization/authorization.service'
 import { AuthorizationAction } from '../authorization/authorization.types'
 
 @Controller('platform/audit')
+@UseGuards(JwtAuthGuard)
 export class AuditAdminController {
   constructor(
     private readonly audit: AuditService,

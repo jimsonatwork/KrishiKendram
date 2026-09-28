@@ -2895,3 +2895,14 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Farm deletion terminates Farm ownership and all open child FarmAsset/Crop relationships in the same transaction; FarmAsset deletion and Crop archive also terminate their open relationships atomically.
 - No additional lifecycle closure bypass was found in the audited paths.
 - Cross-domain regression set: 4 suites / 47 tests passed.
+
+### V0.5.41 — Authorization Matrix Final Sweep
+- Audited controller/service authorization entry points across Users, Farms, Crops, Intake, transfers, permissions and audit administration.
+- Confirmed resource decisions flow through the centralized AuthorizationService; privileged platform endpoints use authorization checks.
+- Hardened the audit administration controller with the JWT guard so unauthenticated requests cannot reach its authorization layer.
+- Authorization regression: 7 suites / 99 tests passed; backend build passed.
+
+### V0.5.42 — API Contract & DTO Validation Sweep
+- Confirmed global ValidationPipe uses whitelist, transformation, and forbidNonWhitelisted.
+- Hardened transfer-request required identifiers with non-empty validation, preventing blank resource/user identifiers from crossing the API boundary.
+- Existing date, enum, numeric and nested object validations remain in place.

@@ -967,3 +967,10 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Verified destructive lifecycle paths close active temporal relationships transactionally.
 - Farm deletion closes the farm plus child FarmAsset/Crop relationships; asset deletion and Crop archive close their own relationships.
 - No additional closure gap was identified; 4 related suites / 47 tests passed.
+
+### V0.5.41 Checkpoint — Authorization Matrix Final Sweep
+- Completed authorization entry-point sweep and secured the audit administration controller with JwtAuthGuard.
+- Central authorization regression: 7 suites / 99 tests passed; backend build passed.
+
+### V0.5.42 Checkpoint — API Contract & DTO Validation Sweep
+- Confirmed strict global request validation and strengthened required transfer identifiers with @IsNotEmpty.

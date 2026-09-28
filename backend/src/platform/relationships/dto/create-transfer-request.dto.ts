@@ -1,9 +1,9 @@
-import { IsDateString, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateTransferRequestDto {
-  @IsString() resourceType: string;
-  @IsString() resourceId: string;
-  @IsString() destinationUserId: string;
+  @IsString() @IsNotEmpty() resourceType: string;
+  @IsString() @IsNotEmpty() resourceId: string;
+  @IsString() @IsNotEmpty() destinationUserId: string;
   @IsOptional() @IsNumber() @Min(0) quantity?: number;
   @IsOptional() @IsString() unit?: string;
   @IsOptional() @IsDateString() effectiveAt?: string;
