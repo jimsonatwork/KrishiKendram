@@ -515,6 +515,13 @@ export const api = {
       },
     }),
 
+  archivedCrops: (token: string) =>
+    request<any[]>('/crops/archived', {
+      headers: {
+        Authorization: 'Bearer ' + token,
+      },
+    }),
+
   createCrop: (
     data: CropData,
     token: string,
@@ -548,6 +555,14 @@ export const api = {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
+      },
+    }),
+
+  restoreCrop: (id: string, token: string) =>
+    request('/crops/' + id + '/restore', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + token,
       },
     }),
 

@@ -283,6 +283,7 @@ export function CropsPage() {
     localStorage.getItem('accessToken')
 
   const [crops, setCrops] = useState<Crop[]>([])
+  const [showArchived, setShowArchived] = useState(false)
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -325,7 +326,9 @@ export function CropsPage() {
     try {
       const [cropResult, farmResult] =
         await Promise.all([
-          api.crops(token),
+          showArchived
+            ? api.archivedCrops(token)
+            : api.crops(token),
           api.farms(token),
         ])
 
@@ -357,7 +360,7 @@ export function CropsPage() {
 
   useEffect(() => {
     void loadData()
-  }, [])
+  }, [showArchived])
 
   const filteredCrops = useMemo(() => {
     const query =
@@ -581,6 +584,22 @@ export function CropsPage() {
     }
   }
 
+  const restoreCrop = async (cropId: string) => {
+    if (!token) return
+
+    try {
+      await api.restoreCrop(cropId, token)
+      setSelectedCropId('')
+      await loadData()
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to restore crop',
+      )
+    }
+  }
+
   if (loading) {
     return <LoadingState label="Loading crops..." />
   }
@@ -592,14 +611,24 @@ export function CropsPage() {
         title="Crops"
         description="Track cultivation across your connected farms."
         action={
-          <Button
-            onClick={() =>
-              setShowForm((value) => !value)
-            }
-          >
-            <Plus />
-            {showForm ? 'Cancel' : 'Add crop'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowArchived((value) => !value)}
+            >
+              {showArchived ? 'Active crops' : 'Archived crops'}
+            </Button>
+            {!showArchived && (
+              <Button
+                onClick={() =>
+                  setShowForm((value) => !value)
+                }
+              >
+                <Plus />
+                {showForm ? 'Cancel' : 'Add crop'}
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -754,9 +783,9 @@ export function CropsPage() {
       {crops.length === 0 ? (
         <EmptyState
           icon={<Wheat />}
-          title="No crops yet"
-          description="Add your first crop to start tracking cultivation."
-          action={
+          title={showArchived ? "No archived crops" : "No crops yet"}
+          description={showArchived ? "Archived crops will appear here and can be restored when authorized." : "Add your first crop to start tracking cultivation."}
+          action={!showArchived ? (
             <Button
               onClick={() =>
                 setShowForm(true)
@@ -765,7 +794,7 @@ export function CropsPage() {
               <Plus />
               Add your first crop
             </Button>
-          }
+          ) : undefined}
         />
       ) : (
         <div className="space-y-5">
@@ -1064,16 +1093,25 @@ export function CropsPage() {
                   )}
 
                   <div className="mt-6 flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        editCrop(
-                          selectedCrop,
-                        )
-                      }
-                    >
-                      Edit crop
-                    </Button>
+                    {!showArchived ? (
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          editCrop(
+                            selectedCrop,
+                          )
+                        }
+                      >
+                        Edit crop
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => void restoreCrop(selectedCrop.id)}
+                      >
+                        Restore crop
+                      </Button>
+                    )}
 
                     <Button
                       type="button"
@@ -1107,16 +1145,18 @@ export function CropsPage() {
                       View farm
                     </Button>
 
-                    <Button
-                      variant="destructive"
-                      onClick={() =>
-                        archiveCrop(
-                          selectedCrop.id,
-                        )
-                      }
-                    >
-                      Archive crop
-                    </Button>
+                    {!showArchived && (
+                      <Button
+                        variant="destructive"
+                        onClick={() =>
+                          archiveCrop(
+                            selectedCrop.id,
+                          )
+                        }
+                      >
+                        Archive crop
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               )}

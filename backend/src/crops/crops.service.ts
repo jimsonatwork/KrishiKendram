@@ -286,6 +286,28 @@ export class CropsService {
     });
   }
 
+  async findMyArchivedCrops(
+    userId: string,
+    role: UserRole,
+  ) {
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'crop',
+      action: AuthorizationAction.READ,
+      ownerId: userId,
+    });
+
+    return this.prisma.crop.findMany({
+      where: {
+        deletedAt: { not: null },
+        farm: { ownerId: userId },
+      },
+      include: { farm: true },
+      orderBy: { deletedAt: 'desc' },
+    });
+  }
+
   private async getCurrentCropOwnerId(
     cropId: string,
     fallbackOwnerId: string,

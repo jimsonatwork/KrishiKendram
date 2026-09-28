@@ -46,6 +46,16 @@ export class CropsController {
     );
   }
 
+  @Get('archived')
+  findMyArchivedCrops(
+    @Req() req: any,
+  ) {
+    return this.cropsService.findMyArchivedCrops(
+      req.user.userId,
+      req.user.role,
+    );
+  }
+
   @Get(':id/relationships/history')
   getRelationshipHistory(
     @Req() req: any,
