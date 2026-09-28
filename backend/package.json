@@ -10,7 +10,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main.js",
     "dev": "npx prisma generate && nest start --watch",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
