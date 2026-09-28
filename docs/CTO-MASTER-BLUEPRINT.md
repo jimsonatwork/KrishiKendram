@@ -89,9 +89,9 @@ The documented A/B/C repository posture has been restored from the canonical che
 
 Validation:
 - Canonical, Integration, and Development were verified at the same promoted checkpoint before this documentation checkpoint.
-- Integration recovery tag:  → .
-- Development recovery tag:  → .
-- Development pre-promotion working tree is preserved in the  stash.
+- Integration recovery tag: `pre-v0.5.23-integration-promotion` → `6c6c626`.
+- Development recovery tag: `pre-v0.5.23-development-promotion` → `dc7c6fc`.
+- Development pre-promotion working tree is preserved in the local promotion-recovery stash.
 - No destructive history loss was introduced; promotion used force-with-lease after explicit preservation.
 
 ### 2026-09-28 V0.5.23 Relationship Child Access Verification Checkpoint
