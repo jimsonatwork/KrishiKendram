@@ -1,4 +1,5 @@
 FROM node:24-bookworm-slim AS build
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -9,6 +10,7 @@ COPY src ./src
 RUN npm run build
 
 FROM node:24-bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
