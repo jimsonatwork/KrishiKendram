@@ -2968,3 +2968,9 @@ Continue concrete release/runtime verification and product-domain gaps; do not r
 - Frontend: 2,311 modules transformed; 441.17 kB initial JavaScript / 140.71 kB gzip.
 - Production dependency audit: 0 vulnerabilities for backend and frontend; backend dev-tooling advisories fixed at patch level.
 - Checkpoint: 4d6fb94.
+
+### V0.5.52 — Authenticated E2E Runtime Revalidation
+
+- Warm authenticated E2E smoke: 15/15 passed after the V0.5.51 hardening checkpoint.
+- Cold-run timeout was reproduced once and cleared on immediate warm rerun; no application change was justified.
+- Docker image revalidation was attempted but not used as a release blocker because the changed packages are development-only and the production image gate already passed in V0.5.49.

@@ -947,3 +947,9 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Frontend production build: 2,311 modules transformed; 441.17 kB initial JavaScript / 140.71 kB gzip.
 - Production dependency audit is clean; backend dev-tooling high findings were resolved with patch-level fast-uri/js-yaml updates.
 - Checkpoint committed as 4d6fb94.
+
+## 2026-09-28 — V0.5.52 Authenticated E2E runtime revalidation
+
+- Warm authenticated E2E smoke passed 15/15 after runtime/dependency hardening.
+- One cold-run timeout was cleared on immediate rerun; no code or test-timeout change was made.
+- Docker image revalidation was attempted but did not complete within the environment window; prior production image gate remains valid because only dev dependencies changed.

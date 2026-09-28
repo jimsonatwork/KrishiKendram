@@ -1014,3 +1014,10 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 ### Next execution target
 
 Continue the remaining release/runtime and product-readiness checks without reopening completed foundations.
+
+## V0.5.52 — Authenticated E2E Runtime Revalidation
+
+- Re-ran the complete authenticated application E2E smoke suite after dependency/runtime hardening.
+- Warm runtime result: 15/15 tests passed.
+- An initial cold run had 14/15 pass because the existing-user current-user read exceeded the default 5-second test timeout; immediate warm rerun passed without code changes, so no timeout inflation or test weakening was introduced.
+- Docker image revalidation was started but intentionally terminated after prolonged dependency installation with no further output; the runtime dependency set was unchanged because the security fixes were dev-only.
