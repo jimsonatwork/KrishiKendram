@@ -918,3 +918,7 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Audited frontend API calls against backend controller routes and confirmed the active workflow endpoints are aligned.
 - Frontend production build passed (2311 modules; existing ~616 kB chunk warning only).
 - No duplicate or fabricated integration layer was introduced.
+
+### V0.5.45 — Frontend Workflow Completion
+- Fixed contextual transfer navigation so a selected Farm/FarmAsset is retained when opening History from its Send action.
+- Verified workflow states and API route alignment without creating a parallel UI/backend path.
