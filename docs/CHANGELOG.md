@@ -869,3 +869,7 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 ## V0.5.32 — Ownership Transfer Temporal Integrity
 - Prevented backdated ownership transfers and duplicate active destination OWNER relationships at the shared relationship-service boundary.
 - Added focused regression tests; backend build passes.
+
+## V0.5.33 — Farm Temporal Ownership Alignment
+- Farm transfer authorization and movement/evidence history now honor the active OWNER relationship.
+- Added regression coverage; FarmResourceLifecycleService tests and backend build pass.

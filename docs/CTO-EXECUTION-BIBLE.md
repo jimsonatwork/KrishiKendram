@@ -928,3 +928,7 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 ### V0.5.32 Checkpoint — Ownership Transfer Integrity
 - Hardened the canonical ownership transfer boundary against invalid temporal ordering and duplicate active OWNER relationships.
 - Verified with 6/6 relationship-service tests and a successful Nest backend build.
+
+### V0.5.33 Checkpoint — Farm Temporal Ownership Alignment
+- Farm lifecycle transfer now uses the canonical active temporal owner rather than assuming the Farm.ownerId field is authoritative.
+- Existing farm owner persistence remains synchronized after transfer; no duplicate transfer workflow introduced.

@@ -2855,3 +2855,7 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 ### V0.5.32 — Central Ownership Transfer Temporal Integrity
 - Centralized `ResourceRelationshipService.transferOwnerRelationship` now rejects backdated transfers before the active ownership start and duplicate destination ownership.
 - Regression coverage and backend build passed; no module-specific transfer bypass introduced.
+
+### V0.5.33 — Farm Transfer Uses Temporal Owner
+- Farm transfer authorization and farm movement/evidence history now resolve the active OWNER relationship, falling back to the denormalized farm owner only for legacy records.
+- Added regression coverage for transferred farms; lifecycle tests and backend build pass.

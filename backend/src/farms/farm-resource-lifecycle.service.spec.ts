@@ -117,6 +117,46 @@ describe('FarmResourceLifecycleService', () => {
     expect(result.movement).toEqual({ id: 'movement-1' });
   });
 
+  it('uses the active temporal farm owner for transfer authorization', async () => {
+    const effectiveAt = '2026-09-27T10:00:00.000Z';
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'legacy-owner',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
+    prisma.resourceRelationship.findFirst.mockResolvedValue({
+      userId: 'temporal-owner',
+      validFrom: new Date('2026-09-26T00:00:00.000Z'),
+    });
+
+    await service.transferFarm(
+      'farm-1',
+      { destinationUserId: 'destination-1', effectiveAt },
+      'temporal-owner',
+      UserRole.FARMER,
+    );
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: { userId: 'temporal-owner', role: UserRole.FARMER },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.UPDATE,
+      resourceId: 'farm-1',
+      ownerId: 'temporal-owner',
+    });
+    expect(relationships.transferOwnerRelationship).toHaveBeenCalledWith(
+      tx,
+      'farm',
+      'farm-1',
+      'temporal-owner',
+      'destination-1',
+      new Date(effectiveAt),
+      undefined,
+      undefined,
+      undefined,
+    );
+  });
+
   it('rejects inactive transfer destinations before relationship mutation', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',

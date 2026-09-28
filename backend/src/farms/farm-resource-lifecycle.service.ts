@@ -40,13 +40,24 @@ export class FarmResourceLifecycleService {
     });
     if (!farm) throw new NotFoundException('Farm not found');
 
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farm',
+        resourceId: farmId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
     await this.authorization.assertCan({
       user: { userId, role },
       module: 'farms',
       resource: 'farm',
       action: AuthorizationAction.READ,
       resourceId: farmId,
-      ownerId: farm.ownerId,
+      ownerId: relationship?.userId ?? farm.ownerId,
     });
     return this.movementResolver.resolve({
       resourceType: 'farm',
@@ -65,13 +76,24 @@ export class FarmResourceLifecycleService {
     });
     if (!farm) throw new NotFoundException('Farm not found');
 
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farm',
+        resourceId: farmId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
     await this.authorization.assertCan({
       user: { userId, role },
       module: 'farms',
       resource: 'farm',
       action: AuthorizationAction.READ,
       resourceId: farmId,
-      ownerId: farm.ownerId,
+      ownerId: relationship?.userId ?? farm.ownerId,
     });
     return this.evidenceResolver.resolve({
       resourceType: 'farm',
@@ -174,21 +196,33 @@ export class FarmResourceLifecycleService {
       throw new NotFoundException('Farm not found');
     }
 
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farm',
+        resourceId: farmId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true, validFrom: true },
+    });
+    const ownerId = relationship?.userId ?? farm.ownerId;
+
     await this.authorization.assertCan({
       user: { userId, role },
       module: 'farms',
       resource: 'farm',
       action: AuthorizationAction.UPDATE,
       resourceId: farmId,
-      ownerId: farm.ownerId,
+      ownerId,
     });
 
     return this.transfer(
       'farm',
       farmId,
-      farm.ownerId,
+      ownerId,
       dto,
-      farm.createdAt,
+      relationship?.validFrom ?? farm.createdAt,
       async (tx) =>
         tx.farm.update({
           where: { id: farmId },
