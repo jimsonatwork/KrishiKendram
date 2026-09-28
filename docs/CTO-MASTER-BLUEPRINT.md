@@ -2825,3 +2825,19 @@ The FarmAsset authorization boundary now resolves the active OWNER relationship 
 ### Next execution target
 
 Continue the concrete product-domain/runtime audit, prioritizing real correctness or user-facing integration gaps and avoiding speculative infrastructure.
+
+
+## 2026-09-28 — V0.5.29 Relationship-Aware FarmAsset Split Authorization
+
+### COMPLETE
+
+FarmAsset split now uses the active temporal OWNER for both the source UPDATE authorization and the newly created target CREATE authorization. This closes a concrete post-transfer inconsistency where the source asset used the current owner but the split target authorization still used the legacy farm owner.
+
+- Reused the existing ResourceRelationship lookup and AuthorizationService.
+- No new model, endpoint, permission layer, or UI was introduced.
+- Added a focused regression for a transferred FarmAsset split.
+- Verification: FarmResourceLineageService 5/5 tests PASS.
+
+### Next execution target
+
+Continue the same bounded temporal-ownership audit across remaining concrete FarmAsset lifecycle operations.

@@ -849,3 +849,9 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Reused the existing AuthorizationService and ResourceRelationship model; no duplicate security or lifecycle abstraction was introduced.
 - Farm-focused regression: 39/39 PASS; backend build PASS; frontend production build PASS.
 - Existing frontend bundle-size warning remains deferred to the dedicated performance/code-splitting pass.
+
+
+## 2026-09-28 — V0.5.29 Relationship-Aware FarmAsset Split Authorization
+
+- FarmAsset split CREATE authorization now uses the active resource owner rather than the legacy farm owner.
+- Added transferred-asset regression coverage; 5/5 FarmResourceLineageService tests pass.

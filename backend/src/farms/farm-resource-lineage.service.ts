@@ -297,7 +297,7 @@ export class FarmResourceLineageService {
       resource: 'farmAsset',
       action: AuthorizationAction.CREATE,
       farmId,
-      ownerId: asset.farm.ownerId,
+      ownerId,
     });
 
     const effectiveAt = dto.effectiveAt

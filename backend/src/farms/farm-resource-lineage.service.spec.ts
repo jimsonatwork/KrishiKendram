@@ -118,6 +118,40 @@ describe('FarmResourceLineageService', () => {
     expect(result.lineage).toEqual({ id: 'lineage-1' });
   });
 
+  it('uses the active owner for split target authorization after transfer', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      type: 'SEED_STOCK',
+      name: 'Seed stock',
+      quantity: 100,
+      unit: 'kg',
+      metadata: {},
+      farm: { id: 'farm-1', ownerId: 'legacy-owner' },
+    });
+    prisma.resourceRelationship.findFirst.mockResolvedValue({
+      userId: 'temporal-owner',
+      id: 'relationship-1',
+    });
+
+    await service.splitFarmAsset(
+      'farm-1',
+      'asset-1',
+      { quantity: 25 },
+      'temporal-owner',
+      UserRole.FARMER,
+    );
+
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      action: AuthorizationAction.UPDATE,
+      ownerId: 'temporal-owner',
+    }));
+    expect(authorization.assertCan).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      action: AuthorizationAction.CREATE,
+      ownerId: 'temporal-owner',
+    }));
+  });
+
   it('rejects splitting an unquantified asset before mutation', async () => {
     prisma.farmAsset.findUnique.mockResolvedValue({
       id: 'asset-1',
