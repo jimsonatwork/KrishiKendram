@@ -863,3 +863,26 @@ Whole-farm transfer initiation now has the same contextual handoff as FarmAsset 
 ### Next execution target
 
 Continue the next concrete product-domain/runtime gap without reopening completed platform foundations.
+
+
+## 2026-09-28 — V0.5.27 FarmRecord History Handoff
+
+### COMPLETE
+
+FarmRecord entries now expose direct contextual navigation into the unified History workspace.
+
+- Each record has a compact history action.
+- The action searches the existing unified timeline using the record title/category/identifier.
+- No new record-history model or endpoint was introduced.
+- Existing FarmRecord authorization, audit/history and unified timeline foundations remain canonical.
+
+### Verification
+
+- Frontend TypeScript: PASS.
+- Frontend production build: PASS; 2311 modules transformed.
+- Existing ~616 kB bundle warning remains deferred to the dedicated performance/code-splitting pass.
+- `git diff --check`: PASS.
+
+### Next execution target
+
+Continue the next concrete product-domain/runtime gap without reopening completed platform foundations.

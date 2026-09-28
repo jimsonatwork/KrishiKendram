@@ -1160,11 +1160,29 @@ function FarmSubsection({
                 key={record.id}
                 className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"
               >
-                <p className="truncate font-medium text-slate-900 dark:text-white">
-                  {record.title ||
-                    record.category ||
-                    'Farm record'}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 truncate font-medium text-slate-900 dark:text-white">
+                    {record.title ||
+                      record.category ||
+                      'Farm record'}
+                  </p>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="-mr-2 -mt-2 shrink-0"
+                    onClick={() => {
+                      const label = record.title || record.category || record.id
+                      window.location.assign(
+                        `/app/history?q=${encodeURIComponent(label)}`,
+                      )
+                    }}
+                    title="View related history"
+                  >
+                    <FileClock className="size-4" />
+                  </Button>
+                </div>
 
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   {record.category || 'Record'}
