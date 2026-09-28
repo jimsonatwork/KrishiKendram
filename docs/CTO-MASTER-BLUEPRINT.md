@@ -14,13 +14,13 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.24 A/B/C Promotion Recovery Checkpoint |
-| Current checkpoint message | V0.5.24 A/B/C Promotion Recovery Checkpoint |
-| Current primary phase | V0.5.24 — A/B/C Promotion Recovery |
-| Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
+| Current checkpoint | V0.5.28 Relationship-Aware FarmAsset Ownership Enforcement |
+| Current checkpoint message | V0.5.28 Relationship-Aware FarmAsset Ownership Enforcement |
+| Current primary phase | V0.5.28 — Product-domain completion |
+| Current platform priority | Concrete lifecycle coverage → authorization correctness → UI/runtime integration → release readiness |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Cross-module UI/runtime coverage and compatibility pass |
+| Next major target | Continue concrete product-domain/runtime gaps without reopening established foundations |
 
 ## Current Status
 
@@ -2802,3 +2802,26 @@ FarmRecord entries now expose direct contextual navigation into the unified Hist
 ### Next execution target
 
 Continue the next concrete product-domain/runtime gap without reopening completed platform foundations.
+
+
+## 2026-09-28 — V0.5.28 Relationship-Aware FarmAsset Ownership Enforcement
+
+### COMPLETE
+
+The FarmAsset authorization boundary now resolves the active OWNER relationship before evaluating ownership-scoped actions. This closes a concrete temporal-ownership gap where a transferred asset could still use the parent farm owner as the ownership context for update, delete, or relationship-history access.
+
+- Added one small FarmsService ownership resolver that prefers the active FarmAsset OWNER relationship and falls back to the farm owner only when no active resource relationship exists.
+- Applied the resolver to FarmAsset relationship-history, update, and delete authorization paths.
+- Preserved the existing FARM-scope access path and centralized AuthorizationService; no new authorization engine or relationship model was introduced.
+- Added a regression test proving a transferred FarmAsset uses its current relationship owner for UPDATE authorization.
+
+### Verification
+
+- FarmService focused regression: 39/39 tests PASS.
+- Backend build: PASS.
+- Frontend production build: PASS; 2311 modules transformed.
+- Working tree changes are limited to the concrete authorization fix, regression test, and execution records.
+
+### Next execution target
+
+Continue the concrete product-domain/runtime audit, prioritizing real correctness or user-facing integration gaps and avoiding speculative infrastructure.

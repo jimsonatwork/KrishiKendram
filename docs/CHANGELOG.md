@@ -840,3 +840,12 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Added the read-only `/app/audit` workspace using the canonical platform AuditService.
 - Registered the `platform.audit` resource with READ/GLOBAL capability so authorization remains centralized.
 - No second history/audit engine was introduced; this exposes the existing audit stream.
+
+
+## 2026-09-28 — V0.5.28 Relationship-Aware FarmAsset Ownership Enforcement
+
+- FarmAsset update, delete, and relationship-history authorization now resolves the active resource OWNER relationship before applying OWN scope.
+- Added a focused regression proving transferred assets use the current relationship owner rather than the parent farm owner.
+- Reused the existing AuthorizationService and ResourceRelationship model; no duplicate security or lifecycle abstraction was introduced.
+- Farm-focused regression: 39/39 PASS; backend build PASS; frontend production build PASS.
+- Existing frontend bundle-size warning remains deferred to the dedicated performance/code-splitting pass.

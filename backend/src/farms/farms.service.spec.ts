@@ -27,6 +27,9 @@ describe('FarmsService', () => {
     crop: {
       findMany: jest.fn(),
     },
+    resourceRelationship: {
+      findFirst: jest.fn(),
+    },
     entity: {
       create: jest.fn(),
     },
@@ -50,6 +53,7 @@ describe('FarmsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.resourceRelationship.findFirst.mockResolvedValue(undefined);
     prisma.$transaction.mockImplementation(
       async (callback: (tx: any) => Promise<unknown>) =>
         callback({
@@ -1126,6 +1130,47 @@ describe('FarmsService', () => {
     ).toBeLessThan(
       prisma.farmAsset.update.mock.invocationCallOrder[0],
     );
+  });
+
+  it('uses the active asset ownership relationship after an asset transfer', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      farm: {
+        id: 'farm-1',
+        ownerId: 'original-owner',
+      },
+    });
+    prisma.resourceRelationship.findFirst.mockResolvedValue({
+      userId: 'transferred-owner',
+    });
+    prisma.farmAsset.update.mockResolvedValue({ id: 'asset-1' });
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: 'TRACTOR',
+      errors: [],
+    });
+
+    await service.updateAsset(
+      'farm-1',
+      'asset-1',
+      { type: 'TRACTOR' },
+      'transferred-owner',
+      UserRole.FARMER,
+    );
+
+    expect(authorization.assertCan).toHaveBeenCalledWith({
+      user: {
+        userId: 'transferred-owner',
+        role: UserRole.FARMER,
+      },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.UPDATE,
+      resourceId: 'asset-1',
+      farmId: 'farm-1',
+      ownerId: 'transferred-owner',
+    });
   });
 
   it('does not validate or mutate a farm asset when update authorization is denied', async () => {

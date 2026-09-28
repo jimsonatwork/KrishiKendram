@@ -39,6 +39,24 @@ export class FarmsService {
     private readonly lease: FarmAssetLeaseService,
   ) {}
 
+  private async getCurrentFarmAssetOwnerId(
+    assetId: string,
+    fallbackOwnerId: string,
+  ): Promise<string> {
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
+    return relationship?.userId ?? fallbackOwnerId;
+  }
+
   async create(ownerId: string, role: UserRole, dto: CreateFarmDto) {
     await this.authorization.assertCan({
       user: {
@@ -443,7 +461,10 @@ export class FarmsService {
       action: AuthorizationAction.READ,
       resourceId: assetContext.id,
       farmId: assetContext.farmId,
-      ownerId: assetContext.farm.ownerId,
+      ownerId: await this.getCurrentFarmAssetOwnerId(
+        assetContext.id,
+        assetContext.farm.ownerId,
+      ),
     });
 
     return this.relationships.listResourceRelationshipHistory(
@@ -584,7 +605,10 @@ export class FarmsService {
       action: AuthorizationAction.UPDATE,
       resourceId: assetContext.id,
       farmId: assetContext.farmId,
-      ownerId: assetContext.farm.ownerId,
+      ownerId: await this.getCurrentFarmAssetOwnerId(
+        assetContext.id,
+        assetContext.farm.ownerId,
+      ),
     });
 
     const validatedData = this.validateFarmAssetFields(dto);
@@ -641,7 +665,10 @@ export class FarmsService {
       action: AuthorizationAction.DELETE,
       resourceId: assetContext.id,
       farmId: assetContext.farmId,
-      ownerId: assetContext.farm.ownerId,
+      ownerId: await this.getCurrentFarmAssetOwnerId(
+        assetContext.id,
+        assetContext.farm.ownerId,
+      ),
     });
 
     return this.prisma.$transaction(async (tx) => {
