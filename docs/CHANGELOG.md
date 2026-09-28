@@ -913,3 +913,8 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 ### V0.5.43 — History / Provenance Completeness Sweep
 - Audited the existing history/provenance foundation across audit events, user versions, resource relationships, movements, lineage, evidence, and transfer workflow records.
 - Confirmed the current model already carries actor/time/reason and resource provenance needed by the PMD baseline; no duplicate history subsystem added.
+
+### V0.5.44 — Frontend ↔ Backend Integration Sweep
+- Audited frontend API calls against backend controller routes and confirmed the active workflow endpoints are aligned.
+- Frontend production build passed (2311 modules; existing ~616 kB chunk warning only).
+- No duplicate or fabricated integration layer was introduced.

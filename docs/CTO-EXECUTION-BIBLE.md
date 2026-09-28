@@ -979,3 +979,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Completed a controlled audit of the existing history/provenance foundation rather than introducing another generic history layer.
 - AuditEvent/UserHistory cover security and user-version history; ResourceRelationship/Movement/Lineage/Evidence cover resource lifecycle provenance; transfer requests retain workflow state and evidence references.
 - No additional implementation was justified by the current PMD scope.
+
+### V0.5.44 — Frontend ↔ Backend Integration Sweep
+- Completed the frontend API-to-controller route audit across the current PMD workflows.
+- Auth, Farm/Crop CRUD, FarmAsset lifecycle, movement/lineage/evidence history, custody/lease, intake, and transfer-request operations map to real backend routes.
+- Production frontend build passed; existing ~616 kB minified bundle warning is unchanged and intentionally deferred to the performance/code-splitting pass.
