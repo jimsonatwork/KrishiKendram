@@ -989,3 +989,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Completed the operational UI pass for Farm/Crop/History/Transfer workflows.
 - Contextual resource handoff now survives navigation into the transfer form; existing real backend endpoints remain the source of truth.
 - Frontend production build passed; the existing bundle-size warning remains deferred to the performance pass.
+
+### V0.5.46 — Cross-module production regression sweep
+- 27 suites / 234 tests passed across the core domain/authorization/relationship regression surface.
+- Backend and frontend production builds passed.
+- No cross-module regression gap requiring a code change was found.
