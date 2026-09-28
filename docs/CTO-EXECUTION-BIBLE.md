@@ -984,3 +984,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Completed the frontend API-to-controller route audit across the current PMD workflows.
 - Auth, Farm/Crop CRUD, FarmAsset lifecycle, movement/lineage/evidence history, custody/lease, intake, and transfer-request operations map to real backend routes.
 - Production frontend build passed; existing ~616 kB minified bundle warning is unchanged and intentionally deferred to the performance/code-splitting pass.
+
+### V0.5.45 — Frontend Workflow Completion
+- Completed the operational UI pass for Farm/Crop/History/Transfer workflows.
+- Contextual resource handoff now survives navigation into the transfer form; existing real backend endpoints remain the source of truth.
+- Frontend production build passed; the existing bundle-size warning remains deferred to the performance pass.

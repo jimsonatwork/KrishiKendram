@@ -2917,3 +2917,8 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Audited the canonical frontend API client against current NestJS controller routes for auth, farms, crops, assets, records, intake, history, movement, lineage, evidence, custody, lease, and transfer workflows.
 - Confirmed transfer-request routes and history endpoints used by the current History workspace match the backend contract.
 - No fake endpoint or parallel workflow was found; the existing large-bundle warning remains a dedicated performance-pass item.
+
+### V0.5.45 — Frontend Workflow Completion
+- Closed the real contextual transfer-entry gap: Farm and FarmAsset Send actions now arrive at History with the selected resource preserved in the transfer form.
+- Verified Farm, FarmAsset, FarmRecord, Crop history navigation, loading/error/empty states, and transfer accept/reject/cancel/admin approval wiring against live API contracts.
+- No duplicate transfer workflow introduced.
