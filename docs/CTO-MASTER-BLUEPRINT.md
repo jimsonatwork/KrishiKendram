@@ -2841,3 +2841,8 @@ FarmAsset split now uses the active temporal OWNER for both the source UPDATE au
 ### Next execution target
 
 Continue the same bounded temporal-ownership audit across remaining concrete FarmAsset lifecycle operations.
+
+### V0.5.30 — Crop Temporal Ownership Authorization Alignment
+- Crop READ, UPDATE, archive, and relationship-history authorization resolves the active `resourceRelationship` OWNER first, falling back to the parent farm owner only when no active Crop OWNER relationship exists.
+- Crop creation semantics remain farm-owned; no unsupported Crop transfer endpoint was introduced.
+- Focused CropService regression suite: 15/15 passed.
