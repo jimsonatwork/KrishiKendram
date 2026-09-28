@@ -139,6 +139,60 @@ describe('ResourceRelationshipService', () => {
     ]);
   });
 
+  it('rejects a transfer that is backdated before the active ownership start', async () => {
+    const effectiveAt = new Date('2026-09-25T00:00:00Z');
+    findFirst.mockResolvedValueOnce({
+      id: 'relationship-1',
+      userId: 'user-old',
+      validFrom: new Date('2026-09-26T00:00:00Z'),
+    });
+
+    const service = new ResourceRelationshipService(prisma);
+
+    await expect(
+      service.transferOwnerRelationship(
+        tx,
+        'farm',
+        'farm-1',
+        'user-old',
+        'user-new',
+        effectiveAt,
+        'Backdated transfer',
+        undefined,
+      ),
+    ).rejects.toThrow('Transfer effective date cannot precede the active ownership start date.');
+  });
+
+  it('rejects a transfer when the destination already owns the resource', async () => {
+    const effectiveAt = new Date('2026-09-27T00:00:00Z');
+    findFirst
+      .mockResolvedValueOnce({
+        id: 'relationship-1',
+        userId: 'user-old',
+        validFrom: new Date('2026-09-26T00:00:00Z'),
+      })
+      .mockResolvedValueOnce({
+        id: 'relationship-2',
+        userId: 'user-new',
+        validFrom: new Date('2026-09-26T00:00:00Z'),
+      });
+
+    const service = new ResourceRelationshipService(prisma);
+
+    await expect(
+      service.transferOwnerRelationship(
+        tx,
+        'farm',
+        'farm-1',
+        'user-old',
+        'user-new',
+        effectiveAt,
+        'Duplicate owner transfer',
+        undefined,
+      ),
+    ).rejects.toThrow('Destination user is already the active owner.');
+  });
+
   it('changes custodian atomically and records custody movement', async () => {
     const effectiveAt = new Date('2026-09-27T00:00:00Z');
     findFirst.mockResolvedValue({ id: 'custody-1', userId: 'user-old' });

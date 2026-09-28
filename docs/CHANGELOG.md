@@ -865,3 +865,7 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Preserved the last recorded temporal Crop owner across archive/restore.
 - Added focused restore regression coverage.
 - CropService tests: 16/16 passed; backend build passed.
+
+## V0.5.32 — Ownership Transfer Temporal Integrity
+- Prevented backdated ownership transfers and duplicate active destination OWNER relationships at the shared relationship-service boundary.
+- Added focused regression tests; backend build passes.

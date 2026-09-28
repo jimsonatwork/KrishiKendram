@@ -924,3 +924,7 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Restore is a lifecycle continuation, not a new ownership decision: preserve the last recorded Crop OWNER when relationship history exists.
 - Authorization for RESTORE uses that recovered owner; relationship recreation uses the same owner.
 - No new transfer API or ownership abstraction was introduced.
+
+### V0.5.32 Checkpoint — Ownership Transfer Integrity
+- Hardened the canonical ownership transfer boundary against invalid temporal ordering and duplicate active OWNER relationships.
+- Verified with 6/6 relationship-service tests and a successful Nest backend build.

@@ -2851,3 +2851,7 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Crop restore now resolves the last recorded OWNER relationship before authorization and re-establishes that owner after restore, falling back to the parent farm owner only when no ownership history exists.
 - Added regression coverage for restoring a transferred/temporally owned Crop.
 - CropService regression: 16/16 passed; backend build completed successfully.
+
+### V0.5.32 — Central Ownership Transfer Temporal Integrity
+- Centralized `ResourceRelationshipService.transferOwnerRelationship` now rejects backdated transfers before the active ownership start and duplicate destination ownership.
+- Regression coverage and backend build passed; no module-specific transfer bypass introduced.

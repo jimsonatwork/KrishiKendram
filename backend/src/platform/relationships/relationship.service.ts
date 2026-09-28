@@ -117,6 +117,25 @@ export class ResourceRelationshipService {
       );
     }
 
+    if (effectiveAt < current.validFrom) {
+      throw new Error('Transfer effective date cannot precede the active ownership start date.');
+    }
+
+    const destinationCurrent = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        userId: destinationUserId,
+        relationshipType: ResourceRelationshipType.OWNER,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    if (destinationCurrent) {
+      throw new Error('Destination user is already the active owner.');
+    }
+
     if (evidenceInput || existingEvidenceId) {
       const evidence = existingEvidenceId
         ? await tx.resourceEvidence.findUnique({ where: { id: existingEvidenceId } })
