@@ -1,12 +1,14 @@
-import { UsersPage } from '@/pages/admin/UsersPage'
-import { ResourcesPage } from '@/pages/admin/ResourcesPage'
-import { ModulesPage } from '@/pages/admin/ModulesPage'
-import { CapabilitiesPage } from '@/pages/admin/CapabilitiesPage'
-import { PermissionsPage } from '@/pages/admin/PermissionsPage'
-import { RolesPage } from '@/pages/admin/RolesPage'
-import { AuditPage } from '@/pages/admin/AuditPage'
-import { PlatformDashboardPage } from '@/pages/admin/PlatformDashboardPage'
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+
+const UsersPage = lazy(() => import('@/pages/admin/UsersPage').then((m) => ({ default: m.UsersPage })))
+const ResourcesPage = lazy(() => import('@/pages/admin/ResourcesPage').then((m) => ({ default: m.ResourcesPage })))
+const ModulesPage = lazy(() => import('@/pages/admin/ModulesPage').then((m) => ({ default: m.ModulesPage })))
+const CapabilitiesPage = lazy(() => import('@/pages/admin/CapabilitiesPage').then((m) => ({ default: m.CapabilitiesPage })))
+const PermissionsPage = lazy(() => import('@/pages/admin/PermissionsPage').then((m) => ({ default: m.PermissionsPage })))
+const RolesPage = lazy(() => import('@/pages/admin/RolesPage').then((m) => ({ default: m.RolesPage })))
+const AuditPage = lazy(() => import('@/pages/admin/AuditPage').then((m) => ({ default: m.AuditPage })))
+const PlatformDashboardPage = lazy(() => import('@/pages/admin/PlatformDashboardPage').then((m) => ({ default: m.PlatformDashboardPage })))
+
 import type { FormEvent, ReactNode } from 'react'
 import {
   BrowserRouter,
@@ -61,12 +63,11 @@ import {
   type AuthUser,
 } from '@/stores/auth.store'
 import { useThemeStore } from '@/stores/theme.store'
-import { FarmsPage } from '@/pages/farms/FarmsPage'
-
-import { CropsPage } from '@/pages/crops/CropsPage'
-import { ActivitiesPage } from '@/pages/activity/ActivitiesPage'
-import { HistoryPage } from '@/pages/activity/HistoryPage'
-import { AIIntakePage } from '@/pages/intake/AIIntakePage'
+const FarmsPage = lazy(() => import('@/pages/farms/FarmsPage').then((m) => ({ default: m.FarmsPage })))
+const CropsPage = lazy(() => import('@/pages/crops/CropsPage').then((m) => ({ default: m.CropsPage })))
+const ActivitiesPage = lazy(() => import('@/pages/activity/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })))
+const HistoryPage = lazy(() => import('@/pages/activity/HistoryPage').then((m) => ({ default: m.HistoryPage })))
+const AIIntakePage = lazy(() => import('@/pages/intake/AIIntakePage').then((m) => ({ default: m.AIIntakePage })))
 /* =========================================================
    TYPES
 ========================================================= */
@@ -1160,7 +1161,9 @@ function PortalLayout({
         </header>
 
         <main className="kk-main mx-auto max-w-[1600px] p-4 md:p-8">
-          {content}
+          <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">Loading workspace...</div>}>
+            {content}
+          </Suspense>
         </main>
       </div>
     </div>

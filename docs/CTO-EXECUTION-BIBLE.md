@@ -994,3 +994,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - 27 suites / 234 tests passed across the core domain/authorization/relationship regression surface.
 - Backend and frontend production builds passed.
 - No cross-module regression gap requiring a code change was found.
+
+### V0.5.47 — Performance and device-compatibility pass
+- Applied low-risk route-level code splitting to preserve functionality while reducing initial payload.
+- Preserved the existing visual-effects toggle and prefers-reduced-motion behavior.
+- Frontend production build passed with a 440.82 kB initial JS chunk and separate route chunks.
