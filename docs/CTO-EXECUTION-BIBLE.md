@@ -107,7 +107,7 @@ The ResourceMovement persistence/resolution foundation has now been implemented 
 The ResourceLineage persistence/resolution foundation has now been implemented and checkpointed.
 The transfer workflow has now been exposed end-to-end for privileged administrative approval, including an authorization-checked pending queue, frontend action, and regression coverage.
 Latest checkpoint: `18f44b8` — Complete administrative transfer approval workflow.
-The latest working checkpoint is V0.5.20 Unified Timeline Discovery: searchable/filterable cross-module History presentation is implemented and validated.
+The latest working checkpoint is V0.5.22 Contextual History Navigation: searchable/filterable cross-module History presentation is implemented and validated.
 The next controlled activity remains cross-module lifecycle UI/runtime coverage and compatibility hardening; do not reopen established authorization/relationship foundations unless a concrete regression is found.
 
 ## 6. Historical Work Already Completed
@@ -305,6 +305,8 @@ Evidence:
 - Full backend regression: 30/30 suites, 293/293 tests PASS.
 - TypeScript no-emit build check: PASS.
 - Backend production build: PASS.
+
+Current checkpoint: V0.5.22 Contextual History Navigation. The product now has contextual entry points from Farm and Crop workspaces into the unified History search without duplicating lifecycle presentation or creating a new backend abstraction. The existing frontend bundle-size warning remains a deferred compatibility/performance item.
 
 Next controlled activity:
 

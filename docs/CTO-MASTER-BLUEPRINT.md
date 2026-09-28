@@ -14,9 +14,9 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.20 Unified Timeline Discovery |
-| Current checkpoint message | V0.5.20 Unified Timeline Discovery |
-| Current primary phase | V0.5.20 — Cross-module UI/Runtime Coverage |
+| Current checkpoint | V0.5.22 Contextual History Navigation |
+| Current checkpoint message | V0.5.22 Contextual History Navigation |
+| Current primary phase | V0.5.22 — Cross-module UI/Runtime Coverage |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
@@ -82,6 +82,15 @@ Architectural rule:
 > A transfer request is a workflow; the transfer itself is a governed change to
 > resource relationships. Ownership is not represented by editing a farm or
 > member profile.
+
+### 2026-09-28 V0.5.22 Contextual History Navigation Checkpoint
+
+Farm and Crop workspaces now provide direct navigation into the shared History workspace with the selected farm/crop name prefilled as the timeline search query. This keeps lifecycle history centralized while removing a navigation gap between operational detail and the unified audit/history view.
+
+Validation:
+- Frontend TypeScript/Vite production build passed.
+- git diff --check passed.
+- Existing bundle warning remains isolated as a separate performance/code-splitting task; no risky global bundling change was introduced.
 
 ### 2026-09-28 Unified Timeline Discovery Checkpoint
 
@@ -2481,7 +2490,7 @@ Intake/FarmRecord passed the current completion gate. Intake remains an interpre
 
 - FarmRecord Registry contract: READ + CREATE, OWN/FARM/GLOBAL.
 - FarmRecord validation/normalization remains centralized in the Registry-backed FarmsService path.
-- Original intake content remains preserved in the record data payload through the extractor's aw value.
+- Original intake content remains preserved in the record data payload through the extractor's \raw value.
 - Activity/History frontend already surfaces FarmRecord input method and record context.
 - Verification: IntakeService 8/8 focused tests; Crop gate 17/17 remains green; frontend production build PASS.
 

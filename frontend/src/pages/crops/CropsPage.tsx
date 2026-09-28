@@ -8,6 +8,7 @@ import type {
 } from 'react'
 
 import {
+  FileClock,
   Plus,
   Wheat,
 } from 'lucide-react'
@@ -1072,6 +1073,19 @@ export function CropsPage() {
                       }
                     >
                       Edit crop
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        window.location.assign(
+                          '/app/history?q=' + encodeURIComponent(selectedCrop.name),
+                        )
+                      }}
+                    >
+                      <FileClock className="mr-2 size-4" />
+                      View history
                     </Button>
 
                     <Button

@@ -6,6 +6,7 @@ import {
 } from 'react'
 import type { FormEvent } from 'react'
 import {
+  FileClock,
   FileText,
   MapPin,
   Package,
@@ -1255,6 +1256,20 @@ function FarmCard({
         </div>
 
         <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              window.location.assign(
+                '/app/history?q=' + encodeURIComponent(farm.name),
+              )
+            }}
+            title={'View history for ' + farm.name}
+          >
+            <FileClock className="h-4 w-4" />
+          </Button>
+
           <Button
             type="button"
             variant="ghost"

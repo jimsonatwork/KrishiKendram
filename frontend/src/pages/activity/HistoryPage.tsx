@@ -120,7 +120,7 @@ export function HistoryPage() {
   const canApproveTransfers = ['SUPER_ADMIN', 'ADMIN', 'STATE_ADMIN', 'DISTRICT_ADMIN'].includes(currentUserRole ?? '')
   const [farms, setFarms] = useState<Farm[]>([])
   const [historyFilter, setHistoryFilter] = useState<'all' | HistoryItem['kind']>('all')
-  const [historyQuery, setHistoryQuery] = useState('')
+  const [historyQuery, setHistoryQuery] = useState(() => new URLSearchParams(window.location.search).get('q') ?? '')
   const [crops, setCrops] = useState<Crop[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
