@@ -878,3 +878,8 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Farm READ, UPDATE, DELETE, FarmAsset CREATE, and FarmRecord CREATE authorization now resolve the active temporal OWNER relationship before OWN-scope authorization.
 - Added regression coverage for a transferred Farm READ path.
 - FarmsService tests: 40/40 passed; backend build passed.
+
+## V0.5.35 — Custody and Lease Temporal Integrity
+- Custodian replacement and lease replacement now reject effective dates before the active relationship start.
+- Added focused regressions for both temporal boundaries.
+- RelationshipService tests: 8/8 passed; backend build passed.

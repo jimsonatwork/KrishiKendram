@@ -2865,3 +2865,8 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - The denormalized `Farm.ownerId` remains a legacy fallback and response/storage field; the temporal relationship is authoritative for authorization.
 - Added regression coverage for transferred Farm READ authorization.
 - FarmsService regression: 40/40 passed; backend build passed.
+
+### V0.5.35 — Custody and Lease Temporal Integrity
+- Central relationship operations now reject custodian changes and lease replacements backdated before the active relationship start.
+- Existing return/end operations already enforced the same temporal boundary; this closes the remaining replacement-path inconsistency.
+- RelationshipService regression: 8/8 passed; backend build passed.

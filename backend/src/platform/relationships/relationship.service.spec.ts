@@ -193,6 +193,41 @@ describe('ResourceRelationshipService', () => {
     ).rejects.toThrow('Destination user is already the active owner.');
   });
 
+  it('rejects a custodian change before the active custody start', async () => {
+    const effectiveAt = new Date('2026-09-26T00:00:00Z');
+    findFirst.mockResolvedValue({
+      id: 'custody-1',
+      userId: 'user-old',
+      validFrom: new Date('2026-09-27T00:00:00Z'),
+    });
+
+    const service = new ResourceRelationshipService(prisma);
+
+    await expect(service.assignCustodian(
+      tx, 'farmAsset', 'asset-1', 'user-new', effectiveAt, 'actor-1', undefined, undefined,
+    )).rejects.toThrow('Custody change cannot precede custody start.');
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a lease replacement before the active lease start', async () => {
+    const effectiveAt = new Date('2026-09-26T00:00:00Z');
+    findFirst.mockResolvedValue({
+      id: 'lease-1',
+      userId: 'user-old',
+      validFrom: new Date('2026-09-27T00:00:00Z'),
+    });
+
+    const service = new ResourceRelationshipService(prisma);
+
+    await expect(service.assignLessee(
+      tx, 'farmAsset', 'asset-1', 'user-new', effectiveAt,
+      new Date('2026-10-01T00:00:00Z'), 'actor-1', undefined, undefined,
+    )).rejects.toThrow('Lease replacement cannot precede lease start.');
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('changes custodian atomically and records custody movement', async () => {
     const effectiveAt = new Date('2026-09-27T00:00:00Z');
     findFirst.mockResolvedValue({ id: 'custody-1', userId: 'user-old' });

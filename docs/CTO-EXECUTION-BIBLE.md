@@ -938,3 +938,9 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Applied this consistently to Farm READ/UPDATE/DELETE and child creation authorization for FarmAsset/FarmRecord.
 - Reused the existing relationship and authorization services; no new ownership abstraction was introduced.
 - FarmsService regression: 40/40 passed; backend build passed.
+
+### V0.5.35 Checkpoint — Custody and Lease Temporal Integrity
+- Custodian replacement and lease replacement must not backdate before the currently active relationship's `validFrom`.
+- Return-custody and lease-end paths already enforce their corresponding start boundaries.
+- Keep this rule centralized in `ResourceRelationshipService`; do not add duplicate module-specific temporal validation.
+- RelationshipService regression: 8/8 passed; backend build passed.

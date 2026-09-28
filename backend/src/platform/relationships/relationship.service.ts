@@ -290,6 +290,10 @@ export class ResourceRelationshipService {
       throw new Error('Destination user is already the active custodian.');
     }
 
+    if (current && effectiveAt < current.validFrom) {
+      throw new Error('Custody change cannot precede custody start.');
+    }
+
     const evidence = evidenceInput
       ? await tx.resourceEvidence.create({
           data: {
@@ -486,6 +490,10 @@ export class ResourceRelationshipService {
       },
       orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
     });
+
+    if (current && effectiveAt < current.validFrom) {
+      throw new Error('Lease replacement cannot precede lease start.');
+    }
 
     const evidence = evidenceInput
       ? await tx.resourceEvidence.create({
