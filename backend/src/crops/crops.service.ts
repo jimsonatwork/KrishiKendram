@@ -286,6 +286,24 @@ export class CropsService {
     });
   }
 
+  private async getCurrentCropOwnerId(
+    cropId: string,
+    fallbackOwnerId: string,
+  ): Promise<string> {
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'crop',
+        resourceId: cropId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
+    return relationship?.userId ?? fallbackOwnerId;
+  }
+
   async getRelationshipHistory(
     userId: string,
     role: UserRole,
@@ -319,7 +337,10 @@ export class CropsService {
       action: AuthorizationAction.READ,
       resourceId: cropContext.id,
       farmId: cropContext.farmId,
-      ownerId: cropContext.farm.ownerId,
+      ownerId: await this.getCurrentCropOwnerId(
+        cropContext.id,
+        cropContext.farm.ownerId,
+      ),
     });
 
     return this.relationships.listResourceRelationshipHistory(
@@ -369,7 +390,10 @@ export class CropsService {
       action: AuthorizationAction.READ,
       resourceId: cropContext.id,
       farmId: cropContext.farmId,
-      ownerId: cropContext.farm.ownerId,
+      ownerId: await this.getCurrentCropOwnerId(
+        cropContext.id,
+        cropContext.farm.ownerId,
+      ),
     });
 
     /*
@@ -435,7 +459,10 @@ export class CropsService {
       action: AuthorizationAction.UPDATE,
       resourceId: cropContext.id,
       farmId: cropContext.farmId,
-      ownerId: cropContext.farm.ownerId,
+      ownerId: await this.getCurrentCropOwnerId(
+        cropContext.id,
+        cropContext.farm.ownerId,
+      ),
     });
 
     let updateData = {
@@ -538,7 +565,10 @@ export class CropsService {
       action: AuthorizationAction.DELETE,
       resourceId: cropContext.id,
       farmId: cropContext.farmId,
-      ownerId: cropContext.farm.ownerId,
+      ownerId: await this.getCurrentCropOwnerId(
+        cropContext.id,
+        cropContext.farm.ownerId,
+      ),
     });
 
     return this.prisma.$transaction(async (tx) => {

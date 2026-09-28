@@ -17,6 +17,7 @@ describe('CropsService', () => {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    resourceRelationship: { findFirst: jest.fn() },
     $transaction: jest.fn(),
   } as any;
 
