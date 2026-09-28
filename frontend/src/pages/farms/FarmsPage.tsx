@@ -13,6 +13,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Send,
   Sprout,
   Trash2,
 } from 'lucide-react'
@@ -964,6 +965,20 @@ function FarmSubsection({
                       title={`Edit ${asset.name || asset.type || 'asset'}`}
                     >
                       <Pencil className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        window.location.assign(
+                          `/app/history?resource=farmAsset:${encodeURIComponent(asset.id)}`,
+                        )
+                      }}
+                      title={`Transfer ${asset.name || asset.type || 'asset'}`}
+                    >
+                      <Send className="h-4 w-4" />
                     </Button>
 
                     <Button

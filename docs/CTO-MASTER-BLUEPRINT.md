@@ -2735,3 +2735,26 @@ Transfer requests now preserve the same evidence and temporal context as direct 
 ### Next execution target
 
 Continue product-domain completion from the existing lifecycle foundation, prioritizing concrete missing user-facing workflows and cross-module integration over speculative infrastructure.
+
+
+## 2026-09-28 — V0.5.25 Contextual FarmAsset Transfer Handoff
+
+### COMPLETE
+
+FarmAsset transfer initiation is now reachable directly from the Farm workspace without duplicating the canonical transfer workflow.
+
+- Added a contextual transfer action to each FarmAsset card.
+- The action routes to the existing History transfer composer with the exact `farmAsset:<id>` resource preselected through the URL.
+- Reused existing member lookup, partial/full quantity validation, transaction/evidence fields, effective/expiry dates, and transfer approval/acceptance flow.
+- No new backend endpoint, authorization rule, persistence model, or transfer abstraction was introduced.
+
+### Verification
+
+- Frontend TypeScript: PASS.
+- Frontend production build: PASS; 2311 modules transformed.
+- Existing ~616 kB bundle warning remains deferred to the dedicated performance/code-splitting pass.
+- Product-code diff is limited to `HistoryPage.tsx` and `FarmsPage.tsx`.
+
+### Next execution target
+
+Continue the next concrete product-domain/runtime gap, prioritizing lifecycle completeness and user-facing discoverability while preserving the centralized transfer, relationship, movement, lineage, evidence, and authorization foundations.

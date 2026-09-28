@@ -819,3 +819,26 @@ Release-readiness verification exposed and closed two runtime issues outside ord
 ### Next execution target
 
 **Product-domain completion:** continue closing concrete user-facing lifecycle and cross-module gaps using the existing centralized foundations, with no speculative infrastructure expansion.
+
+
+## 2026-09-28 — V0.5.25 Contextual FarmAsset Transfer Handoff
+
+### COMPLETE
+
+FarmAsset transfer initiation is now reachable directly from the Farm workspace without duplicating the canonical transfer workflow.
+
+- FarmAsset cards now expose a contextual transfer action.
+- The action routes to the existing History transfer composer with `farmAsset:<id>` preselected through the URL.
+- Existing member lookup, quantity validation, transaction/evidence fields, temporal fields, and transfer approval/acceptance remain canonical.
+- No new backend endpoint, authorization rule, persistence model, or parallel transfer workflow was introduced.
+
+### Verification
+
+- Frontend TypeScript: PASS.
+- Frontend production build: PASS; 2311 modules transformed.
+- Existing ~616 kB bundle warning remains deferred to the dedicated performance/code-splitting pass.
+- Product-code scope: `HistoryPage.tsx` and `FarmsPage.tsx` only.
+
+### Next execution target
+
+Continue the next concrete product-domain/runtime gap. Prefer additive user-facing integration over new infrastructure, and preserve the centralized relationship, movement, lineage, evidence, transfer, and authorization foundations.
