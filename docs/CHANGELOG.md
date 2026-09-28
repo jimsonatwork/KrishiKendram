@@ -939,3 +939,11 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Added fail-fast messaging when Node.js/npm is unavailable.
 - Preserved the existing port 4000 development workflow; no application/runtime architecture changed.
 - `bash -n` and `git diff --check` passed before commit.
+
+## 2026-09-28 — V0.5.51 Production runtime and dependency security hardening
+
+- Corrected backend start:prod to target the actual dist/src/main.js artifact and verified successful Nest production startup.
+- Backend full regression: 36 suites / 343 tests passed; Prisma schema valid; 18 migrations up to date.
+- Frontend production build: 2,311 modules transformed; 441.17 kB initial JavaScript / 140.71 kB gzip.
+- Production dependency audit is clean; backend dev-tooling high findings were resolved with patch-level fast-uri/js-yaml updates.
+- Checkpoint committed as 4d6fb94.

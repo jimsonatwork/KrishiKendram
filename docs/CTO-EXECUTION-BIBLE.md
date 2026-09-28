@@ -999,3 +999,18 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Applied low-risk route-level code splitting to preserve functionality while reducing initial payload.
 - Preserved the existing visual-effects toggle and prefers-reduced-motion behavior.
 - Frontend production build passed with a 440.82 kB initial JS chunk and separate route chunks.
+
+## V0.5.51 — Production Runtime and Dependency Security Hardening
+
+- Fixed the backend production start contract: TypeScript emits dist/src/main.js, and start:prod now targets that real artifact.
+- Verified the compiled production backend starts successfully and reaches the Nest application startup banner on the canonical WSL/Node 24 environment.
+- Backend regression: 36 suites / 343 tests passed.
+- Prisma schema validation passed and all 18 migrations are applied/up to date.
+- Frontend production build passed: 2,311 modules; 441.17 kB initial JavaScript / 140.71 kB gzip.
+- Production dependency audit is clean for backend and frontend; backend development-tooling advisories were remediated with patch-level fast-uri/js-yaml updates.
+- No application architecture or Prisma dependency-line change was introduced.
+- Checkpoint committed as 4d6fb94.
+
+### Next execution target
+
+Continue the remaining release/runtime and product-readiness checks without reopening completed foundations.

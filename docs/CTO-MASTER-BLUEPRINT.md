@@ -2960,3 +2960,11 @@ Release rule: do not introduce new architecture unless a concrete regression or 
 ### Next execution target
 
 Continue concrete release/runtime verification and product-domain gaps; do not reopen completed architecture foundations without a demonstrated defect.
+
+### V0.5.51 — Production Runtime and Dependency Security Hardening
+
+- Corrected the backend production start script to the actual compiled artifact dist/src/main.js and verified production startup successfully.
+- Backend: 36 suites / 343 tests passed; Prisma schema valid; 18 migrations up to date.
+- Frontend: 2,311 modules transformed; 441.17 kB initial JavaScript / 140.71 kB gzip.
+- Production dependency audit: 0 vulnerabilities for backend and frontend; backend dev-tooling advisories fixed at patch level.
+- Checkpoint: 4d6fb94.
