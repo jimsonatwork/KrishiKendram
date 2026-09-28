@@ -953,3 +953,12 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 ## V0.5.37 — Partial Transfer Temporal Integrity
 - Partial FarmAsset transfer now rejects effective dates before the active source ownership start.
 - TransferRequestService tests: 15/15 passed; backend build passed.
+
+### V0.5.38 Checkpoint — Relationship Creation Bypass Audit
+- Audited every production ResourceRelationship write in backend/src.
+- OWNER creation remains centralized; no direct module-level relationship creation bypass was found.
+- FarmRecord temporal ownership was not introduced because its registry contract intentionally remains farm-owned.
+
+### V0.5.39 Checkpoint — Transfer Movement Temporal Integrity
+- Central ownership transfer rejects an effective date earlier than the resource's latest recorded movement.
+- Regression coverage added; RelationshipService 9/9 passed and backend build passed.

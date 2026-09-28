@@ -136,6 +136,14 @@ export class ResourceRelationshipService {
       throw new Error('Destination user is already the active owner.');
     }
 
+    const previousMovement = await tx.resourceMovement.findFirst({
+      where: { resourceType, resourceId },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+    if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
+      throw new Error('Transfer effective date cannot precede the latest movement.');
+    }
+
     if (evidenceInput || existingEvidenceId) {
       const evidence = existingEvidenceId
         ? await tx.resourceEvidence.findUnique({ where: { id: existingEvidenceId } })
@@ -181,11 +189,6 @@ export class ResourceRelationshipService {
             evidenceId: evidence.id,
           },
         });
-
-      const previousMovement = await tx.resourceMovement.findFirst({
-        where: { resourceType, resourceId },
-        orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
-      });
 
       const movement = await tx.resourceMovement.create({
         data: {
@@ -233,11 +236,6 @@ export class ResourceRelationshipService {
           updatedBy: sourceUserId,
         },
       });
-
-    const previousMovement = await tx.resourceMovement.findFirst({
-      where: { resourceType, resourceId },
-      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
-    });
 
     const movement = await tx.resourceMovement.create({
       data: {

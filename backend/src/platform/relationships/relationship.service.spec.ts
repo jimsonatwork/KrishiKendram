@@ -163,6 +163,30 @@ describe('ResourceRelationshipService', () => {
     ).rejects.toThrow('Transfer effective date cannot precede the active ownership start date.');
   });
 
+  it('rejects a transfer before the latest recorded movement', async () => {
+    const effectiveAt = new Date('2026-09-27T00:00:00Z');
+    findFirst
+      .mockResolvedValueOnce({
+        id: 'relationship-1',
+        userId: 'user-old',
+        validFrom: new Date('2026-09-26T00:00:00Z'),
+      })
+      .mockResolvedValueOnce(null);
+    movementFindFirst.mockResolvedValueOnce({
+      id: 'movement-1',
+      effectiveAt: new Date('2026-09-28T00:00:00Z'),
+    });
+
+    const service = new ResourceRelationshipService(prisma);
+
+    await expect(service.transferOwnerRelationship(
+      tx, 'farm', 'farm-1', 'user-old', 'user-new', effectiveAt,
+      'Out-of-order transfer', undefined,
+    )).rejects.toThrow('Transfer effective date cannot precede the latest movement.');
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('rejects a transfer when the destination already owns the resource', async () => {
     const effectiveAt = new Date('2026-09-27T00:00:00Z');
     findFirst
@@ -195,6 +219,7 @@ describe('ResourceRelationshipService', () => {
 
   it('rejects a custodian change before the active custody start', async () => {
     const effectiveAt = new Date('2026-09-26T00:00:00Z');
+    findFirst.mockReset();
     findFirst.mockResolvedValue({
       id: 'custody-1',
       userId: 'user-old',

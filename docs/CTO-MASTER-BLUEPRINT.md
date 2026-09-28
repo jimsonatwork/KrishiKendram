@@ -2879,3 +2879,13 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 ### V0.5.37 — Partial Transfer Temporal Integrity
 - Partial FarmAsset transfer acceptance now verifies the active source ownership start before creating the split target or movement/lineage records.
 - Added regression coverage; TransferRequestService 15/15 passed and backend build passed.
+
+### V0.5.38 — Relationship Creation Bypass Audit
+- Audited all backend ResourceRelationship write sites.
+- All production relationship creation paths route through ResourceRelationshipService.createOwnerRelationship or the central relationship operations; no direct module-level OWNER creation bypass was found.
+- FarmRecord remains intentionally farm-owned without a separate temporal OWNER relationship.
+
+### V0.5.39 — Transfer Movement Temporal Integrity
+- Central ownership transfer now rejects effective dates before the latest recorded movement for the resource.
+- This complements the active ownership-start guard and prevents transfer history from becoming chronologically out of order.
+- RelationshipService regression: 9/9 passed; backend build passed.

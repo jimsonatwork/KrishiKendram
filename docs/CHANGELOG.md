@@ -892,3 +892,10 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 ## V0.5.37 — Partial Transfer Temporal Integrity
 - Added source ownership temporal validation to partial FarmAsset transfer completion.
 - Added regression for backdated partial transfer acceptance.
+
+### V0.5.38
+- Audited relationship creation boundaries; no production OWNER relationship bypass found.
+
+### V0.5.39
+- Hardened ownership transfer chronology by rejecting transfer effective dates before the latest recorded movement.
+- Added RelationshipService regression coverage; 9/9 passed and backend build passed.
