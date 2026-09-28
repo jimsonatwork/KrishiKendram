@@ -3,6 +3,7 @@ import {
   Check,
   Clock3,
   FileText,
+  Search,
   Send,
   UserRound,
   X,
@@ -118,6 +119,8 @@ export function HistoryPage() {
   const currentUserRole = useAuthStore((state) => state.user?.role)
   const canApproveTransfers = ['SUPER_ADMIN', 'ADMIN', 'STATE_ADMIN', 'DISTRICT_ADMIN'].includes(currentUserRole ?? '')
   const [farms, setFarms] = useState<Farm[]>([])
+  const [historyFilter, setHistoryFilter] = useState<'all' | HistoryItem['kind']>('all')
+  const [historyQuery, setHistoryQuery] = useState('')
   const [crops, setCrops] = useState<Crop[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -484,6 +487,18 @@ export function HistoryPage() {
         new Date(a.timestamp).getTime(),
     )
   }, [crops, farms, lifecycleEvents])
+
+  const filteredHistory = useMemo(() => {
+    const query = historyQuery.trim().toLowerCase()
+    return history.filter((item) => {
+      if (historyFilter !== 'all' && item.kind !== historyFilter) return false
+      if (!query) return true
+      return [item.title, item.description, item.context]
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
+    })
+  }, [history, historyFilter, historyQuery])
 
   async function resolveTransferMember() {
     const token = accessToken
@@ -987,23 +1002,39 @@ export function HistoryPage() {
       )}
 
       <div className="rounded-2xl border bg-card p-5">
+        {!loading && history.length > 0 && (
+          <div className="mb-5 flex flex-col gap-3 rounded-xl border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} placeholder="Search timeline…" aria-label="Search timeline" className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(['all', 'farm', 'crop', 'record', 'lifecycle'] as const).map((filter) => (
+                <Button key={filter} type="button" size="sm" variant={historyFilter === filter ? 'default' : 'outline'} onClick={() => setHistoryFilter(filter)} className="h-8 px-3 text-xs">
+                  {filter === 'all' ? 'All' : formatEnum(filter)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">
             Loading history...
           </div>
-        ) : history.length === 0 ? (
+        ) : filteredHistory.length === 0 ? (
           <div className="py-12 text-center">
             <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Clock3 className="size-5" />
             </div>
 
             <div className="mt-4 font-medium">
-              No history yet
+              {history.length === 0 ? 'No history yet' : 'No matching history'}
             </div>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Your farm timeline will appear here as operational
-              data is added.
+              {history.length === 0
+                ? 'Your farm timeline will appear here as operational data is added.'
+                : 'Try another search term or timeline filter.'}
             </p>
           </div>
         ) : (
@@ -1011,7 +1042,7 @@ export function HistoryPage() {
             <div className="absolute bottom-4 left-[17px] top-4 w-px bg-border" />
 
             <div className="space-y-7">
-              {history.map((item, index) => (
+              {filteredHistory.map((item, index) => (
                 <motion.div
                   key={item.id}
                   initial={{

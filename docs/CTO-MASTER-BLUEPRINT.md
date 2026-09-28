@@ -14,9 +14,9 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.19 Transfer Administration Workflow |
-| Current checkpoint message | V0.5.19 Transfer Administration Workflow |
-| Current primary phase | V0.5.19 — UI/Runtime Integration + Lifecycle Administration |
+| Current checkpoint | V0.5.20 Unified Timeline Discovery |
+| Current checkpoint message | V0.5.20 Unified Timeline Discovery |
+| Current primary phase | V0.5.20 — Cross-module UI/Runtime Coverage |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
@@ -82,6 +82,17 @@ Architectural rule:
 > A transfer request is a workflow; the transfer itself is a governed change to
 > resource relationships. Ownership is not represented by editing a farm or
 > member profile.
+
+### 2026-09-28 Unified Timeline Discovery Checkpoint
+
+The History workspace now provides a single searchable and filterable view across farm, crop, record, and lifecycle events. This is a presentation-layer completion step over the already established movement, lineage, relationship, evidence, and history APIs; no new domain abstraction was introduced.
+
+Validation:
+
+- Frontend TypeScript build passed.
+- Frontend production Vite build passed.
+- Relationship/lifecycle regression: 13 suites / 52 tests passed.
+- `git diff --check` passed.
 
 ### 2026-09-28 Transfer Administration Checkpoint
 

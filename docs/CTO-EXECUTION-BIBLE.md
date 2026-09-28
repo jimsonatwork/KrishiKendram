@@ -107,7 +107,8 @@ The ResourceMovement persistence/resolution foundation has now been implemented 
 The ResourceLineage persistence/resolution foundation has now been implemented and checkpointed.
 The transfer workflow has now been exposed end-to-end for privileged administrative approval, including an authorization-checked pending queue, frontend action, and regression coverage.
 Latest checkpoint: `18f44b8` — Complete administrative transfer approval workflow.
-The next controlled activity is cross-module lifecycle UI/runtime coverage and compatibility hardening; do not reopen established authorization/relationship foundations unless a concrete regression is found.
+The latest working checkpoint is V0.5.20 Unified Timeline Discovery: searchable/filterable cross-module History presentation is implemented and validated.
+The next controlled activity remains cross-module lifecycle UI/runtime coverage and compatibility hardening; do not reopen established authorization/relationship foundations unless a concrete regression is found.
 
 ## 6. Historical Work Already Completed
 
