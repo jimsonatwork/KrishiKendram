@@ -14,9 +14,9 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.28 Relationship-Aware FarmAsset Ownership Enforcement |
-| Current checkpoint message | V0.5.28 Relationship-Aware FarmAsset Ownership Enforcement |
-| Current primary phase | V0.5.28 — Product-domain completion |
+| Current checkpoint | V0.5.48 Deployment Readiness Pass |
+| Current checkpoint message | V0.5.48 Deployment Readiness Pass |
+| Current primary phase | V0.5.48 — Release readiness / product completion |
 | Current platform priority | Concrete lifecycle coverage → authorization correctness → UI/runtime integration → release readiness |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
