@@ -931,3 +931,11 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Added route-level lazy loading for workspace/admin pages.
 - Aligned FarmsPage with the existing Motion import.
 - Frontend production build passed; initial JS reduced from 616.28 kB to 440.82 kB and the previous chunk warning cleared.
+
+
+## 2026-09-28 — V0.5.50 Frontend Launcher Hardening
+
+- Hardened the repository frontend launcher to resolve npm from the active PATH or the canonical Node 24 user installation.
+- Added fail-fast messaging when Node.js/npm is unavailable.
+- Preserved the existing port 4000 development workflow; no application/runtime architecture changed.
+- `bash -n` and `git diff --check` passed before commit.

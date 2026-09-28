@@ -2946,3 +2946,17 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Integration and Development repositories were synchronized from the canonical deployment checkpoint.
 
 Release rule: do not introduce new architecture unless a concrete regression or missing product capability is demonstrated.
+
+
+## 2026-09-28 — V0.5.50 Frontend Launcher Hardening
+
+### COMPLETE
+
+- Hardened `start-frontend.sh` against PATH differences between the Windows host and WSL development environment.
+- Launcher now prefers the active npm executable and falls back to the canonical Node 24 user installation.
+- Existing frontend port, Vite workflow, and application code remain unchanged.
+- Verification: shell syntax and repository diff checks passed; checkpoint committed as `2a8935b`.
+
+### Next execution target
+
+Continue concrete release/runtime verification and product-domain gaps; do not reopen completed architecture foundations without a demonstrated defect.
