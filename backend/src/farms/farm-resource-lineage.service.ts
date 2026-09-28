@@ -117,7 +117,7 @@ export class FarmResourceLineageService {
             endedAt: null,
           },
           orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
-          select: { userId: true, id: true },
+          select: { userId: true, id: true, validFrom: true },
         }),
       ),
     );
@@ -149,6 +149,9 @@ export class FarmResourceLineageService {
     const effectiveAt = dto.effectiveAt ? new Date(dto.effectiveAt) : new Date();
     if (Number.isNaN(effectiveAt.getTime())) {
       throw new BadRequestException('Merge effectiveAt is invalid.');
+    }
+    if (relationships.some((relationship) => relationship && effectiveAt < relationship.validFrom)) {
+      throw new BadRequestException('Merge effectiveAt cannot precede a source asset ownership start.');
     }
 
     const totalQuantity = assets.reduce((sum, asset) => sum + (asset.quantity ?? 0), 0);
@@ -278,7 +281,7 @@ export class FarmResourceLineageService {
         endedAt: null,
       },
       orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
-      select: { userId: true, id: true },
+      select: { userId: true, id: true, validFrom: true },
     });
     const ownerId = relationship?.userId ?? asset.farm.ownerId;
 
@@ -306,6 +309,9 @@ export class FarmResourceLineageService {
 
     if (Number.isNaN(effectiveAt.getTime())) {
       throw new BadRequestException('Split effectiveAt is invalid.');
+    }
+    if (relationship && effectiveAt < relationship.validFrom) {
+      throw new BadRequestException('Split effectiveAt cannot precede the source asset ownership start.');
     }
 
     const remainingQuantity = asset.quantity - dto.quantity;

@@ -68,6 +68,7 @@ describe('FarmResourceLineageService', () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue({
       userId: 'owner-1',
       id: 'relationship-1',
+      validFrom: new Date('2026-01-01T00:00:00.000Z'),
     });
 
     const result = await service.splitFarmAsset(
@@ -132,6 +133,7 @@ describe('FarmResourceLineageService', () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue({
       userId: 'temporal-owner',
       id: 'relationship-1',
+      validFrom: new Date('2026-01-01T00:00:00.000Z'),
     });
 
     await service.splitFarmAsset(
@@ -222,8 +224,8 @@ describe('FarmResourceLineageService', () => {
       },
     ]);
     prisma.resourceRelationship.findFirst
-      .mockResolvedValueOnce({ userId: 'owner-1', id: 'relationship-1' })
-      .mockResolvedValueOnce({ userId: 'owner-1', id: 'relationship-2' });
+      .mockResolvedValueOnce({ userId: 'owner-1', id: 'relationship-1', validFrom: new Date('2026-01-01T00:00:00.000Z') })
+      .mockResolvedValueOnce({ userId: 'owner-1', id: 'relationship-2', validFrom: new Date('2026-01-01T00:00:00.000Z') });
     tx.farmAsset.create.mockResolvedValue({ id: 'asset-3', quantity: 100, unit: 'kg' });
     tx.resourceMovement.create
       .mockResolvedValueOnce({ id: 'movement-1' })
@@ -250,6 +252,69 @@ describe('FarmResourceLineageService', () => {
     expect(result.target.id).toBe('asset-3');
     expect(result.movements).toHaveLength(2);
     expect(result.lineages).toHaveLength(2);
+  });
+
+  it('rejects a split effective date before the source ownership start', async () => {
+    prisma.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1',
+      farmId: 'farm-1',
+      type: 'SEED_STOCK',
+      quantity: 100,
+      unit: 'kg',
+      farm: { ownerId: 'owner-1' },
+    });
+    prisma.resourceRelationship.findFirst.mockResolvedValue({
+      userId: 'owner-1',
+      id: 'relationship-1',
+      validFrom: new Date('2026-09-10T00:00:00.000Z'),
+    });
+
+    await expect(
+      service.splitFarmAsset(
+        'farm-1',
+        'asset-1',
+        { quantity: 10, effectiveAt: '2026-09-09T00:00:00.000Z' },
+        'owner-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Split effectiveAt cannot precede the source asset ownership start.');
+
+    expect(tx.farmAsset.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a merge effective date before any source ownership start', async () => {
+    prisma.farmAsset.findMany.mockResolvedValue([
+      {
+        id: 'asset-1', farmId: 'farm-1', type: 'SEED_STOCK',
+        quantity: 40, unit: 'kg', farm: { ownerId: 'owner-1' },
+      },
+      {
+        id: 'asset-2', farmId: 'farm-1', type: 'SEED_STOCK',
+        quantity: 60, unit: 'kg', farm: { ownerId: 'owner-1' },
+      },
+    ]);
+    prisma.resourceRelationship.findFirst
+      .mockResolvedValueOnce({
+        userId: 'owner-1',
+        id: 'relationship-1',
+        validFrom: new Date('2026-09-10T00:00:00.000Z'),
+      })
+      .mockResolvedValueOnce({
+        userId: 'owner-1',
+        id: 'relationship-2',
+        validFrom: new Date('2026-09-01T00:00:00.000Z'),
+      });
+
+    await expect(
+      service.mergeFarmAssets(
+        'farm-1',
+        { sourceAssetIds: ['asset-1', 'asset-2'], effectiveAt: '2026-09-09T00:00:00.000Z' },
+        'owner-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Merge effectiveAt cannot precede a source asset ownership start.');
+
+    expect(tx.farmAsset.create).not.toHaveBeenCalled();
   });
 
 });

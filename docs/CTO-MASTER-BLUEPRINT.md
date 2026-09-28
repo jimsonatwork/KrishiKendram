@@ -2870,3 +2870,8 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Central relationship operations now reject custodian changes and lease replacements backdated before the active relationship start.
 - Existing return/end operations already enforced the same temporal boundary; this closes the remaining replacement-path inconsistency.
 - RelationshipService regression: 8/8 passed; backend build passed.
+
+### V0.5.36 — Lineage Split/Merge Temporal Integrity
+- FarmAsset split and merge now reject effective dates before the active source ownership start.
+- This prevents lineage and ownership history from being backdated ahead of the source temporal relationship.
+- FarmResourceLineageService regression: 7/7 passed; backend build passed.

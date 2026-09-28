@@ -944,3 +944,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Return-custody and lease-end paths already enforce their corresponding start boundaries.
 - Keep this rule centralized in `ResourceRelationshipService`; do not add duplicate module-specific temporal validation.
 - RelationshipService regression: 8/8 passed; backend build passed.
+
+## V0.5.36 — Lineage Split/Merge Temporal Integrity
+- FarmAsset split and merge now enforce source ownership temporal boundaries before creating target relationships, movements, or lineage records.
+- Added regressions for backdated split and merge effective dates.
+- FarmResourceLineageService tests: 7/7 passed; backend build passed.

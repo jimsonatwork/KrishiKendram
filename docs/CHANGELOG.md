@@ -883,3 +883,8 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Custodian replacement and lease replacement now reject effective dates before the active relationship start.
 - Added focused regressions for both temporal boundaries.
 - RelationshipService tests: 8/8 passed; backend build passed.
+
+## V0.5.36 — Lineage Split/Merge Temporal Integrity
+- Prevented FarmAsset split and merge operations from creating timeline records before the active source ownership start.
+- Added focused temporal-boundary regressions.
+- FarmResourceLineageService tests: 7/7 passed; backend build passed.
