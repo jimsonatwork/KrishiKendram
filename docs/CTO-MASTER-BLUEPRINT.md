@@ -2922,3 +2922,9 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Closed the real contextual transfer-entry gap: Farm and FarmAsset Send actions now arrive at History with the selected resource preserved in the transfer form.
 - Verified Farm, FarmAsset, FarmRecord, Crop history navigation, loading/error/empty states, and transfer accept/reject/cancel/admin approval wiring against live API contracts.
 - No duplicate transfer workflow introduced.
+
+### V0.5.46 — Cross-module production regression sweep
+- Ran the focused Farm → FarmAsset → Crop → FarmRecord → Relationship → Movement → Lineage → Evidence → Transfer → History regression surface.
+- Result: 27 suites / 234 tests passed; backend production build passed.
+- Frontend production build passed: 2311 modules; existing single 616.28 kB JS chunk warning remains deferred to the planned performance pass.
+- No cross-module regression gap requiring a code change was found; completion pass remains aligned with the blueprint and avoids duplicate workflows.
