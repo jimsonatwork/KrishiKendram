@@ -28,7 +28,7 @@ describe('ResourceTransferRequestService', () => {
     prisma.$transaction.mockImplementation((cb: any) => cb(tx));
     tx.resourceTransferRequest.updateMany.mockResolvedValue({ count: 1 });
     tx.resourceTransferRequest.update.mockResolvedValue({ id: 'request-1', status: 'COMPLETED' });
-    tx.resourceRelationship.findFirst.mockResolvedValue({ id: 'owner-rel', userId: 'jim' });
+    tx.resourceRelationship.findFirst.mockResolvedValue({ id: 'owner-rel', userId: 'jim', validFrom: new Date('2026-01-01T00:00:00.000Z') });
     tx.resourceMovement.findFirst.mockResolvedValue(null);
     tx.resourceMovement.create.mockResolvedValue({ id: 'movement-1' });
     tx.resourceLineage.create.mockResolvedValue({ id: 'lineage-1' });
@@ -121,6 +121,27 @@ describe('ResourceTransferRequestService', () => {
       }),
     });
     expect(result).toEqual({ id: 'request-1', quantity: 5 });
+  });
+
+  it('rejects partial transfer effective dates before source ownership start', async () => {
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farmAsset', resourceId: 'asset-1',
+      sourceUserId: 'jim', destinationUserId: 'cto', quantity: 5, unit: 'kg',
+      status: 'PENDING', effectiveAt: new Date('2026-09-01T00:00:00.000Z'),
+      expiresAt: null, reason: 'Partial transfer', transactionId: null, evidenceId: null,
+    });
+    tx.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1', farmId: 'farm-1', type: 'SEED_STOCK', name: 'Seed',
+      quantity: 100, unit: 'kg', metadata: {},
+    });
+    tx.resourceRelationship.findFirst.mockResolvedValue({
+      id: 'owner-rel', userId: 'jim', validFrom: new Date('2026-09-10T00:00:00.000Z'),
+    });
+
+    await expect(service.accept('request-1', 'cto')).rejects.toThrow(
+      'Partial transfer effective date cannot precede source ownership start.',
+    );
+    expect(tx.farmAsset.create).not.toHaveBeenCalled();
   });
 
   it('persists transfer evidence with the request and reuses it on completion', async () => {

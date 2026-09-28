@@ -268,6 +268,19 @@ export class ResourceTransferRequestService {
     if (request.unit && !asset.unit) throw new BadRequestException('The source asset has no unit.');
 
     const remainingQuantity = asset.quantity - request.quantity;
+    const sourceRelationship = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farmAsset',
+        resourceId: asset.id,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { id: true, validFrom: true },
+    });
+    if (sourceRelationship && effectiveAt < sourceRelationship.validFrom) {
+      throw new BadRequestException('Partial transfer effective date cannot precede source ownership start.');
+    }
     const evidenceId = request.evidenceId ?? undefined;
     const target = await tx.farmAsset.create({
       data: { farmId: asset.farmId, type: asset.type, name: asset.name, quantity: request.quantity, unit: asset.unit, metadata: asset.metadata },

@@ -949,3 +949,7 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - FarmAsset split and merge now enforce source ownership temporal boundaries before creating target relationships, movements, or lineage records.
 - Added regressions for backdated split and merge effective dates.
 - FarmResourceLineageService tests: 7/7 passed; backend build passed.
+
+## V0.5.37 — Partial Transfer Temporal Integrity
+- Partial FarmAsset transfer now rejects effective dates before the active source ownership start.
+- TransferRequestService tests: 15/15 passed; backend build passed.

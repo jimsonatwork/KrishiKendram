@@ -888,3 +888,7 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Prevented FarmAsset split and merge operations from creating timeline records before the active source ownership start.
 - Added focused temporal-boundary regressions.
 - FarmResourceLineageService tests: 7/7 passed; backend build passed.
+
+## V0.5.37 — Partial Transfer Temporal Integrity
+- Added source ownership temporal validation to partial FarmAsset transfer completion.
+- Added regression for backdated partial transfer acceptance.
