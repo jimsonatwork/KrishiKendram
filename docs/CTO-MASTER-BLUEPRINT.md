@@ -2928,3 +2928,9 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Result: 27 suites / 234 tests passed; backend production build passed.
 - Frontend production build passed: 2311 modules; existing single 616.28 kB JS chunk warning remains deferred to the planned performance pass.
 - No cross-module regression gap requiring a code change was found; completion pass remains aligned with the blueprint and avoids duplicate workflows.
+
+### V0.5.47 — Performance and device-compatibility pass
+- Route-level lazy loading now keeps admin and workspace pages out of the initial frontend bundle until requested.
+- Farms animation import is aligned with the existing Motion dependency; no second animation API was introduced.
+- Visual effects remain user-toggleable and OS reduced-motion aware; no UI teardown or feature removal.
+- Frontend build now emits a 440.82 kB initial JS chunk plus route chunks, down from the previous 616.28 kB single chunk; existing warning is no longer emitted.
