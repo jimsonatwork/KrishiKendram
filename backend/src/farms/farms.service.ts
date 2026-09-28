@@ -215,6 +215,7 @@ export class FarmsService {
     return this.prisma.farm.findMany({
       where: {
         ownerId,
+        deletedAt: null,
       },
       include: {
         assets: true,
@@ -223,6 +224,22 @@ export class FarmsService {
       orderBy: {
         createdAt: 'desc',
       },
+    });
+  }
+
+  async findMyArchivedFarms(ownerId: string, role: UserRole) {
+    await this.authorization.assertCan({
+      user: { userId: ownerId, role },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      ownerId,
+    });
+
+    return this.prisma.farm.findMany({
+      where: { ownerId, deletedAt: { not: null } },
+      include: { assets: true, records: true },
+      orderBy: { deletedAt: 'desc' },
     });
   }
 
@@ -235,6 +252,7 @@ export class FarmsService {
     const farmContext = await this.prisma.farm.findUnique({
       where: {
         id,
+        deletedAt: null,
       },
       select: {
         id: true,
@@ -801,29 +819,16 @@ export class FarmsService {
   }
 
   async remove(id: string, userId: string, role: UserRole) {
-    /*
-     * Retrieve only the minimum farm context required for authorization.
-     * Protected farm fields must not be loaded before authorization.
-     */
     const farmContext = await this.prisma.farm.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        ownerId: true,
-      },
+      where: { id },
+      select: { id: true, ownerId: true, deletedAt: true },
     });
-
-    if (!farmContext) {
+    if (!farmContext || farmContext.deletedAt) {
       throw new NotFoundException('Farm not found');
     }
 
     await this.authorization.assertCan({
-      user: {
-        userId,
-        role,
-      },
+      user: { userId, role },
       module: 'farms',
       resource: 'farm',
       action: AuthorizationAction.DELETE,
@@ -836,50 +841,37 @@ export class FarmsService {
 
     return this.prisma.$transaction(async (tx) => {
       const endedAt = new Date();
-
-      const [assets, crops] = await Promise.all([
-        tx.farmAsset.findMany({
-          where: { farmId: id },
-          select: { id: true },
-        }),
-        tx.crop.findMany({
-          where: { farmId: id },
-          select: { id: true },
-        }),
-      ]);
-
       await this.relationships.terminateResourceRelationships(
-        tx,
-        'farm',
-        id,
-        endedAt,
-        'Farm deleted',
+        tx, 'farm', id, endedAt, 'Farm archived',
       );
-
-      await Promise.all([
-        ...assets.map((asset: { id: string }) =>
-          this.relationships.terminateResourceRelationships(
-            tx,
-            'farmAsset',
-            asset.id,
-            endedAt,
-            'Parent farm deleted',
-          ),
-        ),
-        ...crops.map((crop: { id: string }) =>
-          this.relationships.terminateResourceRelationships(
-            tx,
-            'crop',
-            crop.id,
-            endedAt,
-            'Parent farm deleted',
-          ),
-        ),
-      ]);
-
-      return tx.farm.delete({
-        where: { id },
-      });
+      return tx.farm.update({ where: { id }, data: { deletedAt: endedAt } });
     });
   }
+
+  async restore(id: string, userId: string, role: UserRole) {
+    const farmContext = await this.prisma.farm.findFirst({
+      where: { id, deletedAt: { not: null } },
+      select: { id: true, ownerId: true },
+    });
+    if (!farmContext) throw new NotFoundException('Archived farm not found');
+
+    const lastOwner = await this.prisma.resourceRelationship.findFirst({
+      where: { resourceType: 'farm', resourceId: id, relationshipType: 'OWNER' },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+    const ownerId = lastOwner?.userId ?? farmContext.ownerId;
+
+    await this.authorization.assertCan({
+      user: { userId, role }, module: 'farms', resource: 'farm',
+      action: AuthorizationAction.RESTORE, resourceId: id, ownerId,
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const farm = await tx.farm.update({ where: { id }, data: { deletedAt: null } });
+      await this.relationships.createOwnerRelationship(tx, 'farm', farm.id, ownerId, new Date());
+      return farm;
+    });
+  }
+
 }

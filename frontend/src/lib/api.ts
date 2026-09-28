@@ -402,6 +402,17 @@ export const api = {
       },
     }),
 
+  archivedFarms: (token: string) =>
+    request<any[]>('/farms/archived', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  restoreFarm: (id: string, token: string) =>
+    request(`/farms/${id}/restore`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   updateFarm: (
     id: string,
     data: Partial<FarmData>,

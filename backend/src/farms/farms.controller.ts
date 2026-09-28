@@ -54,6 +54,16 @@ create(
     );
   }
 
+  @Get('archived')
+  archivedFarms(
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.findMyArchivedFarms(
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Get(':id')
   findOne(
     @Param('id') id: string,
@@ -337,6 +347,18 @@ create(
     return this.farmsService.addRecord(
       id,
       dto,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Post(':id/restore')
+  restore(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.restore(
+      id,
       user.userId,
       user.role as UserRole,
     );

@@ -136,6 +136,7 @@ describe('FarmsService', () => {
     expect(prisma.farm.findUnique.mock.calls[0][0]).toEqual({
       where: {
         id: 'farm-1',
+        deletedAt: null,
       },
       select: {
         id: true,
@@ -198,6 +199,7 @@ describe('FarmsService', () => {
     expect(prisma.farm.findUnique).toHaveBeenCalledWith({
       where: {
         id: 'farm-1',
+        deletedAt: null,
       },
       select: {
         id: true,
@@ -223,6 +225,7 @@ describe('FarmsService', () => {
     expect(prisma.farm.findUnique).toHaveBeenCalledWith({
       where: {
         id: 'missing-farm',
+        deletedAt: null,
       },
       select: {
         id: true,
@@ -281,6 +284,7 @@ describe('FarmsService', () => {
     expect(prisma.farm.findMany).toHaveBeenCalledWith({
       where: {
         ownerId: 'user-1',
+        deletedAt: null,
       },
       include: {
         assets: true,
@@ -613,84 +617,44 @@ describe('FarmsService', () => {
     expect(prisma.farm.update).not.toHaveBeenCalled();
   });
 
-  it('authorizes farm removal using minimal context before deletion', async () => {
+  it('authorizes farm archiving using minimal context before mutation', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
       ownerId: 'user-1',
+      deletedAt: null,
     });
 
-    const txDelete = jest.fn().mockResolvedValue({
+    const txUpdate = jest.fn().mockResolvedValue({
       id: 'farm-1',
+      deletedAt: new Date(),
     });
     prisma.$transaction.mockImplementation(
       async (callback: (tx: any) => Promise<unknown>) =>
         callback({
-          farm: { delete: txDelete },
-          farmAsset: { findMany: prisma.farmAsset.findMany },
-          crop: { findMany: prisma.crop.findMany },
+          farm: { update: txUpdate },
         }),
     );
 
-    prisma.farmAsset.findMany.mockResolvedValue([
-      { id: 'asset-1' },
-    ]);
-    prisma.crop.findMany.mockResolvedValue([
-      { id: 'crop-1' },
-    ]);
-
-    await service.remove(
-      'farm-1',
-      'user-1',
-      UserRole.FARMER,
-    );
+    await service.remove('farm-1', 'user-1', UserRole.FARMER);
 
     expect(prisma.farm.findUnique).toHaveBeenCalledWith({
-      where: {
-        id: 'farm-1',
-      },
-      select: {
-        id: true,
-        ownerId: true,
-      },
+      where: { id: 'farm-1' },
+      select: { id: true, ownerId: true, deletedAt: true },
     });
-
     expect(authorization.assertCan).toHaveBeenCalledWith({
-      user: {
-        userId: 'user-1',
-        role: UserRole.FARMER,
-      },
+      user: { userId: 'user-1', role: UserRole.FARMER },
       module: 'farms',
       resource: 'farm',
       action: AuthorizationAction.DELETE,
       resourceId: 'farm-1',
       ownerId: 'user-1',
     });
-
-    expect(
-      relationships.terminateResourceRelationships,
-    ).toHaveBeenCalledWith(
-      expect.anything(),
-      'farm',
-      'farm-1',
-      expect.any(Date),
-      'Farm deleted',
-    );
     expect(relationships.terminateResourceRelationships).toHaveBeenCalledWith(
-      expect.anything(),
-      'farmAsset',
-      'asset-1',
-      expect.any(Date),
-      'Parent farm deleted',
+      expect.anything(), 'farm', 'farm-1', expect.any(Date), 'Farm archived',
     );
-    expect(relationships.terminateResourceRelationships).toHaveBeenCalledWith(
-      expect.anything(),
-      'crop',
-      'crop-1',
-      expect.any(Date),
-      'Parent farm deleted',
-    );
-    expect(txDelete).toHaveBeenCalledWith({
+    expect(txUpdate).toHaveBeenCalledWith({
       where: { id: 'farm-1' },
+      data: { deletedAt: expect.any(Date) },
     });
   });
 

@@ -1216,12 +1216,16 @@ function FarmCard({
   onSelect,
   onEdit,
   onDelete,
+  onRestore,
+  archived = false,
 }: {
   farm: Farm
   selected: boolean
   onSelect: () => void
   onEdit: () => void
   onDelete: () => void
+  onRestore: () => void
+  archived?: boolean
 }) {
   const assets = Array.isArray(farm.assets) ? farm.assets : []
   const records = Array.isArray(farm.records) ? farm.records : []
@@ -1317,25 +1321,34 @@ function FarmCard({
             <Send className="h-4 w-4" />
           </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onEdit}
-            title={`Edit ${farm.name}`}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          {!archived && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onEdit}
+                title={`Edit ${farm.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            title={`Delete ${farm.name}`}
-          >
-            <Trash2 className="h-4 w-4 text-red-500" />
-          </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                title={`Archive ${farm.name}`}
+              >
+                <Trash2 className="h-4 w-4 text-red-500" />
+              </Button>
+            </>
+          )}
+          {archived && (
+            <Button type="button" variant="outline" onClick={onRestore}>
+              Restore
+            </Button>
+          )}
         </div>
       </div>
     </motion.div>
@@ -1412,6 +1425,7 @@ export function FarmsPage() {
   const [crops, setCrops] = useState<CropSummary[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
 
   const [assetForm, setAssetForm] =
     useState<AssetFormData>(EMPTY_ASSET_FORM)
@@ -1443,7 +1457,7 @@ export function FarmsPage() {
 
     try {
       const [farmData, cropData] = await Promise.all([
-        api.farms(token),
+        showArchived ? api.archivedFarms(token) : api.farms(token),
         api.crops(token),
       ])
 
@@ -1491,7 +1505,7 @@ export function FarmsPage() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, showArchived])
 
   useEffect(() => {
     void loadFarms()
@@ -1805,6 +1819,16 @@ export function FarmsPage() {
     }
   }
 
+  const handleRestore = async (farm: Farm) => {
+    setError('')
+    try {
+      await api.restoreFarm(farm.id, token)
+      await loadFarms()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to restore the farm.')
+    }
+  }
+
   const handleDelete = async (farm: Farm) => {
     const confirmed = window.confirm(
       `Delete "${farm.name}"? This action may remove the farm from your active farm list.`,
@@ -1838,10 +1862,17 @@ export function FarmsPage() {
         title="Farms"
         description="Manage the farms that form the operational foundation for crops, assets, records and future agricultural workflows."
         action={
-          <Button onClick={beginCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            New farm
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setShowArchived((value) => !value)}>
+              {showArchived ? 'Active farms' : 'Archived farms'}
+            </Button>
+            {!showArchived && (
+              <Button onClick={beginCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                New farm
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -1858,7 +1889,7 @@ export function FarmsPage() {
       )}
 
       <div className="space-y-6">
-        {selectedFarm && !loading && (
+        {selectedFarm && !loading && !showArchived && (
           <section className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm dark:border-emerald-950 dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
@@ -1961,7 +1992,14 @@ export function FarmsPage() {
             {loading ? (
               <FarmLoadingState />
             ) : farms.length === 0 ? (
-              <EmptyState onCreate={beginCreate} />
+              showArchived ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+                  <h3 className="font-semibold text-slate-950 dark:text-white">No archived farms</h3>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Archived farms will appear here and can be restored when authorized.</p>
+                </div>
+              ) : (
+                <EmptyState onCreate={beginCreate} />
+              )
             ) : filteredFarms.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
                 <Search className="mx-auto h-8 w-8 text-slate-400" />
@@ -1989,16 +2027,18 @@ export function FarmsPage() {
                     key={farm.id}
                     farm={farm}
                     selected={farm.id === selectedFarmId}
+                    archived={showArchived}
                     onSelect={() => setSelectedFarmId(farm.id)}
                     onEdit={() => beginEdit(farm)}
                     onDelete={() => void handleDelete(farm)}
+                    onRestore={() => void handleRestore(farm)}
                   />
                 ))}
               </div>
             )}
           </section>
 
-          <aside>
+          {!showArchived && <aside>
             <FarmForm
               form={form}
               editing={Boolean(editingId)}
@@ -2012,7 +2052,7 @@ export function FarmsPage() {
               onSubmit={handleSubmit}
               onCancel={resetForm}
             />
-          </aside>
+          </aside>}
         </div>
       </div>
     </div>
