@@ -147,6 +147,12 @@ export function HistoryPage() {
   useEffect(() => {
     let cancelled = false
 
+    const params = new URLSearchParams(window.location.search)
+    const requestedResource = params.get('resource') ?? ''
+    if (requestedResource) {
+      setTransferResource(requestedResource)
+    }
+
     async function load() {
       const token = accessToken
 
