@@ -308,8 +308,6 @@ Evidence:
 
 Current checkpoint: V0.5.24 A/B/C Promotion Recovery Checkpoint. Canonical, Integration, and Development have been synchronized to the same promoted commit with explicit recovery tags and preserved Development working state.
 
-Current checkpoint: V0.5.24 A/B/C Promotion Recovery Checkpoint. Relationship-backed Farm access and FarmAsset/Crop child authorization/history surfaces are already implemented and verified; no duplicate access layer is authorized. The current repository exposes only the canonical main worktree, so A/B/C promotion remains a process prerequisite rather than a claimed completion.
-
 Next controlled activity:
 
 **A/B/C promotion and recovery checkpoint is CLOSED. Continue with the next concrete product-domain completion gap from the canonical baseline.**

@@ -88,10 +88,10 @@ Architectural rule:
 The documented A/B/C repository posture has been restored from the canonical checkpoint. Integration and Development remotes were promoted to the exact canonical commit, while their previous states were preserved as recovery tags; Development uncommitted work was preserved in a local stash before promotion.
 
 Validation:
-- Canonical, Integration, and Development all resolve to the same full commit  before this documentation checkpoint.
+- Canonical, Integration, and Development were verified at the same promoted checkpoint before this documentation checkpoint.
 - Integration recovery tag:  → .
 - Development recovery tag:  → .
-- Development pre-promotion working tree is preserved in .
+- Development pre-promotion working tree is preserved in the  stash.
 - No destructive history loss was introduced; promotion used force-with-lease after explicit preservation.
 
 ### 2026-09-28 V0.5.23 Relationship Child Access Verification Checkpoint
