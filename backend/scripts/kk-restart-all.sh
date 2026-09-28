@@ -13,6 +13,11 @@
 
 set -u
 
+# Use the pinned WSL Node runtime explicitly; do not depend on Windows npm resolution.
+NODE_BIN="/home/jj/.nvm/versions/node/v24.18.0/bin/node"
+NPM_CLI="/home/jj/.nvm/versions/node/v24.18.0/lib/node_modules/npm/bin/npm-cli.js"
+export PATH="/home/jj/.nvm/versions/node/v24.18.0/bin:$PATH"
+
 # backend/scripts -> backend -> KrishiKendram
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -95,7 +100,7 @@ cd "$BACKEND_DIR" || {
     exit 1
 }
 
-nohup npm run start:dev \
+nohup "$NODE_BIN" "$NPM_CLI" run start:dev \
     > "$BACKEND_LOG" 2>&1 &
 
 BACKEND_PID=$!
@@ -118,7 +123,7 @@ cd "$FRONTEND_DIR" || {
     exit 1
 }
 
-nohup npm run dev \
+nohup "$NODE_BIN" "$NPM_CLI" run dev \
     > "$FRONTEND_LOG" 2>&1 &
 
 FRONTEND_PID=$!
