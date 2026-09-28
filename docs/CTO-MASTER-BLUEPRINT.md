@@ -14,9 +14,9 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.23 Relationship Child Access Verification |
-| Current checkpoint message | V0.5.23 Relationship Child Access Verification |
-| Current primary phase | V0.5.23 — Cross-module UI/Runtime Coverage |
+| Current checkpoint | V0.5.24 A/B/C Promotion Recovery Checkpoint |
+| Current checkpoint message | V0.5.24 A/B/C Promotion Recovery Checkpoint |
+| Current primary phase | V0.5.24 — A/B/C Promotion Recovery |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
@@ -82,6 +82,17 @@ Architectural rule:
 > A transfer request is a workflow; the transfer itself is a governed change to
 > resource relationships. Ownership is not represented by editing a farm or
 > member profile.
+
+### 2026-09-28 V0.5.24 A/B/C Promotion Recovery Checkpoint
+
+The documented A/B/C repository posture has been restored from the canonical checkpoint. Integration and Development remotes were promoted to the exact canonical commit, while their previous states were preserved as recovery tags; Development uncommitted work was preserved in a local stash before promotion.
+
+Validation:
+- Canonical, Integration, and Development all resolve to the same full commit  before this documentation checkpoint.
+- Integration recovery tag:  → .
+- Development recovery tag:  → .
+- Development pre-promotion working tree is preserved in .
+- No destructive history loss was introduced; promotion used force-with-lease after explicit preservation.
 
 ### 2026-09-28 V0.5.23 Relationship Child Access Verification Checkpoint
 

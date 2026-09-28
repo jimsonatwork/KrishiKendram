@@ -107,7 +107,7 @@ The ResourceMovement persistence/resolution foundation has now been implemented 
 The ResourceLineage persistence/resolution foundation has now been implemented and checkpointed.
 The transfer workflow has now been exposed end-to-end for privileged administrative approval, including an authorization-checked pending queue, frontend action, and regression coverage.
 Latest checkpoint: `18f44b8` — Complete administrative transfer approval workflow.
-The latest working checkpoint is V0.5.23 Relationship Child Access Verification: searchable/filterable cross-module History presentation is implemented and validated.
+The latest working checkpoint is V0.5.24 A/B/C Promotion Recovery Checkpoint: searchable/filterable cross-module History presentation is implemented and validated.
 The next controlled activity remains cross-module lifecycle UI/runtime coverage and compatibility hardening; do not reopen established authorization/relationship foundations unless a concrete regression is found.
 
 ## 6. Historical Work Already Completed
@@ -306,11 +306,13 @@ Evidence:
 - TypeScript no-emit build check: PASS.
 - Backend production build: PASS.
 
-Current checkpoint: V0.5.23 Relationship Child Access Verification. Relationship-backed Farm access and FarmAsset/Crop child authorization/history surfaces are already implemented and verified; no duplicate access layer is authorized. The current repository exposes only the canonical main worktree, so A/B/C promotion remains a process prerequisite rather than a claimed completion.
+Current checkpoint: V0.5.24 A/B/C Promotion Recovery Checkpoint. Canonical, Integration, and Development have been synchronized to the same promoted commit with explicit recovery tags and preserved Development working state.
+
+Current checkpoint: V0.5.24 A/B/C Promotion Recovery Checkpoint. Relationship-backed Farm access and FarmAsset/Crop child authorization/history surfaces are already implemented and verified; no duplicate access layer is authorized. The current repository exposes only the canonical main worktree, so A/B/C promotion remains a process prerequisite rather than a claimed completion.
 
 Next controlled activity:
 
-**Prepare and execute the A/B/C promotion and recovery checkpoint only after the Integration and Development worktrees are provisioned and independently verifiable.**
+**A/B/C promotion and recovery checkpoint is CLOSED. Continue with the next concrete product-domain completion gap from the canonical baseline.**
 
 This closes the current UsersService validation migration and Registry / Authorization verification segments without declaring the entire Users or V0.3 relationship capability COMPLETE.
 
