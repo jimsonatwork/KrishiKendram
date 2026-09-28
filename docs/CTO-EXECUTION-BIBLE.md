@@ -962,3 +962,8 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 ### V0.5.39 Checkpoint — Transfer Movement Temporal Integrity
 - Central ownership transfer rejects an effective date earlier than the resource's latest recorded movement.
 - Regression coverage added; RelationshipService 9/9 passed and backend build passed.
+
+### V0.5.40 Checkpoint — Lifecycle Closure Integrity Audit
+- Verified destructive lifecycle paths close active temporal relationships transactionally.
+- Farm deletion closes the farm plus child FarmAsset/Crop relationships; asset deletion and Crop archive close their own relationships.
+- No additional closure gap was identified; 4 related suites / 47 tests passed.

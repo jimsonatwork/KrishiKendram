@@ -2889,3 +2889,9 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 - Central ownership transfer now rejects effective dates before the latest recorded movement for the resource.
 - This complements the active ownership-start guard and prevents transfer history from becoming chronologically out of order.
 - RelationshipService regression: 9/9 passed; backend build passed.
+
+### V0.5.40 — Lifecycle Closure Integrity Audit
+- Audited Farm, FarmAsset, and Crop destructive lifecycle closure paths.
+- Farm deletion terminates Farm ownership and all open child FarmAsset/Crop relationships in the same transaction; FarmAsset deletion and Crop archive also terminate their open relationships atomically.
+- No additional lifecycle closure bypass was found in the audited paths.
+- Cross-domain regression set: 4 suites / 47 tests passed.

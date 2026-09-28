@@ -899,3 +899,7 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 ### V0.5.39
 - Hardened ownership transfer chronology by rejecting transfer effective dates before the latest recorded movement.
 - Added RelationshipService regression coverage; 9/9 passed and backend build passed.
+
+### V0.5.40
+- Completed lifecycle closure integrity audit across Farm, FarmAsset, and Crop destructive paths.
+- Confirmed transactional relationship termination coverage; no additional closure bypass found.
