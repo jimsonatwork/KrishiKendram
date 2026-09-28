@@ -873,3 +873,8 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 ## V0.5.33 — Farm Temporal Ownership Alignment
 - Farm transfer authorization and movement/evidence history now honor the active OWNER relationship.
 - Added regression coverage; FarmResourceLifecycleService tests and backend build pass.
+
+## V0.5.34 — Farm Lifecycle Uses Temporal Owner
+- Farm READ, UPDATE, DELETE, FarmAsset CREATE, and FarmRecord CREATE authorization now resolve the active temporal OWNER relationship before OWN-scope authorization.
+- Added regression coverage for a transferred Farm READ path.
+- FarmsService tests: 40/40 passed; backend build passed.

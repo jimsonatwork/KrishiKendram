@@ -2859,3 +2859,9 @@ Continue the same bounded temporal-ownership audit across remaining concrete Far
 ### V0.5.33 — Farm Transfer Uses Temporal Owner
 - Farm transfer authorization and farm movement/evidence history now resolve the active OWNER relationship, falling back to the denormalized farm owner only for legacy records.
 - Added regression coverage for transferred farms; lifecycle tests and backend build pass.
+
+### V0.5.34 — Farm Lifecycle Uses Temporal Owner
+- Farm READ, UPDATE, DELETE, FarmAsset CREATE, and FarmRecord CREATE authorization now resolve the active Farm OWNER relationship before applying OWN scope.
+- The denormalized `Farm.ownerId` remains a legacy fallback and response/storage field; the temporal relationship is authoritative for authorization.
+- Added regression coverage for transferred Farm READ authorization.
+- FarmsService regression: 40/40 passed; backend build passed.

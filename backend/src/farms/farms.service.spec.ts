@@ -77,6 +77,33 @@ describe('FarmsService', () => {
     );
   });
 
+  it('uses the active temporal farm owner for read authorization after transfer', async () => {
+    prisma.farm.findUnique
+      .mockResolvedValueOnce({ id: 'farm-1', ownerId: 'legacy-owner' })
+      .mockResolvedValueOnce({
+        id: 'farm-1',
+        ownerId: 'legacy-owner',
+        name: 'Green Valley',
+        assets: [],
+        records: [],
+        owner: { id: 'legacy-owner', name: 'Legacy', email: 'legacy@example.com' },
+      });
+    prisma.resourceRelationship.findFirst.mockResolvedValue({
+      userId: 'temporal-owner',
+    });
+
+    await service.findOne('farm-1', 'temporal-owner', UserRole.FARMER);
+
+    expect(authorization.assertCan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resource: 'farm',
+        action: AuthorizationAction.READ,
+        resourceId: 'farm-1',
+        ownerId: 'temporal-owner',
+      }),
+    );
+  });
+
   it('authorizes before reading the protected farm payload', async () => {
     const farm = {
       id: 'farm-1',

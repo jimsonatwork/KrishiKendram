@@ -39,6 +39,24 @@ export class FarmsService {
     private readonly lease: FarmAssetLeaseService,
   ) {}
 
+  private async getCurrentFarmOwnerId(
+    farmId: string,
+    fallbackOwnerId: string,
+  ): Promise<string> {
+    const relationship = await this.prisma.resourceRelationship.findFirst({
+      where: {
+        resourceType: 'farm',
+        resourceId: farmId,
+        relationshipType: 'OWNER',
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+
+    return relationship?.userId ?? fallbackOwnerId;
+  }
+
   private async getCurrentFarmAssetOwnerId(
     assetId: string,
     fallbackOwnerId: string,
@@ -237,7 +255,10 @@ export class FarmsService {
       resource: 'farm',
       action: AuthorizationAction.READ,
       resourceId: id,
-      ownerId: farmContext.ownerId,
+      ownerId: await this.getCurrentFarmOwnerId(
+        farmContext.id,
+        farmContext.ownerId,
+      ),
     });
 
     /*
@@ -302,7 +323,10 @@ export class FarmsService {
       resource: 'farm',
       action: AuthorizationAction.UPDATE,
       resourceId: farmContext.id,
-      ownerId: farmContext.ownerId,
+      ownerId: await this.getCurrentFarmOwnerId(
+        farmContext.id,
+        farmContext.ownerId,
+      ),
     });
 
     const updateData = this.validateFarmFields(dto);
@@ -506,7 +530,10 @@ export class FarmsService {
       resource: 'farmAsset',
       action: AuthorizationAction.CREATE,
       farmId: farmContext.id,
-      ownerId: farmContext.ownerId,
+      ownerId: await this.getCurrentFarmOwnerId(
+        farmContext.id,
+        farmContext.ownerId,
+      ),
     });
 
     const validatedData = this.validateFarmAssetFields(dto);
@@ -524,7 +551,10 @@ export class FarmsService {
         tx,
         'farmAsset',
         asset.id,
-        farmContext.ownerId,
+        await this.getCurrentFarmOwnerId(
+          farmContext.id,
+          farmContext.ownerId,
+        ),
         asset.createdAt,
       );
 
@@ -726,7 +756,10 @@ export class FarmsService {
       resource: 'farmRecord',
       action: AuthorizationAction.CREATE,
       farmId: farmContext.id,
-      ownerId: farmContext.ownerId,
+      ownerId: await this.getCurrentFarmOwnerId(
+        farmContext.id,
+        farmContext.ownerId,
+      ),
     });
 
     const validatedData = this.validateFarmRecordFields(dto);
@@ -795,7 +828,10 @@ export class FarmsService {
       resource: 'farm',
       action: AuthorizationAction.DELETE,
       resourceId: farmContext.id,
-      ownerId: farmContext.ownerId,
+      ownerId: await this.getCurrentFarmOwnerId(
+        farmContext.id,
+        farmContext.ownerId,
+      ),
     });
 
     return this.prisma.$transaction(async (tx) => {

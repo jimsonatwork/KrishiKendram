@@ -932,3 +932,9 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 ### V0.5.33 Checkpoint — Farm Temporal Ownership Alignment
 - Farm lifecycle transfer now uses the canonical active temporal owner rather than assuming the Farm.ownerId field is authoritative.
 - Existing farm owner persistence remains synchronized after transfer; no duplicate transfer workflow introduced.
+
+### V0.5.34 Checkpoint — Farm Lifecycle Temporal Ownership
+- Farm authorization paths must resolve the active temporal OWNER before using the legacy `Farm.ownerId` fallback.
+- Applied this consistently to Farm READ/UPDATE/DELETE and child creation authorization for FarmAsset/FarmRecord.
+- Reused the existing relationship and authorization services; no new ownership abstraction was introduced.
+- FarmsService regression: 40/40 passed; backend build passed.
