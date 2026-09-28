@@ -1289,6 +1289,20 @@ function FarmCard({
             type="button"
             variant="ghost"
             size="icon"
+            onClick={() => {
+              window.location.assign(
+                `/app/history?resource=farm:${encodeURIComponent(farm.id)}`,
+              )
+            }}
+            title={`Transfer ${farm.name}`}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={onEdit}
             title={`Edit ${farm.name}`}
           >

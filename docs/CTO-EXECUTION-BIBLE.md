@@ -842,3 +842,24 @@ FarmAsset transfer initiation is now reachable directly from the Farm workspace 
 ### Next execution target
 
 Continue the next concrete product-domain/runtime gap. Prefer additive user-facing integration over new infrastructure, and preserve the centralized relationship, movement, lineage, evidence, transfer, and authorization foundations.
+
+
+## 2026-09-28 — V0.5.26 Contextual Farm Transfer Handoff
+
+### COMPLETE
+
+Whole-farm transfer initiation now has the same contextual handoff as FarmAsset transfer.
+
+- Farm cards expose a transfer action that routes to the existing History transfer composer with the farm resource preselected.
+- The canonical transfer workflow remains the sole implementation for authorization, evidence, temporal fields, acceptance/rejection and administrative approval.
+- No backend change or duplicate transfer UI was introduced.
+
+### Verification
+
+- Frontend TypeScript: PASS.
+- Frontend production build: PASS; 2311 modules transformed.
+- Existing ~616 kB bundle warning remains deferred to the dedicated performance/code-splitting pass.
+
+### Next execution target
+
+Continue the next concrete product-domain/runtime gap without reopening completed platform foundations.
