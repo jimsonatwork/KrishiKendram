@@ -14,9 +14,9 @@
 |---|---|
 | Repository | `/home/jj/Dev/KrishiKendram` (active WSL repo) |
 | Branch | `main` |
-| Current checkpoint | V0.5.22 Contextual History Navigation |
-| Current checkpoint message | V0.5.22 Contextual History Navigation |
-| Current primary phase | V0.5.22 — Cross-module UI/Runtime Coverage |
+| Current checkpoint | V0.5.23 Relationship Child Access Verification |
+| Current checkpoint message | V0.5.23 Relationship Child Access Verification |
+| Current primary phase | V0.5.23 — Cross-module UI/Runtime Coverage |
 | Current platform priority | Frontend Contract → Field Policy → Resources → Modules → Capabilities/Fields → platform administration |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
@@ -82,6 +82,15 @@ Architectural rule:
 > A transfer request is a workflow; the transfer itself is a governed change to
 > resource relationships. Ownership is not represented by editing a farm or
 > member profile.
+
+### 2026-09-28 V0.5.23 Relationship Child Access Verification Checkpoint
+
+Relationship-aware Farm access and FarmAsset/Crop child authorization/history surfaces were re-audited against the canonical services, controllers, and access policy. The established FarmAccessService resolves active relationship-backed access before the owner fallback, and FarmAsset/Crop history endpoints remain authorization-protected. No additional authorization abstraction is required.
+
+Validation:
+- Focused backend regression: 5 suites / 100 tests passed.
+- Canonical Git worktree is clean and synchronized with origin/main before this checkpoint.
+- A/B/C promotion was not falsely marked complete: the current Git worktree list exposes only the canonical main worktree, so Integration/Development promotion infrastructure remains a separate process prerequisite.
 
 ### 2026-09-28 V0.5.22 Contextual History Navigation Checkpoint
 
