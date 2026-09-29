@@ -253,6 +253,33 @@ describe('Application runtime smoke (e2e)', () => {
       .expect(401);
   });
 
+  it('keeps Livestock CRUD and relationship history behind JWT authentication', async () => {
+    await request(app.getHttpServer()).get('/api/v1/livestock').expect(401);
+    await request(app.getHttpServer()).post('/api/v1/livestock').send({}).expect(401);
+    await request(app.getHttpServer()).get('/api/v1/livestock/item/relationships/history').expect(401);
+    await request(app.getHttpServer()).patch('/api/v1/livestock/item').send({}).expect(401);
+    await request(app.getHttpServer()).delete('/api/v1/livestock/item').expect(401);
+    await request(app.getHttpServer()).post('/api/v1/livestock/item/restore').expect(401);
+  });
+
+  it('supports an authenticated Livestock collection read for an existing authorized user', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const user = await prisma.user.findFirst({
+      where: { status: 'ACTIVE', role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
+      select: { id: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(user).toBeTruthy();
+
+    const accessToken = await jwt.signAsync({ sub: user!.id, role: user!.role });
+    await request(app.getHttpServer())
+      .get('/api/v1/livestock')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200)
+      .expect(({ body }) => expect(Array.isArray(body)).toBe(true));
+  });
+
   afterEach(async () => {
     await app.close();
   });

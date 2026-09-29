@@ -11,4 +11,9 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     name: 'Farms',
     lifecycle: 'ACTIVE',
   },
+  {
+    id: 'livestock',
+    name: 'Livestock',
+    lifecycle: 'ACTIVE',
+  },
 ];

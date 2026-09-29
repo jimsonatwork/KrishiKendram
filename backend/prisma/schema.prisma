@@ -156,15 +156,15 @@ model User {
   resourceLineagesCreated  ResourceLineage[]  @relation("ResourceLineageCreatedBy")
   resourceLineagesUpdated  ResourceLineage[]  @relation("ResourceLineageUpdatedBy")
 
-  resourceRelationships        ResourceRelationship[] @relation("ResourceRelationshipUser")
-  transferRequestsCreated     ResourceTransferRequest[] @relation("TransferRequestCreatedBy")
-  transferRequestsSource      ResourceTransferRequest[] @relation("TransferRequestSourceUser")
-  transferRequestsDestination ResourceTransferRequest[] @relation("TransferRequestDestinationUser")
-  transferRequestsAccepted   ResourceTransferRequest[] @relation("TransferRequestAcceptedBy")
-  transferRequestsRejected   ResourceTransferRequest[] @relation("TransferRequestRejectedBy")
-  transferRequestsApproved   ResourceTransferRequest[] @relation("TransferRequestApprovedBy")
-  createdResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipCreatedBy")
-  updatedResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipUpdatedBy")
+  resourceRelationships        ResourceRelationship[]    @relation("ResourceRelationshipUser")
+  transferRequestsCreated      ResourceTransferRequest[] @relation("TransferRequestCreatedBy")
+  transferRequestsSource       ResourceTransferRequest[] @relation("TransferRequestSourceUser")
+  transferRequestsDestination  ResourceTransferRequest[] @relation("TransferRequestDestinationUser")
+  transferRequestsAccepted     ResourceTransferRequest[] @relation("TransferRequestAcceptedBy")
+  transferRequestsRejected     ResourceTransferRequest[] @relation("TransferRequestRejectedBy")
+  transferRequestsApproved     ResourceTransferRequest[] @relation("TransferRequestApprovedBy")
+  createdResourceRelationships ResourceRelationship[]    @relation("ResourceRelationshipCreatedBy")
+  updatedResourceRelationships ResourceRelationship[]    @relation("ResourceRelationshipUpdatedBy")
 }
 
 // ============================================================
@@ -195,12 +195,13 @@ model Farm {
   entityId String @unique
   entity   Entity @relation(fields: [entityId], references: [id])
 
-  assets  FarmAsset[]
-  records FarmRecord[]
-  crops   Crop[]
+  assets    FarmAsset[]
+  records   FarmRecord[]
+  crops     Crop[]
+  livestock Livestock[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -295,6 +296,41 @@ model Crop {
 
 // ============================================================
 // PART 07 END
+// ============================================================
+
+// ============================================================
+// PART 07A - LIVESTOCK
+// ============================================================
+
+model Livestock {
+  id     String @id @default(cuid())
+  farmId String
+
+  species String
+  name    String?
+  tag     String?
+  breed   String?
+  sex     String?
+  count   Int     @default(1)
+  status  String  @default("ACTIVE")
+
+  acquiredAt DateTime?
+  notes      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
+  @@index([species])
+  @@index([status])
+  @@index([tag])
+}
+
+// ============================================================
+// PART 07A END
 // ============================================================
 
 // ============================================================
@@ -410,43 +446,43 @@ model ResourceRelationship {
 model ResourceTransferRequest {
   id String @id @default(cuid())
 
-  requestNumber String @unique
-  resourceType String
-  resourceId String
-  sourceUserId String
+  requestNumber     String                        @unique
+  resourceType      String
+  resourceId        String
+  sourceUserId      String
   destinationUserId String
-  quantity Float?
-  unit String?
-  status ResourceTransferRequestStatus @default(PENDING)
+  quantity          Float?
+  unit              String?
+  status            ResourceTransferRequestStatus @default(PENDING)
 
-  requestedAt DateTime @default(now())
-  acceptedAt DateTime?
-  rejectedAt DateTime?
+  requestedAt DateTime  @default(now())
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
   cancelledAt DateTime?
   completedAt DateTime?
   effectiveAt DateTime?
-  expiresAt DateTime?
+  expiresAt   DateTime?
 
-  reason String?
+  reason        String?
   transactionId String?
-  evidenceId String?
+  evidenceId    String?
 
-  createdBy String
-  updatedBy String
-  acceptedBy String?
-  rejectedBy String?
-  approvedBy String?
+  createdBy      String
+  updatedBy      String
+  acceptedBy     String?
+  rejectedBy     String?
+  approvedBy     String?
   approvalReason String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   resourceEvidence ResourceEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
-  creator User @relation("TransferRequestCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  sourceUser User @relation("TransferRequestSourceUser", fields: [sourceUserId], references: [id], onDelete: Restrict)
-  destinationUser User @relation("TransferRequestDestinationUser", fields: [destinationUserId], references: [id], onDelete: Restrict)
-  acceptedUser User? @relation("TransferRequestAcceptedBy", fields: [acceptedBy], references: [id], onDelete: SetNull)
-  rejectedUser User? @relation("TransferRequestRejectedBy", fields: [rejectedBy], references: [id], onDelete: SetNull)
-  approvedUser User? @relation("TransferRequestApprovedBy", fields: [approvedBy], references: [id], onDelete: SetNull)
+  creator          User              @relation("TransferRequestCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  sourceUser       User              @relation("TransferRequestSourceUser", fields: [sourceUserId], references: [id], onDelete: Restrict)
+  destinationUser  User              @relation("TransferRequestDestinationUser", fields: [destinationUserId], references: [id], onDelete: Restrict)
+  acceptedUser     User?             @relation("TransferRequestAcceptedBy", fields: [acceptedBy], references: [id], onDelete: SetNull)
+  rejectedUser     User?             @relation("TransferRequestRejectedBy", fields: [rejectedBy], references: [id], onDelete: SetNull)
+  approvedUser     User?             @relation("TransferRequestApprovedBy", fields: [approvedBy], references: [id], onDelete: SetNull)
 
   @@index([resourceType, resourceId])
   @@index([sourceUserId, status])
@@ -473,8 +509,8 @@ model ResourceEvidence {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator       User                   @relation("ResourceEvidenceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updater       User                   @relation("ResourceEvidenceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+  creator          User                      @relation("ResourceEvidenceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater          User                      @relation("ResourceEvidenceUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
   relationships    ResourceRelationship[]
   movements        ResourceMovement[]
   transferRequests ResourceTransferRequest[]

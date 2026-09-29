@@ -1,3 +1,22 @@
+## 2026-09-29 — Livestock Vertical Slice
+
+### Git checkpoint
+
+Pending — Livestock domain vertical slice
+
+### Completed architectural work
+
+- Added dedicated Livestock persistence with Farm ownership, lifecycle status, soft archive/restore, acquisition metadata, and indexed lookup fields.
+- Reused canonical ResourceRelationship ownership history rather than adding a duplicate livestock history subsystem.
+- Added Registry resource/module definitions and explicit FARMER OWN capability reconciliation for Livestock CRUD/restore.
+- Added JWT-protected Livestock CRUD and relationship-history routes.
+- Added a lazy-loaded Farm workspace Livestock page with registration and archive actions, plus canonical API methods.
+- Prisma migration applied successfully: 20260929013728_add_livestock.
+- Backend: 36 suites / 343 tests passed; Nest production build passed.
+- E2E: 19/19 tests passed.
+- Frontend production build passed: 2313 modules; Livestock remains lazy-loaded.
+- git diff --check passed.
+
 ## 2026-09-27 — User Resource Relationship History
 
 - Added an authorization-protected user relationship-history endpoint backed by the canonical ResourceRelationship model.

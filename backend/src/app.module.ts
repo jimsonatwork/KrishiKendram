@@ -23,6 +23,7 @@ import { AuditModule } from './platform/audit/audit.module';
 import { FarmsModule } from './farms/farms.module';
 import { IntakeModule } from './intake/intake.module';
 import { CropsModule } from './crops/crops.module';
+import { LivestockModule } from './livestock/livestock.module';
 
 @Module({
   imports: [
@@ -38,7 +39,8 @@ import { CropsModule } from './crops/crops.module';
 	    FarmsModule,
 		PlatformModule,
 		IntakeModule,
-		CropsModule,
+    CropsModule,
+    LivestockModule,
   ],
   controllers: [AppController],
   providers: [AppService],

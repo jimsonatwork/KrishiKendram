@@ -8,6 +8,7 @@ import { ModuleLifecycleService } from './module-lifecycle.service';
 import { USER_FIELD_DEFINITIONS } from './definitions/fields/user-field-definitions';
 import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definitions';
 import { FARM_ASSET_FIELD_DEFINITIONS } from './definitions/fields/farm-asset-field-definitions';
+import { LIVESTOCK_FIELD_DEFINITIONS } from './definitions/fields/livestock-field-definitions';
 
 import { MODULE_DEFINITIONS } from './definitions/modules';
 import { RESOURCE_DEFINITIONS } from './definitions/resources';
@@ -87,6 +88,10 @@ export class RegistryModule {
     }
 
     for (const definition of FARM_ASSET_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
+
+    for (const definition of LIVESTOCK_FIELD_DEFINITIONS) {
       this.registry.registerField(definition);
     }
 

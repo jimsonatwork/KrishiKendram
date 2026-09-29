@@ -526,6 +526,42 @@ export const api = {
       },
     }),
 
+  livestock: (token: string) =>
+    request<any[]>('/livestock', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  createLivestock: (data: Record<string, unknown>, token: string) =>
+    request<any>('/livestock', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    }),
+
+  updateLivestock: (id: string, data: Record<string, unknown>, token: string) =>
+    request<any>(`/livestock/${id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    }),
+
+  deleteLivestock: (id: string, token: string) =>
+    request<any>(`/livestock/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  livestockRelationshipHistory: (id: string, token: string) =>
+    request<any[]>(`/livestock/${id}/relationships/history`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   archivedCrops: (token: string) =>
     request<any[]>('/crops/archived', {
       headers: {

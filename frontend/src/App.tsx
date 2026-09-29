@@ -43,6 +43,7 @@ import {
   Sun,
   Moon,
   Palette,
+  PawPrint,
   Shield,
   ShieldCheck,
   SlidersHorizontal,
@@ -66,6 +67,7 @@ import { useThemeStore } from '@/stores/theme.store'
 const SystemPage = lazy(() => import('@/pages/admin/SystemPage').then((m) => ({ default: m.SystemPage })))
 const FarmsPage = lazy(() => import('@/pages/farms/FarmsPage').then((m) => ({ default: m.FarmsPage })))
 const CropsPage = lazy(() => import('@/pages/crops/CropsPage').then((m) => ({ default: m.CropsPage })))
+const LivestockPage = lazy(() => import('@/pages/livestock/LivestockPage').then((m) => ({ default: m.LivestockPage })))
 const ActivitiesPage = lazy(() => import('@/pages/activity/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })))
 const HistoryPage = lazy(() => import('@/pages/activity/HistoryPage').then((m) => ({ default: m.HistoryPage })))
 const AIIntakePage = lazy(() => import('@/pages/intake/AIIntakePage').then((m) => ({ default: m.AIIntakePage })))
@@ -935,6 +937,11 @@ function PortalLayout({
               icon: <Wheat />,
             },
             {
+              label: 'Livestock',
+              href: '/app/livestock',
+              icon: <PawPrint />,
+            },
+            {
               label: 'Activities',
               href: '/app/activities',
               icon: <Activity />,
@@ -969,6 +976,8 @@ function PortalLayout({
     content = <FarmsPage />
   } else if (location.pathname === '/app/crops') {
     content = <CropsPage />
+  } else if (location.pathname === '/app/livestock') {
+    content = <LivestockPage />
   } else if (
     location.pathname === '/app/activities'
   ) {
