@@ -25,7 +25,7 @@
 - Full backend regression: 36 suites / 343 tests passed.
 - Backend production build and Prisma schema validation passed.
 - Frontend TypeScript check and production build passed: 2,314 modules; 433.92 kB initial JavaScript / 138.14 kB gzip.
-- git diff --check passed and the working tree remains clean.
+- git diff --check passed at the prior session-refresh checkpoint; subsequent RC hardening changes are tracked in the current release checkpoint.
 - Checkpoint: 92e222c Harden frontend session refresh.
 
 ## 2026-09-29 — Core Completion Audit Direction
@@ -33,7 +33,7 @@
 - Reconciled the Execution Bible current position with the live canonical repository checkpoint 6ef1bd5.
 - Recorded an evidence-based core completion matrix across Auth, Users/Admin, Farms, FarmAsset, FarmRecord, Crop, Intake, lifecycle/history, frontend UX/compatibility, and production readiness.
 - Kept Livestock and Marketplace vertical slices in place while parking breadth expansion until core completion gates are closed.
-- Recorded the verified regression gate: backend 36/36 suites and 343/343 tests, backend build PASS, Prisma validation PASS, frontend build PASS (2314 modules; 433.53 kB / 138.07 kB gzip), Docker Compose config PASS, and diff check PASS.
+- Recorded the verified regression gate: backend 36/36 suites and 346/346 tests, backend build PASS, Prisma validation PASS, frontend build PASS (2314 modules; 433.92 kB / 138.14 kB gzip), Docker backend release image PASS, and diff check PASS.
 - No new architecture or speculative domain work introduced.
 
 ## 2026-09-29 — Marketplace Listing Vertical Slice

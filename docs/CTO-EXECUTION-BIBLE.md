@@ -121,7 +121,7 @@ Latest verified regression gate at this checkpoint (29 Sep 2026):
 - Prisma schema validation: PASS.
 - Frontend TypeScript check and production build: PASS (2314 modules; 433.92 kB JS / 138.14 kB gzip).
 - git diff --check: PASS.
-- Repository working tree: clean; canonical branch main is 6 commits ahead of origin/main.
+- Release-hardening working tree: 3 intentional RC changes (Docker runtime hardening, fail-fast JWT secret configuration, environment-configurable frontend API base); canonical branch main is 20 commits ahead of origin/main before this checkpoint commit.
 
 The Auth session-refresh gap is now closed: the frontend uses the existing refresh-token contract during session initialization and retries /auth/me after successful rotation. Lifecycle chronology is also hardened for FarmAsset split/merge, and farm/farm-asset archive/delete/restore mutations now emit transactional audit events. The next controlled activity remains the core completion audit across Users/Admin, Farms/FarmAsset/FarmRecord/Crop/Intake, lifecycle/history, frontend workflow states, and production readiness. Any
 real code gap found by that audit is fixed narrowly; otherwise documentation is
@@ -1065,7 +1065,7 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Re-ran the complete authenticated application E2E smoke suite after dependency/runtime hardening.
 - Warm runtime result: 15/15 tests passed.
 - An initial cold run had 14/15 pass because the existing-user current-user read exceeded the default 5-second test timeout; immediate warm rerun passed without code changes, so no timeout inflation or test weakening was introduced.
-- Docker image revalidation was started but intentionally terminated after prolonged dependency installation with no further output; the runtime dependency set was unchanged because the security fixes were dev-only.
+- Backend release image revalidated successfully from the backend build context after the Docker runtime hardening change; image `krishikendram-backend-rc:latest` built successfully with non-root runtime and healthcheck.
 
 ## V0.5.53 — System Workspace Completion
 
