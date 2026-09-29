@@ -1099,7 +1099,7 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Confirmed shadcn is not imported by application source and is a build/development tool; moved it from runtime dependencies to devDependencies without changing application code.
 - Re-ran the production-only dependency audit: **0 vulnerabilities** (0 low, 0 moderate, 0 high, 0 critical).
 - Re-ran the frontend production build: **PASS**, 2,314 modules; 433.92 kB initial JavaScript / 138.14 kB gzip.
-- : PASS.
+- git diff --check: PASS.
 
 ### Next execution target
 

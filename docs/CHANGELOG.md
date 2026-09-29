@@ -1,3 +1,12 @@
+## 2026-09-29 — Release candidate regression gate
+
+- Frontend production dependency audit is now clean: 0 production vulnerabilities after moving the unused shadcn CLI from runtime dependencies to devDependencies.
+- Backend regression re-run after the RC dependency hardening: 36 suites / 346 tests passed.
+- Prisma migration status: 20 migrations found; database schema up to date.
+- Backend production build passed; frontend production build passed with 2,314 modules and 433.92 kB initial JS / 138.14 kB gzip.
+- git diff --check passed and canonical working tree remains clean after checkpoint commit 651d3b3.
+- Remaining explicit RC acceptance item: live production-container startup/health smoke in a non-conflicting environment; no domain scope expansion.
+
 ## 2026-09-29 — Lifecycle closure / regression checkpoint
 
 - Relationship lifecycle movement creation now rejects backdated custody/lease/return/transfer movements against the latest resource movement.
