@@ -351,12 +351,20 @@ export class FarmsService {
 
     const updateData = this.validateFarmFields(dto);
 
-    return this.prisma.farm.update({
+    const farm = await this.prisma.farm.update({
       where: {
         id,
       },
       data: updateData,
     });
+    await this.audit.create({
+      actorId: userId,
+      action: 'UPDATE',
+      resourceType: 'farm',
+      resourceId: farm.id,
+      description: 'Farm updated.',
+    });
+    return farm;
   }
 
   async getFarmMovementHistory(
@@ -663,12 +671,20 @@ export class FarmsService {
 
     const validatedData = this.validateFarmAssetFields(dto);
 
-    return this.prisma.farmAsset.update({
+    const asset = await this.prisma.farmAsset.update({
       where: {
         id: assetId,
       },
       data: validatedData,
     });
+    await this.audit.create({
+      actorId: userId,
+      action: 'UPDATE',
+      resourceType: 'farmAsset',
+      resourceId: asset.id,
+      description: 'Farm asset updated.',
+    });
+    return asset;
   }
 
   async removeAsset(
@@ -815,7 +831,7 @@ export class FarmsService {
         ? null
         : validatedData.title;
 
-    return this.prisma.farmRecord.create({
+    const record = await this.prisma.farmRecord.create({
       data: {
         farmId,
         category: validatedData.category,
@@ -824,6 +840,14 @@ export class FarmsService {
         title: normalizedTitle,
       },
     });
+    await this.audit.create({
+      actorId: userId,
+      action: 'CREATE',
+      resourceType: 'farmRecord',
+      resourceId: record.id,
+      description: 'Farm record created.',
+    });
+    return record;
   }
 
   async remove(id: string, userId: string, role: UserRole) {

@@ -46,7 +46,7 @@ describe('FarmsService', () => {
     validateResourceField: jest.fn(),
   } as any;
 
-  const audit = { createInTransaction: jest.fn() } as any;
+  const audit = { create: jest.fn(), createInTransaction: jest.fn() } as any;
 
   const relationships = {
     createOwnerRelationship: jest.fn(),
