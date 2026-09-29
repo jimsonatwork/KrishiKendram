@@ -1050,7 +1050,7 @@ FarmAsset split target creation now authorizes against the active temporal OWNER
 - Fixed the backend production start contract: TypeScript emits dist/src/main.js, and start:prod now targets that real artifact.
 - Verified the compiled production backend starts successfully and reaches the Nest application startup banner on the canonical WSL/Node 24 environment.
 - Backend regression: 36 suites / 343 tests passed.
-- Prisma schema validation passed and all 18 migrations are applied/up to date.
+- Prisma schema validation passed; the current Prisma migration set contains 20 migrations and the database is up to date.
 - Frontend production build passed: 2,311 modules; 441.17 kB initial JavaScript / 140.71 kB gzip.
 - Production dependency audit is clean for backend and frontend; backend development-tooling advisories were remediated with patch-level fast-uri/js-yaml updates.
 - No application architecture or Prisma dependency-line change was introduced.
@@ -1083,6 +1083,16 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - No new authorization path, persistence model, lifecycle abstraction, or test fixture framework was introduced.
 - Verification: authenticated application E2E **17/17 passed**; frontend production build **2,312 modules**, initial JavaScript **431.04 kB / 137.46 kB gzip**; `git diff --check` passed.
 
+### V0.5.55 — Release Candidate Evidence Reconciliation
+
+- Reconciled current release evidence against the canonical repository without changing application architecture.
+- Current backend regression evidence: 36 suites / 346 tests passed; frontend production build: 2,314 modules.
+- Current Prisma state: 20 migrations present and database schema up to date.
+- Production Compose configuration validates with required runtime secrets supplied; full backend/frontend production image build completed successfully.
+- Backend release image runs as non-root node and contains the /api/v1/health Docker healthcheck.
+- Live production Compose startup remains an explicit open acceptance item because the controlled smoke environment must not disturb the existing development PostgreSQL container/volume.
+- Working tree was clean after checkpoint commit 2d449af.
+
 ### Next execution target
 
-Continue from verified runtime readiness into the next concrete product-domain capability, selecting only a business lifecycle with an explicit contract and reusing the existing Registry, Authorization, Relationship, Movement, Lineage, Evidence, and History foundations.
+Perform only the remaining concrete release acceptance checks; do not expand domain scope or introduce speculative infrastructure.
