@@ -1093,6 +1093,14 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Live production Compose startup remains an explicit open acceptance item because the controlled smoke environment must not disturb the existing development PostgreSQL container/volume.
 - Working tree was clean after checkpoint commit 2d449af.
 
+### V0.5.56 — Frontend Production Dependency Classification Hardening
+
+- Audited the frontend production dependency graph and identified the sole moderate advisory as undici, pulled by the shadcn CLI package.
+- Confirmed shadcn is not imported by application source and is a build/development tool; moved it from runtime dependencies to devDependencies without changing application code.
+- Re-ran the production-only dependency audit: **0 vulnerabilities** (0 low, 0 moderate, 0 high, 0 critical).
+- Re-ran the frontend production build: **PASS**, 2,314 modules; 433.92 kB initial JavaScript / 138.14 kB gzip.
+- : PASS.
+
 ### Next execution target
 
-Perform only the remaining concrete release acceptance checks; do not expand domain scope or introduce speculative infrastructure.
+Perform the remaining concrete release acceptance checks; do not expand domain scope or introduce speculative infrastructure.
