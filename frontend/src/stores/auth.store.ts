@@ -69,12 +69,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isInitialized: true,
       })
     } catch {
-      get().clearSession()
+      if (!refreshToken) {
+        get().clearSession()
+        set({ isLoading: false, isInitialized: true })
+        return
+      }
 
-      set({
-        isLoading: false,
-        isInitialized: true,
-      })
+      try {
+        const refreshed = await api.refresh(refreshToken)
+        localStorage.setItem(ACCESS_TOKEN_KEY, refreshed.accessToken)
+        localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.refreshToken)
+
+        const user = await api.me(refreshed.accessToken)
+
+        set({
+          user,
+          accessToken: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken,
+          isLoading: false,
+          isInitialized: true,
+        })
+      } catch {
+        get().clearSession()
+        set({ isLoading: false, isInitialized: true })
+      }
     }
   },
 

@@ -348,6 +348,15 @@ export const api = {
       },
     ),
 
+  refresh: (refreshToken: string) =>
+    request<{
+      accessToken: string
+      refreshToken: string
+    }>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    }),
+
   login: (data: {
     identifier: string
     password: string
