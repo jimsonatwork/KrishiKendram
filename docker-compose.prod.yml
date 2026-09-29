@@ -39,7 +39,13 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api/v1}
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "4000:80"
 
