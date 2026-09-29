@@ -20,7 +20,7 @@
 | Current platform priority | Concrete domain coverage → authorization correctness → UI/runtime integration → release readiness |
 | Working-tree state at blueprint creation | Checked at each meaningful checkpoint |
 | Development mode | Incremental, reversible, test-driven |
-| Next major target | Continue concrete product-domain/runtime gaps without reopening established foundations |
+| Next major target | Close the reconciled core completion matrix before further domain expansion |
 
 ## Current Status
 
@@ -55,6 +55,17 @@
 
 Authorization core is considered an **established foundation**, not an area
 for unnecessary rewrite.
+
+### 2026-09-29 Core Completion Direction
+
+The current repository contains substantial lifecycle foundations and two newer
+vertical slices (Livestock and Marketplace). Those slices remain, but further
+breadth expansion is parked. Core completion is now measured against the
+Execution Bible 12-point gate across Auth, Users/Admin, Farms, FarmAsset,
+FarmRecord, Crop, Intake, lifecycle/history, frontend UX/compatibility, and
+production readiness. Current module status is PARTIAL until the complete
+acceptance evidence is closed; passing builds/tests alone do not upgrade a
+module to COMPLETE.
 
 ### 2026-09-26 Major Lifecycle Checkpoint
 

@@ -1,3 +1,11 @@
+## 2026-09-29 — Core Completion Audit Direction
+
+- Reconciled the Execution Bible current position with the live canonical repository checkpoint 6ef1bd5.
+- Recorded an evidence-based core completion matrix across Auth, Users/Admin, Farms, FarmAsset, FarmRecord, Crop, Intake, lifecycle/history, frontend UX/compatibility, and production readiness.
+- Kept Livestock and Marketplace vertical slices in place while parking breadth expansion until core completion gates are closed.
+- Recorded the verified regression gate: backend 36/36 suites and 343/343 tests, backend build PASS, Prisma validation PASS, frontend build PASS (2314 modules; 433.53 kB / 138.07 kB gzip), Docker Compose config PASS, and diff check PASS.
+- No new architecture or speculative domain work introduced.
+
 ## 2026-09-29 — Marketplace Listing Vertical Slice
 
 ### Git checkpoint

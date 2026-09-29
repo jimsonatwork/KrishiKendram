@@ -97,18 +97,61 @@ No direct C → A promotion.
 The .cto-backups/ directory is housekeeping and is not part of the intended
 implementation change.
 
-### Current execution position
+### Current execution position — reconciled 29 Sep 2026
 
-R1 authorization/capability integration is treated as CLOSED.
+The authorization, relationship, movement, lineage, evidence, transfer, history,
+admin workspace, and FarmAsset lifecycle foundations are established and are
+not being reopened without a concrete regression.
 
-The UsersService Field Policy migration segment has now been completed and verified.
-The Registry / Authorization foundation has also been verified through the R1.17 regression.
-The ResourceMovement persistence/resolution foundation has now been implemented and checkpointed.
-The ResourceLineage persistence/resolution foundation has now been implemented and checkpointed.
-The transfer workflow has now been exposed end-to-end for privileged administrative approval, including an authorization-checked pending queue, frontend action, and regression coverage.
-Latest checkpoint: `18f44b8` — Complete administrative transfer approval workflow.
-The latest working checkpoint is V0.5.24 A/B/C Promotion Recovery Checkpoint: searchable/filterable cross-module History presentation is implemented and validated.
-The next controlled activity remains cross-module lifecycle UI/runtime coverage and compatibility hardening; do not reopen established authorization/relationship foundations unless a concrete regression is found.
+Verified repository checkpoint: 6ef1bd5 — Add marketplace listing vertical slice.
+The repository is clean and the canonical branch is main.
+
+The current execution strategy has been deliberately narrowed: the recent
+Livestock and Marketplace slices remain in the product, but breadth expansion is
+parked while the core product completion matrix is reconciled. This prevents
+new verticals from masking incomplete core workflows.
+
+Latest verified regression gate at this checkpoint:
+- Backend: 36 suites / 343 tests passed.
+- Backend production build: PASS.
+- Prisma schema validation: PASS.
+- Frontend production build: PASS (2314 modules; 433.53 kB JS / 138.07 kB gzip).
+- Docker Compose configuration: PASS.
+- git diff --check: PASS.
+
+The next controlled activity is the core completion audit and documentation
+reconciliation across Auth/Users/Admin, Farms/FarmAsset/FarmRecord/Crop/Intake,
+lifecycle/history, frontend workflow states, and production readiness. Any
+real code gap found by that audit is fixed narrowly; otherwise documentation is
+updated to match verified repository evidence.
+
+## 6. Core Completion Matrix — 29 Sep 2026
+
+This matrix reconciles the live repository against the 12-point completion gate.
+A PARTIAL status means the implementation is substantial but the full product
+acceptance evidence is not yet closed; it does not mean the underlying work is
+missing.
+
+| Core area | Status | Verified evidence / remaining closure |
+|---|---|---|
+| Auth | PARTIAL | Login/register/logout/refresh/me, JWT boundary, DTO validation, auth tests and production build pass; full authenticated runtime/E2E acceptance remains to close. |
+| Users | PARTIAL | CRUD/admin APIs, shared Field Policy validation, status/role safeguards, activity/history UI and tests exist; full end-to-end workflow acceptance remains. |
+| Admin / Roles / Permissions | PARTIAL | Registry/capability/field-policy services, admin APIs and System workspace UI exist; full runtime integration matrix remains. |
+| Farms | PARTIAL | CRUD, archive/restore, ownership/relationship lifecycle, history and transfer paths exist; complete UI/runtime acceptance remains. |
+| FarmAsset | PARTIAL | CRUD plus custody, lease, split, merge, transfer, movement, lineage, evidence and history foundations; V0.5.54 route verification passed; complete module gate remains. |
+| FarmRecord | PARTIAL | Model/API and authorization foundation plus intake creation path exist; broader lifecycle/UI/runtime acceptance remains. |
+| Crop | PARTIAL | CRUD, authorization/validation, intake persistence and duplicate protection exist; broader lifecycle/UI/runtime acceptance remains. |
+| Intake | PARTIAL | Authorization occurs before extraction; farm-record and canonical crop persistence paths plus tests exist; multimodal/runtime acceptance remains. |
+| Lifecycle / History / Evidence | PARTIAL | Relationship, movement, lineage, evidence, transfer and history foundations are implemented and tested; cross-module runtime acceptance is the remaining closure work. |
+| Livestock | PARTIAL | Vertical slice is present and retained; core module completion gate has not yet been claimed. |
+| Marketplace | PARTIAL | Listing vertical slice is present and retained; core module completion gate has not yet been claimed. |
+| Frontend UX / compatibility | PARTIAL | Production build passes; admin/core pages and lifecycle panels exist; systematic loading/error/empty/mobile/reduced-motion acceptance remains. |
+| Production / release | PARTIAL | Backend/frontend builds, Prisma validation, Compose config and diff checks pass; fresh migration/security/runtime deployment verification remains before final release claim. |
+
+Decision: breadth expansion is parked. The next implementation work must close
+these PARTIAL gates from the top of the core stack downward, fixing only concrete
+acceptance gaps found by evidence. No new domain expansion is authorized by this
+checkpoint merely because its schema or vertical slice exists.
 
 ## 6. Historical Work Already Completed
 
