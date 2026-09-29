@@ -6,6 +6,7 @@ import { AuthorizationService } from '../platform/authorization/authorization.se
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { RegistryService } from '../platform/registry/registry.service';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
+import { AuditService } from '../platform/audit/audit.service';
 import { CreateLivestockDto } from './dto/create-livestock.dto';
 import { UpdateLivestockDto } from './dto/update-livestock.dto';
 
@@ -16,6 +17,7 @@ export class LivestockService {
     private readonly authorization: AuthorizationService,
     private readonly registry: RegistryService,
     private readonly relationships: ResourceRelationshipService,
+    private readonly audit: AuditService,
   ) {}
 
   private async context(id: string, includeArchived = false) {
@@ -110,6 +112,13 @@ export class LivestockService {
       await this.relationships.createOwnerRelationship(
         tx, 'livestock', livestock.id, farm.ownerId, livestock.createdAt,
       );
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'CREATE',
+        resourceType: 'livestock',
+        resourceId: livestock.id,
+        description: 'Livestock created.',
+      });
       return livestock;
     });
   }
@@ -155,14 +164,24 @@ export class LivestockService {
     const data = this.validate(dto);
     delete data.farmId;
     delete data.acquiredAt;
-    return this.prisma.livestock.update({
-      where: { id },
-      data: {
-        ...(data as any),
-        ...(dto.acquiredAt !== undefined
-          ? { acquiredAt: new Date(dto.acquiredAt) }
-          : {}),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.livestock.update({
+        where: { id },
+        data: {
+          ...(data as any),
+          ...(dto.acquiredAt !== undefined
+            ? { acquiredAt: new Date(dto.acquiredAt) }
+            : {}),
+        },
+      });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'UPDATE',
+        resourceType: 'livestock',
+        resourceId: id,
+        description: 'Livestock updated.',
+      });
+      return updated;
     });
   }
 
@@ -175,10 +194,18 @@ export class LivestockService {
       await this.relationships.terminateResourceRelationships(
         tx, 'livestock', id, endedAt, 'Livestock archived',
       );
-      return tx.livestock.update({
+      const archived = await tx.livestock.update({
         where: { id },
         data: { deletedAt: endedAt },
       });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'DELETE',
+        resourceType: 'livestock',
+        resourceId: id,
+        description: 'Livestock archived.',
+      });
+      return archived;
     });
   }
 
@@ -205,6 +232,13 @@ export class LivestockService {
       await this.relationships.createOwnerRelationship(
         tx, 'livestock', id, ownerId, new Date(),
       );
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'RESTORE',
+        resourceType: 'livestock',
+        resourceId: id,
+        description: 'Livestock restored.',
+      });
       return restored;
     });
   }
