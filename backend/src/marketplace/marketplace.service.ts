@@ -40,9 +40,11 @@ export class MarketplaceService {
     const ownerId = await this.resourceOwner(dto.resourceType, dto.resourceId);
     if (!ownerId) throw new NotFoundException('Marketplace resource not found.');
     if (ownerId !== userId && role !== UserRole.SUPER_ADMIN) throw new BadRequestException('Only the current resource owner can create a listing.');
-    const listing = await this.prisma.marketplaceListing.create({ data: { sellerId: ownerId, resourceType: dto.resourceType, resourceId: dto.resourceId, title: dto.title.trim(), description: dto.description?.trim(), quantity: dto.quantity, unit: dto.unit?.trim(), price: dto.price, currency: dto.currency?.trim().toUpperCase() || 'INR' } });
-    await this.audit.create({ actorId: userId, action: 'CREATE', resourceType: 'marketplaceListing', resourceId: listing.id, description: 'Marketplace listing created' });
-    return listing;
+    return this.prisma.$transaction(async (tx) => {
+      const listing = await tx.marketplaceListing.create({ data: { sellerId: ownerId, resourceType: dto.resourceType, resourceId: dto.resourceId, title: dto.title.trim(), description: dto.description?.trim(), quantity: dto.quantity, unit: dto.unit?.trim(), price: dto.price, currency: dto.currency?.trim().toUpperCase() || 'INR' } });
+      await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE', resourceType: 'marketplaceListing', resourceId: listing.id, description: 'Marketplace listing created' });
+      return listing;
+    });
   }
 
   async findPublished() {
@@ -56,18 +58,28 @@ export class MarketplaceService {
 
   async update(userId: string, role: UserRole, id: string, dto: UpdateListingDto) {
     await this.assertListing(userId, role, id, AuthorizationAction.UPDATE);
-    return this.prisma.marketplaceListing.update({ where: { id }, data: { title: dto.title?.trim(), description: dto.description?.trim(), quantity: dto.quantity, unit: dto.unit?.trim(), price: dto.price, currency: dto.currency?.trim().toUpperCase() } });
+    return this.prisma.$transaction(async (tx) => {
+      const listing = await tx.marketplaceListing.update({ where: { id }, data: { title: dto.title?.trim(), description: dto.description?.trim(), quantity: dto.quantity, unit: dto.unit?.trim(), price: dto.price, currency: dto.currency?.trim().toUpperCase() } });
+      await this.audit.createInTransaction(tx, { actorId: userId, action: 'UPDATE', resourceType: 'marketplaceListing', resourceId: id, description: 'Marketplace listing updated' });
+      return listing;
+    });
   }
 
   async publish(userId: string, role: UserRole, id: string) {
     await this.assertListing(userId, role, id, AuthorizationAction.UPDATE);
-    const listing = await this.prisma.marketplaceListing.update({ where: { id }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
-    await this.audit.create({ actorId: userId, action: 'PUBLISH', resourceType: 'marketplaceListing', resourceId: id, description: 'Marketplace listing published' });
-    return listing;
+    return this.prisma.$transaction(async (tx) => {
+      const listing = await tx.marketplaceListing.update({ where: { id }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
+      await this.audit.createInTransaction(tx, { actorId: userId, action: 'PUBLISH', resourceType: 'marketplaceListing', resourceId: id, description: 'Marketplace listing published' });
+      return listing;
+    });
   }
 
   async archive(userId: string, role: UserRole, id: string) {
     await this.assertListing(userId, role, id, AuthorizationAction.DELETE);
-    return this.prisma.marketplaceListing.update({ where: { id }, data: { status: 'ARCHIVED', deletedAt: new Date() } });
+    return this.prisma.$transaction(async (tx) => {
+      const listing = await tx.marketplaceListing.update({ where: { id }, data: { status: 'ARCHIVED', deletedAt: new Date() } });
+      await this.audit.createInTransaction(tx, { actorId: userId, action: 'DELETE', resourceType: 'marketplaceListing', resourceId: id, description: 'Marketplace listing archived' });
+      return listing;
+    });
   }
 }
