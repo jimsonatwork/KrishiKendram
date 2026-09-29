@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RegistryService } from '../platform/registry/registry.service';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
+import { AuditService } from '../platform/audit/audit.service';
 
 import {
   AuthorizationAction,
@@ -31,6 +32,7 @@ export class CropsService {
     private readonly authorization: AuthorizationService,
     private readonly registry: RegistryService,
     private readonly relationships: ResourceRelationshipService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(
@@ -562,7 +564,12 @@ export class CropsService {
     });
     return this.prisma.$transaction(async (tx) => {
       const crop = await tx.crop.update({ where: { id: cropId }, data: { deletedAt: null } });
-      await this.relationships.createOwnerRelationship(tx, 'crop', crop.id, ownerId, new Date());
+      const restoredAt = new Date();
+      await this.relationships.createOwnerRelationship(tx, 'crop', crop.id, ownerId, restoredAt);
+      await this.audit.createInTransaction(tx, {
+        actorId: userId, action: 'RESTORE', resourceType: 'crop', resourceId: cropId,
+        description: 'Crop restored', metadata: { ownerId, restoredAt: restoredAt.toISOString() },
+      });
       return crop;
     });
   }
@@ -624,10 +631,15 @@ export class CropsService {
         'Crop archived',
       );
 
-      return tx.crop.update({
+      const archived = await tx.crop.update({
         where: { id: cropId },
         data: { deletedAt: endedAt },
       });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId, action: 'ARCHIVE', resourceType: 'crop', resourceId: cropId,
+        description: 'Crop archived', metadata: { farmId: cropContext.farmId, archivedAt: endedAt.toISOString() },
+      });
+      return archived;
     });
   }
 }

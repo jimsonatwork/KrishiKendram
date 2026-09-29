@@ -29,6 +29,8 @@ describe('CropsService', () => {
     validateResourceField: jest.fn(),
   } as any;
 
+  const audit = { createInTransaction: jest.fn() } as any;
+
   const relationships = {
     createOwnerRelationship: jest.fn(),
     terminateResourceRelationships: jest.fn(),
@@ -46,6 +48,7 @@ describe('CropsService', () => {
       authorization,
       registry,
       relationships,
+      audit,
     );
   });
 
