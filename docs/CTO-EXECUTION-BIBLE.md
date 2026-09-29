@@ -112,10 +112,11 @@ parked while the core product completion matrix is reconciled. This prevents
 new verticals from masking incomplete core workflows.
 
 Latest verified regression gate at this checkpoint (29 Sep 2026):
+- Latest API/security hardening checkpoint: 42aa4ef / c23f097 / 55be29c.
 - Authenticated backend core regression: Users/Auth 5/5 focused tests passed.
 - Farms focused regression: 5 suites / 59 tests passed.
 - Crops/Intake focused regression: 3 suites / 26 tests passed.
-- Backend full regression: 36 suites / 345 tests passed.
+- Backend full regression: 36 suites / 346 tests passed.
 - Backend production build: PASS.
 - Prisma schema validation: PASS.
 - Frontend TypeScript check and production build: PASS (2314 modules; 433.92 kB JS / 138.14 kB gzip).

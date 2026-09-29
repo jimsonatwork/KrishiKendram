@@ -80,6 +80,14 @@ Pending — Livestock domain vertical slice
 - Surfaced relationship history in the existing Users Activity workspace.
 - Added focused service coverage; backend build, frontend production build, and git diff --check passed.
 
+## 2026-09-29 — API validation and error-contract hardening
+
+- Added bounded, class-validated query DTOs for Users activity/history endpoints and platform audit recent-activity retrieval.
+- Added validated bulk-user deletion request DTO.
+- Converted expected relationship lifecycle/transfer/custody/lease conflicts from generic errors to HTTP 409 Conflict responses.
+- Verification: backend 36 suites / 346 tests passed; Prisma schema validation passed; backend Nest build passed; frontend production build passed (2,314 modules); git diff check passed.
+- Checkpoints: 42aa4ef, c23f097, 55be29c.
+
 # KrishiKendram — CTO Changelog
 
 This is the concise operational history of architectural milestones.
