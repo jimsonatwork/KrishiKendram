@@ -148,7 +148,7 @@ missing.
 | Livestock | PARTIAL | Vertical slice is present and retained; core module completion gate has not yet been claimed. |
 | Marketplace | PARTIAL | Listing vertical slice is present and retained; core module completion gate has not yet been claimed. |
 | Frontend UX / compatibility | PARTIAL | Production build passes; admin/core pages and lifecycle panels exist; systematic loading/error/empty/mobile/reduced-motion acceptance remains. |
-| Production / release | PARTIAL | Backend/frontend builds, Prisma validation, Compose config and diff checks pass; fresh migration/security/runtime deployment verification remains before final release claim. |
+| Production / release | PARTIAL | Backend/frontend builds, Prisma validation, Compose config and full production image build pass; live runtime deployment smoke test remains before final release claim. |
 
 Decision: breadth expansion is parked. The next implementation work must close
 these PARTIAL gates from the top of the core stack downward, fixing only concrete
