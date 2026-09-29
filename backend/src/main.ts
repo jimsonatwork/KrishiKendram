@@ -10,6 +10,10 @@ async function bootstrap() {
 
   const config = app.get(ConfigService);
 
+  // Allow NestJS lifecycle hooks to close Prisma/other resources cleanly
+  // when the container receives SIGTERM during deployment or restart.
+  app.enableShutdownHooks();
+
   app.setGlobalPrefix('api');
 
   app.enableVersioning({
