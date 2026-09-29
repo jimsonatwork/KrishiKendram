@@ -1,3 +1,15 @@
+## 2026-09-29 — Core runtime closure pass
+
+- Closed the frontend authentication session-refresh gap by using the existing /auth/refresh contract during session initialization and retrying /auth/me after successful token rotation.
+- Users/Auth focused regression: 2 suites / 5 tests passed.
+- Farms focused regression: 5 suites / 59 tests passed.
+- Crops/Intake focused regression: 3 suites / 26 tests passed.
+- Full backend regression: 36 suites / 343 tests passed.
+- Backend production build and Prisma schema validation passed.
+- Frontend TypeScript check and production build passed: 2,314 modules; 433.92 kB initial JavaScript / 138.14 kB gzip.
+- git diff --check passed and the working tree remains clean.
+- Checkpoint: 92e222c Harden frontend session refresh.
+
 ## 2026-09-29 — Core Completion Audit Direction
 
 - Reconciled the Execution Bible current position with the live canonical repository checkpoint 6ef1bd5.
