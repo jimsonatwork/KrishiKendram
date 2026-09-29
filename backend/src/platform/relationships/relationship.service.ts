@@ -338,6 +338,9 @@ export class ResourceRelationshipService {
       where: { resourceType, resourceId },
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
+    if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
+      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+    }
 
     const movement = await tx.resourceMovement.create({
       data: {
@@ -435,6 +438,9 @@ export class ResourceRelationshipService {
       where: { resourceType, resourceId },
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
+    if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
+      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+    }
 
     const movement = await tx.resourceMovement.create({
       data: {
@@ -539,6 +545,9 @@ export class ResourceRelationshipService {
       where: { resourceType, resourceId },
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
+    if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
+      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+    }
 
     const movement = await tx.resourceMovement.create({
       data: {
@@ -625,6 +634,9 @@ export class ResourceRelationshipService {
       where: { resourceType, resourceId },
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
+    if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
+      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+    }
 
     const movement = await tx.resourceMovement.create({
       data: {
