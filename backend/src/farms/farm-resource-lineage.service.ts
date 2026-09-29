@@ -154,6 +154,19 @@ export class FarmResourceLineageService {
       throw new BadRequestException('Merge effectiveAt cannot precede a source asset ownership start.');
     }
 
+    const latestSourceMovements = await Promise.all(
+      sourceIds.map((sourceId) =>
+        this.prisma.resourceMovement.findFirst({
+          where: { resourceType: 'farmAsset', resourceId: sourceId },
+          orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+          select: { id: true, effectiveAt: true },
+        }),
+      ),
+    );
+    if (latestSourceMovements.some((movement) => movement && effectiveAt < movement.effectiveAt)) {
+      throw new BadRequestException('Merge effectiveAt cannot precede the latest source asset movement.');
+    }
+
     const totalQuantity = assets.reduce((sum, asset) => sum + (asset.quantity ?? 0), 0);
 
     return this.prisma.$transaction(async (tx) => {
@@ -178,6 +191,7 @@ export class FarmResourceLineageService {
 
       const movements: any[] = [];
       const lineages: any[] = [];
+      let previousTargetMovementId: string | undefined;
       for (let index = 0; index < assets.length; index += 1) {
         const asset = assets[index];
         await this.relationships.terminateResourceRelationships(
@@ -213,6 +227,7 @@ export class FarmResourceLineageService {
           },
         });
         movements.push(movement);
+        previousTargetMovementId = movement.id;
 
         const lineage = await tx.resourceLineage.create({
           data: {
@@ -312,6 +327,15 @@ export class FarmResourceLineageService {
     }
     if (relationship && effectiveAt < relationship.validFrom) {
       throw new BadRequestException('Split effectiveAt cannot precede the source asset ownership start.');
+    }
+
+    const latestMovement = await this.prisma.resourceMovement.findFirst({
+      where: { resourceType: 'farmAsset', resourceId: assetId },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+      select: { id: true, effectiveAt: true },
+    });
+    if (latestMovement && effectiveAt < latestMovement.effectiveAt) {
+      throw new BadRequestException('Split effectiveAt cannot precede the latest source asset movement.');
     }
 
     const remainingQuantity = asset.quantity - dto.quantity;
