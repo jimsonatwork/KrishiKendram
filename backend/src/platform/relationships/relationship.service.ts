@@ -163,8 +163,8 @@ export class ResourceRelationshipService {
 
       if (!evidence) throw new Error('Transfer evidence not found.');
 
-      await tx.resourceRelationship.update({
-        where: { id: current.id },
+      const ended = await tx.resourceRelationship.updateMany({
+        where: { id: current.id, endedAt: null },
         data: {
           status: ResourceRelationshipStatus.TRANSFERRED,
           endedAt: effectiveAt,
@@ -173,6 +173,7 @@ export class ResourceRelationshipService {
           evidenceId: evidence.id,
         },
       });
+      if (ended.count !== 1) throw new Error('Active owner relationship is no longer available for transfer.');
 
       const destinationRelationship =
         await tx.resourceRelationship.create({
@@ -212,8 +213,8 @@ export class ResourceRelationshipService {
       return { previousRelationship: current, destinationRelationship, movement, evidence };
     }
 
-    await tx.resourceRelationship.update({
-      where: { id: current.id },
+    const ended = await tx.resourceRelationship.updateMany({
+      where: { id: current.id, endedAt: null },
       data: {
         status: ResourceRelationshipStatus.TRANSFERRED,
         endedAt: effectiveAt,
@@ -221,6 +222,7 @@ export class ResourceRelationshipService {
         endedReason: reason ?? 'Ownership transferred',
       },
     });
+    if (ended.count !== 1) throw new Error('Active owner relationship is no longer available for transfer.');
 
     const destinationRelationship =
       await tx.resourceRelationship.create({

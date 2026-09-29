@@ -9,7 +9,7 @@ describe('ResourceTransferRequestService', () => {
     resourceTransferRequest: { create: jest.fn(), updateMany: jest.fn(), update: jest.fn(), findUnique: jest.fn() },
     resourceEvidence: { create: jest.fn(), findUnique: jest.fn() },
     resourceRelationship: { findFirst: jest.fn() },
-    farmAsset: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+    farmAsset: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     resourceMovement: { findFirst: jest.fn(), create: jest.fn() },
     resourceLineage: { create: jest.fn() },
     farm: { update: jest.fn() },
@@ -28,6 +28,7 @@ describe('ResourceTransferRequestService', () => {
     prisma.$transaction.mockImplementation((cb: any) => cb(tx));
     tx.resourceTransferRequest.updateMany.mockResolvedValue({ count: 1 });
     tx.resourceTransferRequest.update.mockResolvedValue({ id: 'request-1', status: 'COMPLETED' });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
     tx.resourceRelationship.findFirst.mockResolvedValue({ id: 'owner-rel', userId: 'jim', validFrom: new Date('2026-01-01T00:00:00.000Z') });
     tx.resourceMovement.findFirst.mockResolvedValue(null);
     tx.resourceMovement.create.mockResolvedValue({ id: 'movement-1' });
@@ -248,8 +249,8 @@ describe('ResourceTransferRequestService', () => {
     expect(tx.farmAsset.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ farmId: 'farm-1', type: 'LIVESTOCK', quantity: 5, unit: 'head' }),
     });
-    expect(tx.farmAsset.update).toHaveBeenCalledWith({
-      where: { id: 'asset-1' }, data: { quantity: 5 },
+    expect(tx.farmAsset.updateMany).toHaveBeenCalledWith({
+      where: { id: 'asset-1', quantity: 10 }, data: { quantity: 5 },
     });
     expect(tx.resourceMovement.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -292,6 +293,31 @@ describe('ResourceTransferRequestService', () => {
     )
     expect(prisma.resourceTransferRequest.findMany).not.toHaveBeenCalled()
   })
+
+  it('rejects a partial transfer backdated before the latest source movement', async () => {
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farmAsset', resourceId: 'asset-1',
+      sourceUserId: 'jim', destinationUserId: 'cto', quantity: 5, unit: 'kg',
+      status: 'PENDING', effectiveAt: new Date('2026-09-20T00:00:00.000Z'),
+      expiresAt: null, reason: 'Backdated partial transfer', transactionId: null, evidenceId: null,
+    });
+    tx.farmAsset.findUnique.mockResolvedValue({
+      id: 'asset-1', farmId: 'farm-1', type: 'SEED_STOCK', name: 'Seed',
+      quantity: 100, unit: 'kg', metadata: null,
+    });
+    tx.resourceRelationship.findFirst.mockResolvedValue({
+      id: 'owner-rel', userId: 'jim', validFrom: new Date('2026-09-01T00:00:00.000Z'),
+    });
+    tx.resourceMovement.findFirst.mockResolvedValue({
+      id: 'movement-1', effectiveAt: new Date('2026-09-25T00:00:00.000Z'),
+    });
+
+    await expect(service.accept('request-1', 'cto')).rejects.toThrow(
+      'Partial transfer effective date cannot precede the latest movement.',
+    );
+    expect(tx.farmAsset.create).not.toHaveBeenCalled();
+    expect(relationships.transferOwnerRelationship).not.toHaveBeenCalled();
+  });
 
   it('rejects a partial transfer equal to the full source quantity', async () => {
     prisma.resourceTransferRequest.findUnique.mockResolvedValue({

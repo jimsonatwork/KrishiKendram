@@ -281,18 +281,28 @@ export class ResourceTransferRequestService {
     if (sourceRelationship && effectiveAt < sourceRelationship.validFrom) {
       throw new BadRequestException('Partial transfer effective date cannot precede source ownership start.');
     }
+    const previousMovementForSource = await tx.resourceMovement.findFirst({
+      where: { resourceType: 'farmAsset', resourceId: asset.id },
+      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    });
+    if (previousMovementForSource && effectiveAt < previousMovementForSource.effectiveAt) {
+      throw new BadRequestException('Partial transfer effective date cannot precede the latest movement.');
+    }
     const evidenceId = request.evidenceId ?? undefined;
     const target = await tx.farmAsset.create({
       data: { farmId: asset.farmId, type: asset.type, name: asset.name, quantity: request.quantity, unit: asset.unit, metadata: asset.metadata },
     });
 
     await this.relationships.createOwnerRelationship(tx, 'farmAsset', target.id, request.sourceUserId, effectiveAt);
-    await tx.farmAsset.update({ where: { id: asset.id }, data: { quantity: remainingQuantity } });
-
-    const previousMovement = await tx.resourceMovement.findFirst({
-      where: { resourceType: 'farmAsset', resourceId: asset.id },
-      orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
+    const quantityUpdated = await tx.farmAsset.updateMany({
+      where: { id: asset.id, quantity: asset.quantity },
+      data: { quantity: remainingQuantity },
     });
+    if (quantityUpdated.count !== 1) {
+      throw new BadRequestException('Source asset quantity changed while completing the transfer.');
+    }
+
+    const previousMovement = previousMovementForSource;
 
     const splitMovement = await tx.resourceMovement.create({
       data: {

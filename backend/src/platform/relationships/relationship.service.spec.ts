@@ -66,7 +66,7 @@ describe('ResourceRelationshipService', () => {
 
   it('terminates every open relationship when a resource lifecycle closes', async () => {
     const endedAt = new Date('2026-09-26T12:00:00Z');
-    updateMany.mockResolvedValue({ count: 2 });
+    updateMany.mockResolvedValue({ count: 1 });
 
     const service = new ResourceRelationshipService(prisma);
     await service.terminateResourceRelationships(
@@ -184,6 +184,7 @@ describe('ResourceRelationshipService', () => {
       'Out-of-order transfer', undefined,
     )).rejects.toThrow('Transfer effective date cannot precede the latest movement.');
     expect(update).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
   });
 
