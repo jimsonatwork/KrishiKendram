@@ -28,6 +28,10 @@ import { CreateUserDto } from './dto/create-user.dto';
 
 import { UpdateUserDto } from './dto/update-user.dto';
 
+import { BulkDeleteUsersDto } from './dto/bulk-delete-users.dto';
+
+import { RecentActivityQueryDto } from './dto/recent-activity-query.dto';
+
 // ============================================================
 // PART 01 END
 // ============================================================
@@ -70,7 +74,10 @@ export class UsersController {
   // ==========================================================
 
   @Get('activity/recent')
-  async getRecentActivity(@Req() req: any, @Query('limit') limit?: string) {
+  async getRecentActivity(
+    @Req() req: any,
+    @Query() query: RecentActivityQueryDto,
+  ) {
     await this.authorizationService.assertCan({
       user: req.user,
       module: 'platform',
@@ -78,7 +85,7 @@ export class UsersController {
       action: AuthorizationAction.READ_ACTIVITY,
     });
 
-    return this.usersService.getRecentActivity(limit ? Number(limit) : 50);
+    return this.usersService.getRecentActivity(query.limit ?? 50);
   }
 
   // ==========================================================
@@ -293,10 +300,7 @@ export class UsersController {
 
   @Delete('bulk')
   async bulkDelete(
-    @Body()
-    body: {
-      userIds: string[];
-    },
+    @Body() body: BulkDeleteUsersDto,
     @Req() req: any,
   ) {
     await this.authorizationService.assertCan({

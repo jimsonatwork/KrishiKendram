@@ -123,7 +123,7 @@ describe('UsersController authorization ordering', () => {
 
     await controller.getRecentActivity(
       { user },
-      '20',
+      { limit: 20 },
     );
 
     expect(events).toEqual([
