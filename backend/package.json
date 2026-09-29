@@ -27,7 +27,8 @@
     "reports": "./scripts/reports.sh",
     "analyze": "./scripts/analyze.sh",
     "doctor": "./scripts/doctor.sh",
-    "clean": "./scripts/clean.sh"
+    "clean": "./scripts/clean.sh",
+    "bootstrap:super-admin": "npm run build && node dist/src/bootstrap-super-admin.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",
