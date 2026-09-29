@@ -1,3 +1,12 @@
+## 2026-09-29 — Lifecycle closure / regression checkpoint
+
+- Relationship lifecycle movement creation now rejects backdated custody/lease/return/transfer movements against the latest resource movement.
+- Crop archive/restore now records transactional audit events, matching Farm and FarmAsset lifecycle coverage.
+- Full backend regression: 36 suites / 345 tests passed.
+- Frontend TypeScript check and production build passed: 2,314 modules; 433.92 kB initial JS / 138.14 kB gzip.
+- Prisma schema validation and git diff check passed; working tree clean.
+- Checkpoint: dd75c78 (relationship movement chronology), 3db301b (crop lifecycle audit).
+
 ## 2026-09-29 — Lifecycle integrity hardening
 
 - Hardened FarmAsset split and merge chronology so an effective date cannot precede the latest source movement.
