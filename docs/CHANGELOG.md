@@ -1,3 +1,12 @@
+## 2026-09-29 — Lifecycle integrity hardening
+
+- Hardened FarmAsset split and merge chronology so an effective date cannot precede the latest source movement.
+- Merge movement records now preserve an ordered previous-movement chain on the newly created target.
+- Added farm/farm-asset archive, delete, and restore audit events inside the same database transaction as the lifecycle mutation.
+- Lifecycle-focused regression coverage now includes the new chronology guards.
+- Verification: 36 backend suites / 345 tests passed; backend production build passed; Prisma schema validation passed; frontend TypeScript check and production build passed with 2,314 modules and 433.92 kB initial JS / 138.14 kB gzip; git diff check passed.
+- Checkpoints: 853802e, 8c17b51.
+
 ## 2026-09-29 — Core runtime closure pass
 
 - Closed the frontend authentication session-refresh gap by using the existing /auth/refresh contract during session initialization and retrying /auth/me after successful token rotation.
