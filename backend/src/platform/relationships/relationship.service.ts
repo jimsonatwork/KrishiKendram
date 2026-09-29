@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
@@ -118,7 +118,7 @@ export class ResourceRelationshipService {
     }
 
     if (effectiveAt < current.validFrom) {
-      throw new Error('Transfer effective date cannot precede the active ownership start date.');
+      throw new ConflictException('Transfer effective date cannot precede the active ownership start date.');
     }
 
     const destinationCurrent = await tx.resourceRelationship.findFirst({
@@ -133,7 +133,7 @@ export class ResourceRelationshipService {
     });
 
     if (destinationCurrent) {
-      throw new Error('Destination user is already the active owner.');
+      throw new ConflictException('Destination user is already the active owner.');
     }
 
     const previousMovement = await tx.resourceMovement.findFirst({
@@ -141,7 +141,7 @@ export class ResourceRelationshipService {
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
     if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
-      throw new Error('Transfer effective date cannot precede the latest movement.');
+      throw new ConflictException('Transfer effective date cannot precede the latest movement.');
     }
 
     if (evidenceInput || existingEvidenceId) {
@@ -161,7 +161,7 @@ export class ResourceRelationshipService {
         },
       });
 
-      if (!evidence) throw new Error('Transfer evidence not found.');
+      if (!evidence) throw new ConflictException('Transfer evidence not found.');
 
       const ended = await tx.resourceRelationship.updateMany({
         where: { id: current.id, endedAt: null },
@@ -173,7 +173,7 @@ export class ResourceRelationshipService {
           evidenceId: evidence.id,
         },
       });
-      if (ended.count !== 1) throw new Error('Active owner relationship is no longer available for transfer.');
+      if (ended.count !== 1) throw new ConflictException('Active owner relationship is no longer available for transfer.');
 
       const destinationRelationship =
         await tx.resourceRelationship.create({
@@ -222,7 +222,7 @@ export class ResourceRelationshipService {
         endedReason: reason ?? 'Ownership transferred',
       },
     });
-    if (ended.count !== 1) throw new Error('Active owner relationship is no longer available for transfer.');
+    if (ended.count !== 1) throw new ConflictException('Active owner relationship is no longer available for transfer.');
 
     const destinationRelationship =
       await tx.resourceRelationship.create({
@@ -287,11 +287,11 @@ export class ResourceRelationshipService {
     });
 
     if (current?.userId === destinationUserId) {
-      throw new Error('Destination user is already the active custodian.');
+      throw new ConflictException('Destination user is already the active custodian.');
     }
 
     if (current && effectiveAt < current.validFrom) {
-      throw new Error('Custody change cannot precede custody start.');
+      throw new ConflictException('Custody change cannot precede custody start.');
     }
 
     const evidence = evidenceInput
@@ -341,7 +341,7 @@ export class ResourceRelationshipService {
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
     if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
-      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+      throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
     const movement = await tx.resourceMovement.create({
@@ -393,11 +393,11 @@ export class ResourceRelationshipService {
     });
 
     if (!current) {
-      throw new Error('Active custodian not found.');
+      throw new ConflictException('Active custodian not found.');
     }
 
     if (effectiveAt < current.validFrom) {
-      throw new Error('Custody return cannot precede custody start.');
+      throw new ConflictException('Custody return cannot precede custody start.');
     }
 
     const owner = await tx.resourceRelationship.findFirst({
@@ -441,7 +441,7 @@ export class ResourceRelationshipService {
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
     if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
-      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+      throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
     const movement = await tx.resourceMovement.create({
@@ -484,7 +484,7 @@ export class ResourceRelationshipService {
     },
   ) {
     if (validUntil <= effectiveAt) {
-      throw new Error('Lease validUntil must be after effectiveAt.');
+      throw new ConflictException('Lease validUntil must be after effectiveAt.');
     }
 
     const current = await tx.resourceRelationship.findFirst({
@@ -498,7 +498,7 @@ export class ResourceRelationshipService {
     });
 
     if (current && effectiveAt < current.validFrom) {
-      throw new Error('Lease replacement cannot precede lease start.');
+      throw new ConflictException('Lease replacement cannot precede lease start.');
     }
 
     const evidence = evidenceInput
@@ -548,7 +548,7 @@ export class ResourceRelationshipService {
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
     if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
-      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+      throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
     const movement = await tx.resourceMovement.create({
@@ -599,11 +599,11 @@ export class ResourceRelationshipService {
     });
 
     if (!current) {
-      throw new Error('Active lease not found.');
+      throw new ConflictException('Active lease not found.');
     }
 
     if (effectiveAt < current.validFrom) {
-      throw new Error('Lease end cannot precede lease start.');
+      throw new ConflictException('Lease end cannot precede lease start.');
     }
 
     const evidence = evidenceInput
@@ -637,7 +637,7 @@ export class ResourceRelationshipService {
       orderBy: [{ effectiveAt: 'desc' }, { recordedAt: 'desc' }, { id: 'desc' }],
     });
     if (previousMovement && effectiveAt < previousMovement.effectiveAt) {
-      throw new Error('Relationship movement effective date cannot precede the latest movement.');
+      throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
     const movement = await tx.resourceMovement.create({
