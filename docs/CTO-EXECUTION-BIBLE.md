@@ -1030,3 +1030,14 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Lazy-loaded the System workspace so the new admin UI remains outside the initial frontend bundle.
 - Frontend production build passed: 2,312 modules; initial JavaScript 431.04 kB / 137.46 kB gzip.
 - git diff --check passed.
+
+## V0.5.54 — FarmAsset Lifecycle Route Verification
+
+- Closed the deferred runtime boundary check for the FarmAsset operational lifecycle already implemented by the canonical FarmsService.
+- Added authenticated-boundary E2E coverage for custody assignment, custody return, lease creation, lease end, asset split, and asset merge routes; unauthenticated requests consistently return HTTP 401.
+- No new authorization path, persistence model, lifecycle abstraction, or test fixture framework was introduced.
+- Verification: authenticated application E2E **17/17 passed**; frontend production build **2,312 modules**, initial JavaScript **431.04 kB / 137.46 kB gzip**; `git diff --check` passed.
+
+### Next execution target
+
+Continue from verified runtime readiness into the next concrete product-domain capability, selecting only a business lifecycle with an explicit contract and reusing the existing Registry, Authorization, Relationship, Movement, Lineage, Evidence, and History foundations.

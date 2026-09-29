@@ -231,6 +231,28 @@ describe('Application runtime smoke (e2e)', () => {
     expect(Array.isArray(outgoing.body)).toBe(true);
   });
 
+  it('keeps FarmAsset custody and lease lifecycle routes behind JWT authentication', async () => {
+    for (const path of [
+      '/api/v1/farms/farm-id/assets/asset-id/custodian',
+      '/api/v1/farms/farm-id/assets/asset-id/custodian/return',
+      '/api/v1/farms/farm-id/assets/asset-id/lease',
+      '/api/v1/farms/farm-id/assets/asset-id/lease/end',
+    ]) {
+      await request(app.getHttpServer()).post(path).send({}).expect(401);
+    }
+  });
+
+  it('keeps FarmAsset split and merge lifecycle routes behind JWT authentication', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/farms/farm-id/assets/asset-id/split')
+      .send({})
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/api/v1/farms/farm-id/assets/merge')
+      .send({})
+      .expect(401);
+  });
+
   afterEach(async () => {
     await app.close();
   });

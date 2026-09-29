@@ -959,3 +959,11 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Replaced the System Coming Soon surface with real appearance, accessibility and visual-performance controls.
 - Reused existing theme store and reduced-motion behavior; no new backend architecture.
 - Lazy-loaded SystemPage and verified frontend production build.
+
+## 2026-09-29 — V0.5.54 FarmAsset lifecycle route verification
+
+- Closed the deferred runtime boundary verification for FarmAsset custody, lease, split, and merge lifecycle routes.
+- Added E2E JWT-boundary checks for custody assignment/return, lease creation/end, asset split, and asset merge.
+- Authenticated application E2E: **17/17 passed**.
+- Frontend production build: **2,312 modules**, 431.04 kB initial JavaScript / 137.46 kB gzip.
+- `git diff --check` passed; no duplicate authorization or lifecycle infrastructure introduced.

@@ -2980,3 +2980,16 @@ Continue concrete release/runtime verification and product-domain gaps; do not r
 - Admin System workspace is now functional rather than a placeholder.
 - Appearance controls reuse the canonical theme store and remain local/presentation-only.
 - System page is lazy-loaded; frontend build passes with 431.04 kB initial JS / 137.46 kB gzip.
+
+## 2026-09-29 — V0.5.54 FarmAsset Lifecycle Route Verification
+
+The deferred runtime boundary verification for the completed FarmAsset custody/lease/split/merge lifecycle is now closed.
+
+- Added E2E protection checks for custody assignment, custody return, lease creation, lease end, asset split, and asset merge routes.
+- All newly covered lifecycle entry points reject unauthenticated requests at the JWT boundary with HTTP 401.
+- No alternate authorization path, persistence model, fixture framework, or duplicate lifecycle engine was introduced.
+- Verification: authenticated application E2E **17/17 passed**; frontend production build **2,312 modules**, initial JavaScript **431.04 kB / 137.46 kB gzip**; `git diff --check` passed.
+
+### Next execution target
+
+Select the next concrete product-domain capability from an explicit business contract. Reuse the established Registry, Authorization, ResourceRelationship, ResourceMovement, ResourceLineage, ResourceEvidence, and History foundations; do not introduce speculative infrastructure or duplicate lifecycle systems.
