@@ -115,14 +115,14 @@ Latest verified regression gate at this checkpoint (29 Sep 2026):
 - Authenticated backend core regression: Users/Auth 5/5 focused tests passed.
 - Farms focused regression: 5 suites / 59 tests passed.
 - Crops/Intake focused regression: 3 suites / 26 tests passed.
-- Backend full regression: 36 suites / 343 tests passed.
+- Backend full regression: 36 suites / 345 tests passed.
 - Backend production build: PASS.
 - Prisma schema validation: PASS.
 - Frontend TypeScript check and production build: PASS (2314 modules; 433.92 kB JS / 138.14 kB gzip).
 - git diff --check: PASS.
-- Repository working tree: clean; canonical branch main is 3 commits ahead of origin/main.
+- Repository working tree: clean; canonical branch main is 6 commits ahead of origin/main.
 
-The Auth session-refresh gap is now closed: the frontend uses the existing refresh-token contract during session initialization and retries /auth/me after successful rotation. The next controlled activity is the core completion audit across Users/Admin, Farms/FarmAsset/FarmRecord/Crop/Intake, lifecycle/history, frontend workflow states, and production readiness. Any
+The Auth session-refresh gap is now closed: the frontend uses the existing refresh-token contract during session initialization and retries /auth/me after successful rotation. Lifecycle chronology is also hardened for FarmAsset split/merge, and farm/farm-asset archive/delete/restore mutations now emit transactional audit events. The next controlled activity remains the core completion audit across Users/Admin, Farms/FarmAsset/FarmRecord/Crop/Intake, lifecycle/history, frontend workflow states, and production readiness. Any
 real code gap found by that audit is fixed narrowly; otherwise documentation is
 updated to match verified repository evidence.
 
