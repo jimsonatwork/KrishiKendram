@@ -3,6 +3,7 @@ import { UserRole } from '@prisma/client';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { ApproveTransferRequestDto } from './dto/approve-transfer-request.dto';
 import { CreateTransferRequestDto } from './dto/create-transfer-request.dto';
 import { ResourceTransferRequestService } from './transfer-request.service';
 
@@ -65,13 +66,13 @@ export class ResourceTransferRequestController {
   approve(
     @Param('id') id: string,
     @CurrentUser() user: any,
-    @Body('reason') reason?: string,
+    @Body() dto: ApproveTransferRequestDto,
   ) {
     return this.transfers.approve(
       id,
       user.userId,
       user.role as UserRole,
-      reason,
+      dto.reason,
     );
   }
 }
