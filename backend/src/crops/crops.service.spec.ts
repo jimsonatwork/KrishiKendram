@@ -40,7 +40,10 @@ describe('CropsService', () => {
     jest.clearAllMocks();
     prisma.$transaction.mockImplementation(
       async (callback: (tx: any) => Promise<unknown>) =>
-        callback({ crop: prisma.crop }),
+        callback({
+        crop: prisma.crop,
+        auditEvent: { create: audit.createInTransaction },
+      }),
     );
 
     service = new CropsService(
@@ -368,6 +371,7 @@ describe('CropsService', () => {
     });
 
     expect(result).toEqual(updatedCrop);
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: 'UPDATE', resourceType: 'crop', resourceId: 'crop-1' }));
   });
 
   it('rejects a crop name when the central Registry rejects it', async () => {

@@ -506,11 +506,24 @@ export class CropsService {
       };
     }
 
-    return this.prisma.crop.update({
-      where: {
-        id: cropId,
-      },
-      data: updateData,
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.crop.update({
+        where: {
+          id: cropId,
+        },
+        data: updateData,
+      });
+
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'UPDATE',
+        resourceType: 'crop',
+        resourceId: cropId,
+        description: 'Crop updated',
+        metadata: { fields: Object.keys(dto) },
+      });
+
+      return updated;
     });
   }
 
