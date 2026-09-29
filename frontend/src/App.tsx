@@ -63,6 +63,7 @@ import {
   type AuthUser,
 } from '@/stores/auth.store'
 import { useThemeStore } from '@/stores/theme.store'
+const SystemPage = lazy(() => import('@/pages/admin/SystemPage').then((m) => ({ default: m.SystemPage })))
 const FarmsPage = lazy(() => import('@/pages/farms/FarmsPage').then((m) => ({ default: m.FarmsPage })))
 const CropsPage = lazy(() => import('@/pages/crops/CropsPage').then((m) => ({ default: m.CropsPage })))
 const ActivitiesPage = lazy(() => import('@/pages/activity/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })))
@@ -999,7 +1000,7 @@ function PortalLayout({
   } else if (location.pathname === '/app/capabilities') {
     content = <CapabilitiesPage />
   } else if (location.pathname === '/app/system') {
-    content = <ComingSoon title="System" />
+    content = <SystemPage />
   }
 
   return (
@@ -1717,37 +1718,6 @@ function EmptyState({
    COMING SOON
 ========================================================= */
 
-function ComingSoon({
-  title,
-}: {
-  title: string
-}) {
-  return (
-    <div className="space-y-8">
-      <PageHeader
-        eyebrow="KrishiKendram"
-        title={title}
-        description="This workspace is reserved for the next platform capability."
-      />
-
-      <div className="rounded-2xl border bg-card p-12 text-center">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Settings className="size-7" />
-        </div>
-
-        <h2 className="mt-5 text-xl font-semibold">
-          Coming next
-        </h2>
-
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          The application shell is ready. This module will
-          be connected to its backend capabilities in the
-          next implementation step.
-        </p>
-      </div>
-    </div>
-  )
-}
 
 /* =========================================================
    APP

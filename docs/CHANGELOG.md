@@ -953,3 +953,9 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Warm authenticated E2E smoke passed 15/15 after runtime/dependency hardening.
 - One cold-run timeout was cleared on immediate rerun; no code or test-timeout change was made.
 - Docker image revalidation was attempted but did not complete within the environment window; prior production image gate remains valid because only dev dependencies changed.
+
+## 2026-09-29 — V0.5.53 System workspace completion
+
+- Replaced the System Coming Soon surface with real appearance, accessibility and visual-performance controls.
+- Reused existing theme store and reduced-motion behavior; no new backend architecture.
+- Lazy-loaded SystemPage and verified frontend production build.

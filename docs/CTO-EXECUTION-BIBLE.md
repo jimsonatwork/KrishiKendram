@@ -1021,3 +1021,12 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Warm runtime result: 15/15 tests passed.
 - An initial cold run had 14/15 pass because the existing-user current-user read exceeded the default 5-second test timeout; immediate warm rerun passed without code changes, so no timeout inflation or test weakening was introduced.
 - Docker image revalidation was started but intentionally terminated after prolonged dependency installation with no further output; the runtime dependency set was unchanged because the security fixes were dev-only.
+
+## V0.5.53 — System Workspace Completion
+
+- Replaced the admin System Coming Soon placeholder with a functional workspace preference surface.
+- Reused the existing Zustand theme contract for system/light/dark mode, Krishi/Ocean/Harvest/Midnight colour themes, and visual-effects control.
+- Preserved the existing reduced-motion behavior and kept all preferences presentation-only; no backend authority or business-data contract was duplicated.
+- Lazy-loaded the System workspace so the new admin UI remains outside the initial frontend bundle.
+- Frontend production build passed: 2,312 modules; initial JavaScript 431.04 kB / 137.46 kB gzip.
+- git diff --check passed.

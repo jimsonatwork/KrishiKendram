@@ -2974,3 +2974,9 @@ Continue concrete release/runtime verification and product-domain gaps; do not r
 - Warm authenticated E2E smoke: 15/15 passed after the V0.5.51 hardening checkpoint.
 - Cold-run timeout was reproduced once and cleared on immediate warm rerun; no application change was justified.
 - Docker image revalidation was attempted but not used as a release blocker because the changed packages are development-only and the production image gate already passed in V0.5.49.
+
+### V0.5.53 — System Workspace Completion
+
+- Admin System workspace is now functional rather than a placeholder.
+- Appearance controls reuse the canonical theme store and remain local/presentation-only.
+- System page is lazy-loaded; frontend build passes with 431.04 kB initial JS / 137.46 kB gzip.
