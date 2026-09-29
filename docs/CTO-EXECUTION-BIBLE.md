@@ -798,7 +798,7 @@ The cross-module UI/runtime completion pass is closed for the current scope with
 - Verified responsive mobile navigation, horizontal overflow protection, safe-area handling, reduced-motion support, and visual-effects off support.
 - Added accessible labels to mobile navigation open/close controls.
 - Reviewed major loading, empty, and error-state patterns; existing coverage is sufficient, so no duplicate retry framework was introduced.
-- Runtime API health: /api/v1/health returned status ok.
+- Runtime API health:  returned status ok.
 - Frontend TypeScript and production build PASS; 2311 modules transformed.
 - git diff --check PASS; working tree clean after checkpoint.
 - Existing ~608 kB frontend bundle warning remains deferred to a dedicated performance pass.
@@ -1089,8 +1089,8 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Current backend regression evidence: 36 suites / 346 tests passed; frontend production build: 2,314 modules.
 - Current Prisma state: 20 migrations present and database schema up to date.
 - Production Compose configuration validates with required runtime secrets supplied; full backend/frontend production image build completed successfully.
-- Backend release image runs as non-root node and contains the /api/v1/health Docker healthcheck.
-- Live production Compose startup remains an explicit open acceptance item because the controlled smoke environment must not disturb the existing development PostgreSQL container/volume.
+- Backend release image runs as non-root node and contains the  Docker healthcheck.
+- Live production Compose startup was subsequently verified in an isolated project and removed cleanly without disturbing the development PostgreSQL container/volume.
 - Working tree was clean after checkpoint commit 2d449af.
 
 ### V0.5.56 — Frontend Production Dependency Classification Hardening
@@ -1101,6 +1101,28 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Re-ran the frontend production build: **PASS**, 2,314 modules; 433.92 kB initial JavaScript / 138.14 kB gzip.
 - git diff --check: PASS.
 
+### V0.5.57 — Production Runtime Acceptance
+
+- Isolated production Compose smoke completed under project kkrc without disturbing the development PostgreSQL container/volume.
+- Backend and frontend production images built successfully; frontend production build passed with 2,314 modules and 433.92 kB initial JavaScript / 138.14 kB gzip.
+- All 20 Prisma migrations applied successfully to the isolated PostgreSQL database.
+- Backend /api/v1/health returned production status: ok; frontend /healthz returned ok.
+- PostgreSQL, backend, and frontend reached healthy state. Backend runtime user verified as node.
+- Restart smoke passed and both health endpoints remained successful after restart.
+- Isolated RC containers, network, and volume were removed after verification.
+
+### V0.5.58 — Final RC Reconciliation
+
+- Release evidence reconciled across lifecycle integrity, relationship/movement controls, authorization, audit/provenance, DTO/API validation, database migrations, dependency hardening, regression, production builds, and live runtime smoke.
+- No domain scope expansion or speculative infrastructure was introduced during RC closure.
+- Remaining action is release checkpoint/tag preparation only.
+
+### V0.5.59 — Deployment Readiness
+
+- Production deployment requires real POSTGRES_PASSWORD, JWT_SECRET, and production CORS_ORIGINS; RC smoke credentials were test-only and discarded.
+- Deployment procedure must apply Prisma migrations with prisma migrate deploy and verify health after startup.
+- Production PostgreSQL persistence must be preserved; destructive volume removal is not part of normal deployment.
+
 ### Next execution target
 
-Perform the remaining concrete release acceptance checks; do not expand domain scope or introduce speculative infrastructure.
+Prepare the final release checkpoint from a clean canonical working tree; no further domain implementation is scheduled for this RC.

@@ -1,3 +1,27 @@
+## 2026-09-29 — Production RC runtime acceptance
+
+- Isolated production Compose smoke completed with project kkrc, without disturbing the development PostgreSQL container/volume.
+- Backend and frontend production images built successfully; frontend build: 2,314 modules, 433.92 kB initial JS / 138.14 kB gzip.
+- All 20 Prisma migrations applied successfully to the isolated production PostgreSQL database.
+- Backend /api/v1/health returned production status: ok; frontend /healthz returned ok.
+- PostgreSQL, backend, and frontend containers reached healthy state. Backend runtime user verified as node.
+- Restart smoke passed: backend and frontend restarted and both health endpoints returned successfully; all containers healthy afterward.
+- Isolated RC stack and volume were fully removed after verification; development PostgreSQL remains separate.
+
+## 2026-09-29 — Final RC reconciliation
+
+- Release acceptance evidence reconciled across the CTO Execution Bible and changelog: lifecycle integrity, authorization, provenance/audit, DTO validation, dependency boundary, database migrations, regression, production builds, and live runtime smoke are all recorded.
+- No new domain scope or speculative infrastructure was introduced during RC closure.
+- Canonical repository remains the release source of truth; final release checkpoint follows only after clean-tree verification.
+
+## 2026-09-29 — Deployment readiness checklist
+
+- Production deployment must provide real POSTGRES_PASSWORD, JWT_SECRET, and production CORS_ORIGINS; RC smoke secrets were test-only and discarded.
+- Apply Prisma migrations with prisma migrate deploy before or as part of the controlled deployment procedure.
+- Confirm PostgreSQL health, backend /api/v1/health, frontend /healthz, container health, and restart recovery after deployment.
+- Keep the production PostgreSQL volume persistent; do not use destructive volume removal during normal deployment.
+- The RC smoke environment was intentionally destroyed after validation; no production data was created or retained by this test.
+
 ## 2026-09-29 — Release candidate regression gate
 
 - Frontend production dependency audit is now clean: 0 production vulnerabilities after moving the unused shadcn CLI from runtime dependencies to devDependencies.
@@ -5,7 +29,7 @@
 - Prisma migration status: 20 migrations found; database schema up to date.
 - Backend production build passed; frontend production build passed with 2,314 modules and 433.92 kB initial JS / 138.14 kB gzip.
 - git diff --check passed and canonical working tree remains clean after checkpoint commit 651d3b3.
-- Remaining explicit RC acceptance item: live production-container startup/health smoke in a non-conflicting environment; no domain scope expansion.
+- Live production-container startup/health smoke subsequently passed in an isolated non-conflicting environment; no domain scope expansion.
 
 ## 2026-09-29 — Lifecycle closure / regression checkpoint
 
@@ -578,7 +602,7 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Backend production build: passed.
 - Frontend production build: passed.
 - Nest runtime startup: passed.
-- /api/v1/health: passed.
+- : passed.
 - git diff --check: passed.
 
 ### Next target
@@ -601,7 +625,7 @@ the V0.3 A/B/C promotion validation and recovery checkpoint.**
 - Backend regression: 34/34 suites, 315/315 tests passed.
 - Backend production build: passed.
 - Frontend production build: passed.
-- Runtime `/api/v1/health`: passed.
+- Runtime ``: passed.
 - `git diff --check`: passed.
 
 ### Next target
@@ -657,7 +681,7 @@ The CTO Master Blueprint now reflects the actual implementation frontier rather 
 
 ### Completed
 
-- Final runtime smoke verification passed against `/api/v1/health`.
+- Final runtime smoke verification passed against ``.
 - Full backend regression remains green at 34/34 suites and 315/315 tests.
 - Backend and frontend production builds passed.
 - Registry/permission consistency review confirmed resource-specific authorization remains Registry-authoritative.
