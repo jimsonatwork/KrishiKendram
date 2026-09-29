@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 
 import { UserRole } from '@prisma/client';
+import { AuditService } from '../platform/audit/audit.service';
 
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { RegistryService } from '../platform/registry/registry.service';
@@ -37,6 +38,7 @@ export class FarmsService {
     private readonly lineage: FarmResourceLineageService,
     private readonly custody: FarmAssetCustodyService,
     private readonly lease: FarmAssetLeaseService,
+    private readonly audit: AuditService,
   ) {}
 
   private async getCurrentFarmOwnerId(
@@ -730,9 +732,15 @@ export class FarmsService {
         'Farm asset deleted',
       );
 
-      return tx.farmAsset.delete({
+      const deleted = await tx.farmAsset.delete({
         where: { id: assetId },
       });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId, action: 'DELETE', resourceType: 'farmAsset', resourceId: assetId,
+        description: 'Farm asset deleted',
+        metadata: { farmId, type: deleted.type, name: deleted.name, quantity: deleted.quantity, unit: deleted.unit },
+      });
+      return deleted;
     });
   }
 
@@ -844,7 +852,12 @@ export class FarmsService {
       await this.relationships.terminateResourceRelationships(
         tx, 'farm', id, endedAt, 'Farm archived',
       );
-      return tx.farm.update({ where: { id }, data: { deletedAt: endedAt } });
+      const archived = await tx.farm.update({ where: { id }, data: { deletedAt: endedAt } });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId, action: 'ARCHIVE', resourceType: 'farm', resourceId: id,
+        description: 'Farm archived', metadata: { ownerId: farmContext.ownerId, archivedAt: endedAt.toISOString() },
+      });
+      return archived;
     });
   }
 
@@ -869,7 +882,12 @@ export class FarmsService {
 
     return this.prisma.$transaction(async (tx) => {
       const farm = await tx.farm.update({ where: { id }, data: { deletedAt: null } });
-      await this.relationships.createOwnerRelationship(tx, 'farm', farm.id, ownerId, new Date());
+      const restoredAt = new Date();
+      await this.relationships.createOwnerRelationship(tx, 'farm', farm.id, ownerId, restoredAt);
+      await this.audit.createInTransaction(tx, {
+        actorId: userId, action: 'RESTORE', resourceType: 'farm', resourceId: id,
+        description: 'Farm restored', metadata: { ownerId, restoredAt: restoredAt.toISOString() },
+      });
       return farm;
     });
   }
