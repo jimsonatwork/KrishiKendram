@@ -46,6 +46,7 @@ import {
   PawPrint,
   Shield,
   ShieldCheck,
+  Store,
   SlidersHorizontal,
   Sparkles,
   Sprout,
@@ -68,6 +69,7 @@ const SystemPage = lazy(() => import('@/pages/admin/SystemPage').then((m) => ({ 
 const FarmsPage = lazy(() => import('@/pages/farms/FarmsPage').then((m) => ({ default: m.FarmsPage })))
 const CropsPage = lazy(() => import('@/pages/crops/CropsPage').then((m) => ({ default: m.CropsPage })))
 const LivestockPage = lazy(() => import('@/pages/livestock/LivestockPage').then((m) => ({ default: m.LivestockPage })))
+const MarketplacePage = lazy(() => import('@/pages/marketplace/MarketplacePage').then((m) => ({ default: m.MarketplacePage })))
 const ActivitiesPage = lazy(() => import('@/pages/activity/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })))
 const HistoryPage = lazy(() => import('@/pages/activity/HistoryPage').then((m) => ({ default: m.HistoryPage })))
 const AIIntakePage = lazy(() => import('@/pages/intake/AIIntakePage').then((m) => ({ default: m.AIIntakePage })))
@@ -942,6 +944,11 @@ function PortalLayout({
               icon: <PawPrint />,
             },
             {
+              label: 'Marketplace',
+              href: '/app/marketplace',
+              icon: <Store />,
+            },
+            {
               label: 'Activities',
               href: '/app/activities',
               icon: <Activity />,
@@ -978,6 +985,8 @@ function PortalLayout({
     content = <CropsPage />
   } else if (location.pathname === '/app/livestock') {
     content = <LivestockPage />
+  } else if (location.pathname === '/app/marketplace') {
+    content = <MarketplacePage />
   } else if (
     location.pathname === '/app/activities'
   ) {

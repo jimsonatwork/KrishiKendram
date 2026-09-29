@@ -526,6 +526,32 @@ export const api = {
       },
     }),
 
+  marketplaceListings: () => request<any[]>('/marketplace/listings'),
+
+  marketplaceMine: (token: string) =>
+    request<any[]>('/marketplace/listings/mine', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  createMarketplaceListing: (data: Record<string, unknown>, token: string) =>
+    request<any>('/marketplace/listings', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  publishMarketplaceListing: (id: string, token: string) =>
+    request<any>(`/marketplace/listings/${id}/publish`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  deleteMarketplaceListing: (id: string, token: string) =>
+    request<any>(`/marketplace/listings/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   livestock: (token: string) =>
     request<any[]>('/livestock', {
       headers: { Authorization: `Bearer ${token}` },

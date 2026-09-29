@@ -24,6 +24,7 @@ import { FarmsModule } from './farms/farms.module';
 import { IntakeModule } from './intake/intake.module';
 import { CropsModule } from './crops/crops.module';
 import { LivestockModule } from './livestock/livestock.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { LivestockModule } from './livestock/livestock.module';
 		IntakeModule,
     CropsModule,
     LivestockModule,
+    MarketplaceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

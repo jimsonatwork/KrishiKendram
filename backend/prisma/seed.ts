@@ -74,6 +74,7 @@ const FARMER_RESOURCE_SCOPES: Record<string, string> = {
   farmRecord: 'FARM',
   crop: 'OWN',
   livestock: 'OWN',
+  marketplaceListing: 'OWN',
 };
 
 function getFarmerScope(resource: ResourceDefinition): string | null {

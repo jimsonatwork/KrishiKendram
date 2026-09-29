@@ -3,6 +3,7 @@ import { ResourceDefinition } from '../../resource-definition.interface';
 import { auditResource } from './audit.resource';
 import { cropResource } from './crop.resource';
 import { livestockResource } from './livestock.resource';
+import { marketplaceListingResource } from './marketplace-listing.resource';
 import { farmAssetResource } from './farm-asset.resource';
 import { farmRecordResource } from './farm-record.resource';
 import { farmResource } from './farm.resource';
@@ -16,6 +17,7 @@ export const RESOURCE_DEFINITIONS: ResourceDefinition[] = [
   farmResource,
   cropResource,
   livestockResource,
+  marketplaceListingResource,
   farmAssetResource,
   farmRecordResource,
 ];
@@ -24,6 +26,7 @@ export {
   auditResource,
   cropResource,
   livestockResource,
+  marketplaceListingResource,
   farmAssetResource,
   farmRecordResource,
   farmResource,

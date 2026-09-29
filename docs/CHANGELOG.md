@@ -1,3 +1,21 @@
+## 2026-09-29 — Marketplace Listing Vertical Slice
+
+### Git checkpoint
+Pending — Marketplace listing vertical slice
+
+### Completed architectural work
+
+- Added MarketplaceListing as a lightweight listing layer over existing Crop, FarmAsset, and Livestock resources; no duplicate inventory model was introduced.
+- Added owner-checked draft, publish, update, and archive lifecycle with public published-listing discovery.
+- Reused canonical AuthorizationService, Registry capability definitions, and Platform AuditService.
+- Added Marketplace module, API routes, frontend API contract, and lazy-loaded Marketplace workspace.
+- Prisma migration applied successfully: 20260929015956_add_marketplace_listing.
+- Seed reconciliation completed for marketplaceListing OWN permissions.
+- Backend: 36 suites / 343 tests passed; Nest production build passed.
+- E2E: 21/21 tests passed.
+- Frontend production build passed: 2314 modules.
+- git diff --check passed.
+
 ## 2026-09-29 — Livestock Vertical Slice
 
 ### Git checkpoint
