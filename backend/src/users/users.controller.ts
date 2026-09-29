@@ -30,7 +30,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 import { BulkDeleteUsersDto } from './dto/bulk-delete-users.dto';
 
-import { RecentActivityQueryDto } from './dto/recent-activity-query.dto';
+import { LimitQueryDto } from './dto/limit-query.dto';
 
 // ============================================================
 // PART 01 END
@@ -76,7 +76,7 @@ export class UsersController {
   @Get('activity/recent')
   async getRecentActivity(
     @Req() req: any,
-    @Query() query: RecentActivityQueryDto,
+    @Query() query: LimitQueryDto,
   ) {
     await this.authorizationService.assertCan({
       user: req.user,
@@ -100,7 +100,7 @@ export class UsersController {
   async getActivity(
     @Req() req: any,
     @Param('id') id: string,
-    @Query('limit') limit?: string,
+    @Query() query: LimitQueryDto,
   ) {
     await this.authorizationService.assertCan({
       user: req.user,
@@ -109,7 +109,7 @@ export class UsersController {
       action: AuthorizationAction.READ_ACTIVITY,
     });
 
-    return this.usersService.getActivity(id, limit ? Number(limit) : 50);
+    return this.usersService.getActivity(id, query.limit ?? 50);
   }
 
   // ==========================================================
@@ -134,7 +134,7 @@ export class UsersController {
   async getRelationshipHistory(
     @Req() req: any,
     @Param('id') id: string,
-    @Query('limit') limit?: string,
+    @Query() query: LimitQueryDto,
   ) {
     await this.authorizationService.assertCan({
       user: req.user,
@@ -145,7 +145,7 @@ export class UsersController {
 
     return this.usersService.getRelationshipHistory(
       id,
-      limit ? Number(limit) : 100,
+      query.limit ?? 100,
     )
   }
 
@@ -153,7 +153,7 @@ export class UsersController {
   async getHistory(
     @Req() req: any,
     @Param('id') id: string,
-    @Query('limit') limit?: string,
+    @Query() query: LimitQueryDto,
   ) {
     await this.authorizationService.assertCan({
       user: req.user,
@@ -162,7 +162,7 @@ export class UsersController {
       action: AuthorizationAction.READ_HISTORY,
     });
 
-    return this.usersService.getHistory(id, limit ? Number(limit) : 10);
+    return this.usersService.getHistory(id, query.limit ?? 10);
   }
 
   // ==========================================================

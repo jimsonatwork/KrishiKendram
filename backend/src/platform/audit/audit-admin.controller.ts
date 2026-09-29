@@ -4,6 +4,7 @@ import { UserRole } from '@prisma/client'
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { AuditService } from './audit.service'
 import { AuthorizationService } from '../authorization/authorization.service'
+import { AuditQueryDto } from './dto/audit-query.dto'
 import { AuthorizationAction } from '../authorization/authorization.types'
 
 @Controller('platform/audit')
@@ -17,7 +18,7 @@ export class AuditAdminController {
   @Get('recent')
   async recent(
     @Req() request: { user?: { userId?: string; role?: UserRole } },
-    @Query('limit') limit?: string,
+    @Query() query: AuditQueryDto,
   ) {
     if (!request.user?.userId || !request.user.role) {
       throw new UnauthorizedException('Authentication required.')
@@ -33,7 +34,6 @@ export class AuditAdminController {
       action: AuthorizationAction.READ,
     })
 
-    const parsed = Number(limit)
-    return this.audit.getRecentActivity(Number.isFinite(parsed) ? parsed : 50)
+    return this.audit.getRecentActivity(query.limit ?? 50)
   }
 }

@@ -149,7 +149,7 @@ describe('UsersController authorization ordering', () => {
     await controller.getActivity(
       { user },
       'user-2',
-      '20',
+      { limit: 20 },
     );
 
     expect(events).toEqual([
@@ -175,7 +175,7 @@ describe('UsersController authorization ordering', () => {
     await controller.getHistory(
       { user },
       'user-2',
-      '10',
+      { limit: 10 },
     );
 
     expect(events).toEqual([

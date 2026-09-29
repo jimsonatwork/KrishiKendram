@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
-export class RecentActivityQueryDto {
+export class LimitQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
