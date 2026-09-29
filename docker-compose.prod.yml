@@ -31,6 +31,27 @@ services:
     ports:
       - "3000:3000"
 
+  prisma-studio:
+    image: krishikendram-backend:latest
+    profiles: ["tools"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-krishikendram}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - ./node_modules/.bin/prisma
+      - studio
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - "5556"
+    ports:
+      - "127.0.0.1:5556:5556"
+
   frontend:
     build:
       context: ./frontend

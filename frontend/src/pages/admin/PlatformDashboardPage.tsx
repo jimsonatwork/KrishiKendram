@@ -23,9 +23,42 @@ export function PlatformDashboardPage() {
 
   useEffect(() => {
     if (!token) return
-    Promise.all([platformRegistry.modules(token), platformRegistry.moduleStatuses(token), platformRegistry.resources(token), api.platformPermissionReconciliation(token), api.platformPermissions(token), api.platformAuditRecent(token, 8)])
-      .then(([moduleData, statusData, resourceData, reconciliationData, permissionData, auditData]) => { setModules(moduleData); setStatuses(statusData); setResources(resourceData); setReconciliation(reconciliationData); setPermissions(permissionData.length); setAudit(auditData) })
-      .catch((cause) => setError(cause instanceof Error ? cause.message : 'Unable to load platform coverage.'))
+
+    setLoading(true)
+    setError(null)
+
+    Promise.allSettled([
+      platformRegistry.modules(token),
+      platformRegistry.moduleStatuses(token),
+      platformRegistry.resources(token),
+      api.platformPermissionReconciliation(token),
+      api.platformPermissions(token),
+      api.platformAuditRecent(token, 8),
+    ])
+      .then((results) => {
+        const errors: string[] = []
+        const [moduleResult, statusResult, resourceResult, reconciliationResult, permissionResult, auditResult] = results
+
+        if (moduleResult.status === 'fulfilled') setModules(moduleResult.value)
+        else errors.push(`Modules: ${moduleResult.reason instanceof Error ? moduleResult.reason.message : 'unavailable'}`)
+
+        if (statusResult.status === 'fulfilled') setStatuses(statusResult.value)
+        else errors.push(`Module status: ${statusResult.reason instanceof Error ? statusResult.reason.message : 'unavailable'}`)
+
+        if (resourceResult.status === 'fulfilled') setResources(resourceResult.value)
+        else errors.push(`Resources: ${resourceResult.reason instanceof Error ? resourceResult.reason.message : 'unavailable'}`)
+
+        if (reconciliationResult.status === 'fulfilled') setReconciliation(reconciliationResult.value)
+        else errors.push(`Authorization: ${reconciliationResult.reason instanceof Error ? reconciliationResult.reason.message : 'unavailable'}`)
+
+        if (permissionResult.status === 'fulfilled') setPermissions(permissionResult.value.length)
+        else errors.push(`Permissions: ${permissionResult.reason instanceof Error ? permissionResult.reason.message : 'unavailable'}`)
+
+        if (auditResult.status === 'fulfilled') setAudit(auditResult.value)
+        else errors.push(`Audit: ${auditResult.reason instanceof Error ? auditResult.reason.message : 'unavailable'}`)
+
+        if (errors.length > 0) setError(errors.join(' · '))
+      })
       .finally(() => setLoading(false))
   }, [token])
 
