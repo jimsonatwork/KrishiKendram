@@ -1083,3 +1083,10 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Authenticated application E2E: **17/17 passed**.
 - Frontend production build: **2,312 modules**, 431.04 kB initial JavaScript / 137.46 kB gzip.
 - `git diff --check` passed; no duplicate authorization or lifecycle infrastructure introduced.
+
+### 2026-09-29 — Production operational hardening
+
+- Added NestJS shutdown hooks for clean container SIGTERM/restart handling and Prisma connection release.
+- Hardened docs/DEPLOYMENT.md to apply Prisma migrations before application traffic on first deployment and updates.
+- Added logical PostgreSQL backup/recovery guidance and production volume/secrets safeguards.
+- Backend build and full regression remain green: 36 suites / 346 tests passed.

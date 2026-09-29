@@ -1126,3 +1126,11 @@ Continue the remaining release/runtime and product-readiness checks without reop
 ### Next execution target
 
 Prepare the final release checkpoint from a clean canonical working tree; no further domain implementation is scheduled for this RC.
+
+## V0.5.61 — Production operational hardening
+
+- Added NestJS shutdown hooks so production SIGTERM/restart paths release Prisma connections cleanly.
+- Hardened the deployment runbook so PostgreSQL starts and becomes healthy before Prisma migrations are applied, and application traffic starts only after migrations complete.
+- Added concise PostgreSQL logical backup/recovery guidance and explicit production-volume/secrets safeguards.
+- Backend build and full regression remain green: 36 suites / 346 tests passed.
+- Next execution target: preserve the clean operational checkpoint and prepare the post-RC go-live deployment when the operator is ready.
