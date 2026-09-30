@@ -3004,3 +3004,40 @@ The deferred runtime boundary verification for the completed FarmAsset custody/l
 ### Next execution target
 
 Select the next concrete product-domain capability from an explicit business contract. Reuse the established Registry, Authorization, ResourceRelationship, ResourceMovement, ResourceLineage, ResourceEvidence, and History foundations; do not introduce speculative infrastructure or duplicate lifecycle systems.
+
+---
+
+## 2026-09-30 - Universal Audit / History Integrity Amendment
+
+The Audit/History foundation is **implemented but not yet universally complete**. Existing AuditEvent, AuditService, transaction-bound audit creation, UserHistory, resource relationship history, movement history, lineage history, evidence history, and the unified frontend History workspace form the canonical foundation. However, explicit module-level audit calls do not by themselves prove that every meaningful mutation path across the platform is covered.
+
+### Mandatory platform contract
+
+Every meaningful state-changing operation must leave an authoritative, authorization-aware history trail. The canonical technical audit event should capture, where applicable:
+
+- actor/system identity;
+- action;
+- resource type and resource ID;
+- timestamp;
+- result/context and description;
+- before/after state or an equivalent reconstructable change representation;
+- reason/correction/reversal context;
+- provenance/evidence references;
+- request/correlation identity;
+- IP address and user agent where available.
+
+### Integrity rules
+
+1. Audit records are append-only and must not be silently edited or deleted through normal application flows.
+2. A consequential business mutation and its audit event must commit atomically whenever they belong to the same transaction.
+3. Technical Audit remains distinct from Record History, Provenance, Resource Relationship History, Resource Movement History, and Lineage.
+4. Archive, delete, restore, transfer, correction, reversal, merge, split, ownership/relationship changes, and privileged administrative actions must remain historically reconstructable.
+5. Audit/history reads remain authorization-aware and use the canonical AuthorizationService.
+6. Frontend Activity/History/Timeline views consume authoritative backend history; client-side logs are never the source of truth.
+7. Universal audit coverage must be proven by a repeatable mutation-path inventory and regression tests before the production gate is marked complete.
+
+### Current status correction
+
+**Audit/History: FOUNDATION COMPLETE - UNIVERSAL COVERAGE HARDENING REQUIRED.**
+
+This correction prevents the blueprint from overstating completion. No second audit/history engine is to be introduced. The next hardening pass extends the existing centralized architecture and closes only verified coverage/integrity gaps.
