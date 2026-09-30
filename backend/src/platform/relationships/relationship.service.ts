@@ -39,13 +39,27 @@ export class ResourceRelationshipService {
     }));
   }
 
-  createOwnerRelationship(
+  async createOwnerRelationship(
     tx: Prisma.TransactionClient,
     resourceType: string,
     resourceId: string,
     userId: string,
     effectiveAt: Date,
   ) {
+    const existingOwner = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        relationshipType: ResourceRelationshipType.OWNER,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+
+    if (existingOwner) {
+      throw new ConflictException('An active owner relationship already exists for this resource.');
+    }
+
     return tx.resourceRelationship.create({
       data: {
         resourceType,

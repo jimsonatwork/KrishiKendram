@@ -64,6 +64,22 @@ describe('ResourceRelationshipService', () => {
     });
   });
 
+  it('rejects creation when an active owner relationship already exists', async () => {
+    const effectiveAt = new Date('2026-09-26T00:00:00Z');
+    findFirst.mockResolvedValueOnce({
+      id: 'relationship-existing',
+      userId: 'user-existing',
+      validFrom: new Date('2026-01-01T00:00:00Z'),
+    });
+
+    const service = new ResourceRelationshipService(prisma);
+
+    await expect(
+      service.createOwnerRelationship(tx, 'farmAsset', 'asset-1', 'user-1', effectiveAt),
+    ).rejects.toThrow('An active owner relationship already exists for this resource.');
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('terminates every open relationship when a resource lifecycle closes', async () => {
     const endedAt = new Date('2026-09-26T12:00:00Z');
     updateMany.mockResolvedValue({ count: 1 });
