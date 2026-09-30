@@ -60,6 +60,7 @@ import { motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { platformRegistry } from '@/lib/platform/registry'
+import { APP_PATH, canRenderRoute, routeForPath } from '@/lib/platform/routes'
 import {
   useAuthStore,
   type AuthUser,
@@ -864,6 +865,7 @@ function PortalLayout({
   user: AuthUser
 }) {
   const location = useLocation()
+  const currentRoute = routeForPath(location.pathname)
   const { logout } = useAuthStore()
 
   const [mobileOpen, setMobileOpen] =
@@ -1019,6 +1021,10 @@ function PortalLayout({
     content = <CapabilitiesPage />
   } else if (location.pathname === '/app/system') {
     content = <SystemPage />
+  }
+
+  if (currentRoute && !canRenderRoute(currentRoute, user.role)) {
+    content = <Navigate to={APP_PATH.dashboard} replace />
   }
 
   return (

@@ -151,6 +151,22 @@ export type AuditEvent = {
   createdAt: string
 }
 
+export class ApiError extends Error {
+  readonly status: number
+  readonly payload: unknown
+
+  constructor(message: string, status: number, payload: unknown = null) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.payload = payload
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError
+}
+
 export async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -184,7 +200,7 @@ export async function request<T>(
         ? message
         : 'Request failed'
 
-    throw new Error(errorMessage)
+    throw new ApiError(errorMessage, response.status, data)
   }
 
   return data as T
