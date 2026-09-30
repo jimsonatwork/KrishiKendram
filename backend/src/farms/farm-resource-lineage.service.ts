@@ -14,6 +14,7 @@ import { ResourceMovementType } from '../platform/relationships/movement.types';
 import { RESOURCE_LINEAGE_RESOLVER } from '../platform/relationships/lineage-resolution.types';
 import type { ResourceLineageResolver } from '../platform/relationships/lineage-resolution.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../platform/audit/audit.service';
 
 import { SplitFarmAssetDto } from './dto/split-farm-asset.dto';
 import { MergeFarmAssetsDto } from './dto/merge-farm-assets.dto';
@@ -26,6 +27,7 @@ export class FarmResourceLineageService {
     private readonly relationships: ResourceRelationshipService,
     @Inject(RESOURCE_LINEAGE_RESOLVER)
     private readonly lineageResolver: ResourceLineageResolver,
+    private readonly audit: AuditService,
   ) {}
 
   async getFarmAssetLineageHistory(
@@ -211,6 +213,7 @@ export class FarmResourceLineageService {
             resourceType: 'farmAsset',
             resourceId: target.id,
             movementType: ResourceMovementType.MERGE,
+            previousMovementId: previousTargetMovementId,
             sourceResourceType: 'farmAsset',
             sourceResourceId: asset.id,
             destinationResourceType: 'farmAsset',
@@ -248,6 +251,15 @@ export class FarmResourceLineageService {
         });
         lineages.push(lineage);
       }
+
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'FARM_ASSETS_MERGED',
+        resourceType: 'farmAsset',
+        resourceId: target.id,
+        description: 'Farm assets merged',
+        metadata: { farmId, sourceAssetIds: sourceIds, movementIds: movements.map(({ id }) => id) },
+      });
 
       return { target, movements, lineages };
     });
@@ -365,6 +377,7 @@ export class FarmResourceLineageService {
           resourceType: 'farmAsset',
           resourceId: target.id,
           movementType: 'SPLIT',
+          previousMovementId: latestMovement?.id,
           sourceResourceType: 'farmAsset',
           sourceResourceId: asset.id,
           destinationResourceType: 'farmAsset',
@@ -401,6 +414,21 @@ export class FarmResourceLineageService {
       const source = await tx.farmAsset.update({
         where: { id: asset.id },
         data: { quantity: remainingQuantity },
+      });
+
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'FARM_ASSET_SPLIT',
+        resourceType: 'farmAsset',
+        resourceId: asset.id,
+        description: 'Farm asset split',
+        metadata: {
+          farmId,
+          targetAssetId: target.id,
+          quantity: dto.quantity,
+          unit: asset.unit,
+          movementId: movement.id,
+        },
       });
 
       return { source, target, movement, lineage };

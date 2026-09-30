@@ -25,12 +25,15 @@ describe('UsersService - centralized field policy', () => {
 
   const auditService = {
     create: jest.fn(),
+    createInTransaction: jest.fn(),
   } as any;
 
   let service: UsersService;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    auditService.createInTransaction.mockReset();
+    auditService.createInTransaction.mockResolvedValue(undefined);
 
     prisma.user.findUnique.mockResolvedValue({
       id: 'user-id',
@@ -130,10 +133,36 @@ describe('UsersService - centralized field policy', () => {
         role: 'FARMER',
       }),
     });
+    expect(auditService.createInTransaction).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        action: 'USER_CREATED',
+        resourceId: 'user-1',
+      }),
+    );
 
     expect(result).not.toHaveProperty(
       'passwordHash',
     );
+  });
+
+  it('fails administrator user creation when its transactional audit write fails', async () => {
+    registry.validateResourceField
+      .mockReturnValueOnce({ valid: true, value: 'Normalized Name', errors: [] })
+      .mockReturnValueOnce({ valid: true, value: 'normalized@example.com', errors: [] })
+      .mockReturnValueOnce({ valid: true, value: 'FARMER', errors: [] });
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue({
+      id: 'user-1', name: 'Normalized Name', email: 'normalized@example.com',
+      passwordHash: 'secret-hash', role: 'FARMER',
+    });
+    auditService.createInTransaction.mockRejectedValue(new Error('audit unavailable'));
+
+    await expect(service.create({
+      name: 'Normalized Name', email: 'normalized@example.com', password: 'password123',
+    })).rejects.toThrow('audit unavailable');
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 
   it('rejects an invalid Registry name result', async () => {

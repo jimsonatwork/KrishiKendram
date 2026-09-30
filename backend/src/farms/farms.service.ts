@@ -115,6 +115,14 @@ export class FarmsService {
         farm.createdAt,
       );
 
+      await this.audit.createInTransaction(tx, {
+        actorId: ownerId,
+        action: 'CREATE',
+        resourceType: 'farm',
+        resourceId: farm.id,
+        description: 'Farm created',
+      });
+
       return farm;
     });
   }
@@ -351,20 +359,21 @@ export class FarmsService {
 
     const updateData = this.validateFarmFields(dto);
 
-    const farm = await this.prisma.farm.update({
-      where: {
-        id,
-      },
-      data: updateData,
+    return this.prisma.$transaction(async (tx) => {
+      const farm = await tx.farm.update({
+        where: { id },
+        data: updateData,
+      });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'UPDATE',
+        resourceType: 'farm',
+        resourceId: farm.id,
+        description: 'Farm updated.',
+        metadata: { fields: Object.keys(dto) },
+      });
+      return farm;
     });
-    await this.audit.create({
-      actorId: userId,
-      action: 'UPDATE',
-      resourceType: 'farm',
-      resourceId: farm.id,
-      description: 'Farm updated.',
-    });
-    return farm;
   }
 
   async getFarmMovementHistory(
@@ -586,6 +595,15 @@ export class FarmsService {
         asset.createdAt,
       );
 
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'CREATE',
+        resourceType: 'farmAsset',
+        resourceId: asset.id,
+        description: 'Farm asset created',
+        metadata: { farmId },
+      });
+
       return asset;
     });
   }
@@ -671,20 +689,21 @@ export class FarmsService {
 
     const validatedData = this.validateFarmAssetFields(dto);
 
-    const asset = await this.prisma.farmAsset.update({
-      where: {
-        id: assetId,
-      },
-      data: validatedData,
+    return this.prisma.$transaction(async (tx) => {
+      const asset = await tx.farmAsset.update({
+        where: { id: assetId },
+        data: validatedData,
+      });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'UPDATE',
+        resourceType: 'farmAsset',
+        resourceId: asset.id,
+        description: 'Farm asset updated.',
+        metadata: { fields: Object.keys(dto) },
+      });
+      return asset;
     });
-    await this.audit.create({
-      actorId: userId,
-      action: 'UPDATE',
-      resourceType: 'farmAsset',
-      resourceId: asset.id,
-      description: 'Farm asset updated.',
-    });
-    return asset;
   }
 
   async removeAsset(
@@ -831,23 +850,26 @@ export class FarmsService {
         ? null
         : validatedData.title;
 
-    const record = await this.prisma.farmRecord.create({
-      data: {
-        farmId,
-        category: validatedData.category,
-        inputMethod: validatedData.inputMethod,
-        data: validatedData.data,
-        title: normalizedTitle,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const record = await tx.farmRecord.create({
+        data: {
+          farmId,
+          category: validatedData.category!,
+          inputMethod: validatedData.inputMethod!,
+          data: validatedData.data!,
+          title: normalizedTitle,
+        },
+      });
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'CREATE',
+        resourceType: 'farmRecord',
+        resourceId: record.id,
+        description: 'Farm record created.',
+        metadata: { farmId, category: record.category },
+      });
+      return record;
     });
-    await this.audit.create({
-      actorId: userId,
-      action: 'CREATE',
-      resourceType: 'farmRecord',
-      resourceId: record.id,
-      description: 'Farm record created.',
-    });
-    return record;
   }
 
   async remove(id: string, userId: string, role: UserRole) {

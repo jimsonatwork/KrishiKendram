@@ -18,6 +18,7 @@ describe('FarmAssetLeaseService', () => {
 
   const authorization = { assertCan } as any;
   const relationships = { assignLessee, endLease } as any;
+  const audit = { createInTransaction: jest.fn() } as any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,7 +55,7 @@ describe('FarmAssetLeaseService', () => {
   });
 
   it('authorizes and creates a bounded lease transactionally', async () => {
-    const service = new FarmAssetLeaseService(prisma, authorization, relationships);
+    const service = new FarmAssetLeaseService(prisma, authorization, relationships, audit);
 
     const result = await service.leaseAsset(
       'farm-1',
@@ -93,10 +94,13 @@ describe('FarmAssetLeaseService', () => {
     );
     expect(result.movementType).toBe('LEASE');
     expect(result.lessee).toBe('lessee-1');
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: 'FARM_ASSET_LEASED', resourceId: 'asset-1',
+    }));
   });
 
   it('rejects an invalid lease window before opening a transaction', async () => {
-    const service = new FarmAssetLeaseService(prisma, authorization, relationships);
+    const service = new FarmAssetLeaseService(prisma, authorization, relationships, audit);
 
     await expect(
       service.leaseAsset(
@@ -116,7 +120,7 @@ describe('FarmAssetLeaseService', () => {
   });
 
   it('ends the active lease through the canonical relationship service', async () => {
-    const service = new FarmAssetLeaseService(prisma, authorization, relationships);
+    const service = new FarmAssetLeaseService(prisma, authorization, relationships, audit);
 
     const result = await service.endLease(
       'farm-1',
@@ -139,11 +143,14 @@ describe('FarmAssetLeaseService', () => {
     );
     expect(result.movementType).toBe('LEASE_END');
     expect(result.lessee).toBe('lessee-1');
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: 'FARM_ASSET_LEASE_ENDED', resourceId: 'asset-1',
+    }));
   });
 
   it('does not enter the transaction when authorization fails', async () => {
     assertCan.mockRejectedValue(new Error('Forbidden'));
-    const service = new FarmAssetLeaseService(prisma, authorization, relationships);
+    const service = new FarmAssetLeaseService(prisma, authorization, relationships, audit);
 
     await expect(
       service.endLease(

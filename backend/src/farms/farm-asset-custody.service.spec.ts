@@ -26,6 +26,7 @@ describe('FarmAssetCustodyService', () => {
     assignCustodian,
     returnCustodian,
   } as any;
+  const audit = { createInTransaction: jest.fn() } as any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,6 +67,7 @@ describe('FarmAssetCustodyService', () => {
       prisma,
       authorization,
       relationships,
+      audit,
     );
 
     const result = await service.assignCustodian(
@@ -102,6 +104,9 @@ describe('FarmAssetCustodyService', () => {
     );
     expect(result.custodian).toBe('custodian-1');
     expect(result.movementType).toBe('CUSTODY_CHANGE');
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: 'FARM_ASSET_CUSTODY_ASSIGNED', resourceId: 'asset-1',
+    }));
   });
 
   it('returns custody to the owner through the canonical relationship service', async () => {
@@ -109,6 +114,7 @@ describe('FarmAssetCustodyService', () => {
       prisma,
       authorization,
       relationships,
+      audit,
     );
 
     const result = await service.returnCustody(
@@ -133,6 +139,9 @@ describe('FarmAssetCustodyService', () => {
     );
     expect(result.owner).toBe('owner-1');
     expect(result.movementType).toBe('RETURN');
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: 'FARM_ASSET_CUSTODY_RETURNED', resourceId: 'asset-1',
+    }));
   });
 
   it('does not enter the transaction when authorization fails', async () => {
@@ -142,6 +151,7 @@ describe('FarmAssetCustodyService', () => {
       prisma,
       authorization,
       relationships,
+      audit,
     );
 
     await expect(

@@ -6,6 +6,7 @@ import { AuthorizationAction } from '../platform/authorization/authorization.typ
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 import { ResourceMovementType } from '../platform/relationships/movement.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../platform/audit/audit.service';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 
@@ -15,6 +16,7 @@ export class FarmAssetCustodyService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly relationships: ResourceRelationshipService,
+    private readonly audit: AuditService,
   ) {}
 
   async returnCustody(
@@ -93,6 +95,15 @@ export class FarmAssetCustodyService {
         dto.transactionId,
         evidenceInput,
       );
+
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'FARM_ASSET_CUSTODY_RETURNED',
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        description: 'Farm asset custody returned',
+        metadata: { farmId, ownerId: result.owner?.userId, movementId: result.movement.id },
+      });
 
       return {
         resourceType: 'farmAsset',
@@ -195,6 +206,20 @@ export class FarmAssetCustodyService {
         dto.transactionId,
         evidenceInput,
       );
+
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'FARM_ASSET_CUSTODY_ASSIGNED',
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        description: 'Farm asset custody assigned',
+        metadata: {
+          farmId,
+          previousCustodianId: result.previousRelationship?.userId,
+          custodianId: result.destinationRelationship.userId,
+          movementId: result.movement.id,
+        },
+      });
 
       return {
         resourceType: 'farmAsset',

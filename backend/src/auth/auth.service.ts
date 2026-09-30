@@ -114,30 +114,35 @@ export class AuthService {
       12,
     );
 
-    const user = await this.prisma.user.create({
-      data: {
-        memberId: generateMemberId(),
-        name,
-        email: normalizedEmail,
-        mobile: normalizedMobile,
-        preferredLanguage:
-          normalizedPreferredLanguage,
-        preferredInputMethod:
-          dto.preferredInputMethod,
-        passwordHash,
-      },
-    });
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          memberId: generateMemberId(),
+          name,
+          email: normalizedEmail,
+          mobile: normalizedMobile,
+          preferredLanguage:
+            normalizedPreferredLanguage,
+          preferredInputMethod:
+            dto.preferredInputMethod,
+          passwordHash,
+        },
+      });
 
-    await this.auditService.create({
-      action: 'USER_CREATED',
-      resourceType: 'USER',
-      resourceId: user.id,
-      description: `User ${user.name} registered`,
-      metadata: {
-        email: user.email,
-        mobile: user.mobile,
-        role: user.role,
-      },
+      await this.auditService.createInTransaction(tx, {
+        action: 'USER_CREATED',
+        resourceType: 'USER',
+        resourceId: created.id,
+        description: `User ${created.name} registered`,
+        metadata: {
+          result: 'SUCCESS',
+          email: created.email,
+          mobile: created.mobile,
+          role: created.role,
+        },
+      });
+
+      return created;
     });
 
     const {

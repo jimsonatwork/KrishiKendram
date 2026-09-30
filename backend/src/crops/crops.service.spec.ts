@@ -110,6 +110,15 @@ describe('CropsService', () => {
       'user-1',
       expect.any(Date),
     );
+    expect(audit.createInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'CREATE',
+        resourceType: 'crop',
+        resourceId: 'crop-1',
+      }),
+    );
   });
 
   it('creates a crop through the canonical Intake mutation boundary', async () => {

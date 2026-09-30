@@ -6,6 +6,7 @@ import { AuthorizationAction } from '../platform/authorization/authorization.typ
 import { ResourceMovementType } from '../platform/relationships/movement.types';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../platform/audit/audit.service';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 
@@ -15,6 +16,7 @@ export class FarmAssetLeaseService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly relationships: ResourceRelationshipService,
+    private readonly audit: AuditService,
   ) {}
 
   async leaseAsset(
@@ -72,6 +74,19 @@ export class FarmAssetLeaseService {
         tx, 'farmAsset', assetId, dto.destinationUserId, effectiveAt, validUntil,
         userId, dto.reason, dto.transactionId, evidenceInput,
       );
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'FARM_ASSET_LEASED',
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        description: 'Farm asset leased',
+        metadata: {
+          farmId,
+          lesseeId: result.destinationRelationship.userId,
+          validUntil: result.destinationRelationship.validUntil?.toISOString() ?? null,
+          movementId: result.movement.id,
+        },
+      });
       return {
         resourceType: 'farmAsset',
         resourceId: assetId,
@@ -135,6 +150,14 @@ export class FarmAssetLeaseService {
         tx, 'farmAsset', assetId, userId, effectiveAt,
         dto.reason, dto.transactionId, evidenceInput,
       );
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'FARM_ASSET_LEASE_ENDED',
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        description: 'Farm asset lease ended',
+        metadata: { farmId, lesseeId: result.relationship.userId, movementId: result.movement.id },
+      });
       return {
         resourceType: 'farmAsset',
         resourceId: assetId,

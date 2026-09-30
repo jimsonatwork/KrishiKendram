@@ -9,6 +9,7 @@ describe('FarmResourceLineageService', () => {
   const authorization = { assertCan: jest.fn() } as any;
   const relationships = { createOwnerRelationship: jest.fn(), terminateResourceRelationships: jest.fn() } as any;
   const lineageResolver = { resolve: jest.fn() } as any;
+  const audit = { createInTransaction: jest.fn() } as any;
 
   const tx = {
     farmAsset: {
@@ -53,6 +54,7 @@ describe('FarmResourceLineageService', () => {
       authorization,
       relationships,
       lineageResolver,
+      audit,
     );
   });
 
@@ -118,6 +120,12 @@ describe('FarmResourceLineageService', () => {
       where: { id: 'asset-1' },
       data: { quantity: 75 },
     });
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      actorId: 'owner-1',
+      action: 'FARM_ASSET_SPLIT',
+      resourceType: 'farmAsset',
+      resourceId: 'asset-1',
+    }));
     expect(result.lineage).toEqual({ id: 'lineage-1' });
   });
 
@@ -272,6 +280,12 @@ describe('FarmResourceLineageService', () => {
     expect(relationships.terminateResourceRelationships).toHaveBeenCalledTimes(2);
     expect(tx.resourceMovement.create).toHaveBeenCalledTimes(2);
     expect(tx.resourceLineage.create).toHaveBeenCalledTimes(2);
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      actorId: 'owner-1',
+      action: 'FARM_ASSETS_MERGED',
+      resourceType: 'farmAsset',
+      resourceId: 'asset-3',
+    }));
     expect(result.target.id).toBe('asset-3');
     expect(result.movements).toHaveLength(2);
     expect(result.lineages).toHaveLength(2);

@@ -14,6 +14,7 @@ import type { ResourceMovementResolver } from '../platform/relationships/movemen
 import { RESOURCE_EVIDENCE_RESOLVER } from '../platform/relationships/evidence-resolution.types';
 import type { ResourceEvidenceResolver } from '../platform/relationships/evidence-resolution.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../platform/audit/audit.service';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 
@@ -27,6 +28,7 @@ export class FarmResourceLifecycleService {
     private readonly movementResolver: ResourceMovementResolver,
     @Inject(RESOURCE_EVIDENCE_RESOLVER)
     private readonly evidenceResolver: ResourceEvidenceResolver,
+    private readonly audit: AuditService,
   ) {}
 
   async getFarmMovementHistory(
@@ -356,6 +358,22 @@ export class FarmResourceLifecycleService {
       );
 
       const resource = await persistResource(tx);
+
+      await this.audit.createInTransaction(tx, {
+        actorId: sourceUserId,
+        action: 'RESOURCE_TRANSFERRED',
+        resourceType,
+        resourceId,
+        description: `${resourceType} ownership transferred`,
+        metadata: {
+          sourceUserId,
+          destinationUserId: dto.destinationUserId,
+          effectiveAt: effectiveAt.toISOString(),
+          transactionId: dto.transactionId,
+          movementId: result.movement.id,
+          evidenceId: result.evidence?.id,
+        },
+      });
 
       return {
         resource,

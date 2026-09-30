@@ -8,6 +8,7 @@ describe('AuthService - centralized field policy', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    $transaction: jest.fn(),
   } as any;
 
   const jwtService = {} as any;
@@ -23,12 +24,17 @@ describe('AuthService - centralized field policy', () => {
 
   const auditService = {
     create: jest.fn(),
+    createInTransaction: jest.fn(),
   } as any;
 
   let service: AuthService;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    auditService.createInTransaction.mockResolvedValue(undefined);
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: any) => Promise<unknown>) => callback(prisma),
+    );
 
     service = new AuthService(
       prisma,
@@ -126,10 +132,34 @@ describe('AuthService - centralized field policy', () => {
         passwordHash: expect.any(String),
       }),
     });
+    expect(auditService.createInTransaction).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        action: 'USER_CREATED',
+        resourceId: 'user-1',
+      }),
+    );
 
     expect(result).not.toHaveProperty(
       'passwordHash',
     );
+  });
+
+  it('fails registration when its transactional audit write fails', async () => {
+    registry.validateResourceField
+      .mockReturnValueOnce({ valid: true, value: 'Normalized Name', errors: [] })
+      .mockReturnValueOnce({ valid: true, value: 'normalized@example.com', errors: [] });
+    prisma.user.create.mockResolvedValue({
+      id: 'user-1', name: 'Normalized Name', email: 'normalized@example.com',
+      mobile: null, passwordHash: 'secret-hash', role: 'FARMER',
+    });
+    auditService.createInTransaction.mockRejectedValue(new Error('audit unavailable'));
+
+    await expect(service.register({
+      name: 'Normalized Name', email: 'normalized@example.com', password: 'password123',
+    } as any)).rejects.toThrow('audit unavailable');
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 
   it('turns an invalid Registry name result into BadRequestException', async () => {

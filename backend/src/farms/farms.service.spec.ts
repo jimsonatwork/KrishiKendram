@@ -371,6 +371,15 @@ describe('FarmsService', () => {
       'user-1',
       createdFarm.createdAt,
     );
+    expect(audit.createInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'CREATE',
+        resourceType: 'farm',
+        resourceId: 'farm-1',
+      }),
+    );
 
     const transactionCallback =
       prisma.$transaction.mock.calls[0][0];
@@ -442,6 +451,15 @@ describe('FarmsService', () => {
     });
 
     expect(result).toEqual(updatedFarm);
+    expect(audit.createInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'UPDATE',
+        resourceType: 'farm',
+        resourceId: 'farm-1',
+      }),
+    );
   });
 
   it('rejects a farm name when the central Registry rejects it', async () => {
@@ -805,6 +823,16 @@ describe('FarmsService', () => {
         metadata,
       },
     });
+
+    expect(audit.createInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'CREATE',
+        resourceType: 'farmAsset',
+        resourceId: 'asset-1',
+      }),
+    );
 
     expect(result).toEqual(createdAsset);
   });

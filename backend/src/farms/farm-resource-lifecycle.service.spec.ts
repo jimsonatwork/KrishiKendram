@@ -13,6 +13,7 @@ describe('FarmResourceLifecycleService', () => {
   } as any;
   const movementResolver = { resolve: jest.fn() } as any;
   const evidenceResolver = { resolve: jest.fn() } as any;
+  const audit = { createInTransaction: jest.fn() } as any;
 
   const tx = {
     user: { findUnique: jest.fn() },
@@ -59,6 +60,7 @@ describe('FarmResourceLifecycleService', () => {
       relationships,
       movementResolver,
       evidenceResolver,
+      audit,
     );
   });
 
@@ -114,6 +116,12 @@ describe('FarmResourceLifecycleService', () => {
       where: { id: 'farm-1' },
       data: { ownerId: 'destination-1' },
     });
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      actorId: 'owner-1',
+      action: 'RESOURCE_TRANSFERRED',
+      resourceType: 'farm',
+      resourceId: 'farm-1',
+    }));
     expect(result.movement).toEqual({ id: 'movement-1' });
   });
 

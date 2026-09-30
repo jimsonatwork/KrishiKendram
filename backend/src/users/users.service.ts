@@ -221,27 +221,34 @@ export class UsersService {
 
     const memberId = generateMemberId()
 
-    const user = await this.prisma.user.create({
-      data: {
-        memberId,
-        name,
-        email,
-        passwordHash,
-        role,
-      },
-    })
+    const user = await this.prisma.$transaction(
+      async (tx) => {
+        const created = await tx.user.create({
+          data: {
+            memberId,
+            name,
+            email,
+            passwordHash,
+            role,
+          },
+        })
 
-    await this.auditService.create({
-      actorId: actorId ?? null,
-      action: 'USER_CREATED',
-      resourceType: 'USER',
-      resourceId: user.id,
-      description: `User ${user.name} was created`,
-      metadata: {
-        email: user.email,
-        role: user.role,
+        await this.auditService.createInTransaction(tx, {
+          actorId: actorId ?? null,
+          action: 'USER_CREATED',
+          resourceType: 'USER',
+          resourceId: created.id,
+          description: `User ${created.name} was created`,
+          metadata: {
+            result: 'SUCCESS',
+            email: created.email,
+            role: created.role,
+          },
+        })
+
+        return created
       },
-    })
+    )
 
     const {
       passwordHash: _passwordHash,

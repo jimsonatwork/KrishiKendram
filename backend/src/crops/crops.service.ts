@@ -253,6 +253,15 @@ export class CropsService {
         crop.createdAt,
       );
 
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'CREATE',
+        resourceType: 'crop',
+        resourceId: crop.id,
+        description: 'Crop created',
+        metadata: { farmId: farm.id },
+      });
+
       return crop;
     });
   }
