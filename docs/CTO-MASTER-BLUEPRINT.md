@@ -3041,3 +3041,20 @@ Every meaningful state-changing operation must leave an authoritative, authoriza
 **Audit/History: FOUNDATION COMPLETE - UNIVERSAL COVERAGE HARDENING REQUIRED.**
 
 This correction prevents the blueprint from overstating completion. No second audit/history engine is to be introduced. The next hardening pass extends the existing centralized architecture and closes only verified coverage/integrity gaps.
+
+## 2026-09-30 — Universal Audit Coverage Hardening Checkpoint
+
+The production business mutation inventory was re-run after the relationship/movement/lifecycle hardening pass. Core registered domain mutation paths now write through the canonical AuditService transaction path: authentication registration, user administration, farms, farm assets/records, crops, livestock, marketplace listings, custody, lease, transfer, split/merge, and ownership lifecycle operations. Regression assertions were added for the newly covered paths, including audit-write failure behavior where applicable.
+
+- Backend regression: 37 suites / 353 tests passed.
+- Backend build: passed.
+- Frontend build after the audit pass: passed.
+- git diff --check: passed.
+- System bootstrap permission reconciliation remains an intentional system-sync operation rather than a user business mutation; it is not treated as a duplicate audit stream.
+- The canonical audit engine remains AuditService/AuditEvent; no second audit engine was introduced.
+
+Audit status is therefore corrected to CORE BUSINESS MUTATION COVERAGE HARDENED. Generic before/after snapshots for every ordinary field update remain a future evidence-depth enhancement where existing domain history does not already provide reconstruction; this is not a reason to duplicate the history architecture.
+
+## 2026-09-30 — Frontend Platform Seam Checkpoint
+
+The frontend now has a small canonical route registry and direct-route audience guard so navigation metadata and protected platform routes have one reusable seam. The shared API request layer now exposes a typed ApiError with HTTP status/payload for consistent future handling. Existing Registry/Field Policy, theme, visual-effects, Activity/History, and platform administration foundations remain in place; no second frontend authorization engine was introduced.
