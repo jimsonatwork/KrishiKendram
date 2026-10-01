@@ -3058,3 +3058,9 @@ Audit status is therefore corrected to CORE BUSINESS MUTATION COVERAGE HARDENED.
 ## 2026-09-30 — Frontend Platform Seam Checkpoint
 
 The frontend now has a small canonical route registry and direct-route audience guard so navigation metadata and protected platform routes have one reusable seam. The shared API request layer now exposes a typed ApiError with HTTP status/payload for consistent future handling. Existing Registry/Field Policy, theme, visual-effects, Activity/History, and platform administration foundations remain in place; no second frontend authorization engine was introduced.
+
+## 2026-10-01 — Ownership Integrity Database Gate
+
+The ownership integrity pass adds a database-level invariant in addition to the canonical relationship service: only one active OWNER relationship can exist for a resource at a time. Historical/terminated ownership records remain unrestricted. Existing data was checked before applying the migration and no duplicate active-owner groups were found. Migration 20261001100000_enforce_single_active_owner is applied to the development PostgreSQL database.
+
+This closes the remaining persistence-layer bypass for concurrent or non-service writes. Application services continue to perform the semantic validation, effective-date ordering, movement/lineage creation, and audit/history work; the database index is the final invariant guard rather than a second business-logic engine.
