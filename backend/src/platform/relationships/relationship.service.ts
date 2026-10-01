@@ -158,6 +158,20 @@ export class ResourceRelationshipService {
       throw new ConflictException('Transfer effective date cannot precede the latest movement.');
     }
 
+    const activeOwner = await tx.resourceRelationship.findFirst({
+      where: {
+        resourceType,
+        resourceId,
+        relationshipType: ResourceRelationshipType.OWNER,
+        endedAt: null,
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+    });
+    if (!activeOwner || activeOwner.id !== current.id) {
+      throw new ConflictException('Resource ownership changed while preparing the transfer.');
+    }
+
+
     if (evidenceInput || existingEvidenceId) {
       const evidence = existingEvidenceId
         ? await tx.resourceEvidence.findUnique({ where: { id: existingEvidenceId } })
