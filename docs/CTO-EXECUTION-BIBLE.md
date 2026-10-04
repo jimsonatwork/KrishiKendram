@@ -1212,3 +1212,15 @@ Continue the concrete PARTIAL module gates from the top of the stack, beginning 
 - Restarted the active WSL backend/frontend stack and verified API HTTP 200 and UI HTTP 200.
 - Backend regression is currently **42 suites / 387 tests passed**; backend production build and `git diff --check` passed.
 - Break-glass recovery is recorded as DONE in the enhancement register; the broader Auth/Users/Admin product gate remains PARTIAL pending complete UI workflow acceptance.
+
+## 2026-10-04 — God Mode Control-Plane Expansion
+
+**Status: PLANNED / ARCHITECTURE BASELINE**
+
+The next major platform administration pass is governed by `docs/GOD-MODE-ARCHITECTURE.md`. God Mode is the authoritative root control plane for the whole KrishiKendram platform. It must control rather than merely display system truth, runtime, database/connections, Docker/infrastructure, registry/modules/resources, fields/validation, roles/authorization, users/lifecycle, navigation, themes, feature flags, security, approval workflows, credentials, audit/history, snapshots/recovery, route diagnostics, system diagnostics and dependency impact.
+
+Before implementation, the current working state was checkpointed at commit `0b01374` (`Checkpoint God Mode control center before architecture expansion`) so the architecture expansion can be reverted cleanly.
+
+Execution order: central truth reconciliation → canonical God Configuration Registry → God navigation/control surfaces → snapshot/diff/health/audit/recovery → operational controls → delegated Super Admin/Admin/Cluster Head policy. Significant mutations follow **validate → dependency analysis → snapshot → apply → health-check → audit**.
+
+Do not create parallel configuration sources or frontend-only authorization. Canonical root remains `/home/jj/Dev/KrishiKendram`.

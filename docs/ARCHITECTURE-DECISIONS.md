@@ -287,3 +287,19 @@ explicit relationship lifecycle such as transfer, termination, or revocation.
 The rule preserves backward compatibility for pre-relationship farms while
 making the V0.3 relationship model authoritative as soon as relationship
 history exists.
+
+---
+
+## ADR-019 — God Mode Is the Authoritative Platform Control Plane
+
+**Status:** ACTIVE
+
+God Mode is the administrative root of KrishiKendram. It is not a second application or a read-only dashboard. It governs canonical system truth, configuration, runtime, infrastructure, registry, authorization, validation, user lifecycle, navigation, themes, feature flags, security, workflows, credentials, audit, recovery and diagnostics.
+
+All governed mutations use the contract:
+
+**validate ? dependency analysis ? snapshot ? apply ? health-check ? audit**
+
+Backend services remain the enforcement authority. God Mode provides the administrative ownership and delegation surface; Super Admin, Admin and Cluster Head privileges are derived from God-defined policy. Configuration that God is expected to control must not remain scattered as hardcoded values across unrelated modules.
+
+The detailed architecture is maintained in `docs/GOD-MODE-ARCHITECTURE.md`.

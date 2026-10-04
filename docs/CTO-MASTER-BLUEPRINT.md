@@ -3089,3 +3089,15 @@ Errors follow a visibility hierarchy: field errors are shown beside the field; c
 - Extended the canonical live-refresh policy to the unified History workspace with explicit refresh, route/focus/visibility revalidation and the central 30-second interval.
 - Expanded the unified History timeline to consume the existing authenticated Livestock relationship-history endpoint; no new history model or parallel history engine was introduced.
 - Preserved backend authorization and canonical ResourceRelationship history as the source of truth.
+
+## 2026-10-04 — God Mode Architecture Baseline
+
+God Mode is now defined as the authoritative KrishiKendram administrative root, not a read-only dashboard. The complete architecture is maintained in `docs/GOD-MODE-ARCHITECTURE.md` and is part of the PMD/Blueprint execution baseline.
+
+The control plane covers System Truth & Configuration, Runtime & Application, Database & Connections, Docker/Infrastructure, Modules & Registry, Resources & Capabilities, Fields & Validation, Roles & Authorization, Users & Lifecycle, Navigation Administration, Themes & Application UI, Feature Flags, Security Policies, Approval Workflows, Credentials & Secrets, Audit & History, Snapshots & Recovery, Routes/API Diagnostics, System Diagnostics and Dependency Graph.
+
+The governing mutation contract is: **validate ? dependency analysis ? snapshot ? apply ? health-check ? audit**, with reversible recovery. God defines delegated capabilities for Super Admin, Admin and Cluster Head; backend authorization remains authoritative. The canonical repository is `/home/jj/Dev/KrishiKendram`; `D:\Dev\KrishiKendram` is not an active source tree.
+
+Root Node credential artifacts are `backend/config/god-mode/rootnodepass.txt` and `backend/config/god-mode/rootnodepass.kkt`. Credential values remain outside Git.
+
+This architecture replaces the assumption that administration should require source-code edits. Future platform configuration must be surfaced through the canonical God Configuration Registry wherever technically safe.

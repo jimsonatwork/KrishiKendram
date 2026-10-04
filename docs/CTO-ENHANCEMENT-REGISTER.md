@@ -138,3 +138,18 @@ After core application stability is established, introduce a platform-level loca
 Design a governed AI-assisted input workflow for farmers who may have difficulty typing. Target inputs include voice conversation, photographs/scans, and mixed input. The assistant should ask simple question-and-answer prompts, extract proposed field values, show a confirmation/edit step, then persist only through normal authorized application APIs. AI must never bypass validation, authorization, provenance, history, audit, or consent boundaries. Initial implementation should focus on voice + photo-assisted structured form filling; document and video inputs can follow later.
 
 **Architectural dependency:** E-011 uses the AI abstraction/security boundary defined in the CTO Master Blueprint and is deferred until core workflows are stable enough to provide trustworthy target schemas.
+
+### E-012 — God Mode Authoritative Control Plane
+**Status:** NOW / ARCHITECTURE BASELINE
+**Priority:** Critical
+**Requested:** 2026-10-04
+
+Build God Mode as the authoritative administrative control plane for all governed KrishiKendram configuration and operations. Full architecture is defined in `docs/GOD-MODE-ARCHITECTURE.md`.
+
+Scope includes centralized system truth, runtime, database/connections, Docker/infrastructure, modules/registry/resources, fields/validation, authorization/delegation, users/lifecycle, navigation, themes, feature flags, security, approval workflows, credentials, audit/history, snapshots/recovery, route diagnostics, system diagnostics and dependency graph.
+
+Required mutation contract: validate ? dependency analysis ? snapshot ? apply ? health-check ? audit. God defines delegated capabilities for Super Admin/Admin/Cluster Head. No required administrative operation should force source-code editing once the governed configuration contract exists.
+
+Acceptance requires canonical ownership, persistent editable settings, dependency impact, snapshot/audit coverage, tested rollback, safe infrastructure controls, credential rotation policy and verified canonical repository/path truth.
+
+**Pre-expansion checkpoint:** `0b01374 Checkpoint God Mode control center before architecture expansion`.
