@@ -26,6 +26,7 @@ export function SystemPage() {
   const [savingRolePermissions, setSavingRolePermissions] = useState(false)
   const [controlOverview, setControlOverview] = useState<any>(null)
   const [credentialArtifacts, setCredentialArtifacts] = useState<Awaited<ReturnType<typeof platformRegistry.credentialArtifacts>> | null>(null)
+  const [godMode, setGodMode] = useState<Awaited<ReturnType<typeof platformRegistry.godModeOverview>> | null>(null)
   const mode = useThemeStore((s) => s.mode)
   const colourTheme = useThemeStore((s) => s.colourTheme)
   const visualEffects = useThemeStore((s) => s.visualEffects)
@@ -35,6 +36,7 @@ export function SystemPage() {
 
   useEffect(() => {
     if (!token) return
+    void platformRegistry.godModeOverview(token).then(setGodMode).catch(() => setGodMode(null))
     void platformRegistry.filesystem(token).then(setFilesystem).catch(() => setFilesystem(null))
     void platformRegistry.credentialArtifacts(token).then(setCredentialArtifacts).catch(() => setCredentialArtifacts(null))
     void platformRegistry.superControlOverview(token).then(setControlOverview).catch(() => setControlOverview(null))
@@ -79,6 +81,35 @@ export function SystemPage() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-2xl border-2 border-primary/30 bg-card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><ShieldCheck className="size-4" /> God Mode · System Authority</div>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">God Mode Control Center</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Canonical system truth, runtime, credentials, registry, recovery and audit state in one protected control surface.</p>
+          </div>
+          {godMode && <div className="rounded-xl border px-3 py-2 text-right text-xs"><div className="font-semibold text-primary">{godMode.identity.authorityTier}</div><div className="text-muted-foreground">{godMode.identity.email}</div></div>}
+        </div>
+        {godMode ? <>
+          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-8">
+            {Object.entries({ Users: godMode.counts.users, Active: godMode.counts.activeUsers, 'Super Admins': godMode.counts.superAdmins, 'God Identities': godMode.counts.systemGods, Modules: godMode.counts.modules, Resources: godMode.counts.resources, Fields: godMode.counts.fields, Permissions: godMode.counts.permissions }).map(([label, value]) =>
+              <div key={label} className="rounded-lg border p-2.5"><div className="text-[11px] text-muted-foreground">{label}</div><div className="mt-1 text-lg font-semibold">{value}</div></div>
+            )}
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border p-3"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Canonical Root</div><div className="mt-2 break-all font-mono text-xs">{godMode.root.wslPath}</div><div className="mt-1 text-xs text-primary">{godMode.root.canonical ? 'Verified canonical' : 'ROOT INVALID'}</div></div>
+            <div className="rounded-xl border p-3"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Runtime</div><div className="mt-2 text-sm">Node {String((godMode.runtime.node as { major?: number })?.major ?? '?')} · API 3000 · UI 4000</div><div className="mt-1 text-xs text-muted-foreground">PostgreSQL · Prisma · Docker</div></div>
+            <div className="rounded-xl border p-3"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Credential State</div><div className="mt-2 text-sm">{godMode.credential.passwordFilePresent ? 'Password artifact present' : 'Password artifact missing'}</div><div className="mt-1 text-xs text-muted-foreground">{godMode.credential.patternFiles.length} pattern artifact(s) · values hidden</div></div>
+            <div className="rounded-xl border p-3"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recovery Guard</div><div className="mt-2 text-sm">{godMode.recovery.singletonEnforced ? 'Singleton enforced' : 'ATTENTION: duplicate God'}</div><div className="mt-1 text-xs text-muted-foreground">{godMode.recovery.protected ? 'Canonical identity protected' : 'Protection disabled'}</div></div>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border p-4"><div className="font-semibold">Environment ownership</div><div className="mt-3 space-y-2">{godMode.environmentKeys.map((item) => <div key={item.key} className="flex items-center justify-between gap-3 border-b pb-2 text-xs last:border-0 last:pb-0"><span className="font-mono">{item.key}</span><span className="text-muted-foreground">{item.secret ? 'SECRET · location only' : 'CONFIG'} · {item.owner}</span></div>)}</div></div>
+            <div className="rounded-xl border p-4"><div className="font-semibold">Recent control audit</div><div className="mt-3 max-h-32 space-y-2 overflow-auto">{godMode.recentAudit.map((event) => <div key={event.id} className="border-b pb-2 text-xs last:border-0"><div className="font-medium">{event.action}</div><div className="text-muted-foreground">{event.resourceType} · {new Date(event.createdAt).toLocaleString()}</div></div>)}</div></div>
+          </div>
+          <div className="mt-4 rounded-xl border border-dashed p-3 text-xs text-muted-foreground">Mutation contract: <span className="font-medium text-foreground">validate → snapshot → apply → health-check → audit</span>. Secrets are never returned by this overview.</div>
+        </> : <div className="mt-5 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">God Mode overview unavailable or current identity is not authorized.</div>}
+      </section>
+
       <section className="rounded-2xl border bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

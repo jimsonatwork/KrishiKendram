@@ -20,6 +20,23 @@ export type CredentialArtifactSettings = {
 
 export type CredentialArtifactStatus = CredentialArtifactSettings & { files: string[] }
 
+export type GodModeOverview = {
+  identity: { email: string; authorityTier: string; role: string; singleton: boolean; normalUserManagementProtected: boolean }
+  root: { wslPath: string; windowsPath: string; canonical: boolean; forbiddenProjectRoots: string[] }
+  runtime: Record<string, unknown>
+  paths: Record<string, string>
+  environmentKeys: Array<{ key: string; source: string; owner: string; editableInGodMode: boolean; secret: boolean }>
+  credentialPolicy: Record<string, unknown>
+  registry: Record<string, unknown>
+  controlPlane: Record<string, unknown>
+  startupInvariant: Record<string, unknown>
+  health: { api: boolean }
+  counts: { users: number; activeUsers: number; superAdmins: number; systemGods: number; modules: number; resources: number; fields: number; permissions: number }
+  credential: CredentialArtifactStatus
+  recentAudit: Array<{ id: string; action: string; resourceType: string; resourceId: string | null; description: string | null; createdAt: string }>
+  recovery: { singletonEnforced: boolean; canonicalIdentityPresent: boolean; protected: boolean }
+}
+
 export type SuperControlRole = { role: string; userCount: number; permissionCount: number }
 export type SuperControlPermission = {
   id: string
@@ -33,6 +50,10 @@ export type SuperControlPermission = {
 }
 
 export const platformRegistry = {
+  godModeOverview: (token: string) =>
+    request<GodModeOverview>('/admin/god-mode/overview', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
   filesystem: (token: string) =>
     request<FilesystemRegistry>('/registry/filesystem', {
       headers: { Authorization: `Bearer ${token}` },

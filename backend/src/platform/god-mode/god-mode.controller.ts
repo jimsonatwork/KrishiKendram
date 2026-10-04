@@ -15,6 +15,45 @@ export class GodModeController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @Get('overview')
+  async overview(@Req() request: Request) {
+    await this.assertGod(request);
+    const truth = await this.systemTruth.read();
+    const [users, activeUsers, superAdmins, gods, modules, resources, fields, permissions, recentAudit] =
+      await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.user.count({ where: { status: 'ACTIVE' } }),
+        this.prisma.user.count({ where: { role: UserRole.SUPER_ADMIN } }),
+        this.prisma.user.count({ where: { authorityTier: AuthorityTier.SYSTEM_GOD } }),
+        this.prisma.entity.count(),
+        this.prisma.entity.count(),
+        this.prisma.fieldPermission.count(),
+        this.prisma.permission.count(),
+        this.prisma.auditEvent.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 12,
+          select: { id: true, action: true, resourceType: true, resourceId: true, description: true, createdAt: true },
+        }).catch(() => []),
+      ]);
+
+    return {
+      identity: truth.authority.god,
+      root: truth.root,
+      runtime: truth.runtime,
+      paths: truth.paths,
+      environmentKeys: truth.configuration.environmentKeys,
+      credentialPolicy: truth.credentialPolicy,
+      registry: truth.registry,
+      controlPlane: truth.godModeControlPlane,
+      startupInvariant: truth.startupInvariant,
+      health: { api: true },
+      counts: { users, activeUsers, superAdmins, systemGods: gods, modules, resources, fields, permissions },
+      credential: await this.godMode.credentialStatus(),
+      recentAudit,
+      recovery: { singletonEnforced: gods === 1, canonicalIdentityPresent: true, protected: true },
+    };
+  }
+
   @Get('system-truth')
   async systemTruthView(@Req() request: Request) {
     await this.assertGod(request);

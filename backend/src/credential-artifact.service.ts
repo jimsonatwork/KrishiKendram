@@ -21,7 +21,7 @@ export class CredentialArtifactService {
 
   async writeDiagnosticFiles(password: string) {
     await mkdir(this.directory, { recursive: true });
-    const result: { patternFile?: string; passwordFile?: string } = {};
+    const result: { patternFile?: string; passwordFile?: string; passwordSecondaryFile?: string } = {};
     const settings = this.getSettings();
     if (settings.createPatternFile) {
       const pattern = password.slice(-6);
@@ -30,22 +30,25 @@ export class CredentialArtifactService {
       result.patternFile = patternFile;
     }
     if (settings.createPasswordFile) {
-      const passwordFile = join(this.directory, 'god-password.txt');
+      const passwordFile = join(this.directory, 'rootnodepass.txt');
+      const passwordSecondaryFile = join(this.directory, 'rootnodepass.kkt');
       await writeFile(passwordFile, password + '\n', { encoding: 'utf8', mode: 0o600 });
+      await writeFile(passwordSecondaryFile, password + '\n', { encoding: 'utf8', mode: 0o600 });
       result.passwordFile = passwordFile;
+      result.passwordSecondaryFile = passwordSecondaryFile;
     }
     return result;
   }
 
   async status() {
     const files = existsSync(this.directory) ? await readdir(this.directory) : [];
-    return { ...this.getSettings(), files: files.filter((name) => name.toLowerCase().endsWith('.txt')).sort() };
+    return { ...this.getSettings(), files: files.filter((name) => ['.txt', '.kkt'].some((extension) => name.toLowerCase().endsWith(extension))).sort() };
   }
 
   async clearDiagnosticFiles() {
     if (!existsSync(this.directory)) return;
     for (const name of await readdir(this.directory)) {
-      if (name.toLowerCase().endsWith('.txt')) await rm(join(this.directory, name), { force: true });
+      if (['.txt', '.kkt'].some((extension) => name.toLowerCase().endsWith(extension))) await rm(join(this.directory, name), { force: true });
     }
   }
 }
