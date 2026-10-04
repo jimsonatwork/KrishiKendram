@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 
 import {
+  Prisma,
   CropSeason,
   CropStatus,
   UserRole,
@@ -116,6 +117,43 @@ export class CropsService {
     );
   }
 
+  /**
+   * Transaction-aware Crop mutation boundary for composite workflows such
+   * as Intake. Authorization and interpretation remain outside the database
+   * transaction; persistence is performed on the supplied transaction client.
+   */
+  async createFromIntakeInTransaction(
+    tx: Prisma.TransactionClient,
+    farmId: string,
+    input: {
+      name: string;
+      variety?: string;
+      season?: CropSeason;
+      status?: CropStatus;
+      sowingDate?: Date;
+      harvestDate?: Date;
+      area?: number;
+      unit?: string;
+      notes?: string;
+    },
+    userId: string,
+    role: UserRole,
+  ) {
+    return this.createCanonical(
+      farmId,
+      input,
+      userId,
+      role,
+      {
+        defaultSeason: CropSeason.UNKNOWN,
+        defaultStatus: CropStatus.SOWN,
+        defaultSowingDate: new Date(),
+        preventSameDayDuplicate: true,
+      },
+      tx,
+    );
+  }
+
   private async createCanonical(
     farmId: string,
     input: {
@@ -138,6 +176,7 @@ export class CropsService {
       preventSameDayDuplicate: boolean;
       preserveNullDates?: boolean;
     },
+    tx?: Prisma.TransactionClient,
   ) {
     /*
      * Retrieve only the minimum farm context required for authorization.
@@ -200,8 +239,10 @@ export class CropsService {
         sowingDate.getDate() + 1,
       );
 
+      const db = tx ?? this.prisma;
+
       const existingCrop =
-        await this.prisma.crop.findFirst({
+        await db.crop.findFirst({
           where: {
             farmId: farm.id,
             deletedAt: null,
@@ -221,7 +262,7 @@ export class CropsService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    if (tx) {
       const crop = await tx.crop.create({
         data: {
           farmId: farm.id,
@@ -254,6 +295,50 @@ export class CropsService {
       );
 
       await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'CREATE',
+        resourceType: 'crop',
+        resourceId: crop.id,
+        description: 'Crop created',
+        metadata: { farmId: farm.id },
+      });
+
+      return crop;
+    }
+
+    return this.prisma.$transaction(async (transaction) => {
+      const crop = await transaction.crop.create({
+        data: {
+          farmId: farm.id,
+          name: normalizedName,
+          variety: input.variety,
+          season:
+            input.season ??
+            options.defaultSeason,
+          status:
+            input.status ??
+            options.defaultStatus,
+          sowingDate:
+            sowingDate ??
+            (options.preserveNullDates ? null : undefined),
+          harvestDate:
+            input.harvestDate ??
+            (options.preserveNullDates ? null : undefined),
+          area: input.area,
+          unit: input.unit,
+          notes: input.notes,
+        },
+      });
+
+      await this.relationships.createOwnerRelationship(
+        transaction,
+        'crop',
+        crop.id,
+        farm.ownerId,
+        crop.createdAt,
+      );
+
+      await this.audit.createInTransaction(transaction, {
         actorId: userId,
         action: 'CREATE',
         resourceType: 'crop',

@@ -26,6 +26,9 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
   { key: 'resources', path: '/app/resources', label: 'Resources', audience: 'SUPER_ADMIN' },
   { key: 'modules', path: '/app/modules', label: 'Modules', audience: 'SUPER_ADMIN' },
   { key: 'capabilities', path: '/app/capabilities', label: 'Capabilities', audience: 'SUPER_ADMIN' },
+  { key: 'database', path: '/app/database', label: 'Database', audience: 'SUPER_ADMIN' },
+  { key: 'connections', path: '/app/connections', label: 'Infrastructure & Connections', audience: 'SUPER_ADMIN' },
+  { key: 'access', path: '/app/access', label: 'Per-user / Per-module Access', audience: 'SUPER_ADMIN' },
   { key: 'system', path: '/app/system', label: 'System', audience: 'SUPER_ADMIN' },
 ]
 

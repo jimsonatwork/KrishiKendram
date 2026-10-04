@@ -3064,3 +3064,28 @@ The frontend now has a small canonical route registry and direct-route audience 
 The ownership integrity pass adds a database-level invariant in addition to the canonical relationship service: only one active OWNER relationship can exist for a resource at a time. Historical/terminated ownership records remain unrestricted. Existing data was checked before applying the migration and no duplicate active-owner groups were found. Migration 20261001100000_enforce_single_active_owner is applied to the development PostgreSQL database.
 
 This closes the remaining persistence-layer bypass for concurrent or non-service writes. Application services continue to perform the semantic validation, effective-date ordering, movement/lineage creation, and audit/history work; the database index is the final invariant guard rather than a second business-logic engine.
+
+### Universal Data Freshness & Error Visibility Policy
+
+All list/table views are treated as live operational views. A list must support an explicit refresh action and automatically revalidate on route/view return, browser focus, and a bounded background interval where appropriate. Default interval is 30 seconds and must be configurable centrally; high-volume/low-resource screens may override it. Backend remains authoritative, and refresh must preserve current filters, pagination and selection where safe.
+
+Errors follow a visibility hierarchy: field errors are shown beside the field; cross-field/business errors are shown beside involved fields and at the active dialog/window level; action/API failures are shown in the active window and global application error surface; unexpected runtime failures are shown globally. No important error may be rendered only on a page hidden behind an active modal.
+
+## 2026-10-01 — Registry-Controlled Database Parameters
+
+- Added a Super Admin Database Parameters workspace backed by the canonical Registry.
+- Runtime database connection metadata is visible to Super Admin only; password and raw connection URL remain masked until explicit Unmask.
+- Sensitive reveal is controlled by the Registry sensitive-information setting and the reveal action is recorded through the canonical AuditService.
+- Masking is restored locally without retaining a second credential copy; the backend remains authoritative for the reveal operation.
+- Database workspace is a dedicated lazy-loaded Super Admin route and follows the application's existing platform navigation seam.
+- Verification: backend production build passed; frontend production build passed with 2,320 modules and 439.86 kB initial JavaScript / 139.58 kB gzip.
+## 2026-10-01 — Compact Operational Workspace
+- Added persisted desktop navigation-collapse control with icon-only navigation in collapsed mode.
+- Reduced operational table row padding centrally for higher information density.
+- Mobile navigation remains unchanged.
+
+## 2026-10-01 — History and Module Freshness Expansion
+- Extended the canonical live-refresh policy to the Super Admin Modules workspace with explicit refresh and 30-second bounded revalidation.
+- Extended the canonical live-refresh policy to the unified History workspace with explicit refresh, route/focus/visibility revalidation and the central 30-second interval.
+- Expanded the unified History timeline to consume the existing authenticated Livestock relationship-history endpoint; no new history model or parallel history engine was introduced.
+- Preserved backend authorization and canonical ResourceRelationship history as the source of truth.

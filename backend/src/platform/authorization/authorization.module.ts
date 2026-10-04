@@ -13,13 +13,14 @@ import { FieldPolicyRepository } from './field-policy.repository';
 import { FieldPolicyService } from './field-policy.service';
 import { PermissionService } from './permission.service';
 import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
+import { RelationshipAccessPolicy } from '../relationships/relationship-access.policy';
 
 @Global()
 @Module({
   controllers: [PermissionAdminController],
   imports: [
     PrismaModule,
-    RegistryModule,
+    forwardRef(() => RegistryModule),
     forwardRef(() => RelationshipsModule),
   ],
   providers: [
@@ -29,6 +30,7 @@ import { GlobalFarmAccessPolicy } from './global-farm-access.policy';
     FieldPolicyRepository,
     FieldPolicyService,
     PermissionService,
+    RelationshipAccessPolicy,
     GlobalFarmAccessPolicy,
   ],
   exports: [

@@ -83,7 +83,7 @@ Finalize production CORS, secrets, authentication, database configuration, loggi
 Prove the application can be reconstructed from repository + documented configuration + migrations without hidden dependence on this workstation.
 
 ### E-009 — Break-Glass Super Admin Recovery
-**Status:** NOW
+**Status:** DONE
 **Priority:** Critical
 **Requested:** 2026-09-29
 
@@ -107,6 +107,34 @@ Every material enhancement discovered during functional testing, UI work, securi
 
 An item is not **DONE** merely because code exists. Mark it DONE only after implementation and appropriate verification evidence are recorded.
 
+## 2026-10-03 CTO Progress
+
+- Canonical project root is WSL Ubuntu-26.04 `/home/jj/Dev/KrishiKendram`; Windows `D:\Dev\KrishiKendram` is not the active source tree.
+- Canonical filesystem resource registry is `backend/config/resource-paths.json`, including the Super Admin runtime/image resource.
+- Break-glass Super Admin recovery is implemented as a local operator command and is not exposed as an HTTP backdoor.
+- Added committed environment contract names and non-secret validation via `npm run check:env`; real `.env` values remain outside Git.
+- Added `npm run recover:super-admin` and corrected the legacy bootstrap script alias to the canonical recovery implementation.
+- WSL backend/frontend were restarted after the changes; API, UI, and Super Admin image each returned HTTP 200.
+- Backend regression: 42 suites / 387 tests passed. Backend production build passed. `git diff --check` passed.
+
 ## Next Review
 
 After the first complete application workflow pass, review this register and reprioritize before beginning the technical-completeness pass.
+
+## Product Expansion — Controlled Future Scope
+
+### E-010 — Indian Language / Localization Platform
+**Status:** LATER
+**Priority:** High
+**Requested:** 2026-10-02
+
+After core application stability is established, introduce a platform-level localization architecture covering all Indian languages required by the product, with centralized translation keys, user language preference, English fallback, locale-aware dates/numbers/units, and an extensible language catalog. Language preference must not alter authorization or business rules.
+
+### E-011 — Farmer AI Assisted Data Capture
+**Status:** LATER
+**Priority:** High
+**Requested:** 2026-10-02
+
+Design a governed AI-assisted input workflow for farmers who may have difficulty typing. Target inputs include voice conversation, photographs/scans, and mixed input. The assistant should ask simple question-and-answer prompts, extract proposed field values, show a confirmation/edit step, then persist only through normal authorized application APIs. AI must never bypass validation, authorization, provenance, history, audit, or consent boundaries. Initial implementation should focus on voice + photo-assisted structured form filling; document and video inputs can follow later.
+
+**Architectural dependency:** E-011 uses the AI abstraction/security boundary defined in the CTO Master Blueprint and is deferred until core workflows are stable enough to provide trustworthy target schemas.

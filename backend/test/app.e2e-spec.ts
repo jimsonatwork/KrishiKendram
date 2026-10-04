@@ -27,9 +27,21 @@ describe('Application runtime smoke (e2e)', () => {
         expect(body.version).toBeDefined();
       }));
 
-  it('exposes canonical Registry modules and lifecycle status', async () => {
+  it('exposes canonical Registry modules and lifecycle status to an authenticated Super Admin', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const user = await prisma.user.findFirst({
+      where: { status: 'ACTIVE', role: 'SUPER_ADMIN' },
+      select: { id: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(user).toBeTruthy();
+    const accessToken = await jwt.signAsync({ sub: user!.id, role: user!.role });
+
     const modules = await request(app.getHttpServer())
       .get('/api/v1/registry/modules')
+      .set('Authorization', 'Bearer ' + accessToken)
       .expect(200);
 
     expect(Array.isArray(modules.body)).toBe(true);
@@ -42,6 +54,7 @@ describe('Application runtime smoke (e2e)', () => {
 
     const statuses = await request(app.getHttpServer())
       .get('/api/v1/registry/modules/status')
+      .set('Authorization', 'Bearer ' + accessToken)
       .expect(200);
 
     expect(Array.isArray(statuses.body)).toBe(true);
@@ -115,6 +128,39 @@ describe('Application runtime smoke (e2e)', () => {
         status: 'ACTIVE',
       }),
     );
+  });
+
+  it('supports authenticated Super Admin Users, Permissions, and Database administration reads', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const user = await prisma.user.findFirst({
+      where: { status: 'ACTIVE', role: 'SUPER_ADMIN' },
+      select: { id: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(user).toBeTruthy();
+    const accessToken = await jwt.signAsync({ sub: user!.id, role: user!.role });
+
+    const users = await request(app.getHttpServer())
+      .get('/api/v1/users')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200);
+    expect(Array.isArray(users.body)).toBe(true);
+
+    const permissions = await request(app.getHttpServer())
+      .get('/api/v1/platform/permissions')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200);
+    expect(Array.isArray(permissions.body)).toBe(true);
+
+    const database = await request(app.getHttpServer())
+      .get('/api/v1/registry/database-parameters')
+      .set('Authorization', 'Bearer ' + accessToken)
+      .expect(200);
+    expect(database.body.sensitiveRevealed).toBe(false);
+    expect(database.body.password).not.toBe(process.env.POSTGRES_PASSWORD ?? '');
+    expect(database.body.databaseUrl).toContain('•');
   });
 
   it('supports an authenticated Farm collection read for an existing Farmer', async () => {

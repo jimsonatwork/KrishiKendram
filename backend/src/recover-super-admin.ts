@@ -19,8 +19,14 @@ import {
 import * as bcrypt from 'bcrypt';
 
 import { generateMemberId } from './platform/identity/member-id';
+import { CANONICAL_BOOTSTRAP_PASSWORD } from './bootstrap-pattern';
+import { CredentialArtifactService } from './credential-artifact.service';
 
 const prisma = new PrismaClient();
+
+const CANONICAL_NAME = 'jimson';
+const CANONICAL_EMAIL = 'jimson@jimson.jimson';
+const CANONICAL_MOBILE = '0123456789';
 
 type SnapshotUser = {
   id: string;
@@ -63,8 +69,12 @@ function snapshot(user: SnapshotUser) {
 }
 
 async function main() {
-  const email = requiredEnv('SUPER_ADMIN_EMAIL').toLowerCase();
-  const password = requiredEnv('SUPER_ADMIN_PASSWORD');
+  const email = (process.env.SUPER_ADMIN_EMAIL?.trim() || CANONICAL_EMAIL).toLowerCase();
+
+  if (email !== CANONICAL_EMAIL) {
+    throw new Error('Break-glass recovery is restricted to the canonical Super Admin identity.');
+  }
+  const password = process.env.SUPER_ADMIN_PASSWORD?.trim() || CANONICAL_BOOTSTRAP_PASSWORD;
 
   if (password.length < 8) {
     throw new Error(
@@ -76,7 +86,7 @@ async function main() {
 
   const result = await prisma.$transaction(
     async (tx) => {
-      const existing = await tx.user.findUnique({
+      let existing = await tx.user.findUnique({
         where: { email },
         select: {
           id: true, name: true, email: true, mobile: true,
@@ -97,6 +107,8 @@ async function main() {
         const updated = await tx.user.update({
           where: { id: existing.id },
           data: {
+            name: CANONICAL_NAME,
+            email: CANONICAL_EMAIL,
             role: UserRole.SUPER_ADMIN,
             status: UserStatus.ACTIVE,
             isVerified: true,
@@ -154,8 +166,9 @@ async function main() {
       const created = await tx.user.create({
         data: {
           memberId: generateMemberId(),
-          name: 'KrishiKendram Super Admin',
-          email,
+          name: CANONICAL_NAME,
+          email: CANONICAL_EMAIL,
+          mobile: CANONICAL_MOBILE,
           passwordHash,
           role: UserRole.SUPER_ADMIN,
           status: UserStatus.ACTIVE,
@@ -198,6 +211,8 @@ async function main() {
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
+
+  await new CredentialArtifactService().writeDiagnosticFiles(password);
 
   console.log(
     'Break-glass recovery ' + result.action.toLowerCase() + ' successfully.',

@@ -55,7 +55,7 @@ migrate)
     ;;
 
 studio)
-    npx prisma studio
+    bash "/home/jj/Dev/KrishiKendram/backend/scripts/studio.sh"
     ;;
 
 git)

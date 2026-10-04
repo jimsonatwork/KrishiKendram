@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Boxes, CheckCircle2, CircleOff, Network } from 'lucide-react'
+import { Boxes, CheckCircle2, CircleOff, Network, RefreshCw } from 'lucide-react'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 import { Button } from '@/components/ui/button'
 import { platformRegistry } from '@/lib/platform/registry'
-import type { ModuleDefinition, ResourceDefinition } from '@/lib/platform/contracts'
+import type { ModuleDefinition, ModuleLifecycleStatus, ResourceDefinition } from '@/lib/platform/contracts'
 import { useAuthStore } from '@/stores/auth.store'
 
 function lifecycleLabel(value: string) {
@@ -17,21 +18,28 @@ export function ModulesPage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [statuses, setStatuses] = useState<Record<string, ModuleLifecycleStatus>>({})
+  const [refreshNonce, setRefreshNonce] = useState(0)
+
+  const refresh = () => setRefreshNonce((value) => value + 1)
+  useLiveRefresh(refresh, { enabled: Boolean(token), intervalMs: 30000 })
 
   useEffect(() => {
     if (!token) return
     setLoading(true)
-    Promise.all([platformRegistry.modules(token), platformRegistry.resources(token)])
-      .then(([moduleData, resourceData]) => {
+    Promise.all([platformRegistry.modules(token), platformRegistry.resources(token), platformRegistry.moduleStatuses(token)])
+      .then(([moduleData, resourceData, statusData]) => {
         setModules(moduleData)
         setResources(resourceData)
+        setStatuses(Object.fromEntries(statusData.filter(Boolean).map((status) => [status.moduleId, status])))
         setSelected((current) => current ?? moduleData[0]?.id ?? null)
       })
       .catch((cause) => setError(cause instanceof Error ? cause.message : 'Unable to load module contracts.'))
       .finally(() => setLoading(false))
-  }, [token])
+  }, [token, refreshNonce])
 
   const selectedModule = modules.find((module) => module.id === selected) ?? null
+  const selectedStatus = selected ? statuses[selected] : undefined
   const moduleResources = useMemo(
     () => resources.filter((resource) => resource.module === selected),
     [resources, selected],
@@ -41,7 +49,13 @@ export function ModulesPage() {
     <div className="space-y-6">
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Platform control</div>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Modules</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Modules</h1>
+          <Button type="button" variant="outline" size="sm" onClick={refresh} disabled={loading} title="Refresh modules">
+            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
           Canonical module lifecycle and dependency view. Module state remains owned by the backend Registry.
         </p>
@@ -77,11 +91,19 @@ export function ModulesPage() {
                     <p className="mt-1 font-mono text-xs text-muted-foreground">{selectedModule.id}</p>
                   </div>
                   <div className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm">
-                    {selectedModule.lifecycle === 'ACTIVE' ? <CheckCircle2 className="size-4" /> : <CircleOff className="size-4" />}
-                    {lifecycleLabel(selectedModule.lifecycle)}
+                    {selectedStatus?.operational ? <CheckCircle2 className="size-4" /> : <CircleOff className="size-4" />}
+                    {selectedStatus?.operational ? 'Operational' : 'Blocked'} · {lifecycleLabel(selectedModule.lifecycle)}
                   </div>
                 </div>
               </div>
+
+              {selectedStatus && !selectedStatus.operational && (
+                <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm">
+                  <div className="font-semibold text-destructive">Dependency gate</div>
+                  <div className="mt-1 text-muted-foreground">This module is not operational because required dependencies are unavailable.</div>
+                  <div className="mt-3 flex flex-wrap gap-2">{selectedStatus.unavailableDependencies.map((dependency) => <span key={dependency} className="rounded-full border px-2 py-1 font-mono text-xs">{dependency}</span>)}</div>
+                </div>
+              )}
 
               <div className="grid gap-6 xl:grid-cols-2">
                 <div className="rounded-2xl border bg-card p-6">

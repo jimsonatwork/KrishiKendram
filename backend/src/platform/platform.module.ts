@@ -6,6 +6,7 @@ import { RelationshipsModule } from './relationships/relationships.module';
 import { MovementsModule } from './relationships/movements.module';
 import { LineageModule } from './relationships/lineage.module';
 import { EvidenceModule } from './relationships/evidence.module';
+import { SuperAdminControlModule } from './super-admin/super-admin-control.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { EvidenceModule } from './relationships/evidence.module';
     MovementsModule,
     LineageModule,
     EvidenceModule,
+    SuperAdminControlModule,
   ],
   exports: [
     RegistryModule,
@@ -23,6 +25,7 @@ import { EvidenceModule } from './relationships/evidence.module';
     MovementsModule,
     LineageModule,
     EvidenceModule,
+    SuperAdminControlModule,
   ],
 })
 export class PlatformModule {}

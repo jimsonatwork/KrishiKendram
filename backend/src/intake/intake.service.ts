@@ -73,75 +73,48 @@ export class IntakeService {
       dto.content,
     );
 
-    if (
-      extracted.category === 'PLANTING' &&
-      extracted.crop
-    ) {
-      /*
-       * Keep the Crop authorization at the Intake boundary before passing
-       * extracted farm data into the canonical Crop mutation service.
-       *
-       * CropsService.createFromIntake() performs the same authorization
-       * again as its own mandatory mutation boundary. This protects the
-       * service if it is ever called from another entry point.
-       */
-      await this.authorization.assertCan({
-        user: {
-          userId,
-          role,
-        },
-        module: 'farms',
-        resource: 'crop',
-        action: AuthorizationAction.CREATE,
-        farmId: farm.id,
-        ownerId: farm.ownerId,
-      });
-
-      const sowingDate = new Date();
-
-      /*
-       * Crop persistence belongs to CropsService.
-       *
-       * Intake owns interpretation of the supplied content, but it must not
-       * maintain a second Crop validation, duplicate-check, or Prisma
-       * persistence path.
-       */
-      await this.cropsService.createFromIntake(
-        dto.farmId,
-        {
-          name: extracted.crop.name,
-          sowingDate,
-          area: extracted.activity?.area,
-          unit: extracted.activity?.unit,
-        },
-        userId,
-        role,
-      );
-    }
-
-    /*
-     * FarmRecord mutation belongs to FarmsService.
-     *
-     * Intake owns interpretation of the supplied content, but it must not
-     * create a second FarmRecord persistence/validation path. FarmsService
-     * remains the canonical mutation boundary for authorization, Registry
-     * validation, normalization, and Prisma persistence.
-     */
     const jsonData =
       JSON.parse(
         JSON.stringify(extracted),
       ) as Prisma.InputJsonValue;
 
-    return this.farmsService.addRecord(
-      dto.farmId,
-      {
-        category: extracted.category,
-        title: 'AI Intake Record',
-        inputMethod: dto.inputMethod,
-        data: jsonData as Record<string, any>,
-      },
-      userId,
-      role,
-    );
+    /*
+     * Interpretation and authorization are complete before opening the
+     * transaction. Crop + FarmRecord persistence now share one transaction,
+     * so a failure in either canonical mutation rolls back the complete
+     * Intake write-set, including their audit/relationship writes.
+     */
+    return this.prisma.$transaction(async (tx) => {
+      if (
+        extracted.category === 'PLANTING' &&
+        extracted.crop
+      ) {
+        await this.cropsService.createFromIntakeInTransaction(
+          tx,
+          dto.farmId,
+          {
+            name: extracted.crop.name,
+            sowingDate: new Date(),
+            area: extracted.activity?.area,
+            unit: extracted.activity?.unit,
+          },
+          userId,
+          role,
+        );
+      }
+
+      return this.farmsService.addRecordInTransaction(
+        tx,
+        dto.farmId,
+        {
+          category: extracted.category,
+          title: 'AI Intake Record',
+          inputMethod: dto.inputMethod,
+          data: jsonData as Record<string, any>,
+        },
+        userId,
+        role,
+      );
+    });
   }
 }

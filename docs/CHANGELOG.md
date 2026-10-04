@@ -1,3 +1,17 @@
+## 2026-10-02 — Post-RC integration continuation
+
+- Reconciled authenticated runtime coverage: Registry module tests now authenticate as Super Admin, matching the production authorization boundary.
+- Added AuditService regression coverage for recursive sensitive-metadata redaction.
+- Backend regression: 40 suites / 365 tests passed; authenticated E2E: 21/21 passed.
+- Frontend production build: 2,320 modules; backend production dependency audit: 0 vulnerabilities.
+- Revalidated the running production Compose stack, API health, frontend and Prisma Studio.
+
+## 2026-10-01 — History and module freshness expansion
+
+- Extended live operational freshness to Modules and History with explicit refresh controls and bounded 30-second revalidation.
+- Added Livestock relationship-history events to the unified History timeline using the existing authorized backend history contract.
+- Preserved the canonical backend history/relationship source of truth; no parallel history engine was introduced.
+
 ## 2026-09-29 — Production RC runtime acceptance
 
 - Isolated production Compose smoke completed with project kkrc, without disturbing the development PostgreSQL container/volume.
@@ -1090,3 +1104,16 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Hardened docs/DEPLOYMENT.md to apply Prisma migrations before application traffic on first deployment and updates.
 - Added logical PostgreSQL backup/recovery guidance and production volume/secrets safeguards.
 - Backend build and full regression remain green: 36 suites / 346 tests passed.
+
+## 2026-10-01 — Registry-Controlled Database Parameters
+- Added Super Admin Database Parameters workspace.
+- Password and raw connection URL remain masked by default and require explicit Unmask.
+- Sensitive reveal is Registry-controlled and audited through the canonical AuditService.
+- Added dedicated lazy-loaded database platform route.
+- Backend and frontend production builds pass.
+- 2026-10-01: Added compact icon-only desktop navigation and reduced table row density across the application shell.
+
+### 2026-10-02 — Workspace refresh consistency
+- Added manual Refresh actions to Farms and Crops list workspaces.
+- Preserved automatic live-refresh behavior and existing error/loading states.
+- Recorded Indian-language localization and farmer AI-assisted data capture as controlled future-scope roadmap items.

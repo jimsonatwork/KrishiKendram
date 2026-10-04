@@ -517,6 +517,30 @@ These records support one another. None should silently replace another.
 - Existing Git checkpoints are the recovery mechanism; no additional recovery framework added.
 - V0.3 promotion/recovery checkpoint CLOSED.
 
+### 02 Oct 2026 — Module operational dependency gate surfaced
+
+- Super Admin Modules now consumes the canonical registry module-status contract alongside module definitions and resources.
+- The UI distinguishes lifecycle state from operational state and surfaces unavailable dependency IDs when the Registry reports a blocked module.
+- No frontend dependency evaluation was duplicated;  remains the ModuleLifecycleService source of truth.
+- Frontend production build passed: 2,320 modules transformed.
+
+### 01 Oct 2026 — Unified user activity history integration
+
+- Extended the unified History workspace to consume the existing authorization-protected users activity audit stream.
+- User profile history, temporal resource relationships, Farm/Crop/Livestock lifecycle facts, movements, lineage, evidence and now actor audit activity are presented through the same timeline surface.
+- Reused the existing UsersService/AuditService contract; no duplicate audit or history engine was introduced.
+- Frontend production build passed: 2,320 modules transformed.
+
+### 01 Oct 2026 — History / module freshness continuation
+
+- Continued from the verified ownership-integrity and universal freshness baseline rather than opening a new architecture track.
+- Super Admin Modules workspace now supports explicit refresh plus the canonical 30-second live-refresh behavior.
+- Unified History workspace now supports explicit refresh plus route/focus/visibility and bounded background revalidation through the shared live-refresh hook.
+- Unified History now includes authenticated Livestock ResourceRelationship history alongside Farm, FarmAsset and Crop lifecycle history.
+- Backend full regression after the changes: 39 suites / 363 tests passed.
+- Frontend production build passed: 2,320 modules transformed; no backend model or parallel history engine was introduced.
+- Exact resume position: continue the core completion audit and verified lifecycle/history gaps, then move into remaining PARTIAL module gates; do not invent speculative infrastructure.
+
 ### 27 Sep 2026 — User Resource Relationship History segment
 
 - Completed the documented User Profile Relationship History segment.
@@ -1123,9 +1147,27 @@ Continue the remaining release/runtime and product-readiness checks without reop
 - Deployment procedure must apply Prisma migrations with prisma migrate deploy and verify health after startup.
 - Production PostgreSQL persistence must be preserved; destructive volume removal is not part of normal deployment.
 
+### 2026-10-02 — Post-RC integration continuation and regression reconciliation
+
+- Revalidated the canonical production stack: PostgreSQL, backend and frontend containers are healthy; API health is `ok`; frontend and Prisma Studio both return HTTP 200.
+- Full backend unit/service regression is now **40 suites / 365 tests passed**, including new AuditService redaction coverage.
+- Authenticated application E2E is **21/21 passed** after correcting a stale Registry test to use the required Super Admin role. The failure was test expectation drift, not a production authorization regression.
+- Frontend production build passed: **2,320 modules**, initial JavaScript **441.20 kB / 139.99 kB gzip**.
+- Backend production dependency audit: **0 vulnerabilities**.
+- Added explicit AuditService regression coverage proving recursive redaction of password/token/API-key/database-URL/connection-string metadata before audit activity is returned.
+
+### Remaining closure plan
+
+1. Complete the PARTIAL module gates in order: Auth/Users/Admin → Farms/FarmAsset/FarmRecord → Crop/Intake → Livestock → Marketplace → Lifecycle/History/Evidence.
+2. For each module, perform the same evidence gate: backend contract + authorization + lifecycle/history + frontend workflow + authenticated runtime smoke + regression.
+3. Finish the systematic frontend UX acceptance sweep for loading, empty, error, refresh, mobile and reduced-motion states across every operational screen.
+4. Reconcile the remaining production/release checklist against the actual running stack, including migration state, backups/recovery procedure, secrets, CORS and restart behavior.
+5. Remove or archive only confirmed generated backup artifacts after verifying they are not part of the recovery plan; do not delete user/project data speculatively.
+6. Only after all gates are evidenced, produce the final pending-task register and go-live plan; do not mark a module COMPLETE merely because its backend foundation exists.
+
 ### Next execution target
 
-Prepare the final release checkpoint from a clean canonical working tree; no further domain implementation is scheduled for this RC.
+Continue the concrete PARTIAL module gates from the top of the stack, beginning with authenticated Auth/Users/Admin runtime acceptance, while preserving all completed relationship, history, audit, registry and security foundations.
 
 ## V0.5.61 — Production operational hardening
 
@@ -1134,3 +1176,39 @@ Prepare the final release checkpoint from a clean canonical working tree; no fur
 - Added concise PostgreSQL logical backup/recovery guidance and explicit production-volume/secrets safeguards.
 - Backend build and full regression remain green: 36 suites / 346 tests passed.
 - Next execution target: preserve the clean operational checkpoint and prepare the post-RC go-live deployment when the operator is ready.
+
+### 2026-10-02 — Domain workspace refresh consistency pass
+
+- Audited operational list workspaces for manual refresh plus existing automatic live-refresh behavior.
+- Added explicit manual Refresh actions to Farms and Crops while preserving the existing live-refresh hook and loading/error handling.
+- Users/Admin, Resources, Modules, Permissions, Roles, Audit, Database, History, Activities, Livestock and Marketplace already expose refresh/live-refresh behavior in the current implementation.
+- No domain API, authorization, persistence, or lifecycle semantics were changed by this UX pass.
+
+### 2026-10-02 — Database administration safety hardening
+
+- Re-audited the Super Admin Database Parameters workspace and its Registry endpoints.
+- Confirmed normal database values are masked and sensitive reveal is Super Admin-only, Registry-controlled, and audit-recorded.
+- Added explicit no-cache response headers to the sensitive database reveal endpoint so browser/proxy caching does not retain raw credentials.
+- Reconciled the Registry controller test constructor with the current AuditService dependency.
+- Live API/frontend health remained healthy after the code changes; git diff --check passed.
+
+### 2026-10-02 — Auth / Users / Admin runtime acceptance extension
+
+- Extended the authenticated application smoke suite so Registry module/status reads explicitly use an authenticated Super Admin rather than relying on an unauthenticated expectation.
+- Added Super Admin runtime coverage for Users collection, platform Permission administration read, and masked Database Parameters read.
+- The database assertion verifies the normal administration surface remains non-sensitive (`sensitiveRevealed=false`) and does not expose the configured password.
+- `git diff --check` passes after the test-suite extension.
+- The Auth / Users / Admin product gate remains PARTIAL: this closes additional API/runtime evidence but does not yet claim the complete UI workflow gate.
+- Test execution of the newly edited E2E file is pending restoration/use of a Linux Node runtime on the workstation; the previously recorded authenticated application E2E baseline remains 21/21 passed before this extension.
+
+
+### 2026-10-03 — Canonical WSL root and operational recovery continuation
+
+- Re-established `/home/jj/Dev/KrishiKendram` under Ubuntu-26.04 as the sole active development root; the stale Windows `D:\Dev\KrishiKendram` tree is not used for current execution.
+- Centralized filesystem resources through `backend/config/resource-paths.json`, including backend/frontend, Prisma, configuration, runtime assets, Super Admin image, reports, scripts and documentation.
+- Added non-secret environment contract validation (`npm run check:env`) and documented canonical recovery variable names in `.env.example`; real credential values remain excluded from Git.
+- Added the canonical `npm run recover:super-admin` operator command and corrected the legacy `bootstrap:super-admin` alias to the same local recovery implementation.
+- Verified the Super Admin runtime image is served from the active frontend with HTTP 200 after restart.
+- Restarted the active WSL backend/frontend stack and verified API HTTP 200 and UI HTTP 200.
+- Backend regression is currently **42 suites / 387 tests passed**; backend production build and `git diff --check` passed.
+- Break-glass recovery is recorded as DONE in the enhancement register; the broader Auth/Users/Admin product gate remains PARTIAL pending complete UI workflow acceptance.

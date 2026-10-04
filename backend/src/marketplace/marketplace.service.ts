@@ -4,14 +4,28 @@ import { AuditService } from '../platform/audit/audit.service';
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegistryService } from '../platform/registry/registry.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 
 const RESOURCE_TYPES = ['farmAsset', 'crop', 'livestock'] as const;
+type MarketplaceValidatedFields = {
+  title?: string;
+  description?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  price?: number | null;
+  currency?: string;
+};
 
 @Injectable()
 export class MarketplaceService {
-  constructor(private readonly prisma: PrismaService, private readonly authorization: AuthorizationService, private readonly audit: AuditService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authorization: AuthorizationService,
+    private readonly audit: AuditService,
+    private readonly registry: RegistryService,
+  ) {}
 
   private async resourceOwner(resourceType: string, resourceId: string) {
     if (!RESOURCE_TYPES.includes(resourceType as typeof RESOURCE_TYPES[number])) throw new BadRequestException('Unsupported marketplace resource.');
@@ -36,12 +50,54 @@ export class MarketplaceService {
     return listing;
   }
 
+  private validateFields(input: Record<string, unknown>): MarketplaceValidatedFields {
+    const data: Record<string, unknown> = {};
+    for (const [field, value] of Object.entries(input)) {
+      if (value === undefined) continue;
+      const validation = this.registry.validateResourceField('marketplaceListing', field, value);
+      if (!validation.valid) {
+        throw new BadRequestException({
+          message: 'Invalid marketplace listing ' + field + '.',
+          errors: validation.errors,
+        });
+      }
+      data[field] = validation.value;
+    }
+    return data;
+  }
+
   async create(userId: string, role: UserRole, dto: CreateListingDto) {
+    const validated = this.validateFields({
+      resourceType: dto.resourceType,
+      resourceId: dto.resourceId,
+      title: dto.title,
+      description: dto.description,
+      quantity: dto.quantity,
+      unit: dto.unit,
+      price: dto.price,
+      currency: dto.currency,
+    });
     const ownerId = await this.resourceOwner(dto.resourceType, dto.resourceId);
     if (!ownerId) throw new NotFoundException('Marketplace resource not found.');
-    if (ownerId !== userId && role !== UserRole.SUPER_ADMIN) throw new BadRequestException('Only the current resource owner can create a listing.');
+    if (dto.resourceType === 'farmAsset') {
+      const asset = await this.prisma.farmAsset.findFirst({ where: { id: dto.resourceId }, select: { id: true } });
+      if (!asset) throw new NotFoundException('Marketplace resource not found.');
+    } else if (dto.resourceType === 'crop') {
+      const crop = await this.prisma.crop.findFirst({ where: { id: dto.resourceId }, select: { id: true } });
+      if (!crop) throw new NotFoundException('Marketplace resource not found.');
+    } else {
+      const livestock = await this.prisma.livestock.findFirst({ where: { id: dto.resourceId }, select: { id: true } });
+      if (!livestock) throw new NotFoundException('Marketplace resource not found.');
+    }
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'marketplace',
+      resource: 'marketplaceListing',
+      action: AuthorizationAction.CREATE,
+      ownerId,
+    });
     return this.prisma.$transaction(async (tx) => {
-      const listing = await tx.marketplaceListing.create({ data: { sellerId: ownerId, resourceType: dto.resourceType, resourceId: dto.resourceId, title: dto.title.trim(), description: dto.description?.trim(), quantity: dto.quantity, unit: dto.unit?.trim(), price: dto.price, currency: dto.currency?.trim().toUpperCase() || 'INR' } });
+      const listing = await tx.marketplaceListing.create({ data: { sellerId: ownerId, resourceType: dto.resourceType, resourceId: dto.resourceId, title: validated.title!, description: validated.description, quantity: validated.quantity, unit: validated.unit, price: validated.price, currency: validated.currency || 'INR' } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE', resourceType: 'marketplaceListing', resourceId: listing.id, description: 'Marketplace listing created' });
       return listing;
     });
@@ -58,8 +114,16 @@ export class MarketplaceService {
 
   async update(userId: string, role: UserRole, id: string, dto: UpdateListingDto) {
     await this.assertListing(userId, role, id, AuthorizationAction.UPDATE);
+    const validated = this.validateFields({
+      title: dto.title,
+      description: dto.description,
+      quantity: dto.quantity,
+      unit: dto.unit,
+      price: dto.price,
+      currency: dto.currency,
+    });
     return this.prisma.$transaction(async (tx) => {
-      const listing = await tx.marketplaceListing.update({ where: { id }, data: { title: dto.title?.trim(), description: dto.description?.trim(), quantity: dto.quantity, unit: dto.unit?.trim(), price: dto.price, currency: dto.currency?.trim().toUpperCase() } });
+      const listing = await tx.marketplaceListing.update({ where: { id }, data: { title: validated.title!, description: validated.description, quantity: validated.quantity, unit: validated.unit, price: validated.price, currency: validated.currency } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'UPDATE', resourceType: 'marketplaceListing', resourceId: id, description: 'Marketplace listing updated' });
       return listing;
     });

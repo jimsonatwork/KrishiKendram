@@ -218,6 +218,39 @@ describe('ResourceTransferRequestService', () => {
     expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({ action: 'RESOURCE_TRANSFER_CANCELLED' }));
   });
 
+  it('prevents a transfer from being completed before its effective time', async () => {
+    const futureAt = new Date(Date.now() + 60_000);
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farm', resourceId: 'farm-1', sourceUserId: 'jim', destinationUserId: 'cto', quantity: null,
+      status: 'PENDING', effectiveAt: futureAt, expiresAt: null, reason: null, transactionId: null,
+    });
+
+    await expect(service.accept('request-1', 'cto')).rejects.toThrow(
+      'Transfer cannot be completed before its effective time.',
+    );
+    expect(tx.resourceTransferRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects a request when source ownership changed after request creation', async () => {
+    const request = {
+      id: 'request-1', status: 'PENDING', resourceType: 'farm', resourceId: 'farm-1',
+      sourceUserId: 'owner-1', destinationUserId: 'cto', quantity: null, unit: null,
+      requestedAt: new Date('2026-09-20T00:00:00.000Z'), effectiveAt: null, expiresAt: null,
+      reason: 'Sale', transactionId: null, evidenceId: null,
+    };
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue(request);
+    tx.resourceTransferRequest.updateMany.mockResolvedValue({ count: 1 });
+    tx.resourceRelationship.findFirst.mockResolvedValue({
+      id: 'relationship-new', userId: 'owner-1',
+      validFrom: new Date('2026-09-25T00:00:00.000Z'),
+    });
+
+    await expect(service.accept('request-1', 'cto')).rejects.toThrow(
+      'Source ownership changed after this transfer request was created.',
+    );
+    expect(relationships.transferOwnerRelationship).not.toHaveBeenCalled();
+  });
+
   it('prevents an expired request from being claimed during acceptance', async () => {
     const expiredAt = new Date(Date.now() - 60_000);
     prisma.resourceTransferRequest.findUnique.mockResolvedValue({
@@ -264,9 +297,8 @@ describe('ResourceTransferRequestService', () => {
         lineageType: 'SPLIT_FROM', quantity: 5,
       }),
     });
-    expect(relationships.transferOwnerRelationship).toHaveBeenCalledWith(
-      tx, 'farmAsset', 'asset-2', 'jim', 'cto', expect.any(Date), 'Transfer five hens', 'TX-1',
-      undefined, undefined,
+    expect(relationships.createOwnerRelationship).toHaveBeenCalledWith(
+      tx, 'farmAsset', 'asset-2', 'cto', expect.any(Date),
     );
     expect(result).toEqual({ id: 'request-1', status: 'COMPLETED' });
   });
@@ -333,4 +365,27 @@ describe('ResourceTransferRequestService', () => {
     expect(tx.farmAsset.create).not.toHaveBeenCalled();
     expect(relationships.transferOwnerRelationship).not.toHaveBeenCalled();
   });
+  it('keeps administrator approval as a separate APPROVED state until destination acceptance', async () => {
+    prisma.resourceTransferRequest.findUnique.mockResolvedValue({
+      id: 'request-1', resourceType: 'farm', resourceId: 'farm-1',
+      sourceUserId: 'jim', destinationUserId: 'cto', status: 'PENDING',
+      effectiveAt: null, expiresAt: null, reason: 'Approved transfer',
+    });
+    tx.resourceTransferRequest.findUnique.mockResolvedValue({ id: 'request-1', status: 'APPROVED' });
+
+    const result = await service.approve('request-1', 'admin-1', UserRole.ADMIN, 'Verified transfer');
+
+    expect(tx.resourceTransferRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 'request-1', status: 'PENDING' },
+      data: expect.objectContaining({
+        status: 'APPROVED', approvedBy: 'admin-1', approvalReason: 'Verified transfer', updatedBy: 'admin-1',
+      }),
+    });
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      actorId: 'admin-1', action: 'RESOURCE_TRANSFER_APPROVED', resourceType: 'farm', resourceId: 'farm-1',
+    }));
+    expect(result).toEqual({ id: 'request-1', status: 'APPROVED' });
+    expect(relationships.transferOwnerRelationship).not.toHaveBeenCalled();
+  });
+
 });

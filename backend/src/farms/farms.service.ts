@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { AuditService } from '../platform/audit/audit.service';
 
 import { AuthorizationService } from '../platform/authorization/authorization.service';
@@ -777,6 +777,58 @@ export class FarmsService {
       });
       return deleted;
     });
+  }
+
+  /**
+   * Transaction-aware FarmRecord mutation boundary for composite workflows
+   * such as Intake. Validation and authorization happen before the composite
+   * transaction; this method performs only the canonical persistence/audit
+   * mutation on the supplied transaction client.
+   */
+  async addRecordInTransaction(
+    tx: Prisma.TransactionClient,
+    farmId: string,
+    dto: CreateFarmRecordDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    const validatedData = this.validateFarmRecordFields(dto);
+
+    if (
+      validatedData.category === undefined ||
+      validatedData.inputMethod === undefined ||
+      validatedData.data === undefined
+    ) {
+      throw new BadRequestException(
+        'Invalid FarmRecord data.',
+      );
+    }
+
+    const normalizedTitle =
+      validatedData.title === ''
+        ? null
+        : validatedData.title;
+
+    const record = await tx.farmRecord.create({
+      data: {
+        farmId,
+        category: validatedData.category!,
+        inputMethod: validatedData.inputMethod!,
+        data: validatedData.data!,
+        title: normalizedTitle,
+      },
+    });
+
+    await this.audit.createInTransaction(tx, {
+      actorId: userId,
+      action: 'CREATE',
+      resourceType: 'farmRecord',
+      resourceId: record.id,
+      description: 'Farm record created.',
+      metadata: { farmId, category: record.category },
+    });
+
+    return record;
   }
 
   async addRecord(

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { motion } from 'motion/react'
 import { PawPrint, Plus, Archive, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,7 @@ export function LivestockPage() {
     [items],
   )
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!token) return
     setLoading(true); setError('')
     try {
@@ -38,8 +39,8 @@ export function LivestockPage() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load livestock.')
     } finally { setLoading(false) }
-  }
-  useEffect(() => { void load() }, [])
+  }, [token])
+  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 30_000, onWindowFocus: true })
 
   async function create(event: React.FormEvent) {
     event.preventDefault()

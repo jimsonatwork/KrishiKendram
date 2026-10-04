@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Boxes, CheckCircle2, KeyRound, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Activity, Boxes, CheckCircle2, KeyRound, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { api, type PlatformAuditEvent, type PlatformPermissionReconciliation } from '@/lib/api'
 import { platformRegistry } from '@/lib/platform/registry'
 import type { ModuleDefinition, ModuleLifecycleStatus, ResourceDefinition } from '@/lib/platform/contracts'
@@ -21,9 +23,8 @@ export function PlatformDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadDashboard = async () => {
     if (!token) return
-
     setLoading(true)
     setError(null)
 
@@ -60,7 +61,10 @@ export function PlatformDashboardPage() {
         if (errors.length > 0) setError(errors.join(' · '))
       })
       .finally(() => setLoading(false))
-  }, [token])
+  }
+
+  useEffect(() => { void loadDashboard() }, [token])
+  useLiveRefresh(loadDashboard, { enabled: Boolean(token) })
 
   const activeModules = statuses.filter((item) => item.lifecycle === 'ACTIVE').length
   const operationalModules = statuses.filter((item) => item.operational).length
@@ -70,7 +74,7 @@ export function PlatformDashboardPage() {
   const stale = reconciliation?.stale ?? []
 
   return <div className="space-y-6">
-    <section className="relative overflow-hidden rounded-2xl border bg-card p-6 shadow-sm"><div className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-primary/10 blur-3xl" /><div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><ShieldCheck className="size-3.5" />Platform control plane</div><h1 className="mt-2 text-3xl font-semibold tracking-tight">Platform Coverage</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">One operational view assembled from the canonical Registry, authorization, module lifecycle and audit contracts.</p></div><div className="rounded-xl border bg-background/70 px-4 py-3 text-center"><div className="text-2xl font-semibold">{loading ? '…' : `${coveragePercent}%`}</div><div className="text-[11px] text-muted-foreground">Registry permission coverage</div></div></div></section>
+    <section className="relative overflow-hidden rounded-2xl border bg-card p-6 shadow-sm"><div className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full bg-primary/10 blur-3xl" /><div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><ShieldCheck className="size-3.5" />Platform control plane</div><h1 className="mt-2 text-3xl font-semibold tracking-tight">Platform Coverage</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">One operational view assembled from the canonical Registry, authorization, module lifecycle and audit contracts.</p></div><div className="flex items-center gap-2"><Button variant="outline" size="sm" onClick={() => void loadDashboard()} disabled={loading} title="Refresh" aria-label="Refresh"><RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} /><span className="hidden sm:inline">Refresh</span></Button><div className="rounded-xl border bg-background/70 px-4 py-3 text-center"><div className="text-2xl font-semibold">{loading ? '…' : `${coveragePercent}%`}</div><div className="text-[11px] text-muted-foreground">Registry permission coverage</div></div></div></div></section>
     {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><Metric label="Modules" value={modules.length} /><Metric label="Active modules" value={activeModules} tone="good" /><Metric label="Operational" value={operationalModules} tone={operationalModules === activeModules ? 'good' : 'warn'} /><Metric label="Resources" value={resources.length} /><Metric label="Permissions" value={permissions} /></div>
     <div className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">

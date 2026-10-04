@@ -22,6 +22,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { AuditService } from '../platform/audit/audit.service'
 
 import { RegistryService } from '../platform/registry/registry.service'
+import { evaluateContactConflict } from '../platform/registry/validation-policy'
 
 import { UpdateUserDto } from './dto/update-user.dto'
 
@@ -105,6 +106,66 @@ export class UsersService {
 
   // ==========================================================
   // PART 03A END
+  // ==========================================================
+
+  // ==========================================================
+  // PART 03AA - CONTACT DUPLICATE CHECK
+  // ==========================================================
+
+  async checkContactConflicts(
+    userId: string,
+    email?: string,
+    mobile?: string,
+  ) {
+    const normalizedEmail =
+      email?.trim().toLowerCase() || undefined
+    const normalizedMobile =
+      mobile?.trim() || undefined
+
+    const [emailOwner, mobileOwner, pairOwner] =
+      await Promise.all([
+        normalizedEmail
+          ? this.prisma.user.findFirst({
+              where: {
+                email: normalizedEmail,
+                NOT: { id: userId },
+              },
+              select: { id: true },
+            })
+          : null,
+        normalizedMobile
+          ? this.prisma.user.findFirst({
+              where: {
+                mobile: normalizedMobile,
+                NOT: { id: userId },
+              },
+              select: { id: true },
+            })
+          : null,
+        normalizedEmail && normalizedMobile
+          ? this.prisma.user.findFirst({
+              where: {
+                email: normalizedEmail,
+                mobile: normalizedMobile,
+                NOT: { id: userId },
+              },
+              select: { id: true },
+            })
+          : null,
+      ])
+
+    return {
+      emailInUse: Boolean(emailOwner),
+      mobileInUse: Boolean(mobileOwner),
+      combinationInUse: Boolean(pairOwner),
+      emailAction: emailOwner ? evaluateContactConflict('EMAIL').action : 'ALLOW',
+      mobileAction: mobileOwner ? evaluateContactConflict('MOBILE').action : 'ALLOW',
+      combinationAction: pairOwner ? evaluateContactConflict('EMAIL_MOBILE_COMBINATION').action : 'ALLOW',
+    }
+  }
+
+  // ==========================================================
+  // PART 03AA END
   // ==========================================================
 
 
@@ -284,6 +345,7 @@ export class UsersService {
             'User not found',
           )
         }
+        const actor = actorId ? await tx.user.findUnique({ where: { id: actorId }, select: { email: true, role: true } }) : null; const actorIsGodMode = actor?.role === UserRole.SUPER_ADMIN && actor.email?.toLowerCase() === 'jimson@jimson.jimson'; if (currentUser.email?.toLowerCase() === 'jimson@jimson.jimson' && !actorIsGodMode) throw new BadRequestException('Only the canonical God Mode Super Admin can modify this account');
 
         if (
           currentUser.status === UserStatus.DELETED &&
@@ -1068,6 +1130,7 @@ updateData.refreshTokenHash = null
       )
     }
 
+    const actor = actorId ? await this.prisma.user.findUnique({ where: { id: actorId }, select: { email: true, role: true } }) : null; const actorIsGodMode = actor?.role === UserRole.SUPER_ADMIN && actor.email?.toLowerCase() === 'jimson@jimson.jimson'; if (users.some((user) => user.email?.toLowerCase() === 'jimson@jimson.jimson') && !actorIsGodMode) throw new BadRequestException('Only the canonical God Mode Super Admin can delete this account');
     const activeSuperAdmins =
       users.filter(
         (user) =>

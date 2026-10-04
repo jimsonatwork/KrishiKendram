@@ -25,11 +25,20 @@ import {
 import type { EditState } from './UsersPage'
 
 import { Button } from '@/components/ui/button'
+import { SensitiveInput } from '@/components/security/SensitiveInput'
+import { AppErrorNotice } from '@/components/app-error-center'
 
 type UserEditDialogProps = {
   editState: EditState
   isSaving: boolean
   editPasswordError: string
+  contactConflict: {
+    emailInUse: boolean
+    mobileInUse: boolean
+    combinationInUse: boolean
+  }
+  isCheckingContacts: boolean
+  onCheckContacts: () => void
   isMultiUserEdit: boolean
   editSelectionIndex: number
   selectedUserCount: number
@@ -63,6 +72,9 @@ export function UserEditDialog({
   editState,
   isSaving,
   editPasswordError,
+  contactConflict,
+  isCheckingContacts,
+  onCheckContacts,
   isMultiUserEdit,
   editSelectionIndex,
   selectedUserCount,
@@ -249,8 +261,15 @@ export function UserEditDialog({
                     event.target.value,
                   )
                 }
+                onBlur={onCheckContacts}
                 className={inputClass}
+                aria-invalid={contactConflict.emailInUse}
               />
+              {contactConflict.emailInUse ? (
+                <p className="text-xs font-medium text-red-600">
+                  Email address is already used by another user.
+                </p>
+              ) : null}
             </Field>
 
             <Field label="Mobile">
@@ -264,13 +283,34 @@ export function UserEditDialog({
                     event.target.value,
                   )
                 }
+                onBlur={onCheckContacts}
                 className={inputClass}
+                aria-invalid={contactConflict.mobileInUse}
               />
+              {contactConflict.mobileInUse ? (
+                <p className="text-xs font-medium text-red-600">
+                  Mobile number is already used by another user.
+                </p>
+              ) : null}
             </Field>
 
+            {contactConflict.combinationInUse ? (
+              <div className="md:col-span-2 rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2">
+                <p className="text-xs font-medium text-red-600">
+                  This email + mobile combination already belongs to another user.
+                  Change or explicitly transfer the contact before saving.
+                </p>
+              </div>
+            ) : null}
+
+            {isCheckingContacts ? (
+              <p className="md:col-span-2 text-xs text-muted-foreground">
+                Checking contact availability…
+              </p>
+            ) : null}
+
             <Field label="New password">
-              <input
-                type="password"
+              <SensitiveInput
                 value={editState.password}
                 onChange={(event) =>
                   updateField(
@@ -736,7 +776,8 @@ function Modal({
           </button>
         </div>
 
-        <div className="p-5">
+        <div className="space-y-4 p-5">
+          <AppErrorNotice />
           {children}
         </div>
       </div>

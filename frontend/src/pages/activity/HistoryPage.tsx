@@ -7,6 +7,7 @@ import {
   Send,
   UserRound,
   X,
+  RefreshCw,
   Sprout,
   Wheat,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ import { motion } from 'motion/react'
 import { api, type TransferRequest } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth.store'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 type FarmAsset = {
   id: string
@@ -143,6 +145,10 @@ export function HistoryPage() {
   const [transferExpiresAt, setTransferExpiresAt] = useState('')
   const [transferMemberBusy, setTransferMemberBusy] = useState(false)
   const [transferCreateBusy, setTransferCreateBusy] = useState(false)
+  const [refreshNonce, setRefreshNonce] = useState(0)
+
+  const refresh = () => setRefreshNonce((value) => value + 1)
+  useLiveRefresh(refresh, { enabled: Boolean(accessToken && currentUserId), intervalMs: 30000, minRefreshGapMs: 5000 })
 
   useEffect(() => {
     let cancelled = false
@@ -166,13 +172,15 @@ export function HistoryPage() {
         setLoading(true)
         setError('')
 
-        const [farmResult, cropResult, transferResult, outgoingTransferResult, administrativeTransferResult, userHistoryResult, userRelationshipResult] =
+        const [farmResult, cropResult, livestockResult, transferResult, outgoingTransferResult, administrativeTransferResult, userActivityResult, userHistoryResult, userRelationshipResult] =
           await Promise.all([
             api.farms(token),
             api.crops(token),
+            api.livestock(token),
             api.transferIncomingPending(token),
             api.transferOutgoing(token),
             canApproveTransfers ? api.transferAdministrativePending(token) : Promise.resolve([]),
+            api.userActivity(currentUserId, token, 100).catch(() => []),
             api.userHistory(currentUserId, token).catch(() => []),
             api.userRelationshipHistory(currentUserId, token),
           ])
@@ -315,6 +323,22 @@ export function HistoryPage() {
 
         )
 
+        const livestockRelationshipGroups = await Promise.all(
+          (Array.isArray(livestockResult) ? livestockResult : []).map(async (item: any) => {
+            const relationships = await api.livestockRelationshipHistory(item.id, token)
+            return (Array.isArray(relationships) ? relationships : []).map((relationship: any) => ({
+              id: 'livestock-relationship-' + item.id + '-' + relationship.userId + '-' + relationship.validFrom,
+              timestamp: relationship.endedAt || relationship.validFrom,
+              title: formatEnum(relationship.relationshipType) + ': ' + (item.name || item.species),
+              description: relationship.endedAt
+                ? relationship.endedReason || 'Livestock relationship ended.'
+                : 'Livestock relationship became active.',
+              context: item.farm?.name || 'Livestock',
+              kind: 'lifecycle' as const,
+            }))
+          }),
+        )
+
         const userRelationshipEvents = (Array.isArray(userRelationshipResult) ? userRelationshipResult : []).map((relationship: any) => ({
           id: 'user-relationship-' + relationship.id,
           timestamp: relationship.endedAt || relationship.validFrom,
@@ -323,6 +347,15 @@ export function HistoryPage() {
             ? relationship.endedReason || 'Your resource relationship ended.'
             : 'Your resource relationship became active.',
           context: formatEnum(relationship.resourceType) + ' · ' + relationship.resourceId,
+          kind: 'lifecycle' as const,
+        }))
+
+        const userActivityEvents = (Array.isArray(userActivityResult) ? userActivityResult : []).map((event: any) => ({
+          id: 'user-activity-' + event.id,
+          timestamp: event.createdAt,
+          title: formatEnum(event.action) + ' · ' + formatEnum(event.resourceType),
+          description: event.description || 'Platform activity recorded.',
+          context: event.resourceId ? formatEnum(event.resourceType) + ' · ' + event.resourceId : 'Platform activity',
           kind: 'lifecycle' as const,
         }))
 
@@ -338,11 +371,13 @@ export function HistoryPage() {
         }))
 
         setLifecycleEvents([
+          ...userActivityEvents,
           ...userHistoryEvents,
           ...assetEventGroups.flat(),
           ...farmMovementGroups.flat(),
           ...farmEvidenceGroups.flat(),
           ...cropRelationshipGroups.flat(),
+          ...livestockRelationshipGroups.flat(),
           ...userRelationshipEvents,
         ])
       } catch (err) {
@@ -365,7 +400,7 @@ export function HistoryPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [accessToken, currentUserId, canApproveTransfers, refreshNonce])
 
   const history = useMemo<HistoryItem[]>(() => {
     const items: HistoryItem[] = []
@@ -660,9 +695,15 @@ export function HistoryPage() {
           History
         </div>
 
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-          Farm history
-        </h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+            Farm history
+          </h1>
+          <Button type="button" variant="outline" size="sm" onClick={refresh} disabled={loading} title="Refresh history">
+            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Follow the operational timeline across farms, crops and

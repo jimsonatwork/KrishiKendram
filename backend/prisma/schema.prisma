@@ -121,7 +121,8 @@ model User {
   mobile       String? @unique
   passwordHash String
 
-  role   UserRole   @default(FARMER)
+  role          UserRole      @default(FARMER)
+  authorityTier AuthorityTier @default(ADMINISTRATIVE)
   status UserStatus @default(PENDING)
 
   preferredLanguage    String?     @default("en")
@@ -206,6 +207,8 @@ model Farm {
   deletedAt DateTime?
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, deletedAt, createdAt])
 }
 
 // ============================================================
@@ -232,6 +235,8 @@ model FarmAsset {
   createdAt DateTime @default(now())
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, createdAt])
 }
 
 // ============================================================
@@ -257,6 +262,8 @@ model FarmRecord {
   createdAt DateTime @default(now())
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, createdAt])
 }
 
 // ============================================================
@@ -290,7 +297,7 @@ model Crop {
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
-  @@index([farmId])
+  @@index([farmId, deletedAt, createdAt])
   @@index([status])
   @@index([season])
 }
@@ -324,7 +331,7 @@ model Livestock {
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
-  @@index([farmId])
+  @@index([farmId, deletedAt, createdAt])
   @@index([species])
   @@index([status])
   @@index([tag])
@@ -357,7 +364,7 @@ model MarketplaceListing {
 
   seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
-  @@index([sellerId, status])
+  @@index([sellerId, deletedAt, createdAt])
   @@index([resourceType, resourceId])
   @@index([status, publishedAt])
 }
@@ -511,7 +518,8 @@ model ResourceTransferRequest {
 
   @@index([resourceType, resourceId])
   @@index([sourceUserId, status])
-  @@index([destinationUserId, status])
+  @@index([destinationUserId, status, requestedAt])
+  @@index([sourceUserId, status, requestedAt])
   @@index([status, requestedAt])
   @@index([expiresAt])
 }
@@ -708,6 +716,11 @@ enum ResourceRelationshipStatus {
   REVOKED
   TERMINATED
   SUSPENDED
+}
+
+enum AuthorityTier {
+  SYSTEM_GOD
+  ADMINISTRATIVE
 }
 
 enum UserRole {

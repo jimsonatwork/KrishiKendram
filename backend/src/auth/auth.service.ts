@@ -225,6 +225,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       role: user.role,
+      authorityTier: user.authorityTier,
     };
 
     const accessToken =
@@ -299,6 +300,7 @@ export class AuthService {
         email: true,
         mobile: true,
         role: true,
+        authorityTier: true,
         status: true,
         preferredLanguage: true,
         preferredInputMethod: true,
@@ -384,6 +386,7 @@ export class AuthService {
     const newPayload = {
       sub: user.id,
       role: user.role,
+      authorityTier: user.authorityTier,
     };
 
     const accessToken =

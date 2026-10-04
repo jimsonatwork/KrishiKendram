@@ -51,7 +51,7 @@ export class LivestockService {
   private validate(input: Partial<CreateLivestockDto | UpdateLivestockDto>) {
     const data: Record<string, unknown> = {};
     for (const [field, value] of Object.entries(input)) {
-      if (value === undefined) continue;
+      if (value === undefined || field === 'farmId') continue;
       const result = this.registry.validateResourceField('livestock', field, value);
       if (!result.valid) {
         throw new BadRequestException({

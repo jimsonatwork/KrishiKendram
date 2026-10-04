@@ -37,6 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         select: {
           id: true,
           role: true,
+          authorityTier: true,
           status: true,
         },
       });
@@ -56,6 +57,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: user.id,
       role: user.role,
+      authorityTier: user.authorityTier,
     };
   }
 }

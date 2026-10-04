@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "document": "KrishiKendram Central System Truth",
+  "purpose": "Single authoritative map for paths, runtime, configuration ownership, credential policy, registry, and God Mode control-plane exposure.",
+  "root": {
+    "wslPath": "/home/jj/Dev/KrishiKendram",
+    "windowsPath": "\\\\wsl.localhost\\Ubuntu-26.04\\home\\jj\\Dev\\KrishiKendram",
+    "canonical": true,
+    "forbiddenProjectRoots": ["D:\\Dev\\KrishiKendram"]
+  },
+  "runtime": {
+    "node": { "source": "nvm", "major": 24, "required": true },
+    "backend": { "framework": "NestJS", "port": 3000, "apiPrefix": "/api/v1" },
+    "frontend": { "framework": "React + Vite", "port": 4000 },
+    "database": { "engine": "PostgreSQL", "container": "krishikendram-postgres", "database": "krishikendram", "port": 5432 },
+    "orm": { "name": "Prisma", "schema": "backend/prisma/schema.prisma" },
+    "containerRuntime": { "name": "Docker Desktop", "compose": "docker-compose.yml" }
+  },
+  "paths": {
+    "backend": "backend",
+    "frontend": "frontend",
+    "backendSource": "backend/src",
+    "frontendSource": "frontend/src",
+    "prisma": "backend/prisma",
+    "migrations": "backend/prisma/migrations",
+    "backendConfig": "backend/config",
+    "environmentFile": "backend/.env",
+    "environmentTemplate": "backend/.env.example",
+    "systemTruth": "backend/config/system-truth.json",
+    "resourcePaths": "backend/config/resource-paths.json",
+    "credentialPolicy": "backend/config/credential-artifact.json",
+    "godModeConfig": "backend/config/god-mode",
+    "registrySource": "backend/src/platform/registry",
+    "godModeSource": "backend/src/platform/god-mode",
+    "superAdminSource": "backend/src/platform/super-admin",
+    "connectionsSource": "backend/src/platform/connections",
+    "documentation": "docs",
+    "frontendPublic": "frontend/public"
+  },
+  "configuration": {
+    "secretPolicy": "Secrets are never stored in this truth file, Git, audit records, or UI logs. This file stores locations, keys, ownership, and policy only.",
+    "environmentKeys": [
+      { "key": "DATABASE_URL", "source": "backend/.env", "owner": "GOD", "editableInGodMode": true, "secret": true },
+      { "key": "JWT_SECRET", "source": "backend/.env", "owner": "GOD", "editableInGodMode": true, "secret": true },
+      { "key": "CORS_ORIGINS", "source": "backend/.env", "owner": "GOD", "editableInGodMode": true, "secret": false },
+      { "key": "PORT", "source": "backend/.env", "owner": "GOD", "editableInGodMode": true, "secret": false },
+      { "key": "NODE_ENV", "source": "backend/.env", "owner": "GOD", "editableInGodMode": true, "secret": false }
+    ]
+  },
+  "authority": {
+    "god": { "email": "jimson@jimson.jimson", "authorityTier": "SYSTEM_GOD", "role": "SUPER_ADMIN", "singleton": true, "normalUserManagementProtected": true },
+    "administrativeSuperAdmin": { "authorityTier": "ADMINISTRATIVE", "role": "SUPER_ADMIN", "godControlled": true }
+  },
+  "credentialPolicy": {
+    "development": { "enabled": true, "directory": "backend/config/god-mode", "completePasswordFile": "backend/config/god-mode/god-password.txt", "patternFile": "backend/config/god-mode/<last-six>.txt", "freshOnApplicationRestart": true, "passwordNeverPrintedToLogs": true },
+    "production": { "fileCredentials": false, "requireSecureCredentialDelivery": true }
+  },
+  "registry": {
+    "backendOwner": "backend/src/platform/registry",
+    "principle": "Centralize ownership, modularize implementation.",
+    "controls": ["modules", "routes", "resources", "fields", "validation policies", "capabilities", "lifecycle", "configuration ownership", "credential delivery metadata"]
+  },
+  "godModeControlPlane": {
+    "source": "backend/src/platform/god-mode",
+    "uiOwner": "frontend/src/pages/admin",
+    "mustExpose": ["system truth", "paths", "runtime versions and ports", "environment key metadata", "database and connection metadata", "credential policy", "registry definitions", "module and route mapping", "roles and permissions", "validation policies", "snapshots and revisions", "audit/history", "recovery state"],
+    "mutationRule": "Every editable configuration change must validate, snapshot, apply, health-check, and audit."
+  },
+  "startupInvariant": {
+    "rule": "All project operations must resolve from this canonical root. If execution is outside the canonical root, stop rather than silently using another copy.",
+    "dataProtection": "Never delete or reset PostgreSQL Docker volumes as part of routine repair or rebuild."
+  }
+}

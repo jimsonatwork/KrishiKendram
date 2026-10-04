@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   FileText,
+  RefreshCw,
   Sprout,
   Wheat,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 
+import { Button } from '@/components/ui/button'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { api } from '@/lib/api'
 
 type FarmRecord = {
@@ -103,62 +106,28 @@ export function ActivitiesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      const token = localStorage.getItem('accessToken')
-
-      if (!token) {
-        setError('Your session has expired.')
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError('')
-
-        const [farmResult, cropResult] =
-          await Promise.all([
-            api.farms(token),
-            api.crops(token),
-          ])
-
-        if (cancelled) return
-
-        setFarms(
-          Array.isArray(farmResult)
-            ? (farmResult as Farm[])
-            : [],
-        )
-
-        setCrops(
-          Array.isArray(cropResult)
-            ? (cropResult as Crop[])
-            : [],
-        )
-      } catch (err) {
-        if (cancelled) return
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Unable to load activities.',
-        )
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
-      }
+  const load = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      setError('Your session has expired.')
+      setLoading(false)
+      return
     }
-
-    void load()
-
-    return () => {
-      cancelled = true
+    try {
+      setLoading(true)
+      setError('')
+      const [farmResult, cropResult] = await Promise.all([api.farms(token), api.crops(token)])
+      setFarms(Array.isArray(farmResult) ? (farmResult as Farm[]) : [])
+      setCrops(Array.isArray(cropResult) ? (cropResult as Crop[]) : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load activities.')
+    } finally {
+      setLoading(false)
     }
-  }, [])
+  }
+
+  useEffect(() => { void load() }, [])
+  useLiveRefresh(load, { intervalMs: 30000 })
 
   const activities = useMemo<ActivityItem[]>(() => {
     const items: ActivityItem[] = []
@@ -291,8 +260,9 @@ export function ActivitiesPage() {
 
       <div className="rounded-2xl border bg-card">
         <div className="border-b px-5 py-4">
-          <div className="font-semibold">
-            Activity feed
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-semibold">Activity feed</div>
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading} title="Refresh" aria-label="Refresh"><RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} /><span className="hidden sm:inline">Refresh</span></Button>
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             Latest operational events from your connected workspace.

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { KeyRound, Search, ShieldCheck } from 'lucide-react'
+import { KeyRound, RefreshCw, Search, ShieldCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 import { Input } from '@/components/ui/input'
 import { api, type PlatformPermission } from '@/lib/api'
@@ -16,11 +18,16 @@ export function PermissionsPage() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
+  const loadPermissions = async () => {
     if (!token) return
-    api.platformPermissions(token).then(setItems).catch((e) => setError(e instanceof Error ? e.message : 'Unable to load permissions.')).finally(() => setLoading(false))
-  }, [token])
+    setLoading(true)
+    setError(null)
+    try { setItems(await api.platformPermissions(token)) }
+    catch (e) { setError(e instanceof Error ? e.message : 'Unable to load permissions.') }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { void loadPermissions() }, [token])
+  useLiveRefresh(loadPermissions, { enabled: Boolean(token) })
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -40,7 +47,7 @@ export function PermissionsPage() {
       </div>
       {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
       <div className="rounded-2xl border bg-card p-5">
-        <div className="mb-5 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" /><h2 className="font-semibold">Persisted authorization</h2></div><div className="relative w-full max-w-sm"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter resource, action, scope or role…" className="pl-9" /></div></div>
+        <div className="mb-5 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" /><h2 className="font-semibold">Persisted authorization</h2></div><Button variant="outline" size="sm" onClick={() => void loadPermissions()} disabled={loading} title="Refresh" aria-label="Refresh"><RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} /><span className="hidden sm:inline">Refresh</span></Button><div className="relative w-full max-w-sm"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter resource, action, scope or role…" className="pl-9" /></div></div>
         {loading ? <div className="py-16 text-center text-sm text-muted-foreground">Loading authorization matrix…</div> : <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="border-b text-xs text-muted-foreground"><tr><th className="pb-3 pr-4">Module</th><th className="pb-3 pr-4">Resource</th><th className="pb-3 pr-4">Action</th><th className="pb-3 pr-4">Scope</th><th className="pb-3 pr-4">Roles</th><th className="pb-3">Fields</th></tr></thead><tbody className="divide-y">{filtered.map((item) => <tr key={item.id}><td className="py-3 pr-4 text-muted-foreground">{label(item.module)}</td><td className="py-3 pr-4 font-medium">{label(item.resource)}</td><td className="py-3 pr-4"><span className="rounded-full bg-muted px-2 py-1 text-xs">{item.action}</span></td><td className="py-3 pr-4">{item.scope}</td><td className="py-3 pr-4">{item.rolePermissions.map((role) => role.role).join(', ') || '—'}</td><td className="py-3">{item.fieldPermissions.length ? item.fieldPermissions.map((field) => field.field + ':' + field.effect).join(', ') : 'Resource-level'}</td></tr>)}</tbody></table>{filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No matching permissions.</div>}</div>}
       </div>
     </div>

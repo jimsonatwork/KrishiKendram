@@ -9,10 +9,19 @@ import { IntakeService } from './intake.service';
 describe('IntakeService', () => {
   let service: IntakeService;
 
+  const transaction = {
+    farm: {
+      findUnique: jest.fn(),
+    },
+  } as any;
+
   const prisma = {
     farm: {
       findUnique: jest.fn(),
     },
+    $transaction: jest.fn(async (callback: (tx: any) => Promise<any>) => {
+      return callback(transaction);
+    }),
   } as any;
 
   const extractor = {
@@ -25,10 +34,12 @@ describe('IntakeService', () => {
 
   const farmsService = {
     addRecord: jest.fn(),
+    addRecordInTransaction: jest.fn(),
   } as any;
 
   const cropsService = {
     createFromIntake: jest.fn(),
+    createFromIntakeInTransaction: jest.fn(),
   } as any;
 
   beforeEach(() => {
@@ -61,7 +72,7 @@ describe('IntakeService', () => {
       title: 'AI Intake Record',
     };
 
-    farmsService.addRecord.mockResolvedValue(record);
+    farmsService.addRecordInTransaction.mockResolvedValue(record);
 
     const result = await service.create(
       'user-1',
@@ -89,7 +100,8 @@ describe('IntakeService', () => {
       ownerId: 'user-1',
     });
 
-    expect(farmsService.addRecord).toHaveBeenCalledWith(
+    expect(farmsService.addRecordInTransaction).toHaveBeenCalledWith(
+      transaction,
       'farm-1',
       {
         category: 'GENERAL',
@@ -124,12 +136,12 @@ describe('IntakeService', () => {
       },
     });
 
-    cropsService.createFromIntake.mockResolvedValue({
+    cropsService.createFromIntakeInTransaction.mockResolvedValue({
       id: 'crop-1',
       name: 'Rice',
     });
 
-    farmsService.addRecord.mockResolvedValue({
+    farmsService.addRecordInTransaction.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -143,7 +155,8 @@ describe('IntakeService', () => {
       },
     );
 
-    expect(cropsService.createFromIntake).toHaveBeenCalledWith(
+    expect(cropsService.createFromIntakeInTransaction).toHaveBeenCalledWith(
+      transaction,
       'farm-1',
       expect.objectContaining({
         name: 'Rice',
@@ -155,19 +168,6 @@ describe('IntakeService', () => {
       UserRole.FARMER,
     );
 
-    expect(
-      authorization.assertCan,
-    ).toHaveBeenCalledWith({
-      user: {
-        userId: 'user-1',
-        role: UserRole.FARMER,
-      },
-      module: 'farms',
-      resource: 'crop',
-      action: AuthorizationAction.CREATE,
-      farmId: 'farm-1',
-      ownerId: 'user-1',
-    });
   });
 
   it('passes the extracted Crop name unchanged to CropsService', async () => {
@@ -184,12 +184,12 @@ describe('IntakeService', () => {
       },
     });
 
-    cropsService.createFromIntake.mockResolvedValue({
+    cropsService.createFromIntakeInTransaction.mockResolvedValue({
       id: 'crop-1',
       name: 'Rice',
     });
 
-    farmsService.addRecord.mockResolvedValue({
+    farmsService.addRecordInTransaction.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -207,7 +207,8 @@ describe('IntakeService', () => {
      * Intake owns interpretation only.
      * Registry normalization belongs to CropsService.createFromIntake().
      */
-    expect(cropsService.createFromIntake).toHaveBeenCalledWith(
+    expect(cropsService.createFromIntakeInTransaction).toHaveBeenCalledWith(
+      transaction,
       'farm-1',
       expect.objectContaining({
         name: '  Rice  ',
@@ -231,7 +232,7 @@ describe('IntakeService', () => {
       },
     });
 
-    cropsService.createFromIntake.mockRejectedValue(
+    cropsService.createFromIntakeInTransaction.mockRejectedValue(
       new Error('Field is invalid.'),
     );
 
@@ -247,7 +248,7 @@ describe('IntakeService', () => {
       ),
     ).rejects.toThrow('Field is invalid.');
 
-    expect(cropsService.createFromIntake).toHaveBeenCalled();
+    expect(cropsService.createFromIntakeInTransaction).toHaveBeenCalled();
   });
 
   it('authorizes farm-record creation before extracting intake content', async () => {
@@ -279,7 +280,7 @@ describe('IntakeService', () => {
       category: 'GENERAL',
     });
 
-    farmsService.addRecord.mockResolvedValue({
+    farmsService.addRecordInTransaction.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -322,10 +323,10 @@ describe('IntakeService', () => {
 
     expect(extractor.extract).not.toHaveBeenCalled();
     expect(farmsService.addRecord).not.toHaveBeenCalled();
-    expect(cropsService.createFromIntake).not.toHaveBeenCalled();
+    expect(cropsService.createFromIntakeInTransaction).not.toHaveBeenCalled();
   });
 
-  it('authorizes Crop creation before delegating to CropsService', async () => {
+  it('delegates Crop creation to the canonical transactional CropsService boundary', async () => {
     prisma.farm.findUnique.mockResolvedValue({
       id: 'farm-1',
       ownerId: 'user-1',
@@ -339,28 +340,12 @@ describe('IntakeService', () => {
       },
     });
 
-    cropsService.createFromIntake.mockImplementation(async () => {
-      expect(
-        authorization.assertCan,
-      ).toHaveBeenCalledWith({
-        user: {
-          userId: 'user-1',
-          role: UserRole.FARMER,
-        },
-        module: 'farms',
-        resource: 'crop',
-        action: AuthorizationAction.CREATE,
-        farmId: 'farm-1',
-        ownerId: 'user-1',
-      });
-
-      return {
-        id: 'crop-1',
-        name: 'Rice',
-      };
+    cropsService.createFromIntakeInTransaction.mockResolvedValue({
+      id: 'crop-1',
+      name: 'Rice',
     });
 
-    farmsService.addRecord.mockResolvedValue({
+    farmsService.addRecordInTransaction.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -374,7 +359,83 @@ describe('IntakeService', () => {
       },
     );
 
-    expect(cropsService.createFromIntake).toHaveBeenCalled();
+    expect(
+      cropsService.createFromIntakeInTransaction,
+    ).toHaveBeenCalledWith(
+      transaction,
+      'farm-1',
+      expect.objectContaining({
+        name: 'Rice',
+      }),
+      'user-1',
+      UserRole.FARMER,
+    );
+  });
+
+  it('uses one Prisma transaction for Crop and FarmRecord mutations', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    extractor.extract.mockResolvedValue({
+      raw: 'planted rice',
+      category: 'PLANTING',
+      crop: {
+        name: 'Rice',
+      },
+      activity: {
+        type: 'PLANTING',
+        area: 2,
+        unit: 'acres',
+      },
+    });
+
+    cropsService.createFromIntakeInTransaction.mockResolvedValue({
+      id: 'crop-1',
+      name: 'Rice',
+    });
+
+    farmsService.addRecordInTransaction.mockResolvedValue({
+      id: 'record-1',
+    });
+
+    await service.create(
+      'user-1',
+      UserRole.FARMER,
+      {
+        farmId: 'farm-1',
+        inputMethod: InputMethod.MANUAL,
+        content: 'planted rice',
+      },
+    );
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+
+    expect(
+      cropsService.createFromIntakeInTransaction,
+    ).toHaveBeenCalledWith(
+      transaction,
+      'farm-1',
+      expect.objectContaining({
+        name: 'Rice',
+      }),
+      'user-1',
+      UserRole.FARMER,
+    );
+
+    expect(
+      farmsService.addRecordInTransaction,
+    ).toHaveBeenCalledWith(
+      transaction,
+      'farm-1',
+      expect.objectContaining({
+        category: 'PLANTING',
+        title: 'AI Intake Record',
+      }),
+      'user-1',
+      UserRole.FARMER,
+    );
   });
 
   it('delegates duplicate Crop handling to CropsService', async () => {
@@ -391,12 +452,12 @@ describe('IntakeService', () => {
       },
     });
 
-    cropsService.createFromIntake.mockResolvedValue({
+    cropsService.createFromIntakeInTransaction.mockResolvedValue({
       id: 'existing-crop',
       name: 'Rice',
     });
 
-    farmsService.addRecord.mockResolvedValue({
+    farmsService.addRecordInTransaction.mockResolvedValue({
       id: 'record-1',
     });
 
@@ -410,7 +471,8 @@ describe('IntakeService', () => {
       },
     );
 
-    expect(cropsService.createFromIntake).toHaveBeenCalledWith(
+    expect(cropsService.createFromIntakeInTransaction).toHaveBeenCalledWith(
+      transaction,
       'farm-1',
       expect.objectContaining({
         name: 'Rice',

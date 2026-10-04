@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "root": "/home/jj/Dev/KrishiKendram",
+  "resources": {
+    "backend": "backend",
+    "frontend": "frontend",
+    "backendSource": "backend/src",
+    "frontendSource": "frontend/src",
+    "prisma": "backend/prisma",
+    "backendConfig": "backend/config",
+    "environmentFile": "backend/.env",
+    "environmentTemplate": "backend/.env.example",
+    "superAdminRecoveryScript": "backend/src/recover-super-admin.ts",
+    "credentialValidationScript": "backend/scripts/validate-env.ts",
+    "credentialArtifactDirectory": "backend/atplace",
+    "superAdminRuntime": "backend/config/super-admin-runtime",
+    "superAdminImage": "backend/config/super-admin-runtime/JjKk__OCTber____.svg",
+    "legacyAtplace": "backend/atplace",
+    "backendDist": "backend/dist",
+    "frontendDist": "frontend/dist",
+    "reports": "backend/reports",
+    "scripts": "backend/scripts",
+    "documentation": "docs",
+    "frontendPublic": "frontend/public"
+  }
+}

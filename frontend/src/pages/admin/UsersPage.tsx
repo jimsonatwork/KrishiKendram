@@ -24,7 +24,8 @@
 // Keep child components focused on presentation.
 // ============================================================
 
-import { useEffect, useMemo, useState } from 'react'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FormEvent } from 'react'
 
@@ -35,6 +36,7 @@ import {
   Plus,
   Search,
   Trash2,
+  RefreshCw,
   X,
 } from 'lucide-react'
 
@@ -230,6 +232,16 @@ export function UsersPage() {
   const [editState, setEditState] =
     useState<EditState>(null)
 
+  const [contactConflict, setContactConflict] =
+    useState({
+      emailInUse: false,
+      mobileInUse: false,
+      combinationInUse: false,
+    })
+
+  const [isCheckingContacts, setIsCheckingContacts] =
+    useState(false)
+
   const [isSaving, setIsSaving] = useState(false)
   const [editPasswordError, setEditPasswordError] =
     useState('')
@@ -339,7 +351,7 @@ export function UsersPage() {
   // LOAD USERS
   // ==========================================================
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     if (!accessToken) {
       return
     }
@@ -359,15 +371,17 @@ export function UsersPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  // ==========================================================
-  // INITIAL / AUTHENTICATION-DEPENDENT LOAD
-  // ==========================================================
-
-  useEffect(() => {
-    void loadUsers()
   }, [accessToken])
+
+  // ==========================================================
+  // LIVE / ROUTE-RETURN / FOCUS / BACKGROUND REFRESH
+  // ==========================================================
+
+  useLiveRefresh(loadUsers, {
+    enabled: Boolean(accessToken),
+    intervalMs: 30_000,
+    onWindowFocus: true,
+  })
 
   // ==========================================================
   // SEARCH & FILTERING
@@ -547,14 +561,99 @@ export function UsersPage() {
   // OPEN EDIT
   // ==========================================================
 
-  const openEdit = (user: AdminUser) => {
+  const openEdit = async (user: AdminUser) => {
+    if (!accessToken) return
+
     setIsMultiUserEdit(false)
     setEditSelectionIndex(0)
     setEditPasswordError('')
-    setEditState(createEditState(user))
+    setContactConflict({
+      emailInUse: false,
+      mobileInUse: false,
+      combinationInUse: false,
+    })
+
+    try {
+      const authoritativeUser =
+        await api.user(user.id, accessToken)
+
+      setEditState(createEditState(authoritativeUser))
+      setUsers((current) =>
+        current.map((item) =>
+          item.id === authoritativeUser.id
+            ? authoritativeUser
+            : item,
+        ),
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to load the latest user record.',
+      )
+    }
   }
 
-  const openRowEdit = (user: AdminUser) => {
+  const checkContactConflicts = async () => {
+    if (!editState || !accessToken) return
+
+    const email = editState.email.trim()
+    const mobile = editState.mobile.trim()
+
+    if (!email && !mobile) {
+      setContactConflict({
+        emailInUse: false,
+        mobileInUse: false,
+        combinationInUse: false,
+      })
+      return
+    }
+
+    setIsCheckingContacts(true)
+    try {
+      const result =
+        await api.userContactConflicts(
+          editState.user.id,
+          email,
+          mobile,
+          accessToken,
+        )
+      setContactConflict(result)
+    } catch {
+      // Backend remains authoritative if the advisory check fails.
+    } finally {
+      setIsCheckingContacts(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!editState || !accessToken) return
+
+    const email = editState.email.trim()
+    const mobile = editState.mobile.trim()
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setIsCheckingContacts(true)
+        try {
+          const result = await api.userContactConflicts(
+            editState.user.id,
+            email,
+            mobile,
+            accessToken,
+          )
+          setContactConflict(result)
+        } catch {
+          // Backend remains authoritative if advisory checking is unavailable.
+        } finally {
+          setIsCheckingContacts(false)
+        }
+      })()
+    }, 350)
+
+    return () => window.clearTimeout(timer)
+  }, [accessToken, editState?.user.id, editState?.email, editState?.mobile])
+
+  const openRowEdit = async (user: AdminUser) => {
     const selectedIndex =
       selectedUserIds.indexOf(user.id)
 
@@ -569,7 +668,7 @@ export function UsersPage() {
       return
     }
 
-    openEdit(user)
+    await openEdit(user)
   }
 
   // ==========================================================
@@ -609,6 +708,11 @@ export function UsersPage() {
 
     setEditSelectionIndex(0)
     setEditPasswordError('')
+    setContactConflict({
+      emailInUse: false,
+      mobileInUse: false,
+      combinationInUse: false,
+    })
     setEditState(createEditState(firstUser))
   }
 
@@ -639,6 +743,11 @@ export function UsersPage() {
 
     setEditSelectionIndex(index)
     setEditPasswordError('')
+    setContactConflict({
+      emailInUse: false,
+      mobileInUse: false,
+      combinationInUse: false,
+    })
     setEditState(createEditState(user))
   }
 
@@ -779,9 +888,21 @@ export function UsersPage() {
       passwordChanged &&
       passwordIsValid
 
+    const hasContactConflict =
+      contactConflict.emailInUse ||
+      contactConflict.mobileInUse ||
+      contactConflict.combinationInUse
+
     const hasChanges =
       hasNonPasswordChanges ||
       hasValidPasswordChange
+
+    if (hasContactConflict) {
+      setError(
+        'Resolve the highlighted email/mobile conflict before saving.',
+      )
+      return
+    }
 
     if (!hasChanges) {
       if (
@@ -991,14 +1112,25 @@ export function UsersPage() {
           </p>
         </div>
 
-        <Button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="w-full sm:w-auto"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create user
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void loadUsers()}
+            disabled={isLoading}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="w-full sm:w-auto"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create user
+          </Button>
+        </div>
       </div>
 
       {/* ------------------------------------------------------
@@ -1240,6 +1372,9 @@ export function UsersPage() {
         editState={editState}
         isSaving={isSaving}
         editPasswordError={editPasswordError}
+        contactConflict={contactConflict}
+        isCheckingContacts={isCheckingContacts}
+        onCheckContacts={checkContactConflicts}
         isMultiUserEdit={isMultiUserEdit}
         editSelectionIndex={editSelectionIndex}
         selectedUserCount={

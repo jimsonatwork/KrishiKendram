@@ -11,6 +11,7 @@ import type { FormEvent } from 'react'
 import { Plus, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { SensitiveInput } from '@/components/security/SensitiveInput'
 
 type UserCreateDialogProps = {
   open: boolean
@@ -82,8 +83,7 @@ export function UserCreateDialog({
         </Field>
 
         <Field label="Password" required>
-          <input
-            type="password"
+          <SensitiveInput
             value={password}
             onChange={(event) =>
               onPasswordChange(
@@ -94,7 +94,6 @@ export function UserCreateDialog({
             required
             minLength={8}
             autoComplete="new-password"
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         </Field>
 

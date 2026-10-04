@@ -34,10 +34,13 @@ export type FarmAccessDecision = FarmAccessContext;
 @Injectable()
 export class FarmAccessService {
   constructor(
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
     @Inject(RESOURCE_RELATIONSHIP_RESOLVER)
     private readonly relationshipResolver: ResourceRelationshipResolver,
+    @Inject(RelationshipAccessPolicy)
     private readonly relationshipAccessPolicy: RelationshipAccessPolicy,
+    @Inject(GlobalFarmAccessPolicy)
     private readonly globalFarmAccessPolicy: GlobalFarmAccessPolicy,
   ) {}
 

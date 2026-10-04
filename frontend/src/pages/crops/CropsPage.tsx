@@ -1,7 +1,9 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
-  useState,} from 'react'
+  useState,
+} from 'react'
 import type {
   FormEvent,
   ReactNode,
@@ -10,12 +12,14 @@ import type {
 import {
   FileClock,
   Plus,
+  RefreshCw,
   Wheat,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 
 type Farm = {
@@ -317,7 +321,7 @@ export function CropsPage() {
   const [historyLoading, setHistoryLoading] =
     useState(false)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token) return
 
     setLoading(true)
@@ -356,11 +360,13 @@ export function CropsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [showArchived, token])
 
-  useEffect(() => {
-    void loadData()
-  }, [showArchived])
+  useLiveRefresh(loadData, {
+    enabled: Boolean(token),
+    intervalMs: 30_000,
+    onWindowFocus: true,
+  })
 
   const filteredCrops = useMemo(() => {
     const query =
@@ -612,6 +618,16 @@ export function CropsPage() {
         description="Track cultivation across your connected farms."
         action={
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => void loadData()}
+              disabled={loading}
+              title="Refresh crops"
+              aria-label="Refresh crops"
+            >
+              <RefreshCw className={loading ? 'mr-2 size-4 animate-spin' : 'mr-2 size-4'} />
+              Refresh
+            </Button>
             <Button
               variant="outline"
               onClick={() => setShowArchived((value) => !value)}

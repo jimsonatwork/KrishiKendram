@@ -23,6 +23,7 @@ const RESOURCE_CAPABILITY_ACTIONS: AuthorizationAction[] = [
   AuthorizationAction.CREATE,
   AuthorizationAction.UPDATE,
   AuthorizationAction.DELETE,
+  AuthorizationAction.RESTORE,
   AuthorizationAction.ASSIGN,
 ];
 

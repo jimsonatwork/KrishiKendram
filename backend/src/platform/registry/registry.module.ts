@@ -1,9 +1,13 @@
-import { Global, Module } from '@nestjs/common';
+import { forwardRef, Global, Module } from '@nestjs/common';
+import { AuditModule } from '../audit/audit.module';
 
 import { FieldValidationService } from './field-validation.service';
 import { RegistryController } from './registry.controller';
 import { RegistryService } from './registry.service';
 import { ModuleLifecycleService } from './module-lifecycle.service';
+import { FilesystemRegistryService } from './filesystem-registry.service';
+import { CredentialArtifactService } from '../../credential-artifact.service';
+import { SystemTruthService } from './system-truth.service';
 
 import { USER_FIELD_DEFINITIONS } from './definitions/fields/user-field-definitions';
 import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definitions';
@@ -18,16 +22,23 @@ import { FARM_RECORD_FIELD_DEFINITIONS } from './definitions/fields/farm-record-
 
 @Global()
 @Module({
+  imports: [forwardRef(() => AuditModule)],
   controllers: [RegistryController],
   providers: [
     RegistryService,
     FieldValidationService,
     ModuleLifecycleService,
+    FilesystemRegistryService,
+    CredentialArtifactService,
+    SystemTruthService,
   ],
   exports: [
     RegistryService,
     FieldValidationService,
     ModuleLifecycleService,
+    FilesystemRegistryService,
+    CredentialArtifactService,
+    SystemTruthService,
   ],
 })
 export class RegistryModule {

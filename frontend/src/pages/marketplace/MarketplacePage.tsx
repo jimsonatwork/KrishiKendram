@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { Store, RefreshCw, Send, Archive } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { Store, RefreshCw, Send, Archive, Pencil, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 
@@ -23,8 +24,10 @@ export function MarketplacePage() {
   const [form, setForm] = useState({ resourceType: 'crop', resourceId: '', title: '', description: '', quantity: '', unit: '', price: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ title: '', description: '', quantity: '', unit: '', price: '', currency: 'INR' })
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true); setError('')
     try {
       const publicListings = await api.marketplaceListings()
@@ -33,9 +36,8 @@ export function MarketplacePage() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load marketplace.')
     } finally { setLoading(false) }
-  }
-
-  useEffect(() => { void load() }, [])
+  }, [token])
+  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 30_000, onWindowFocus: true })
 
   async function create(event: React.FormEvent) {
     event.preventDefault()
@@ -50,6 +52,20 @@ export function MarketplacePage() {
       setForm((v) => ({ ...v, resourceId: '', title: '', description: '', quantity: '', unit: '', price: '' }))
       await load()
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to create listing.') }
+  }
+
+  function beginEdit(item: Listing) {
+    setEditingId(item.id)
+    setEditForm({ title: item.title, description: item.description || '', quantity: item.quantity?.toString() || '', unit: item.unit || '', price: item.price?.toString() || '', currency: item.currency || 'INR' })
+  }
+
+  async function saveEdit(id: string) {
+    if (!token || !editForm.title.trim()) return
+    try {
+      await api.updateMarketplaceListing(id, { title: editForm.title.trim(), description: editForm.description.trim() || undefined, quantity: editForm.quantity ? Number(editForm.quantity) : undefined, unit: editForm.unit.trim() || undefined, price: editForm.price ? Number(editForm.price) : undefined, currency: editForm.currency.trim().toUpperCase() }, token)
+      setEditingId(null)
+      await load()
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to update listing.') }
   }
 
   async function publish(id: string) {
@@ -96,13 +112,22 @@ export function MarketplacePage() {
         <h2 className="mb-3 text-lg font-semibold">My listings</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {mine.map((item) => <article key={item.id} className="rounded-xl border bg-card p-4">
-            <div className="font-semibold">{item.title}</div>
-            <div className="mt-1 text-sm text-muted-foreground">{item.resourceType} · {item.status}</div>
-            {item.price !== undefined && <div className="mt-2 font-medium">{item.currency} {item.price}</div>}
-            <div className="mt-3 flex gap-2">
-              {item.status === 'DRAFT' && <Button size="sm" onClick={() => void publish(item.id)}><Send className="mr-2 h-4 w-4" />Publish</Button>}
-              <Button size="sm" variant="ghost" onClick={() => void archive(item.id)}><Archive className="mr-2 h-4 w-4" />Archive</Button>
-            </div>
+            {editingId === item.id ? <div className="space-y-2">
+              <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Title" />
+              <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+              <div className="grid grid-cols-2 gap-2"><input className="h-9 rounded-md border bg-background px-3 text-sm" type="number" min="0" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} placeholder="Quantity" /><input className="h-9 rounded-md border bg-background px-3 text-sm" value={editForm.unit} onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })} placeholder="Unit" /></div>
+              <div className="grid grid-cols-2 gap-2"><input className="h-9 rounded-md border bg-background px-3 text-sm" type="number" min="0" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} placeholder="Price" /><input className="h-9 rounded-md border bg-background px-3 text-sm" value={editForm.currency} onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })} placeholder="Currency" /></div>
+              <div className="flex gap-2"><Button size="sm" onClick={() => void saveEdit(item.id)}><Save className="mr-2 h-4 w-4" />Save</Button><Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="mr-2 h-4 w-4" />Cancel</Button></div>
+            </div> : <>
+              <div className="font-semibold">{item.title}</div>
+              <div className="mt-1 text-sm text-muted-foreground">{item.resourceType} · {item.status}</div>
+              {item.price !== undefined && <div className="mt-2 font-medium">{item.currency} {item.price}</div>}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => beginEdit(item)}><Pencil className="mr-2 h-4 w-4" />Edit</Button>
+                {item.status === 'DRAFT' && <Button size="sm" onClick={() => void publish(item.id)}><Send className="mr-2 h-4 w-4" />Publish</Button>}
+                <Button size="sm" variant="ghost" onClick={() => void archive(item.id)}><Archive className="mr-2 h-4 w-4" />Archive</Button>
+              </div>
+            </>}
           </article>)}
         </div>
       </section>}

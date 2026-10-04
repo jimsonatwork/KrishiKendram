@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -12,6 +13,7 @@ import { ResourceRelationshipService } from '../platform/relationships/relations
 import { ResourceLineageType } from '../platform/relationships/lineage.types';
 import { ResourceMovementType } from '../platform/relationships/movement.types';
 import { RESOURCE_LINEAGE_RESOLVER } from '../platform/relationships/lineage-resolution.types';
+import { createResourceLineage, createResourceMovement } from '../platform/relationships/movement-integrity';
 import type { ResourceLineageResolver } from '../platform/relationships/lineage-resolution.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../platform/audit/audit.service';
@@ -203,12 +205,17 @@ export class FarmResourceLineageService {
           effectiveAt,
           dto.reason ?? 'Merged into another farm asset',
         );
-        await tx.farmAsset.update({
-          where: { id: asset.id },
+        const sourceUpdate = await tx.farmAsset.updateMany({
+          where: { id: asset.id, quantity: asset.quantity },
           data: { quantity: 0 },
         });
+        if (sourceUpdate.count !== 1) {
+          throw new ConflictException(
+            'A source farm asset changed while the merge was being prepared. Please retry.',
+          );
+        }
 
-        const movement = await tx.resourceMovement.create({
+        const movement = await createResourceMovement(tx, {
           data: {
             resourceType: 'farmAsset',
             resourceId: target.id,
@@ -232,7 +239,7 @@ export class FarmResourceLineageService {
         movements.push(movement);
         previousTargetMovementId = movement.id;
 
-        const lineage = await tx.resourceLineage.create({
+        const lineage = await createResourceLineage(tx, {
           data: {
             sourceResourceType: 'farmAsset',
             sourceResourceId: asset.id,
@@ -372,7 +379,7 @@ export class FarmResourceLineageService {
         effectiveAt,
       );
 
-      const movement = await tx.resourceMovement.create({
+      const movement = await createResourceMovement(tx, {
         data: {
           resourceType: 'farmAsset',
           resourceId: target.id,
@@ -393,7 +400,7 @@ export class FarmResourceLineageService {
         },
       });
 
-      const lineage = await tx.resourceLineage.create({
+      const lineage = await createResourceLineage(tx, {
         data: {
           sourceResourceType: 'farmAsset',
           sourceResourceId: asset.id,
@@ -411,9 +418,18 @@ export class FarmResourceLineageService {
         },
       });
 
-      const source = await tx.farmAsset.update({
-        where: { id: asset.id },
+      const sourceUpdate = await tx.farmAsset.updateMany({
+        where: { id: asset.id, quantity: asset.quantity },
         data: { quantity: remainingQuantity },
+      });
+      if (sourceUpdate.count !== 1) {
+        throw new ConflictException(
+          'The source farm asset changed while the split was being prepared. Please retry.',
+        );
+      }
+
+      const source = await tx.farmAsset.findUniqueOrThrow({
+        where: { id: asset.id },
       });
 
       await this.audit.createInTransaction(tx, {

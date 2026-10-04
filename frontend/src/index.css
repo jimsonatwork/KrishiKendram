@@ -544,3 +544,7 @@ body {
     display: none;
   }
 }
+
+/* Dense operational tables: maximize information without sacrificing readability. */
+.kk-app-shell table th { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+.kk-app-shell table td { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }

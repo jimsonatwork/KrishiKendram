@@ -1,4 +1,13 @@
+export const DATA_REFRESH_POLICY = {
+  staleAfterMs: 30_000,
+  refetchOnWindowFocus: true,
+  refetchOnRouteReturn: true,
+  manualRefreshAlwaysAvailable: true,
+} as const
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1'
+
+import { reportAppError } from '@/stores/app-error.store'
 
 type FarmData = {
   name: string
@@ -200,7 +209,9 @@ export async function request<T>(
         ? message
         : 'Request failed'
 
-    throw new ApiError(errorMessage, response.status, data)
+    const error = new ApiError(errorMessage, response.status, data)
+    reportAppError(error, 'api')
+    throw error
   }
 
   return data as T
@@ -277,6 +288,46 @@ export const api = {
       },
       body: JSON.stringify(data),
     }),
+
+  user: (
+    id: string,
+    token: string,
+  ) =>
+    request<AdminUser>(
+      '/users/' + id,
+      {
+        headers: {
+          Authorization: 'Bearer ' + token,
+        },
+      },
+    ),
+
+  userContactConflicts: (
+    id: string,
+    email: string,
+    mobile: string,
+    token: string,
+  ) =>
+    request<{
+      emailInUse: boolean
+      mobileInUse: boolean
+      combinationInUse: boolean
+      emailAction: 'ALLOW' | 'WARNING' | 'BLOCK' | 'TRANSFER_REQUIRED' | 'CONFIRM_REQUIRED'
+      mobileAction: 'ALLOW' | 'WARNING' | 'BLOCK' | 'TRANSFER_REQUIRED' | 'CONFIRM_REQUIRED'
+      combinationAction: 'ALLOW' | 'WARNING' | 'BLOCK' | 'TRANSFER_REQUIRED' | 'CONFIRM_REQUIRED'
+    }>(
+      '/users/' +
+        id +
+        '/contact-conflicts?email=' +
+        encodeURIComponent(email) +
+        '&mobile=' +
+        encodeURIComponent(mobile),
+      {
+        headers: {
+          Authorization: 'Bearer ' + token,
+        },
+      },
+    ),
 
   updateUser: (
     id: string,
@@ -562,6 +613,13 @@ export const api = {
     request<any>('/marketplace/listings', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  updateMarketplaceListing: (id: string, data: Record<string, unknown>, token: string) =>
+    request<any>('/marketplace/listings/' + id, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
 

@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { createResourceMovement } from './movement-integrity';
 import { ResourceMovementType } from './movement.types';
 import {
   ResourceRelationship,
@@ -219,7 +220,7 @@ export class ResourceRelationshipService {
           },
         });
 
-      const movement = await tx.resourceMovement.create({
+      const movement = await createResourceMovement(tx, {
         data: {
           resourceType,
           resourceId,
@@ -267,7 +268,7 @@ export class ResourceRelationshipService {
         },
       });
 
-    const movement = await tx.resourceMovement.create({
+    const movement = await createResourceMovement(tx, {
       data: {
         resourceType,
         resourceId,
@@ -372,7 +373,7 @@ export class ResourceRelationshipService {
       throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
-    const movement = await tx.resourceMovement.create({
+    const movement = await createResourceMovement(tx, {
       data: {
         resourceType,
         resourceId,
@@ -472,7 +473,7 @@ export class ResourceRelationshipService {
       throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
-    const movement = await tx.resourceMovement.create({
+    const movement = await createResourceMovement(tx, {
       data: {
         resourceType,
         resourceId,
@@ -579,7 +580,7 @@ export class ResourceRelationshipService {
       throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
-    const movement = await tx.resourceMovement.create({
+    const movement = await createResourceMovement(tx, {
       data: {
         resourceType,
         resourceId,
@@ -668,7 +669,7 @@ export class ResourceRelationshipService {
       throw new ConflictException('Relationship movement effective date cannot precede the latest movement.');
     }
 
-    const movement = await tx.resourceMovement.create({
+    const movement = await createResourceMovement(tx, {
       data: {
         resourceType,
         resourceId,

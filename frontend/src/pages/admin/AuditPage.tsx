@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Search, ShieldCheck } from 'lucide-react'
+import { Activity, RefreshCw, Search, ShieldCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 import { Input } from '@/components/ui/input'
 import { api, type PlatformAuditEvent } from '@/lib/api'
@@ -16,14 +18,16 @@ export function AuditPage() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  useEffect(() => {
+  const loadAudit = async () => {
     if (!token) return
-    api.platformAuditRecent(token)
-      .then(setItems)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Unable to load audit activity.'))
-      .finally(() => setLoading(false))
-  }, [token])
+    setLoading(true)
+    setError('')
+    try { setItems(await api.platformAuditRecent(token)) }
+    catch (e) { setError(e instanceof Error ? e.message : 'Unable to load audit activity.') }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { void loadAudit() }, [token])
+  useLiveRefresh(loadAudit, { enabled: Boolean(token), intervalMs: 15000 })
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -40,7 +44,7 @@ export function AuditPage() {
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Audit Activity</h1>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Recent immutable audit events exposed through the existing AuditService. This is visibility over the canonical audit stream, not a replacement history engine.</p>
           </div>
-          <div className="rounded-xl border bg-background/70 px-4 py-3 text-center"><div className="text-xl font-semibold">{items.length}</div><div className="text-[11px] text-muted-foreground">Recent events</div></div>
+          <div className="flex items-center gap-2"><Button variant="outline" size="sm" onClick={() => void loadAudit()} disabled={loading} title="Refresh" aria-label="Refresh"><RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} /><span className="hidden sm:inline">Refresh</span></Button><div className="rounded-xl border bg-background/70 px-4 py-3 text-center"><div className="text-xl font-semibold">{items.length}</div><div className="text-[11px] text-muted-foreground">Recent events</div></div></div>
         </div>
       </div>
       {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}

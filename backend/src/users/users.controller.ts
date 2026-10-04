@@ -190,6 +190,58 @@ export class UsersController {
   // ==========================================================
 
   // ==========================================================
+  // PART 02EA - AUTHORITATIVE USER LOOKUP
+  // ==========================================================
+
+  @Get(':id')
+  async findOne(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    await this.authorizationService.assertCan({
+      user: req.user,
+      module: 'platform',
+      resource: 'user',
+      action: AuthorizationAction.READ,
+    })
+
+    return this.usersService.findById(id)
+  }
+
+  // ==========================================================
+  // PART 02EA END
+  // ==========================================================
+
+  // ==========================================================
+  // PART 02EB - CONTACT DUPLICATE CHECK
+  // ==========================================================
+
+  @Get(':id/contact-conflicts')
+  async contactConflicts(
+    @Param('id') id: string,
+    @Query('email') email: string | undefined,
+    @Query('mobile') mobile: string | undefined,
+    @Req() req: any,
+  ) {
+    await this.authorizationService.assertCan({
+      user: req.user,
+      module: 'platform',
+      resource: 'user',
+      action: AuthorizationAction.UPDATE,
+    })
+
+    return this.usersService.checkContactConflicts(
+      id,
+      email,
+      mobile,
+    )
+  }
+
+  // ==========================================================
+  // PART 02EB END
+  // ==========================================================
+
+  // ==========================================================
   // PART 02F - CREATE USER
   // ==========================================================
 

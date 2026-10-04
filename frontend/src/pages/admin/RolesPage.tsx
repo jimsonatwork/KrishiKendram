@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Shield, UsersRound } from 'lucide-react'
+import { RefreshCw, Search, Shield, UsersRound } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -32,17 +34,22 @@ export function RolesPage() {
   const [permissions, setPermissions] = useState<PermissionRow[]>([])
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
-  useEffect(() => {
+  const [loading, setLoading] = useState(false)
+  const loadPermissions = async () => {
     if (!token) return
-    api.platformPermissions(token)
-      .then((permissionData) => {
-        setPermissions(permissionData as PermissionRow[])
-        setSelected((current) => current ?? permissionData[0]?.rolePermissions?.[0]?.role ?? null)
-      })
-      .catch(() => {
-        setPermissions([])
-      })
-  }, [token])
+    setLoading(true)
+    try {
+      const permissionData = await api.platformPermissions(token)
+      setPermissions(permissionData as PermissionRow[])
+      setSelected((current) => current ?? permissionData[0]?.rolePermissions?.[0]?.role ?? null)
+    } catch {
+      setPermissions([])
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { void loadPermissions() }, [token])
+  useLiveRefresh(loadPermissions, { enabled: Boolean(token) })
 
   const rows = useMemo(() => roleRows(permissions), [permissions])
   const filtered = rows.filter((row) => row.role.toLowerCase().includes(query.toLowerCase()))
@@ -63,9 +70,9 @@ export function RolesPage() {
               Role coverage derived from the canonical backend permission matrix. This surface is intentionally administrative and does not create a second authorization engine.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border bg-background/70 px-3 py-2 text-xs">
-            <Shield className="size-4 text-primary" />
-            Backend-authoritative
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => void loadPermissions()} disabled={loading} title="Refresh" aria-label="Refresh"><RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} /><span className="hidden sm:inline">Refresh</span></Button>
+            <div className="flex items-center gap-2 rounded-full border bg-background/70 px-3 py-2 text-xs"><Shield className="size-4 text-primary" />Backend-authoritative</div>
           </div>
         </div>
       </div>

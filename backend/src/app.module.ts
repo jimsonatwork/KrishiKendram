@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { GodModeModule } from './platform/god-mode/god-mode.module';
 
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
@@ -18,7 +19,6 @@ import { PlatformModule } from './platform/platform.module';
 import { RequestIdMiddleware } from './common/middleware/request-id/request-id.middleware';
 import { AuthModule } from './auth/auth.module';
 
-import { AuditModule } from './platform/audit/audit.module';
 
 import { FarmsModule } from './farms/farms.module';
 import { IntakeModule } from './intake/intake.module';
@@ -43,6 +43,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     CropsModule,
     LivestockModule,
     MarketplaceModule,
+    GodModeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

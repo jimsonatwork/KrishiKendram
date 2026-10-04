@@ -13,8 +13,9 @@ describe('FarmResourceLineageService', () => {
 
   const tx = {
     farmAsset: {
-      create: jest.fn(),
+      create: jest.fn(), findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     resourceMovement: { create: jest.fn() },
     resourceLineage: { create: jest.fn() },
@@ -41,11 +42,15 @@ describe('FarmResourceLineageService', () => {
       quantity: 25,
       unit: 'kg',
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     tx.farmAsset.update.mockResolvedValue({
       id: 'asset-1',
       quantity: 75,
       unit: 'kg',
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     tx.resourceMovement.create.mockResolvedValue({ id: 'movement-2' });
     tx.resourceLineage.create.mockResolvedValue({ id: 'lineage-1' });
     prisma.resourceMovement.findFirst.mockResolvedValue(null);
@@ -69,11 +74,15 @@ describe('FarmResourceLineageService', () => {
       metadata: { lot: 'L1' },
       farm: { id: 'farm-1', ownerId: 'owner-1' },
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     prisma.resourceRelationship.findFirst.mockResolvedValue({
       userId: 'owner-1',
       id: 'relationship-1',
       validFrom: new Date('2026-01-01T00:00:00.000Z'),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
 
     const result = await service.splitFarmAsset(
       'farm-1',
@@ -96,6 +105,8 @@ describe('FarmResourceLineageService', () => {
         unit: 'kg',
       }),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     expect(tx.resourceMovement.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         resourceType: 'farmAsset',
@@ -107,6 +118,8 @@ describe('FarmResourceLineageService', () => {
         unit: 'kg',
       }),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     expect(tx.resourceLineage.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         sourceResourceId: 'asset-1',
@@ -116,10 +129,14 @@ describe('FarmResourceLineageService', () => {
         quantity: 25,
       }),
     });
-    expect(tx.farmAsset.update).toHaveBeenCalledWith({
-      where: { id: 'asset-1' },
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
+    expect(tx.farmAsset.updateMany).toHaveBeenCalledWith({
+      where: { id: 'asset-1', quantity: 100 },
       data: { quantity: 75 },
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
       actorId: 'owner-1',
       action: 'FARM_ASSET_SPLIT',
@@ -140,11 +157,15 @@ describe('FarmResourceLineageService', () => {
       metadata: {},
       farm: { id: 'farm-1', ownerId: 'legacy-owner' },
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     prisma.resourceRelationship.findFirst.mockResolvedValue({
       userId: 'temporal-owner',
       id: 'relationship-1',
       validFrom: new Date('2026-01-01T00:00:00.000Z'),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
 
     await service.splitFarmAsset(
       'farm-1',
@@ -171,6 +192,8 @@ describe('FarmResourceLineageService', () => {
       quantity: null,
       farm: { id: 'farm-1', ownerId: 'owner-1' },
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
 
     await expect(
       service.splitFarmAsset(
@@ -190,9 +213,13 @@ describe('FarmResourceLineageService', () => {
       farmId: 'farm-1',
       farm: { ownerId: 'legacy-owner' },
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     prisma.resourceRelationship.findFirst.mockResolvedValue({
       userId: 'temporal-owner',
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     lineageResolver.resolve.mockResolvedValue({ lineages: [] });
 
     await service.getFarmAssetLineageHistory(
@@ -214,23 +241,33 @@ describe('FarmResourceLineageService', () => {
       farmId: 'farm-1',
       ownerId: 'temporal-owner',
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     expect(lineageResolver.resolve).toHaveBeenCalledWith({
       resourceType: 'farmAsset',
       resourceId: 'asset-1',
       direction: 'BOTH',
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
   });
   it('rejects split effective dates before the latest source movement', async () => {
     prisma.farmAsset.findUnique.mockResolvedValue({
       id: 'asset-1', farmId: 'farm-1', type: 'SEED_STOCK', quantity: 100, unit: 'kg',
       farm: { ownerId: 'owner-1' },
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     prisma.resourceRelationship.findFirst.mockResolvedValue({
       userId: 'owner-1', id: 'relationship-1', validFrom: new Date('2026-09-01T00:00:00.000Z'),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     prisma.resourceMovement.findFirst.mockResolvedValue({
       id: 'movement-latest', effectiveAt: new Date('2026-09-20T00:00:00.000Z'),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
 
     await expect(service.splitFarmAsset(
       'farm-1', 'asset-1',
@@ -277,6 +314,8 @@ describe('FarmResourceLineageService', () => {
     expect(tx.farmAsset.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ farmId: 'farm-1', type: 'SEED_STOCK', quantity: 100, unit: 'kg' }),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     expect(relationships.terminateResourceRelationships).toHaveBeenCalledTimes(2);
     expect(tx.resourceMovement.create).toHaveBeenCalledTimes(2);
     expect(tx.resourceLineage.create).toHaveBeenCalledTimes(2);
@@ -300,11 +339,15 @@ describe('FarmResourceLineageService', () => {
       unit: 'kg',
       farm: { ownerId: 'owner-1' },
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     prisma.resourceRelationship.findFirst.mockResolvedValue({
       userId: 'owner-1',
       id: 'relationship-1',
       validFrom: new Date('2026-09-10T00:00:00.000Z'),
     });
+    tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+    tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
 
     await expect(
       service.splitFarmAsset(

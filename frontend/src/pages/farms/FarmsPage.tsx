@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -12,6 +11,7 @@ import {
   Package,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Send,
   Sprout,
@@ -21,6 +21,8 @@ import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { useAuthStore } from '@/stores/auth.store'
 import { FarmAssetMergePanel } from './FarmAssetMergePanel'
 import { FarmAssetSplitPanel } from './FarmAssetSplitPanel'
 import { FarmAssetLeasePanel } from './FarmAssetLeasePanel'
@@ -1444,13 +1446,7 @@ export function FarmsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const token = useMemo(() => {
-    try {
-      return localStorage.getItem('token') || ''
-    } catch {
-      return ''
-    }
-  }, [])
+  const token = useAuthStore((state) => state.accessToken) ?? ''
 
   const loadFarms = useCallback(async () => {
     setError('')
@@ -1507,9 +1503,11 @@ export function FarmsPage() {
     }
   }, [token, showArchived])
 
-  useEffect(() => {
-    void loadFarms()
-  }, [loadFarms])
+  useLiveRefresh(loadFarms, {
+    enabled: Boolean(token),
+    intervalMs: 30_000,
+    onWindowFocus: true,
+  })
 
   const selectedFarm = useMemo(
     () => farms.find((farm) => farm.id === selectedFarmId) || null,
@@ -1863,6 +1861,10 @@ export function FarmsPage() {
         description="Manage the farms that form the operational foundation for crops, assets, records and future agricultural workflows."
         action={
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => void loadFarms()} disabled={loading} title="Refresh farms" aria-label="Refresh farms">
+              <RefreshCw className={loading ? 'mr-2 h-4 w-4 animate-spin' : 'mr-2 h-4 w-4'} />
+              Refresh
+            </Button>
             <Button variant="outline" onClick={() => setShowArchived((value) => !value)}>
               {showArchived ? 'Active farms' : 'Archived farms'}
             </Button>

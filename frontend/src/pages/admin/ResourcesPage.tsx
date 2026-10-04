@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Database, Layers3, ShieldCheck, SlidersHorizontal } from 'lucide-react'
+import { Database, Layers3, RefreshCw, ShieldCheck, SlidersHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { platformRegistry } from '@/lib/platform/registry'
 import { resolveFieldPolicy } from '@/lib/platform/field-policy'
 import type { FieldDefinition, ModuleDefinition, ResourceDefinition } from '@/lib/platform/contracts'
@@ -20,19 +21,24 @@ export function ResourcesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadRegistry = async () => {
     if (!token) return
     setLoading(true)
-    Promise.all([platformRegistry.resources(token), platformRegistry.modules(token), platformRegistry.fields(token)])
-      .then(([resourceData, moduleData, fieldData]) => {
-        setResources(resourceData)
-        setModules(moduleData)
-        setFields(fieldData)
-        setSelected((current) => current ?? resourceData[0]?.name ?? null)
-      })
-      .catch((cause) => setError(cause instanceof Error ? cause.message : 'Unable to load Registry.'))
-      .finally(() => setLoading(false))
-  }, [token])
+    setError(null)
+    try {
+      const [resourceData, moduleData, fieldData] = await Promise.all([platformRegistry.resources(token), platformRegistry.modules(token), platformRegistry.fields(token)])
+      setResources(resourceData)
+      setModules(moduleData)
+      setFields(fieldData)
+      setSelected((current) => current ?? resourceData[0]?.name ?? null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to load Registry.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { void loadRegistry() }, [token])
+  useLiveRefresh(loadRegistry, { enabled: Boolean(token) })
 
   const selectedResource = resources.find((resource) => resource.name === selected) ?? null
   const moduleMap = useMemo(() => new Map(modules.map((module) => [module.id, module])), [modules])
@@ -49,7 +55,7 @@ export function ResourcesPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Platform control</div>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Resources</h1>
+          <div className="flex items-center justify-between gap-3"><h1 className="mt-1 text-3xl font-semibold tracking-tight">Resources</h1><Button variant="outline" size="sm" onClick={() => void loadRegistry()} disabled={loading} title="Refresh" aria-label="Refresh"><RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} /><span className="hidden sm:inline">Refresh</span></Button></div>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Canonical Registry view for modules, resources, fields, capabilities and lifecycle metadata.</p>
         </div>
         <div className="flex gap-2">

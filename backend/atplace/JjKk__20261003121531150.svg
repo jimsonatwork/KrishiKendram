@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect width="1200" height="700" rx="36" fill="#0b1020"/>
+  <text x="70" y="110" fill="#ffffff" font-family="Arial,sans-serif" font-size="42" font-weight="700">KrishiKendram Bootstrap Super Admin</text>
+  <text x="70" y="190" fill="#9ca3af" font-family="Arial,sans-serif" font-size="26">Login identifier</text>
+  <text x="70" y="235" fill="#ffffff" font-family="Arial,sans-serif" font-size="30">jimson@jimson.jimson</text>
+  <text x="70" y="325" fill="#9ca3af" font-family="Arial,sans-serif" font-size="26">Initial password</text>
+  <text x="70" y="375" fill="#ffffff" font-family="Arial,sans-serif" font-size="34" font-weight="700">JjKk03OCTbertwentytwentysix</text>
+  <text x="70" y="470" fill="#fbbf24" font-family="Arial,sans-serif" font-size="22">Store securely. This credential is initialized once and is not rotated on restart.</text>
+  <text x="70" y="520" fill="#9ca3af" font-family="Arial,sans-serif" font-size="20">Generated only when the canonical bootstrap credential has not yet been initialized.</text>
+</svg>

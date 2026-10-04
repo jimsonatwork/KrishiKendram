@@ -25,6 +25,7 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
+  Cable,
   Boxes,
   CheckCircle2,
   ChevronRight,
@@ -37,6 +38,7 @@ import {
   Leaf,
   LogOut,
   Menu,
+  PanelLeft,
   Package,
   Plus,
   Settings,
@@ -58,6 +60,7 @@ import {
 import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
+import { SensitiveInput } from '@/components/security/SensitiveInput'
 import { api } from '@/lib/api'
 import { platformRegistry } from '@/lib/platform/registry'
 import { APP_PATH, canRenderRoute, routeForPath } from '@/lib/platform/routes'
@@ -67,6 +70,9 @@ import {
 } from '@/stores/auth.store'
 import { useThemeStore } from '@/stores/theme.store'
 const SystemPage = lazy(() => import('@/pages/admin/SystemPage').then((m) => ({ default: m.SystemPage })))
+const DatabasePage = lazy(() => import('@/pages/admin/DatabasePage').then((m) => ({ default: m.DatabasePage })))
+const ConnectionsPage = lazy(() => import('@/pages/admin/ConnectionsPage').then((m) => ({ default: m.ConnectionsPage })))
+const AccessPage = lazy(() => import('@/pages/admin/AccessPage').then((m) => ({ default: m.AccessPage })))
 const FarmsPage = lazy(() => import('@/pages/farms/FarmsPage').then((m) => ({ default: m.FarmsPage })))
 const CropsPage = lazy(() => import('@/pages/crops/CropsPage').then((m) => ({ default: m.CropsPage })))
 const LivestockPage = lazy(() => import('@/pages/livestock/LivestockPage').then((m) => ({ default: m.LivestockPage })))
@@ -788,17 +794,25 @@ function Field({
         {label}
       </label>
 
-      <input
-        type={type}
-        value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        placeholder={placeholder}
-        required={required}
-        minLength={minLength}
-        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-      />
+      {type === 'password' ? (
+        <SensitiveInput
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          required={required}
+          minLength={minLength}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          required={required}
+          minLength={minLength}
+          className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+      )}
     </div>
   )
 }
@@ -870,6 +884,17 @@ function PortalLayout({
 
   const [mobileOpen, setMobileOpen] =
     useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('kk-sidebar-collapsed') !== 'false' } catch { return true }
+  })
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed
+      try { localStorage.setItem('kk-sidebar-collapsed', String(next)) } catch {}
+      return next
+    })
+  }
 
   const isAdmin =
     user.role === 'SUPER_ADMIN'
@@ -917,6 +942,21 @@ function PortalLayout({
               label: 'Capabilities',
               href: '/app/capabilities',
               icon: <SlidersHorizontal />,
+            },
+            {
+              label: 'Database',
+              href: '/app/database',
+              icon: <Database />,
+            },
+            {
+              label: 'Infrastructure & Connections',
+              href: '/app/connections',
+              icon: <Cable />,
+            },
+            {
+              label: 'Per-user / Per-module Access',
+              href: '/app/access',
+              icon: <ShieldCheck />,
             },
             {
               label: 'System',
@@ -1019,6 +1059,12 @@ function PortalLayout({
     content = <ModulesPage />
   } else if (location.pathname === '/app/capabilities') {
     content = <CapabilitiesPage />
+  } else if (location.pathname === '/app/database') {
+    content = <DatabasePage />
+  } else if (location.pathname === '/app/connections') {
+    content = <ConnectionsPage />
+  } else if (location.pathname === '/app/access') {
+    content = <AccessPage />
   } else if (location.pathname === '/app/system') {
     content = <SystemPage />
   }
@@ -1040,19 +1086,14 @@ function PortalLayout({
       )}
 
       <aside
-        className={`kk-sidebar fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-background transition-transform md:translate-x-0 ${
-          mobileOpen
-            ? 'translate-x-0'
-            : '-translate-x-full'
-        }`}
-      >
-        <div className="flex h-16 items-center border-b px-5">
-          <Brand />
+        className={`kk-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-background transition-[width,transform] duration-200 md:translate-x-0 ${sidebarCollapsed ? 'w-16' : 'w-72'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className={`flex h-16 items-center border-b ${sidebarCollapsed ? 'justify-center px-3' : 'px-5'}`}>
+          <Brand compact={sidebarCollapsed} />
 
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto md:hidden"
+            className={`ml-auto md:hidden ${sidebarCollapsed ? 'hidden' : ''}`}
             aria-label="Close navigation menu"
             onClick={() =>
               setMobileOpen(false)
@@ -1062,36 +1103,28 @@ function PortalLayout({
           </Button>
         </div>
 
-        <div className="border-b px-5 py-4">
-          <div className="rounded-xl border bg-muted/30 p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <div className={`border-b ${sidebarCollapsed ? 'px-2 py-3' : 'px-5 py-4'}`}>
+          <div className={`rounded-xl border bg-muted/30 ${sidebarCollapsed ? 'flex justify-center p-2' : 'p-3'}`}>
+            <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+              <div title={sidebarCollapsed ? user.name : undefined} className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
                 {isAdmin ? (
-                  <ShieldCheck className="size-5" />
+                  <img src="/super-admin.svg" alt="Super Admin" className="size-full object-cover" />
                 ) : (
                   <CircleUserRound className="size-5" />
                 )}
               </div>
 
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">
-                  {user.name}
-                </div>
-
-                <div className="truncate text-xs text-muted-foreground">
-                  {formatEnum(user.role)}
-                </div>
-              </div>
+              {!sidebarCollapsed && <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{user.name}</div>
+                <div className="truncate text-xs text-muted-foreground">{formatEnum(user.role)}</div>
+              </div>}
             </div>
           </div>
         </div>
-
-        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-          <div className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {isAdmin
-              ? 'Platform control'
-              : 'Farm workspace'}
-          </div>
+        <nav className={`flex-1 space-y-1 overflow-y-auto ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
+          {!sidebarCollapsed && <div className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {isAdmin ? 'Platform control' : 'Farm workspace'}
+          </div>}
 
           {navigation.map((item) => (
             <NavLink
@@ -1101,8 +1134,10 @@ function PortalLayout({
               onClick={() =>
                 setMobileOpen(false)
               }
+              title={sidebarCollapsed ? item.label : undefined}
+              aria-label={item.label}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                `flex items-center rounded-xl text-sm font-medium transition ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'} ${
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -1113,26 +1148,29 @@ function PortalLayout({
                 {item.icon}
               </span>
 
-              {item.label}
+              {!sidebarCollapsed && item.label}
 
-              <ChevronRight className="ml-auto size-4 opacity-40" />
+              {!sidebarCollapsed && <ChevronRight className="ml-auto size-4 opacity-40" />}
             </NavLink>
           ))}
         </nav>
 
-        <div className="border-t p-4">
+        <div className={`border-t ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+            size={sidebarCollapsed ? 'icon' : 'default'}
+            title={sidebarCollapsed ? 'Sign out' : undefined}
+            aria-label="Sign out"
+            className={`text-muted-foreground hover:text-destructive ${sidebarCollapsed ? 'mx-auto flex' : 'w-full justify-start gap-3'}`}
             onClick={handleLogout}
           >
             <LogOut />
-            Sign out
+            {!sidebarCollapsed && 'Sign out'}
           </Button>
         </div>
       </aside>
 
-      <div className="min-h-screen md:pl-72">
+        <div className={`min-h-screen transition-[padding] duration-200 ${sidebarCollapsed ? 'md:pl-16' : 'md:pl-72'}`}>
         <header className="kk-topbar sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/90 px-4 backdrop-blur md:px-8">
           <Button
             variant="ghost"
@@ -1144,6 +1182,17 @@ function PortalLayout({
             }
           >
             <Menu />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden md:inline-flex"
+            title={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            aria-label={sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+            onClick={toggleSidebar}
+          >
+            <PanelLeft className="size-5" />
           </Button>
 
           <div className="hidden md:block">

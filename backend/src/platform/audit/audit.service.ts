@@ -4,6 +4,20 @@ import { Prisma, AuditEvent } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 
+const SENSITIVE_AUDIT_KEY = /(password|passwd|secret|token|api[-_]?key|authorization|cookie|database[-_]?url|connection[-_]?string|private[-_]?key|access[-_]?key)/i;
+
+function redactAuditValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactAuditValue);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, nested]) => [
+    key, SENSITIVE_AUDIT_KEY.test(key) ? '[REDACTED]' : redactAuditValue(nested),
+  ]));
+}
+
+function redactAuditEvent<T extends Record<string, unknown>>(event: T): T {
+  return { ...event, metadata: redactAuditValue(event.metadata) } as T;
+}
+
 export type CreateAuditEventInput = {
   actorId?: string | null;
   action: string;
@@ -60,23 +74,19 @@ export class AuditService {
     userId: string,
     limit = 50,
   ) {
-    return this.prisma.auditEvent.findMany({
-      where: {
-        actorId: userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+    const events = await this.prisma.auditEvent.findMany({
+      where: { actorId: userId },
+      orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 100),
     });
+    return events.map((event) => redactAuditEvent(event));
   }
 
   async getRecentActivity(limit = 50) {
-    return this.prisma.auditEvent.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
+    const events = await this.prisma.auditEvent.findMany({
+      orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 100),
     });
+    return events.map((event) => redactAuditEvent(event));
   }
 }
