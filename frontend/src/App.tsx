@@ -8,6 +8,7 @@ const PermissionsPage = lazy(() => import('@/pages/admin/PermissionsPage').then(
 const RolesPage = lazy(() => import('@/pages/admin/RolesPage').then((m) => ({ default: m.RolesPage })))
 const AuditPage = lazy(() => import('@/pages/admin/AuditPage').then((m) => ({ default: m.AuditPage })))
 const PlatformDashboardPage = lazy(() => import('@/pages/admin/PlatformDashboardPage').then((m) => ({ default: m.PlatformDashboardPage })))
+const GodModePage = lazy(() => import('@/pages/admin/GodModePage').then((m) => ({ default: m.GodModePage })))
 
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -904,6 +905,11 @@ function PortalLayout({
       isAdmin
         ? [
             {
+              label: 'God Mode',
+              href: '/app/god-mode',
+              icon: <Sparkles />,
+            },
+            {
               label: 'Platform',
               href: '/app',
               icon: <LayoutDashboard />,
@@ -1019,7 +1025,9 @@ function PortalLayout({
     <FarmerDashboard user={user} />
   )
 
-  if (location.pathname === '/app' && isAdmin) {
+  if (location.pathname === '/app/god-mode' && isAdmin) {
+    content = <GodModePage />
+  } else if (location.pathname === '/app' && isAdmin) {
     content = <PlatformDashboardPage />
   } else if (location.pathname === '/app/farms') {
     content = <FarmsPage />
