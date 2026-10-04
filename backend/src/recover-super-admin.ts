@@ -19,7 +19,6 @@ import {
 import * as bcrypt from 'bcrypt';
 
 import { generateMemberId } from './platform/identity/member-id';
-import { CANONICAL_BOOTSTRAP_PASSWORD } from './bootstrap-pattern';
 import { CredentialArtifactService } from './credential-artifact.service';
 
 const prisma = new PrismaClient();
@@ -74,7 +73,7 @@ async function main() {
   if (email !== CANONICAL_EMAIL) {
     throw new Error('Break-glass recovery is restricted to the canonical Super Admin identity.');
   }
-  const password = process.env.SUPER_ADMIN_PASSWORD?.trim() || CANONICAL_BOOTSTRAP_PASSWORD;
+  const password = requiredEnv('SUPER_ADMIN_PASSWORD');
 
   if (password.length < 8) {
     throw new Error(

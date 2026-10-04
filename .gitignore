@@ -40,3 +40,6 @@ frontend/.vite/
 
 # Runtime data
 *.pid
+
+# God Mode runtime credentials — never commit secrets
+backend/config/god-mode/*.txt
