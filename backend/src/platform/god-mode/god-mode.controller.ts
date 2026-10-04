@@ -1,10 +1,11 @@
-import { Controller, ForbiddenException, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
 import { AuthorityTier, UserRole } from '@prisma/client';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SystemTruthService } from '../registry/system-truth.service';
 import { GodModeService } from './god-mode.service';
+import { GodConfigurationService } from './god-configuration.service';
 
 @Controller('admin/god-mode')
 @UseGuards(JwtAuthGuard)
@@ -13,6 +14,7 @@ export class GodModeController {
     private readonly godMode: GodModeService,
     private readonly systemTruth: SystemTruthService,
     private readonly prisma: PrismaService,
+    private readonly configuration: GodConfigurationService,
   ) {}
 
   @Get('overview')
@@ -64,6 +66,30 @@ export class GodModeController {
   async credentialStatus(@Req() request: Request) {
     await this.assertGod(request);
     return this.godMode.credentialStatus();
+  }
+
+  @Get('configuration')
+  async configurationList(@Req() request: Request) {
+    await this.assertGod(request);
+    return this.configuration.list();
+  }
+
+  @Get('configuration/:stableId')
+  async configurationGet(@Req() request: Request, @Param('stableId') stableId: string) {
+    await this.assertGod(request);
+    return this.configuration.get(stableId);
+  }
+
+  @Patch('configuration/:stableId')
+  async configurationUpdate(
+    @Req() request: Request,
+    @Param('stableId') stableId: string,
+    @Body() body: { value?: unknown },
+  ) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+    return this.configuration.update(stableId, body?.value, actorId);
   }
 
   private async assertGod(request: Request): Promise<void> {

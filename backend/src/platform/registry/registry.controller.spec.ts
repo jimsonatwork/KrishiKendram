@@ -12,8 +12,9 @@ describe('RegistryController', () => {
   };
   const lifecycle = { getStatus: jest.fn(() => ({ state: 'ENABLED' })) };
   const audit = { create: jest.fn() };
+  const filesystem = { getDefinition: jest.fn(() => ({ source: 'test' })) };
   const credentialArtifacts = { getSettings: jest.fn(), status: jest.fn(), updateSettings: jest.fn() };
-  const controller = new RegistryController(registry as never, lifecycle as never, audit as never, credentialArtifacts as never);
+  const controller = new RegistryController(registry as never, lifecycle as never, audit as never, filesystem as never, credentialArtifacts as never);
 
   beforeEach(() => jest.clearAllMocks());
 

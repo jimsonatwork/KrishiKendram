@@ -4,11 +4,12 @@ import { AuditModule } from '../audit/audit.module';
 import { RegistryModule } from '../registry/registry.module';
 import { GodModeController } from './god-mode.controller';
 import { GodModeService } from './god-mode.service';
+import { GodConfigurationService } from './god-configuration.service';
 
 @Module({
   imports: [PrismaModule, AuditModule, RegistryModule],
   controllers: [GodModeController],
-  providers: [GodModeService],
-  exports: [GodModeService],
+  providers: [GodModeService, GodConfigurationService],
+  exports: [GodModeService, GodConfigurationService],
 })
 export class GodModeModule {}

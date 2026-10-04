@@ -17,6 +17,7 @@ export interface SystemTruth {
   credentialPolicy: Record<string, unknown>;
   registry: Record<string, unknown>;
   godModeControlPlane: Record<string, unknown>;
+  startupInvariant: Record<string, unknown>;
 }
 
 @Injectable()

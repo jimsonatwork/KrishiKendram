@@ -1215,7 +1215,7 @@ Continue the concrete PARTIAL module gates from the top of the stack, beginning 
 
 ## 2026-10-04 — God Mode Control-Plane Expansion
 
-**Status: PLANNED / ARCHITECTURE BASELINE**
+**Status: ACTIVE — PHASES 1–2 IMPLEMENTED / PHASE 3 NEXT**
 
 The next major platform administration pass is governed by `docs/GOD-MODE-ARCHITECTURE.md`. God Mode is the authoritative root control plane for the whole KrishiKendram platform. It must control rather than merely display system truth, runtime, database/connections, Docker/infrastructure, registry/modules/resources, fields/validation, roles/authorization, users/lifecycle, navigation, themes, feature flags, security, approval workflows, credentials, audit/history, snapshots/recovery, route diagnostics, system diagnostics and dependency impact.
 
@@ -1224,3 +1224,12 @@ Before implementation, the current working state was checkpointed at commit `0b0
 Execution order: central truth reconciliation → canonical God Configuration Registry → God navigation/control surfaces → snapshot/diff/health/audit/recovery → operational controls → delegated Super Admin/Admin/Cluster Head policy. Significant mutations follow **validate → dependency analysis → snapshot → apply → health-check → audit**.
 
 Do not create parallel configuration sources or frontend-only authorization. Canonical root remains `/home/jj/Dev/KrishiKendram`.
+
+### 2026-10-04 Batch Checkpoint — Phases 1–2
+
+- **Batch 1 — Central truth reconciliation:** reconciled the Prisma datamodel with the already-applied database governance foundations: UserType, UserApprovalStatus, ModuleAccessState, core-staff roles, SystemSetting, and UserModuleAccess. This was additive reconciliation only; existing application data and Docker volumes were not reset or deleted.
+- **Batch 2 — Persistent God Configuration Registry:** added GodConfiguration and GodConfigurationDependency as the canonical persisted registry foundation. The registry records stable ID, category, value/type, defaults, editability, God-only policy, risk, restart/approval requirements, snapshot/audit policy, lifecycle, version and ownership metadata.
+- Added protected God Mode registry APIs for list, detail and governed update; non-editable metadata entries are explicitly rejected rather than silently bypassed.
+- Added the first 20 canonical God control categories from the architecture as registry metadata, owned by GOD_MODE_ARCHITECTURE.
+- Repaired the database migration state without reset: the failed duplicate 20261004160000_god_mode_authority_tier attempt was marked rolled back after confirming the earlier 20261004110000_god_mode_authority_tier migration already supplied the enum/column. prisma migrate status now reports Database schema is up to date.
+- Verification after the batches: Prisma schema validation/generation passed, TypeScript compilation passed, and backend regression is 42 suites / 387 tests passed.

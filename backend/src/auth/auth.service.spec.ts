@@ -245,6 +245,7 @@ describe('AuthService - centralized field policy', () => {
         email: true,
         mobile: true,
         role: true,
+        authorityTier: true,
         status: true,
         preferredLanguage: true,
         preferredInputMethod: true,

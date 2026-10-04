@@ -25,6 +25,58 @@ model Entity {
 }
 
 // ============================================================
+// GOD MODE - CANONICAL CONFIGURATION REGISTRY
+// ============================================================
+
+model GodConfiguration {
+  id                   String    @id @default(cuid())
+  stableId             String    @unique
+  category             String
+  name                 String
+  description          String?
+  currentValue         Json
+  valueType            String
+  defaultValue         Json?
+  allowedValues        Json?
+  editable             Boolean   @default(false)
+  godOnly              Boolean   @default(true)
+  riskLevel            String    @default("LOW")
+  restartRequired      Boolean   @default(false)
+  approvalRequired     Boolean   @default(false)
+  snapshotBeforeChange Boolean   @default(true)
+  auditPolicy          String    @default("ALL")
+  lifecycle            String    @default("ACTIVE")
+  version              Int       @default(1)
+  ownerSource          String
+  lastActorId          String?
+  lastChangedAt        DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  dependencies GodConfigurationDependency[] @relation("ConfigDependencies")
+  dependents   GodConfigurationDependency[] @relation("ConfigDependents")
+
+  @@index([category])
+  @@index([lifecycle])
+  @@index([ownerSource])
+}
+
+model GodConfigurationDependency {
+  id              String   @id @default(cuid())
+  configurationId String
+  dependsOnId     String
+  relationship    String   @default("DEPENDS_ON")
+  createdAt       DateTime @default(now())
+
+  configuration GodConfiguration @relation("ConfigDependencies", fields: [configurationId], references: [id], onDelete: Cascade)
+  dependsOn     GodConfiguration @relation("ConfigDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([configurationId, dependsOnId])
+  @@index([configurationId])
+  @@index([dependsOnId])
+}
+
+// ============================================================
 // PART 01 END
 // ============================================================
 
@@ -121,9 +173,17 @@ model User {
   mobile       String? @unique
   passwordHash String
 
-  role          UserRole      @default(FARMER)
-  authorityTier AuthorityTier @default(ADMINISTRATIVE)
-  status UserStatus @default(PENDING)
+  role           UserRole           @default(FARMER)
+  authorityTier  AuthorityTier      @default(ADMINISTRATIVE)
+  status         UserStatus         @default(PENDING)
+  userType       UserType           @default(GENERAL)
+  approvalStatus UserApprovalStatus @default(PENDING)
+
+  approvedAt            DateTime?
+  approvedById          String?
+  basicDataVerified     Boolean   @default(false)
+  basicDataVerifiedAt   DateTime?
+  basicDataVerifiedById String?
 
   preferredLanguage    String?     @default("en")
   preferredInputMethod InputMethod @default(MIXED)
@@ -158,15 +218,23 @@ model User {
   resourceLineagesCreated  ResourceLineage[]  @relation("ResourceLineageCreatedBy")
   resourceLineagesUpdated  ResourceLineage[]  @relation("ResourceLineageUpdatedBy")
 
-  resourceRelationships        ResourceRelationship[]    @relation("ResourceRelationshipUser")
-  transferRequestsCreated      ResourceTransferRequest[] @relation("TransferRequestCreatedBy")
-  transferRequestsSource       ResourceTransferRequest[] @relation("TransferRequestSourceUser")
-  transferRequestsDestination  ResourceTransferRequest[] @relation("TransferRequestDestinationUser")
-  transferRequestsAccepted     ResourceTransferRequest[] @relation("TransferRequestAcceptedBy")
-  transferRequestsRejected     ResourceTransferRequest[] @relation("TransferRequestRejectedBy")
-  transferRequestsApproved     ResourceTransferRequest[] @relation("TransferRequestApprovedBy")
-  createdResourceRelationships ResourceRelationship[]    @relation("ResourceRelationshipCreatedBy")
-  updatedResourceRelationships ResourceRelationship[]    @relation("ResourceRelationshipUpdatedBy")
+  resourceRelationships       ResourceRelationship[]    @relation("ResourceRelationshipUser")
+  transferRequestsCreated     ResourceTransferRequest[] @relation("TransferRequestCreatedBy")
+  transferRequestsSource      ResourceTransferRequest[] @relation("TransferRequestSourceUser")
+  transferRequestsDestination ResourceTransferRequest[] @relation("TransferRequestDestinationUser")
+  transferRequestsAccepted    ResourceTransferRequest[] @relation("TransferRequestAcceptedBy")
+  transferRequestsRejected    ResourceTransferRequest[] @relation("TransferRequestRejectedBy")
+  transferRequestsApproved    ResourceTransferRequest[] @relation("TransferRequestApprovedBy")
+
+  approvedByUser          User?              @relation("User_approvedByIdToUser", fields: [approvedById], references: [id])
+  approvedUsers           User[]             @relation("User_approvedByIdToUser")
+  basicDataVerifiedByUser User?              @relation("User_basicDataVerifiedByIdToUser", fields: [basicDataVerifiedById], references: [id])
+  basicDataVerifiedUsers  User[]             @relation("User_basicDataVerifiedByIdToUser")
+  reviewedModuleAccesses  UserModuleAccess[] @relation("UserModuleAccess_reviewedByIdToUser")
+  moduleAccessEntries     UserModuleAccess[] @relation("UserModuleAccess_userIdToUser")
+
+  createdResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipCreatedBy")
+  updatedResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipUpdatedBy")
 }
 
 // ============================================================
@@ -742,11 +810,85 @@ enum UserRole {
   BANK
   LOGISTICS
   AI_AGENT
+  DATA_VERIFIER
+  AUDITOR
+  SUPPORT
+  BACK_OFFICE
+}
+
+// ============================================================
+// GOD MODE - EXISTING DATABASE CONFIGURATION FOUNDATIONS
+// ============================================================
+
+model SystemSetting {
+  id          String   @id
+  key         String   @unique
+  value       Json
+  category    String   @default("general")
+  label       String?
+  editable    Boolean  @default(true)
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  @@index([category])
+}
+
+model UserModuleAccess {
+  id               String            @id
+  userId           String
+  moduleKey        String
+  state            ModuleAccessState @default(NOT_ENROLLED)
+  canView          Boolean           @default(false)
+  canCreate        Boolean           @default(false)
+  canUpdate        Boolean           @default(false)
+  canDelete        Boolean           @default(false)
+  provisionalUntil DateTime?
+  reviewedAt       DateTime?
+  reviewedById     String?
+  reason           String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now())
+
+  reviewedBy User? @relation("UserModuleAccess_reviewedByIdToUser", fields: [reviewedById], references: [id], onUpdate: NoAction)
+  user       User  @relation("UserModuleAccess_userIdToUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, moduleKey])
+  @@index([moduleKey, state])
+  @@index([provisionalUntil])
 }
 
 // ============================================================
 // PART 10 END
 // ============================================================
+
+// ============================================================
+// GOD MODE - USER GOVERNANCE ENUMS
+// ============================================================
+
+enum ModuleAccessState {
+  NOT_ENROLLED
+  INTERESTED
+  ELIGIBLE
+  PROVISIONAL
+  ACTIVE
+  RESTRICTED
+  SUSPENDED
+  PENDING_INFORMATION
+  REJECTED
+}
+
+enum UserApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum UserType {
+  GENERAL
+  CORE_STAFF
+}
 
 // ============================================================
 // PART 11 - USER STATUS
