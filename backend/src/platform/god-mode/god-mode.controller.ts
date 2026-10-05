@@ -9,6 +9,7 @@ import { RegistryService } from '../registry/registry.service';
 import { ModuleLifecycleService } from '../registry/module-lifecycle.service';
 import { GodModeService } from './god-mode.service';
 import { GodConfigurationService } from './god-configuration.service';
+import { GodDatabaseCredentialService } from './god-database-credential.service';
 
 @Controller('admin/god-mode')
 @UseGuards(JwtAuthGuard)
@@ -21,6 +22,7 @@ export class GodModeController {
     private readonly audit: AuditService,
     private readonly registry: RegistryService,
     private readonly lifecycle: ModuleLifecycleService,
+    private readonly databaseCredentials: GodDatabaseCredentialService,
   ) {}
 
   @Get('overview')
@@ -86,6 +88,23 @@ export class GodModeController {
     const actorId = (request.user as { userId?: string }).userId;
     if (!actorId) throw new ForbiddenException('God Mode identity required.');
     return this.configuration.updateValidationPolicy(body?.value, actorId);
+  }
+
+  @Get('database-credential')
+  async databaseCredential(@Req() request: Request) {
+    await this.assertGod(request);
+    return this.databaseCredentials.status();
+  }
+
+  @Post('database-credential/rotate')
+  async rotateDatabaseCredential(
+    @Req() request: Request,
+    @Body() body: { newPassword?: string; reason?: string },
+  ) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+    return this.databaseCredentials.rotatePassword(body?.newPassword ?? '', actorId, body?.reason);
   }
 
   @Get('authority')

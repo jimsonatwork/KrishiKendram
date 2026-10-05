@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RegistryService } from '../registry/registry.service';
 
 const DEFINITIONS = [
   ['system.truth', 'System Truth & Configuration', 'System Truth', 'Canonical platform root and configuration ownership.', 'object', 'LOW'],
@@ -31,6 +32,7 @@ export class GodConfigurationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly registry: RegistryService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -134,11 +136,15 @@ export class GodConfigurationService {
 
   async getValidationPolicy() {
     const setting = await this.prisma.systemSetting.findUnique({ where: { key: 'validation.policy' } });
-    return setting?.value ?? { defaults: { emailDuplicate: 'BLOCK', mobileDuplicate: 'TRANSFER_REQUIRED', combinationDuplicate: 'BLOCK' }, modules: {} };
+    return setting?.value ?? { defaults: { emailDuplicate: 'BLOCK', mobileDuplicate: 'TRANSFER_REQUIRED', combinationDuplicate: 'BLOCK', fields: {} }, modules: {}, resources: {} };
   }
 
   async updateValidationPolicy(value: unknown, actorId: string) {
-    const object = value as { defaults?: Record<string, unknown>; modules?: Record<string, unknown> } | null;
+    const object = value as {
+      defaults?: Record<string, unknown>;
+      modules?: Record<string, unknown>;
+      resources?: Record<string, unknown>;
+    } | null;
     if (!object || typeof object !== 'object') throw new BadRequestException('Validation policy must be an object.');
     const allowed = ['ALLOW', 'WARNING', 'BLOCK', 'TRANSFER_REQUIRED', 'CONFIRM_REQUIRED'];
     const validateActions = (rules: Record<string, unknown> | undefined) => {
@@ -149,15 +155,36 @@ export class GodConfigurationService {
       }
     };
     validateActions(object.defaults);
+    const validateFieldPolicies = (scope: string, policies: Record<string, unknown> | undefined) => {
+      for (const [fieldName, rules] of Object.entries(policies ?? {})) {
+        const field = this.registry.getField(fieldName);
+        if (!field) throw new BadRequestException('Unknown Registry field: ' + fieldName + '.');
+        if (!rules || typeof rules !== 'object' || Array.isArray(rules)) throw new BadRequestException(scope + ' field policy for ' + fieldName + ' must be an object.');
+        const allowedFields = new Set(field.overridableValidation ?? []);
+        for (const key of Object.keys(rules as Record<string, unknown>)) {
+          if (!allowedFields.has(key as keyof NonNullable<typeof field.validation>)) {
+            throw new BadRequestException('Field ' + fieldName + ' does not permit God override ' + key + '.');
+          }
+        }
+      }
+    };
+    validateFieldPolicies('Default', object.defaults?.fields as Record<string, unknown> | undefined);
     for (const [moduleKey, rules] of Object.entries(object.modules ?? {})) {
-      if (!moduleKey.trim() || !rules || typeof rules !== 'object') throw new BadRequestException('Module validation policies must be objects.');
+      if (!moduleKey.trim() || !rules || typeof rules !== 'object' || Array.isArray(rules)) throw new BadRequestException('Module validation policies must be objects.');
       validateActions(rules as Record<string, unknown>);
+      validateFieldPolicies('Module ' + moduleKey, (rules as { fields?: Record<string, unknown> }).fields);
+    }
+    for (const [resourceKey, rules] of Object.entries(object.resources ?? {})) {
+      if (!resourceKey.trim() || !this.registry.get(resourceKey)) throw new BadRequestException('Unknown Registry resource: ' + resourceKey + '.');
+      if (!rules || typeof rules !== 'object' || Array.isArray(rules)) throw new BadRequestException('Resource validation policies must be objects.');
+      validateFieldPolicies('Resource ' + resourceKey, (rules as { fields?: Record<string, unknown> }).fields);
     }
     const existing = await this.prisma.systemSetting.findUnique({ where: { key: 'validation.policy' } });
     const data = { value: value as Prisma.InputJsonValue, category: 'validation', label: 'Site-wide and module-specific validation policy', editable: true, updatedById: actorId };
     if (existing) await this.prisma.systemSetting.update({ where: { key: 'validation.policy' }, data });
     else await this.prisma.systemSetting.create({ data: { id: 'validation-policy', key: 'validation.policy', ...data } });
     await this.audit.create({ actorId, action: 'VALIDATION_POLICY_UPDATED', resourceType: 'SYSTEM_SETTING', resourceId: existing?.id ?? 'validation-policy', description: 'God Mode validation policy updated.', metadata: { policy: value as Prisma.InputJsonValue } });
+    await this.registry.refreshValidationPolicy();
     return this.getValidationPolicy();
   }
 

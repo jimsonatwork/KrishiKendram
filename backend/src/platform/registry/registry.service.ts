@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
 import {
   FieldDefinition,
@@ -12,7 +13,13 @@ import { ModuleDefinition } from './module-definition.interface';
 import { ResourceDefinition } from './resource-definition.interface';
 
 @Injectable()
-export class RegistryService {
+export class RegistryService implements OnModuleInit {
+  private validationPolicy: Record<string, unknown> = {
+    defaults: { emailDuplicate: 'BLOCK', mobileDuplicate: 'TRANSFER_REQUIRED', combinationDuplicate: 'BLOCK', fields: {} },
+    modules: {},
+    resources: {},
+  };
+
   private readonly resources = new Map<string, ResourceDefinition>();
 
   private readonly modules = new Map<string, ModuleDefinition>();
@@ -21,7 +28,19 @@ export class RegistryService {
 
   constructor(
     private readonly fieldValidation: FieldValidationService,
+    private readonly prisma: PrismaService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.refreshValidationPolicy();
+  }
+
+  async refreshValidationPolicy(): Promise<void> {
+    const setting = await this.prisma.systemSetting.findUnique({ where: { key: 'validation.policy' } });
+    if (setting?.value && typeof setting.value === 'object' && !Array.isArray(setting.value)) {
+      this.validationPolicy = setting.value as Record<string, unknown>;
+    }
+  }
 
   register(definition: ResourceDefinition): void {
     this.validateCapabilities(definition);
@@ -230,7 +249,7 @@ export class RegistryService {
     }
 
     return this.fieldValidation.validate(
-      definition,
+      this.applyPolicyToField(definition.name, definition),
       value,
     );
   }
@@ -256,9 +275,48 @@ export class RegistryService {
     }
 
     return this.fieldValidation.validate(
-      definition,
+      this.applyPolicyToField(fieldName, definition, resourceName),
       value,
     );
+  }
+
+  private applyPolicyToField(
+    fieldName: string,
+    definition: FieldDefinition,
+    resourceName?: string,
+  ): FieldDefinition {
+    const rules = definition.validation;
+    if (!rules) return definition;
+
+    const defaults = this.validationPolicy.defaults as { fields?: Record<string, unknown> } | undefined;
+    const modules = this.validationPolicy.modules as Record<string, unknown> | undefined;
+    const resources = this.validationPolicy.resources as Record<string, unknown> | undefined;
+    const resource = resourceName ? this.get(resourceName) : undefined;
+    const moduleKey = resource?.module;
+
+    const pick = (source: unknown): FieldDefinition['validation'] => {
+      if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+      const fields = (source as { fields?: Record<string, unknown> }).fields;
+      const override = fields?.[fieldName];
+      return override && typeof override === 'object' && !Array.isArray(override)
+        ? override as FieldDefinition['validation']
+        : {};
+    };
+
+    const defaultOverride = defaults?.fields?.[fieldName];
+    const moduleOverride = moduleKey ? pick(modules?.[moduleKey]) : {};
+    const resourceOverride = resourceName ? pick(resources?.[resourceName]) : {};
+    const merged = {
+      ...rules,
+      ...(defaultOverride && typeof defaultOverride === 'object' ? defaultOverride as object : {}),
+      ...moduleOverride,
+      ...resourceOverride,
+    };
+    const allowed = new Set(definition.overridableValidation ?? []);
+    const safe = Object.fromEntries(
+      Object.entries(merged).filter(([key]) => key in rules || allowed.has(key as keyof FieldDefinition['validation'])),
+    );
+    return { ...definition, validation: safe };
   }
 
   resolveResourceField(

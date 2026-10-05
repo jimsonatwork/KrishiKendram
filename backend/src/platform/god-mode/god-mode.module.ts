@@ -5,6 +5,7 @@ import { RegistryModule } from '../registry/registry.module';
 import { GodModeController } from './god-mode.controller';
 import { GodModeService } from './god-mode.service';
 import { GodConfigurationService } from './god-configuration.service';
+import { GodDatabaseCredentialService } from './god-database-credential.service';
 
 @Module({
   imports: [PrismaModule, AuditModule, RegistryModule],
