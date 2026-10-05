@@ -85,7 +85,7 @@ export class GodConfigurationService {
     return item;
   }
 
-  async update(stableId: string, value: unknown, actorId: string) {
+  async update(stableId: string, value: unknown, actorId: string, reason?: string) {
     const item = await this.prisma.godConfiguration.findUnique({ where: { stableId } });
     if (!item) throw new NotFoundException(`God configuration ${stableId} not found.`);
     if (!item.editable) throw new BadRequestException(`Configuration ${stableId} is metadata-only and cannot be changed yet.`);
@@ -100,7 +100,7 @@ export class GodConfigurationService {
           version: item.version,
           value: item.currentValue as Prisma.InputJsonValue,
           actorId,
-          reason: 'PRE_CHANGE_SNAPSHOT',
+          reason: reason?.trim() || 'PRE_CHANGE_SNAPSHOT',
         },
       });
     }
@@ -125,6 +125,7 @@ export class GodConfigurationService {
         version: updated.version,
         snapshotRequired: item.snapshotBeforeChange,
         healthCheckRequired: true,
+        reason: reason?.trim() || null,
       },
     });
 
