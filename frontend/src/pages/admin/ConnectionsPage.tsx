@@ -18,7 +18,7 @@ export function ConnectionsPage() {
     if (!token) return
     setLoading(true); setError(null)
     try {
-      setData(await request<ConnectionResponse>('/admin/super-control/connections?reveal=' + reveal, { headers:{ Authorization:'Bearer ' + token } }))
+      setData(await request<ConnectionResponse>('/admin/connections?reveal=' + reveal, { headers:{ Authorization:'Bearer ' + token } }))
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load infrastructure connections.') }
     finally { setLoading(false) }
   }, [token,reveal])
