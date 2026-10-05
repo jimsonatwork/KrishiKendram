@@ -172,6 +172,107 @@ export class GodModeController {
     return { role: body.role, permission, enabled: body.enabled };
   }
 
+  @Get('capabilities')
+  async capabilities(@Req() request: Request) {
+    await this.assertGod(request);
+    const resources = this.registry.getAll();
+    const permissions = await this.prisma.permission.findMany({
+      where: { resource: { not: null } },
+      include: { rolePermissions: true },
+      orderBy: [{ module: 'asc' }, { resource: 'asc' }, { action: 'asc' }, { scope: 'asc' }],
+    });
+    const declarations = resources.flatMap((resource) =>
+      (resource.capabilities ?? []).flatMap((capability) =>
+        capability.scopes.map((scope) => ({
+          module: resource.module, resource: resource.name,
+          action: capability.action, scope,
+        })),
+      ),
+    );
+    const declaredKeys = new Set(
+      declarations.map((item) => item.module + '|' + item.resource + '|' + item.action + '|' + item.scope),
+    );
+    return {
+      declarations,
+      policies: permissions
+        .filter((permission) =>
+          declaredKeys.has(permission.module + '|' + permission.resource + '|' + permission.action + '|' + permission.scope),
+        )
+        .map((permission) => ({
+          id: permission.id, module: permission.module, resource: permission.resource,
+          action: permission.action, scope: permission.scope,
+          roles: permission.rolePermissions.map((entry) => entry.role),
+        })),
+    };
+  }
+
+  @Patch('capabilities/role-policy')
+  async updateCapabilityPolicy(
+    @Req() request: Request,
+    @Body() body: {
+      role: UserRole; module: string; resource: string; action: string;
+      scope: string; enabled: boolean; reason?: string;
+    },
+  ) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+
+    const module = body?.module?.trim();
+    const resourceName = body?.resource?.trim();
+    const action = body?.action?.trim();
+    const scope = body?.scope?.trim();
+    if (!body?.role || !module || !resourceName || !action || !scope) {
+      throw new ForbiddenException('Role, module, resource, action and scope are required.');
+    }
+
+    const resource = this.registry.get(resourceName);
+    if (!resource || resource.module !== module) {
+      throw new ForbiddenException(`Resource '${resourceName}' is not registered under module '${module}'.`);
+    }
+    const capability = resource.capabilities?.find(
+      (entry) => entry.action === action && entry.scopes.includes(scope as never),
+    );
+    if (!capability) {
+      throw new ForbiddenException(
+        `Capability '${module}:${resourceName}:${action}:${scope}' is not declared by the canonical Registry.`,
+      );
+    }
+
+    let permission = await this.prisma.permission.findFirst({
+      where: { module, section: null, resource: resourceName, action, scope },
+    });
+    if (!permission) {
+      permission = await this.prisma.permission.create({
+        data: { module, section: null, resource: resourceName, action, scope },
+      });
+    }
+
+    if (body.enabled) {
+      await this.prisma.rolePermission.upsert({
+        where: { role_permissionId: { role: body.role, permissionId: permission.id } },
+        create: { role: body.role, permissionId: permission.id }, update: {},
+      });
+    } else {
+      await this.prisma.rolePermission.deleteMany({
+        where: { role: body.role, permissionId: permission.id },
+      });
+    }
+
+    await this.audit.create({
+      actorId, action: 'GOD_CAPABILITY_POLICY_UPDATED',
+      resourceType: 'RESOURCE_CAPABILITY', resourceId: permission.id,
+      description: body.enabled
+        ? `God enabled ${body.role} capability ${module}:${resourceName}:${action}:${scope}.`
+        : `God disabled ${body.role} capability ${module}:${resourceName}:${action}:${scope}.`,
+      metadata: {
+        role: body.role, module, resource: resourceName, action, scope,
+        enabled: body.enabled, reason: body.reason?.trim() || null,
+      },
+    });
+    return { role: body.role, module, resource: resourceName, action, scope, enabled: body.enabled, permission };
+  }
+
   @Get('modules')
   async modules(@Req() request: Request) {
     await this.assertGod(request);
