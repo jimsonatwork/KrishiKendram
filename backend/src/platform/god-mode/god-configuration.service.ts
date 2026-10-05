@@ -132,6 +132,35 @@ export class GodConfigurationService {
     return updated;
   }
 
+  async getValidationPolicy() {
+    const setting = await this.prisma.systemSetting.findUnique({ where: { key: 'validation.policy' } });
+    return setting?.value ?? { defaults: { emailDuplicate: 'BLOCK', mobileDuplicate: 'TRANSFER_REQUIRED', combinationDuplicate: 'BLOCK' }, modules: {} };
+  }
+
+  async updateValidationPolicy(value: unknown, actorId: string) {
+    const object = value as { defaults?: Record<string, unknown>; modules?: Record<string, unknown> } | null;
+    if (!object || typeof object !== 'object') throw new BadRequestException('Validation policy must be an object.');
+    const allowed = ['ALLOW', 'WARNING', 'BLOCK', 'TRANSFER_REQUIRED', 'CONFIRM_REQUIRED'];
+    const validateActions = (rules: Record<string, unknown> | undefined) => {
+      if (!rules) return;
+      for (const [key, action] of Object.entries(rules)) {
+        if (!['emailDuplicate', 'mobileDuplicate', 'combinationDuplicate'].includes(key)) throw new BadRequestException('Unsupported validation policy key: ' + key);
+        if (typeof action !== 'string' || !allowed.includes(action)) throw new BadRequestException('Unsupported validation action for ' + key + '.');
+      }
+    };
+    validateActions(object.defaults);
+    for (const [moduleKey, rules] of Object.entries(object.modules ?? {})) {
+      if (!moduleKey.trim() || !rules || typeof rules !== 'object') throw new BadRequestException('Module validation policies must be objects.');
+      validateActions(rules as Record<string, unknown>);
+    }
+    const existing = await this.prisma.systemSetting.findUnique({ where: { key: 'validation.policy' } });
+    const data = { value: value as Prisma.InputJsonValue, category: 'validation', label: 'Site-wide and module-specific validation policy', editable: true, updatedById: actorId };
+    if (existing) await this.prisma.systemSetting.update({ where: { key: 'validation.policy' }, data });
+    else await this.prisma.systemSetting.create({ data: { id: 'validation-policy', key: 'validation.policy', ...data } });
+    await this.audit.create({ actorId, action: 'VALIDATION_POLICY_UPDATED', resourceType: 'SYSTEM_SETTING', resourceId: existing?.id ?? 'validation-policy', description: 'God Mode validation policy updated.', metadata: { policy: value as Prisma.InputJsonValue } });
+    return this.getValidationPolicy();
+  }
+
   async snapshots(stableId: string) {
     const item = await this.prisma.godConfiguration.findUnique({ where: { stableId }, select: { id: true } });
     if (!item) throw new NotFoundException(`God configuration ${stableId} not found.`);
