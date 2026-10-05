@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthorityTier, UserRole } from '@prisma/client';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -98,12 +98,12 @@ export class GodModeController {
   async configurationUpdate(
     @Req() request: Request,
     @Param('stableId') stableId: string,
-    @Body() body: { value?: unknown },
+    @Body() body: { value?: unknown; reason?: string },
   ) {
     await this.assertGod(request);
     const actorId = (request.user as { userId?: string }).userId;
     if (!actorId) throw new ForbiddenException('God Mode identity required.');
-    return this.configuration.update(stableId, body?.value, actorId);
+    return this.configuration.update(stableId, body?.value, actorId, body?.reason);
   }
 
   private async assertGod(request: Request): Promise<void> {
