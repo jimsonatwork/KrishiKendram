@@ -3120,3 +3120,12 @@ God Mode remains the authoritative administrative root defined in `docs/GOD-MODE
 - API health: **HTTP 200**
 - God Configuration registry database foundation: applied successfully
 - Next execution phase: **Phase 3 — God UI/control surfaces**, followed by snapshot/recovery safety, operations and delegation.
+
+
+## 2026-10-05 — God Mode Phase 3 Recovery Batch
+
+- Added persisted `GodConfigurationSnapshot` storage and migration `20261005010000_god_configuration_snapshots` without database reset or volume deletion.
+- Governed God configuration changes now create a pre-change snapshot when the registry policy requires it.
+- Added protected snapshot listing and rollback endpoints under `/api/v1/admin/god-mode/configuration/:stableId`.
+- Added God Mode UI visibility for snapshot/recovery history.
+- Frontend build: PASS. Backend regression: 42 suites / 387 tests PASS. Prisma migration status: up to date.

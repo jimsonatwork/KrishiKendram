@@ -18,7 +18,7 @@ export type CredentialArtifactSettings = {
   artifactDirectory: string
 }
 
-export type CredentialArtifactStatus = CredentialArtifactSettings & { files: string[]; passwordFilePresent?: boolean; patternFiles?: string[] }
+export type CredentialArtifactStatus = CredentialArtifactSettings & { files: string[]; passwordFilePresent: boolean; patternFiles: string[] }
 
 export type GodModeOverview = {
   identity: { email: string; authorityTier: string; role: string; singleton: boolean; normalUserManagementProtected: boolean }
