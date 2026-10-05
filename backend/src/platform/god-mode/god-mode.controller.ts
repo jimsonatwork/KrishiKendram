@@ -68,6 +68,20 @@ export class GodModeController {
     return this.godMode.credentialStatus();
   }
 
+  @Get('validation-policy')
+  async validationPolicy(@Req() request: Request) {
+    await this.assertGod(request);
+    return this.configuration.getValidationPolicy();
+  }
+
+  @Patch('validation-policy')
+  async updateValidationPolicy(@Req() request: Request, @Body() body: { value?: unknown }) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+    return this.configuration.updateValidationPolicy(body?.value, actorId);
+  }
+
   @Get('configuration')
   async configurationList(@Req() request: Request) {
     await this.assertGod(request);
