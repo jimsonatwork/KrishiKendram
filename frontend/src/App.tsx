@@ -9,6 +9,7 @@ const RolesPage = lazy(() => import('@/pages/admin/RolesPage').then((m) => ({ de
 const AuditPage = lazy(() => import('@/pages/admin/AuditPage').then((m) => ({ default: m.AuditPage })))
 const PlatformDashboardPage = lazy(() => import('@/pages/admin/PlatformDashboardPage').then((m) => ({ default: m.PlatformDashboardPage })))
 const GodModePage = lazy(() => import('@/pages/admin/GodModePage').then((m) => ({ default: m.GodModePage })))
+const ValidationPolicyPage = lazy(() => import('@/pages/admin/ValidationPolicyPage').then((m) => ({ default: m.ValidationPolicyPage })))
 
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -915,6 +916,11 @@ function PortalLayout({
               icon: <LayoutDashboard />,
             },
             {
+              label: 'Validation Policy',
+              href: '/app/validation-policy',
+              icon: <ShieldCheck />,
+            },
+            {
               label: 'Users',
               href: '/app/users',
               icon: <Users />,
@@ -1027,6 +1033,8 @@ function PortalLayout({
 
   if (location.pathname === '/app/god-mode' && isAdmin) {
     content = <GodModePage />
+  } else if (location.pathname === '/app/validation-policy' && isAdmin) {
+    content = <ValidationPolicyPage />
   } else if (location.pathname === '/app' && isAdmin) {
     content = <PlatformDashboardPage />
   } else if (location.pathname === '/app/farms') {
