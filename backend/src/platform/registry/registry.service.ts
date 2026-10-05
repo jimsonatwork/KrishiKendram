@@ -121,6 +121,17 @@ export class RegistryService {
     }
   }
 
+  setModuleLifecycle(id: string, lifecycle: ModuleDefinition['lifecycle']): ModuleDefinition {
+    const current = this.modules.get(id);
+    if (!current) {
+      throw new Error(`Module '${id}' is not registered.`);
+    }
+
+    const updated = { ...current, lifecycle, dependencies: current.dependencies ? [...current.dependencies] : undefined };
+    this.modules.set(id, updated);
+    return this.cloneModuleDefinition(updated);
+  }
+
   getModule(id: string): ModuleDefinition | undefined {
     const definition = this.modules.get(id);
 

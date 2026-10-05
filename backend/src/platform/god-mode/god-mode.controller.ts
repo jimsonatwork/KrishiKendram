@@ -181,6 +181,36 @@ export class GodModeController {
     }));
   }
 
+  @Patch('modules/:moduleId/lifecycle')
+  async updateModuleLifecycle(
+    @Req() request: Request,
+    @Param('moduleId') moduleId: string,
+    @Body() body: { lifecycle?: 'ACTIVE' | 'DISABLED' | 'DEPRECATED'; reason?: string },
+  ) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+    if (!body?.lifecycle) throw new ForbiddenException('Lifecycle state is required.');
+
+    const current = this.registry.getModule(moduleId);
+    if (!current) throw new ForbiddenException(`Module '${moduleId}' is not registered.`);
+    this.lifecycle.assertTransitionAllowed(current.lifecycle, body.lifecycle);
+    if (body.lifecycle !== 'DISABLED' && this.lifecycle.getUnavailableDependencies(moduleId).length) {
+      throw new ForbiddenException('Module dependencies are not operational.');
+    }
+
+    const updated = this.registry.setModuleLifecycle(moduleId, body.lifecycle);
+    await this.audit.create({
+      actorId,
+      action: 'GOD_MODULE_LIFECYCLE_UPDATED',
+      resourceType: 'MODULE',
+      resourceId: moduleId,
+      description: `God changed module '${moduleId}' from ${current.lifecycle} to ${body.lifecycle}.`,
+      metadata: { from: current.lifecycle, to: body.lifecycle, reason: body.reason?.trim() || null },
+    });
+    return { ...updated, status: this.lifecycle.getStatus(moduleId) };
+  }
+
   @Get('resources')
   async resources(@Req() request: Request) {
     await this.assertGod(request);
