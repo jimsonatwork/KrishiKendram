@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SystemTruthService } from '../registry/system-truth.service';
 import { AuditService } from '../audit/audit.service';
+import { RegistryService } from '../registry/registry.service';
+import { ModuleLifecycleService } from '../registry/module-lifecycle.service';
 import { GodModeService } from './god-mode.service';
 import { GodConfigurationService } from './god-configuration.service';
 
@@ -17,6 +19,8 @@ export class GodModeController {
     private readonly prisma: PrismaService,
     private readonly configuration: GodConfigurationService,
     private readonly audit: AuditService,
+    private readonly registry: RegistryService,
+    private readonly lifecycle: ModuleLifecycleService,
   ) {}
 
   @Get('overview')
@@ -166,6 +170,27 @@ export class GodModeController {
     });
 
     return { role: body.role, permission, enabled: body.enabled };
+  }
+
+  @Get('modules')
+  async modules(@Req() request: Request) {
+    await this.assertGod(request);
+    return this.registry.getAllModules().map((module) => ({
+      ...module,
+      status: this.lifecycle.getStatus(module.id),
+    }));
+  }
+
+  @Get('resources')
+  async resources(@Req() request: Request) {
+    await this.assertGod(request);
+    return this.registry.getAll();
+  }
+
+  @Get('fields')
+  async fields(@Req() request: Request) {
+    await this.assertGod(request);
+    return this.registry.getAllFields();
   }
 
   @Get('configuration')
