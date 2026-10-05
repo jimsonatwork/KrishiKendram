@@ -959,3 +959,19 @@ enum CropStatus {
 // ============================================================
 // PART 14 END
 // ============================================================
+model GodConfigurationSnapshot {
+  id              String   @id @default(cuid())
+  stableId        String
+  configurationId String
+  version         Int
+  value           Json
+  actorId         String?
+  reason          String?
+  source          String   @default("GOD_MODE")
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+
+  @@index([stableId, version])
+  @@index([configurationId])
+  @@index([createdAt])
+}

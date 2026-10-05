@@ -92,6 +92,18 @@ export class GodConfigurationService {
     if (item.godOnly === false) throw new BadRequestException('God-only registry items cannot be delegated by this endpoint.');
 
     const currentValue = value as Prisma.InputJsonValue;
+    if (item.snapshotBeforeChange) {
+      await this.prisma.godConfigurationSnapshot.create({
+        data: {
+          stableId: item.stableId,
+          configurationId: item.id,
+          version: item.version,
+          value: item.currentValue as Prisma.InputJsonValue,
+          actorId,
+          reason: 'PRE_CHANGE_SNAPSHOT',
+        },
+      });
+    }
     const updated = await this.prisma.godConfiguration.update({
       where: { stableId },
       data: {
@@ -116,6 +128,30 @@ export class GodConfigurationService {
       },
     });
 
+    return updated;
+  }
+
+  async snapshots(stableId: string) {
+    const item = await this.prisma.godConfiguration.findUnique({ where: { stableId }, select: { id: true } });
+    if (!item) throw new NotFoundException(`God configuration ${stableId} not found.`);
+    return this.prisma.godConfigurationSnapshot.findMany({ where: { configurationId: item.id }, orderBy: { version: 'desc' } });
+  }
+
+  async rollback(stableId: string, version: number, actorId: string) {
+    const item = await this.prisma.godConfiguration.findUnique({ where: { stableId } });
+    if (!item) throw new NotFoundException(`God configuration ${stableId} not found.`);
+    if (!item.editable) throw new BadRequestException(`Configuration ${stableId} is metadata-only and cannot be rolled back.`);
+    const snapshot = await this.prisma.godConfigurationSnapshot.findFirst({ where: { configurationId: item.id, version }, orderBy: { createdAt: 'desc' } });
+    if (!snapshot) throw new NotFoundException(`Snapshot ${stableId}@${version} not found.`);
+
+    await this.prisma.godConfigurationSnapshot.create({
+      data: { stableId, configurationId: item.id, version: item.version, value: item.currentValue as Prisma.InputJsonValue, actorId, reason: `PRE_ROLLBACK_FROM_${item.version}` },
+    });
+    const updated = await this.prisma.godConfiguration.update({
+      where: { stableId },
+      data: { currentValue: snapshot.value as Prisma.InputJsonValue, version: { increment: 1 }, lastActorId: actorId, lastChangedAt: new Date() },
+    });
+    await this.audit.create({ actorId, action: 'GOD_CONFIGURATION_ROLLBACK', resourceType: 'GOD_CONFIGURATION', resourceId: item.id, description: `God configuration ${stableId} rolled back to version ${version}.`, metadata: { stableId, fromVersion: item.version, targetVersion: version, newVersion: updated.version } });
     return updated;
   }
 }

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Database, RefreshCw, Shield, SlidersHorizontal, TriangleAlert } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Database, History, RefreshCw, Shield, SlidersHorizontal, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth.store'
+
+type GodSnapshot = { id: string; version: number; value: unknown; actorId?: string | null; reason?: string | null; createdAt: string }
 
 type GodConfig = {
   id: string
@@ -37,6 +39,7 @@ export function GodModePage() {
   const [selected, setSelected] = useState<GodConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [snapshots, setSnapshots] = useState<GodSnapshot[]>([])
 
   const load = async () => {
     if (!token) return
@@ -51,6 +54,10 @@ export function GodModePage() {
   }
 
   useEffect(() => { void load() }, [token])
+  useEffect(() => {
+    if (!token || !selected) { setSnapshots([]); return }
+    void request<GodSnapshot[]>(token, '/configuration/' + encodeURIComponent(selected.stableId) + '/snapshots').then(setSnapshots).catch(() => setSnapshots([]))
+  }, [token, selected?.stableId, selected?.version])
 
   const categories = useMemo(() => {
     const grouped = new Map<string, GodConfig[]>()
@@ -83,6 +90,7 @@ export function GodModePage() {
         <div className="flex items-start justify-between gap-4"><div><div className="text-xs uppercase tracking-wider text-muted-foreground">{selected.category}</div><h2 className="mt-1 text-xl font-semibold">{selected.name}</h2><p className="mt-1 text-sm text-muted-foreground">{selected.description}</p></div><span className="rounded-lg border px-2 py-1 text-[11px] uppercase">{selected.riskLevel}</span></div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">{[['Stable ID', selected.stableId], ['Lifecycle', selected.lifecycle], ['Version', String(selected.version)], ['Owner', selected.ownerSource], ['Editable', selected.editable ? 'Yes' : 'Metadata only'], ['God only', selected.godOnly ? 'Yes' : 'No'], ['Restart required', selected.restartRequired ? 'Yes' : 'No'], ['Approval required', selected.approvalRequired ? 'Yes' : 'No']].map(([label, value]) => <div key={label} className="rounded-xl border p-3"><div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1 text-sm font-medium">{value}</div></div>)}</div>
         <div className="mt-4 rounded-xl border bg-muted/20 p-4"><div className="flex items-center gap-2 text-sm font-medium"><SlidersHorizontal className="size-4" />Current canonical value</div><pre className="mt-3 max-h-52 overflow-auto text-xs">{JSON.stringify(selected.currentValue, null, 2)}</pre></div>
+        <div className="mt-4 rounded-xl border p-4"><div className="flex items-center gap-2 text-sm font-medium"><History className="size-4" />Snapshots & recovery history</div>{snapshots.length ? <div className="mt-3 space-y-2">{snapshots.slice(0, 8).map((snapshot) => <div key={snapshot.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs"><span>Version {snapshot.version} · {snapshot.reason ?? 'snapshot'}</span><span className="text-muted-foreground">{new Date(snapshot.createdAt).toLocaleString()}</span></div>)}</div> : <div className="mt-2 text-xs text-muted-foreground">No pre-change snapshots recorded yet.</div>}</div>
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">{selected.editable ? <><CheckCircle2 className="size-4 text-emerald-500" />Governed updates are available through the protected API.</> : <><TriangleAlert className="size-4 text-amber-500" />This entry is metadata-only until its control contract is implemented.</>}</div>
       </> : <div className="py-20 text-center text-sm text-muted-foreground">Select a God Mode domain.</div>}</section>
     </div>

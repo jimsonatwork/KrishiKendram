@@ -80,6 +80,20 @@ export class GodModeController {
     return this.configuration.get(stableId);
   }
 
+  @Get('configuration/:stableId/snapshots')
+  async configurationSnapshots(@Req() request: Request, @Param('stableId') stableId: string) {
+    await this.assertGod(request);
+    return this.configuration.snapshots(stableId);
+  }
+
+  @Post('configuration/:stableId/rollback/:version')
+  async configurationRollback(@Req() request: Request, @Param('stableId') stableId: string, @Param('version') version: string) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+    return this.configuration.rollback(stableId, Number(version), actorId);
+  }
+
   @Patch('configuration/:stableId')
   async configurationUpdate(
     @Req() request: Request,
