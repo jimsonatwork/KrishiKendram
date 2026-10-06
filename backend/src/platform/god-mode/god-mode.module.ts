@@ -10,7 +10,7 @@ import { GodDatabaseCredentialService } from './god-database-credential.service'
 @Module({
   imports: [PrismaModule, AuditModule, RegistryModule],
   controllers: [GodModeController],
-  providers: [GodModeService, GodConfigurationService],
+  providers: [GodModeService, GodConfigurationService, GodDatabaseCredentialService],
   exports: [GodModeService, GodConfigurationService],
 })
 export class GodModeModule {}

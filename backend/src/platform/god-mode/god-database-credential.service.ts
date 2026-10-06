@@ -55,7 +55,7 @@ export class GodDatabaseCredentialService {
     const escapedOldPassword = oldPassword.replace(/'/g, "''");
     const sql = 'ALTER ROLE ' + quotedUser + " WITH PASSWORD '" + escapedPassword + "'";
 
-    await this.prisma.(sql);
+    await this.prisma.$executeRawUnsafe(sql);
 
     try {
       const nextUrl = new URL(url.toString());
@@ -87,7 +87,7 @@ export class GodDatabaseCredentialService {
       };
     } catch (error) {
       try {
-        await this.prisma.(
+        await this.prisma.$executeRawUnsafe(
           'ALTER ROLE ' + quotedUser + " WITH PASSWORD '" + escapedOldPassword + "'",
         );
       } catch {
@@ -114,7 +114,7 @@ export class GodDatabaseCredentialService {
     const envPath = resolve(root, '.env');
     const current = await readFile(envPath, 'utf8');
     const replaceKey = (source: string, key: string, value: string) => {
-      const escaped = value.replace(/\/g, '\\').replace(/$/g, '\$');
+      const escaped = JSON.stringify(value);
       const line = key + '=' + escaped;
       const pattern = new RegExp('^' + key + '=.*$', 'm');
       return pattern.test(source) ? source.replace(pattern, line) : source + (source.endsWith('\n') ? '' : '\n') + line + '\n';

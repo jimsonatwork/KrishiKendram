@@ -10,7 +10,7 @@ import { ResourceDefinition } from '../src/platform/registry/resource-definition
 
 const prisma = new PrismaService();
 const fieldValidation = new FieldValidationService();
-const registry = new RegistryService(fieldValidation);
+const registry = new RegistryService(fieldValidation, prisma);
 
 for (const definition of RESOURCE_DEFINITIONS) {
   registry.register(definition);

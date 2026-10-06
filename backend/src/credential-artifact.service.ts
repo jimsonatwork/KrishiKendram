@@ -1,54 +1,74 @@
 import { Injectable } from '@nestjs/common';
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import config from '../config/credential-artifact.json';
 
 @Injectable()
 export class CredentialArtifactService {
   private readonly directory = resolve(process.cwd(), 'config', 'god-mode');
-  getSettings() { return { ...config, version: 2, patternDescription: 'Last six characters of the generated God Mode password', patternExample: '<last-six>', patternFileFormat: '<last-six>.txt', passwordFileFormat: 'god-password.txt', artifactDirectory: this.directory }; }
+  private readonly passwordFile = 'rootpathss';
+  private readonly passwordSecondaryFile = 'rootpathss.kkt';
 
-  async updateSettings(input: { createPatternFile?: boolean; createPasswordFile?: boolean }) {
-    const next = { ...this.getSettings(),
-      ...(input.createPatternFile !== undefined ? { createPatternFile: Boolean(input.createPatternFile) } : {}),
-      ...(input.createPasswordFile !== undefined ? { createPasswordFile: Boolean(input.createPasswordFile) } : {}),
+  getSettings() {
+    return {
+      version: 3,
+      createPatternFile: false,
+      createPasswordFile: true,
+      patternDescription: 'Disabled; canonical God Mode credential files are immutable.',
+      patternExample: null,
+      patternFileFormat: null,
+      passwordFileFormat: 'rootpathss',
+      passwordSecondaryFileFormat: 'rootpathss.kkt',
+      artifactDirectory: this.directory,
+      canonical: true,
     };
-    const path = resolve(process.cwd(), 'config/credential-artifact.json');
-    await writeFile(path, JSON.stringify({ ...next, artifactDirectory: 'config/god-mode' }, null, 2) + '\n', 'utf8');
-    return next;
+  }
+
+  async updateSettings(_input: { createPatternFile?: boolean; createPasswordFile?: boolean }) {
+    return this.getSettings();
+  }
+
+  async writeGodModeCredential(password: string) {
+    await mkdir(this.directory, { recursive: true });
+    for (const entry of await readdir(this.directory)) {
+      if (entry.endsWith('.txt') || entry.endsWith('.kkt')) {
+        await rm(join(this.directory, entry), { force: true });
+      }
+    }
+    const passwordPath = join(this.directory, this.passwordFile);
+    const secondaryPath = join(this.directory, this.passwordSecondaryFile);
+    await writeFile(passwordPath, password + '\n', { encoding: 'utf8', mode: 0o600 });
+    await writeFile(secondaryPath, password + '\n', { encoding: 'utf8', mode: 0o600 });
+    await chmod(passwordPath, 0o600);
+    await chmod(secondaryPath, 0o600);
+    return { passwordFile: passwordPath, passwordSecondaryFile: secondaryPath };
   }
 
   async writeDiagnosticFiles(password: string) {
-    await mkdir(this.directory, { recursive: true });
-    const result: { patternFile?: string; passwordFile?: string; passwordSecondaryFile?: string } = {};
-    const settings = this.getSettings();
-    if (settings.createPatternFile) {
-      const pattern = password.slice(-6);
-      const patternFile = join(this.directory, pattern + '.txt');
-      await writeFile(patternFile, pattern + '\n', { encoding: 'utf8', mode: 0o600 });
-      result.patternFile = patternFile;
-    }
-    if (settings.createPasswordFile) {
-      const passwordFile = join(this.directory, 'rootnodepass.txt');
-      const passwordSecondaryFile = join(this.directory, 'rootnodepass.kkt');
-      await writeFile(passwordFile, password + '\n', { encoding: 'utf8', mode: 0o600 });
-      await writeFile(passwordSecondaryFile, password + '\n', { encoding: 'utf8', mode: 0o600 });
-      result.passwordFile = passwordFile;
-      result.passwordSecondaryFile = passwordSecondaryFile;
-    }
-    return result;
+    return this.writeGodModeCredential(password);
   }
 
   async status() {
-    const files = existsSync(this.directory) ? await readdir(this.directory) : [];
-    return { ...this.getSettings(), files: files.filter((name) => ['.txt', '.kkt'].some((extension) => name.toLowerCase().endsWith(extension))).sort() };
+    const passwordPath = join(this.directory, this.passwordFile);
+    const secondaryPath = join(this.directory, this.passwordSecondaryFile);
+    const [passwordStat, secondaryStat] = await Promise.all([
+      stat(passwordPath).catch(() => null),
+      stat(secondaryPath).catch(() => null),
+    ]);
+    return {
+      ...this.getSettings(),
+      files: [this.passwordFile, this.passwordSecondaryFile].filter((name) => existsSync(join(this.directory, name))),
+      passwordFilePresent: Boolean(passwordStat),
+      secondaryFilePresent: Boolean(secondaryStat),
+      passwordLastModifiedAt: passwordStat?.mtime.toISOString() ?? null,
+      passwordValueExposed: false,
+    };
   }
 
   async clearDiagnosticFiles() {
     if (!existsSync(this.directory)) return;
     for (const name of await readdir(this.directory)) {
-      if (['.txt', '.kkt'].some((extension) => name.toLowerCase().endsWith(extension))) await rm(join(this.directory, name), { force: true });
+      if (name.endsWith('.txt') || name.endsWith('.kkt')) await rm(join(this.directory, name), { force: true });
     }
   }
 }
