@@ -11,6 +11,60 @@ datasource db {
 // PART 01 - PLATFORM ENTITY
 // ============================================================
 
+// KK-AI-CONVERSATION-FOUNDATION-BEGIN
+
+enum ConversationStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ConversationSessionStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  EXPIRED
+}
+
+enum ConversationMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum ConversationMessageSource {
+  TEXT
+  VOICE
+  IMAGE
+  DOCUMENT
+  SYSTEM
+  TOOL
+}
+
+enum ConversationFactCandidateStatus {
+  DETECTED
+  NORMALIZED
+  VALIDATION_PENDING
+  CONFLICT
+  AWAITING_CONFIRMATION
+  CONFIRMED
+  REJECTED
+  APPLIED
+  SUPERSEDED
+  EXPIRED
+}
+
+enum ConversationActionStatus {
+  PROPOSED
+  PENDING
+  EXECUTED
+  REJECTED
+  FAILED
+  CANCELLED
+}
+
 model Entity {
   id        String    @id @default(cuid())
   type      String
@@ -235,6 +289,11 @@ model User {
 
   createdResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipCreatedBy")
   updatedResourceRelationships ResourceRelationship[] @relation("ResourceRelationshipUpdatedBy")
+
+  // KK-AI-CONVERSATION-USER-RELATIONS
+  aiConversations           Conversation[]              @relation("ConversationUser")
+  aiFactCandidates          ConversationFactCandidate[] @relation("ConversationFactCandidateUser")
+  aiConfirmedFactCandidates ConversationFactCandidate[] @relation("ConversationFactCandidateConfirmedBy")
 }
 
 // ============================================================
@@ -974,4 +1033,216 @@ model GodConfigurationSnapshot {
   @@index([stableId, version])
   @@index([configurationId])
   @@index([createdAt])
+}
+
+/**
+ * KK-AI-CONVERSATION-FOUNDATION
+ * Conversation is deliberately separate from canonical
+ * User/module data.
+ * AI may propose candidate facts, but never receives
+ * direct canonical-write authority.
+ */
+
+model Conversation {
+  id       String             @id @default(cuid())
+  userId   String
+  moduleId String
+  status   ConversationStatus @default(ACTIVE)
+
+  title           String?
+  primaryLanguage String?
+
+  startedAt     DateTime  @default(now())
+  lastMessageAt DateTime?
+  endedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation("ConversationUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  sessions       ConversationSession[]
+  messages       ConversationMessage[]
+  contexts       ConversationContext[]
+  references     ConversationReference[]
+  factCandidates ConversationFactCandidate[]
+  actions        ConversationAction[]
+
+  @@index([userId])
+  @@index([moduleId])
+  @@index([userId, moduleId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+model ConversationSession {
+  id             String @id @default(cuid())
+  conversationId String
+
+  status            ConversationSessionStatus @default(ACTIVE)
+  interruptionState String?
+  discoveryState    Json?
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  messages       ConversationMessage[]
+  contexts       ConversationContext[]
+  factCandidates ConversationFactCandidate[]
+
+  @@index([conversationId])
+  @@index([status])
+}
+
+model ConversationMessage {
+  id             String  @id @default(cuid())
+  conversationId String
+  sessionId      String?
+
+  role     ConversationMessageRole
+  content  String
+  language String?
+
+  source ConversationMessageSource @default(TEXT)
+
+  providerId   String?
+  modelId      String?
+  modelVersion String?
+
+  metadata   Json?
+  provenance Json?
+
+  createdAt DateTime @default(now())
+
+  conversation Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  session      ConversationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([role])
+}
+
+model ConversationContext {
+  id             String  @id @default(cuid())
+  conversationId String
+  sessionId      String?
+
+  moduleId   String
+  screenId   String?
+  entityType String?
+  entityId   String?
+
+  policyId      String?
+  policyVersion String?
+
+  contextSnapshot Json?
+  createdAt       DateTime @default(now())
+
+  conversation Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  session      ConversationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([moduleId])
+  @@index([moduleId, entityType, entityId])
+}
+
+model ConversationReference {
+  id             String @id @default(cuid())
+  conversationId String
+
+  moduleId      String
+  referenceType String
+  entityType    String?
+  entityId      String?
+  relationship  String?
+
+  createdAt DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([moduleId])
+  @@index([entityType, entityId])
+}
+
+model ConversationFactCandidate {
+  id             String  @id @default(cuid())
+  conversationId String
+  sessionId      String?
+
+  userId   String
+  moduleId String
+
+  targetEntityType String?
+  targetEntityId   String?
+  targetFieldId    String?
+
+  proposedValue Json
+  previousValue Json?
+
+  confidence Decimal? @db.Decimal(5, 4)
+
+  source String
+  status ConversationFactCandidateStatus @default(DETECTED)
+
+  requiresConfirmation Boolean @default(true)
+
+  confirmedAt       DateTime?
+  confirmedByUserId String?
+
+  validationResult  Json?
+  evidenceReference String?
+  provenance        Json?
+
+  resolutionNote String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  appliedAt DateTime?
+
+  conversation Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  session      ConversationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  user            User  @relation("ConversationFactCandidateUser", fields: [userId], references: [id], onDelete: Cascade)
+  confirmedByUser User? @relation("ConversationFactCandidateConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([moduleId])
+  @@index([userId, moduleId])
+  @@index([status])
+  @@index([targetEntityType, targetEntityId])
+  @@index([targetFieldId])
+}
+
+model ConversationAction {
+  id             String @id @default(cuid())
+  conversationId String
+  moduleId       String
+
+  actionType       String
+  targetEntityType String?
+  targetEntityId   String?
+
+  payload Json?
+  status  ConversationActionStatus @default(PROPOSED)
+
+  proposedAt DateTime  @default(now())
+  executedAt DateTime?
+  executedBy String?
+
+  result Json?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([moduleId])
+  @@index([status])
+  @@index([targetEntityType, targetEntityId])
 }

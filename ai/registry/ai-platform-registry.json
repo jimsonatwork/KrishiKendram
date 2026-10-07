@@ -1,0 +1,96 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "modes": ["LOCAL", "CLOUD", "HYBRID", "DISABLED"],
+  "capabilities": ["CONVERSATION", "EXTRACTION", "VISION", "DOCUMENT", "SPEECH_TO_TEXT", "TEXT_TO_SPEECH", "FACT_MATCHING", "CONSISTENCY", "CLASSIFICATION", "RECOMMENDATION", "AGRI_ASSISTANT"],
+  "contextPolicy": {
+    "id": "KK-AI-CONTEXT-001",
+    "defaultMode": "MINIMUM_NECESSARY",
+    "authorizationBeforeContext": true,
+    "forbidden": ["FULL_USER_RECORD_BY_DEFAULT", "UNAUTHORIZED_CROSS_MODULE_CONTEXT", "DIRECT_AI_DATABASE_WRITE", "SECRET_CONTEXT"]
+  },
+  "conversation": {
+    "moduleId": "KK-AI-CONVERSATION-001",
+    "requiredReferences": ["userId", "moduleId"],
+    "optionalReferences": ["screenId", "entityType", "entityId", "farmId", "cropId", "cropCycleId", "livestockId", "sessionId"],
+    "entities": ["Conversation", "ConversationSession", "ConversationMessage", "ConversationContext", "ConversationReference", "ConversationFactCandidate", "ConversationAction"],
+    "factLifecycle": ["DETECTED", "NORMALIZED", "VALIDATION_PENDING", "CONFLICT", "AWAITING_CONFIRMATION", "CONFIRMED", "REJECTED", "APPLIED", "SUPERSEDED", "EXPIRED"]
+  },
+  "moduleContract": {
+    "required": ["moduleName", "allowedCapabilities", "contextReferences", "allowedFields", "restrictedFields", "candidateFactTargets", "confirmationPolicy", "provenancePolicy", "auditPolicy"],
+    "initialModules": ["KK-USER-001", "KK-FARM-001", "KK-CROP-001", "KK-LIVESTOCK-001", "KK-MARKETPLACE-001"]
+  },
+  "modules": {
+    "KK-USER-001": {
+      "moduleName": "Canonical User Foundation",
+      "allowedCapabilities": ["CONVERSATION", "EXTRACTION", "SPEECH_TO_TEXT", "TEXT_TO_SPEECH", "FACT_MATCHING", "CONSISTENCY", "CLASSIFICATION"],
+      "contextReferences": ["userId", "screenId", "entityType", "entityId", "sessionId"],
+      "allowedFields": ["identity", "profile", "names", "contacts", "locations", "family", "relationships", "occupations", "personas", "preferences", "facts", "flags", "onboarding", "verification"],
+      "restrictedFields": ["passwordHash", "credentials", "secrets", "tokens"],
+      "candidateFactTargets": ["UserProfile", "UserFact", "UserPersona", "UserLocation", "UserOccupation", "UserPreference", "UserRelationship"],
+      "confirmationPolicy": "REQUIRED_FOR_CANONICAL_USER_FACTS",
+      "provenancePolicy": "REQUIRED",
+      "auditPolicy": "REQUIRED"
+    },
+    "KK-FARM-001": {
+      "moduleName": "Farm Foundation",
+      "allowedCapabilities": ["CONVERSATION", "EXTRACTION", "VISION", "DOCUMENT", "SPEECH_TO_TEXT", "FACT_MATCHING", "CONSISTENCY", "AGRI_ASSISTANT"],
+      "contextReferences": ["userId", "moduleId", "screenId", "entityType", "entityId", "farmId", "sessionId"],
+      "allowedFields": ["farm", "land", "ownership", "tenure", "location", "crops", "livestock", "assets", "activities", "documents"],
+      "restrictedFields": ["financialCredentials", "secrets", "tokens"],
+      "candidateFactTargets": ["Farm", "Land", "FarmActivity", "FarmAsset"],
+      "confirmationPolicy": "REQUIRED_FOR_CANONICAL_FARM_FACTS",
+      "provenancePolicy": "REQUIRED",
+      "auditPolicy": "REQUIRED"
+    },
+    "KK-CROP-001": {
+      "moduleName": "Crop Foundation",
+      "allowedCapabilities": ["CONVERSATION", "EXTRACTION", "VISION", "SPEECH_TO_TEXT", "FACT_MATCHING", "CONSISTENCY", "RECOMMENDATION", "AGRI_ASSISTANT"],
+      "contextReferences": ["userId", "moduleId", "screenId", "entityType", "entityId", "farmId", "cropId", "cropCycleId", "sessionId"],
+      "allowedFields": ["crop", "cropCycle", "variety", "sowing", "irrigation", "inputs", "growth", "harvest", "yield", "activities"],
+      "restrictedFields": ["secrets", "tokens"],
+      "candidateFactTargets": ["Crop", "CropCycle", "CropActivity"],
+      "confirmationPolicy": "REQUIRED_FOR_CANONICAL_CROP_FACTS",
+      "provenancePolicy": "REQUIRED",
+      "auditPolicy": "REQUIRED"
+    },
+    "KK-LIVESTOCK-001": {
+      "moduleName": "Livestock Foundation",
+      "allowedCapabilities": ["CONVERSATION", "EXTRACTION", "VISION", "DOCUMENT", "SPEECH_TO_TEXT", "FACT_MATCHING", "CONSISTENCY", "RECOMMENDATION", "AGRI_ASSISTANT"],
+      "contextReferences": ["userId", "moduleId", "screenId", "entityType", "entityId", "farmId", "livestockId", "sessionId"],
+      "allowedFields": ["animal", "species", "breed", "ownership", "health", "feeding", "breeding", "production", "movement", "documents"],
+      "restrictedFields": ["secrets", "tokens"],
+      "candidateFactTargets": ["Livestock", "LivestockActivity", "LivestockHealthRecord"],
+      "confirmationPolicy": "REQUIRED_FOR_CANONICAL_LIVESTOCK_FACTS",
+      "provenancePolicy": "REQUIRED",
+      "auditPolicy": "REQUIRED"
+    },
+    "KK-MARKETPLACE-001": {
+      "moduleName": "Marketplace Foundation",
+      "allowedCapabilities": ["CONVERSATION", "EXTRACTION", "VISION", "DOCUMENT", "SPEECH_TO_TEXT", "FACT_MATCHING", "CONSISTENCY", "CLASSIFICATION", "RECOMMENDATION"],
+      "contextReferences": ["userId", "moduleId", "screenId", "entityType", "entityId", "farmId", "sessionId"],
+      "allowedFields": ["listing", "product", "availability", "quantity", "price", "buyer", "seller", "service", "rental", "order"],
+      "restrictedFields": ["paymentCredentials", "secrets", "tokens"],
+      "candidateFactTargets": ["MarketplaceListing", "MarketplaceOffer", "MarketplaceOrder"],
+      "confirmationPolicy": "REQUIRED_FOR_CANONICAL_MARKETPLACE_FACTS",
+      "provenancePolicy": "REQUIRED",
+      "auditPolicy": "REQUIRED"
+    }
+  },
+  "providerRules": {
+    "primaryExecution": "LOCAL",
+    "cloudFallback": false,
+    "databaseWriteAllowed": false,
+    "registryValidationRequired": true,
+    "userConfirmationRequired": true,
+    "rawConversationTraining": false,
+    "approvedLearningPipelineRequired": true
+  },
+  "provenanceRequired": ["providerId", "modelId", "modelVersion", "mode", "language", "source", "generatedAt"],
+  "godMode": {
+    "visible": true,
+    "controlAreas": ["providers", "models", "capabilities", "contextPolicies", "moduleAssociations", "fieldAccess", "conversationPolicy", "factPolicy", "confirmationPolicy", "provenance", "learningPolicy", "audit"],
+    "secretPolicy": "Never expose credentials or tokens."
+  }
+}

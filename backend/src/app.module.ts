@@ -25,6 +25,7 @@ import { IntakeModule } from './intake/intake.module';
 import { CropsModule } from './crops/crops.module';
 import { LivestockModule } from './livestock/livestock.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     CropsModule,
     LivestockModule,
     MarketplaceModule,
+    AiModule,
     GodModeModule,
   ],
   controllers: [AppController],
