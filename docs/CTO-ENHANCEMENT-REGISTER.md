@@ -153,3 +153,18 @@ Required mutation contract: validate ? dependency analysis ? snapshot ? apply ? 
 Acceptance requires canonical ownership, persistent editable settings, dependency impact, snapshot/audit coverage, tested rollback, safe infrastructure controls, credential rotation policy and verified canonical repository/path truth.
 
 **Pre-expansion checkpoint:** `0b01374 Checkpoint God Mode control center before architecture expansion`.
+
+
+## 2026-10-11 — AI Central Registry & Module Governance
+
+**State: IN PROGRESS / verification pending.** Establish `ai/registry/ai-platform-registry.json` as the sole AI entrypoint; register its paths through `backend/config/resource-paths.json`; store module contracts in `ai/modules/`; link provider/runtime/policy/evaluation inventories and governance documents from the main manifest. Backend service validates and hydrates linked contracts. Next: resolve any build/test failures, expose read-only inventory in God Mode, then governed edit/save with existing snapshots, audit, authorization and rollback. No parallel AI registries or secrets in JSON.
+
+
+### Checkpoint — 2026-10-11
+
+The first read-only God Mode AI inventory is implemented. Backend build passed, AI registry focused tests passed (12/12), frontend production build passed, API and UI health checks returned HTTP 200, and unauthenticated access to the new endpoint returned HTTP 401 as expected. The eight new AI God Configuration domains have just been added to startup definitions; rebuild/restart and seed verification remain the immediate next step. Governed file editing and live provider health are still open.
+
+
+### Final seed and runtime verification — 2026-10-11
+
+**First AI control-plane slice: DONE.** Backend build PASS; focused AI registry tests 12/12 PASS; frontend build PASS; service restart PASS; API health HTTP 200; UI HTTP 200; protected AI route is registered and rejects unauthenticated access with HTTP 401; all eight AI God Configuration domains were verified in PostgreSQL. Next active batch: implement schema-validated file-backed configuration mutation with pre-change snapshots, dependency checks, audit and rollback; then wire provider/runtime probes.

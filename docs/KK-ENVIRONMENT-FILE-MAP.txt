@@ -1,0 +1,1587 @@
+KRISHIKENDRAM ENVIRONMENT & FILE LOCATION MASTER MAP
+2026-10-06T18:24:13+05:30
+Security: no secret values, passwords, tokens or private keys recorded.
+=== WSL ===
+Linux JivinJinse 6.18.33.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun 18 21:54:43 UTC 2026 x86_64 GNU/Linux
+PRETTY_NAME="Ubuntu 26.04 LTS"
+NAME="Ubuntu"
+VERSION_ID="26.04"
+VERSION="26.04 (Resolute Raccoon)"
+VERSION_CODENAME=resolute
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=resolute
+LOGO=ubuntu-logo
+uid=1000(jj) gid=1000(jj) groups=1000(jj),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),100(users),1001(docker)
+HOME=/home/jj
+=== FILESYSTEMS ===
+Filesystem                               Type     Size  Used Avail Use% Mounted on
+none                                     overlay  2.9G     0  2.9G   0% /usr/lib/modules/6.18.33.2-microsoft-standard-WSL2
+none                                     tmpfs    2.9G   23M  2.9G   1% /mnt/wsl
+none                                     tmpfs    2.9G  544K  2.9G   1% /mnt/wsl/docker-desktop/shared-sockets/host-services
+/dev/loop0                               iso9660  779M  779M     0 100% /mnt/wsl/docker-desktop/cli-tools
+drivers                                  9p       114G  100G   14G  88% /usr/lib/wsl/drivers
+/dev/sdf                                 ext4    1007G   13G  943G   2% /
+none                                     tmpfs    2.9G   56K  2.9G   1% /mnt/wslg
+none                                     overlay  2.9G     0  2.9G   0% /usr/lib/wsl/lib
+rootfs                                   rootfs   2.9G  2.8M  2.9G   1% /init
+none                                     tmpfs    2.9G   23M  2.9G   1% /run
+none                                     tmpfs    2.9G     0  2.9G   0% /run/lock
+none                                     tmpfs    2.9G     0  2.9G   0% /run/shm
+none                                     overlay  2.9G   80K  2.9G   1% /mnt/wslg/versions.txt
+none                                     overlay  2.9G   80K  2.9G   1% /mnt/wslg/doc
+C:\                                      9p       114G  100G   14G  88% /mnt/c
+D:\                                      9p        69G   48G   22G  70% /mnt/d
+E:\                                      9p       235G  131G  105G  56% /mnt/e
+none                                     tmpfs    1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
+tmpfs                                    tmpfs    2.9G   10M  2.9G   1% /tmp
+none                                     tmpfs    1.0M     0  1.0M   0% /run/credentials/systemd-resolved.service
+none                                     tmpfs    1.0M     0  1.0M   0% /run/credentials/getty@tty1.service
+C:\Program Files\Docker\Docker\resources 9p       114G  100G   14G  88% /Docker/host
+tmpfs                                    tmpfs    588M   12K  588M   1% /run/user/1000
+tmpfs                                    tmpfs    588M   12K  588M   1% /run/user/0
+=== MOUNTS ===
+none on /mnt/wsl type tmpfs (rw,relatime)
+none on /mnt/wsl/docker-desktop/shared-sockets/guest-services type tmpfs (rw,nosuid,nodev,mode=755)
+none on /mnt/wsl/docker-desktop/shared-sockets/host-services type tmpfs (rw,nosuid,nodev,mode=755)
+/mnt/docker-desktop-disk/isocache/entries/docker-wsl-cli.iso/9e001be3bb8eea4d0215ae613517c8ac1b41dfc8da1ce9cd4fc26de3a0d30317 on /mnt/wsl/docker-desktop/cli-tools type iso9660 (ro,relatime,nojoliet,check=s,map=n,blocksize=2048,iocharset=utf8)
+drivers on /usr/lib/wsl/drivers type 9p (ro,nosuid,nodev,noatime,aname=drivers;fmask=222;dmask=222,cache=0x5,access=client,msize=65536,trans=fd,rfd=8,wfd=8)
+none on /mnt/wslg type tmpfs (rw,relatime)
+/dev/sdf on /mnt/wslg/distro type ext4 (ro,relatime,discard,errors=remount-ro,data=ordered)
+none on /usr/lib/wsl/lib type overlay (rw,nosuid,nodev,noatime,lowerdir=/gpu_lib_packaged:/gpu_lib_inbox,upperdir=/gpu_lib/rw/upper,workdir=/gpu_lib/rw/work,uuid=on)
+none on /mnt/wslg/versions.txt type overlay (rw,relatime,lowerdir=/systemvhd,upperdir=/system/rw/upper,workdir=/system/rw/work,uuid=on)
+none on /mnt/wslg/doc type overlay (rw,relatime,lowerdir=/systemvhd,upperdir=/system/rw/upper,workdir=/system/rw/work,uuid=on)
+C:\ on /mnt/c type 9p (rw,noatime,aname=drvfs;path=C:\;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=6)
+D:\ on /mnt/d type 9p (rw,noatime,aname=drvfs;path=D:\;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=6)
+E:\ on /mnt/e type 9p (rw,noatime,aname=drvfs;path=E:\;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,access=client,msize=65536,trans=fd,rfd=6,wfd=6)
+none on /mnt/wsl/docker-desktop-bind-mounts/Ubuntu-26.04/docker.sock type tmpfs (rw,nosuid,nodev,mode=755)
+tmpfs on /mnt/wslg/run/user/1000 type tmpfs (rw,nosuid,nodev,relatime,size=601968k,nr_inodes=150492,mode=700,uid=1000,gid=1000)
+tmpfs on /mnt/wslg/run/user/0 type tmpfs (rw,nosuid,nodev,relatime,size=601968k,nr_inodes=150492,mode=700)
+drwxrwxrwx 1 jj jj 4096 Oct  6 10:11 /mnt/c
+drwxrwxrwx 1 jj jj 4096 Oct  6 18:20 /mnt/d
+drwxrwxrwx 1 jj jj 4096 Oct  6 18:14 /mnt/e
+=== KK SIZE ===
+4.0K	./backend/reports
+8.0K	./.git/info
+8.0K	./backend/atplace
+8.0K	./scripts
+24K	./backend/tools
+28K	./frontend/public
+32K	./.cto-backup/god-mode-credential-cleanup-20261006-1448
+36K	./backend/test
+40K	./backend/config
+56K	./.git/refs
+60K	./.cto-backup/god-mode-repair
+68K	./.git/hooks
+96K	./.cto-backup
+132K	./backend/scripts
+172K	./.git/logs
+264K	./backend/prisma
+320K	./docs
+948K	./frontend/src
+992K	./frontend/dist
+1.4M	./backend/src
+3.0M	./backend/dist
+19M	./.git/objects
+20M	./.git
+292M	./frontend/node_modules
+295M	./frontend
+536M	./backend/node_modules
+541M	./backend
+855M	.
+=== KK DIRECTORIES ===
+/home/jj/Dev/KrishiKendram
+/home/jj/Dev/KrishiKendram/.cto-backup
+/home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448
+/home/jj/Dev/KrishiKendram/.cto-backup/god-mode-repair
+/home/jj/Dev/KrishiKendram/.git
+/home/jj/Dev/KrishiKendram/backend
+/home/jj/Dev/KrishiKendram/backend/atplace
+/home/jj/Dev/KrishiKendram/backend/config
+/home/jj/Dev/KrishiKendram/backend/config/god-mode
+/home/jj/Dev/KrishiKendram/backend/config/super-admin-runtime
+/home/jj/Dev/KrishiKendram/backend/dist
+/home/jj/Dev/KrishiKendram/backend/node_modules
+/home/jj/Dev/KrishiKendram/backend/prisma
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260723140416_init
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260730195959_add_user_soft_delete
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260731172054_flexible_farm_model
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260803102300_crop_module
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902173340_universal_entity_foundation
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902175113_farm_entity_bridge
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903045612_farm_entity_required
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903065450_authorization_permission_persistence
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260904084731_add_unknown_crop_season
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260905092313_user_activity_audit_foundation
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260906115421_add_user_history
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925082619_resource_relationship_persistence
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201041_resource_movement_foundation
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201732_resource_lineage_foundation
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926063500_relationship_evidence_foundation
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926170000_resource_transfer_request_member_identity
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926171000_backfill_member_ids
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260928172939_add_farm_archive
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929013728_add_livestock
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929015956_add_marketplace_listing
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261001100000_enforce_single_active_owner
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261002100809_add_scale_indexes
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003100000_user_progressive_access
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003113000_core_staff_roles
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004110000_god_mode_authority_tier
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004200000_god_configuration_registry
+/home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261005010000_god_configuration_snapshots
+/home/jj/Dev/KrishiKendram/backend/reports
+/home/jj/Dev/KrishiKendram/backend/scripts
+/home/jj/Dev/KrishiKendram/backend/src
+/home/jj/Dev/KrishiKendram/backend/src/auth
+/home/jj/Dev/KrishiKendram/backend/src/auth/decorators
+/home/jj/Dev/KrishiKendram/backend/src/auth/dto
+/home/jj/Dev/KrishiKendram/backend/src/auth/guards
+/home/jj/Dev/KrishiKendram/backend/src/auth/strategies
+/home/jj/Dev/KrishiKendram/backend/src/bootstrap
+/home/jj/Dev/KrishiKendram/backend/src/common
+/home/jj/Dev/KrishiKendram/backend/src/common/middleware
+/home/jj/Dev/KrishiKendram/backend/src/common/middleware/request-id
+/home/jj/Dev/KrishiKendram/backend/src/core
+/home/jj/Dev/KrishiKendram/backend/src/core/filters
+/home/jj/Dev/KrishiKendram/backend/src/core/filters/http-exception
+/home/jj/Dev/KrishiKendram/backend/src/core/interceptors
+/home/jj/Dev/KrishiKendram/backend/src/core/interceptors/logging
+/home/jj/Dev/KrishiKendram/backend/src/crops
+/home/jj/Dev/KrishiKendram/backend/src/crops/dto
+/home/jj/Dev/KrishiKendram/backend/src/farms
+/home/jj/Dev/KrishiKendram/backend/src/farms/dto
+/home/jj/Dev/KrishiKendram/backend/src/health
+/home/jj/Dev/KrishiKendram/backend/src/intake
+/home/jj/Dev/KrishiKendram/backend/src/intake/dto
+/home/jj/Dev/KrishiKendram/backend/src/intake/extractor
+/home/jj/Dev/KrishiKendram/backend/src/livestock
+/home/jj/Dev/KrishiKendram/backend/src/livestock/dto
+/home/jj/Dev/KrishiKendram/backend/src/marketplace
+/home/jj/Dev/KrishiKendram/backend/src/marketplace/dto
+/home/jj/Dev/KrishiKendram/backend/src/platform
+/home/jj/Dev/KrishiKendram/backend/src/platform/audit
+/home/jj/Dev/KrishiKendram/backend/src/platform/audit/dto
+/home/jj/Dev/KrishiKendram/backend/src/platform/authorization
+/home/jj/Dev/KrishiKendram/backend/src/platform/god-mode
+/home/jj/Dev/KrishiKendram/backend/src/platform/identity
+/home/jj/Dev/KrishiKendram/backend/src/platform/registry
+/home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions
+/home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/fields
+/home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/modules
+/home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources
+/home/jj/Dev/KrishiKendram/backend/src/platform/relationships
+/home/jj/Dev/KrishiKendram/backend/src/platform/relationships/dto
+/home/jj/Dev/KrishiKendram/backend/src/platform/super-admin
+/home/jj/Dev/KrishiKendram/backend/src/prisma
+/home/jj/Dev/KrishiKendram/backend/src/users
+/home/jj/Dev/KrishiKendram/backend/src/users/dto
+/home/jj/Dev/KrishiKendram/backend/test
+/home/jj/Dev/KrishiKendram/backend/tools
+/home/jj/Dev/KrishiKendram/docs
+/home/jj/Dev/KrishiKendram/frontend
+/home/jj/Dev/KrishiKendram/frontend/dist
+/home/jj/Dev/KrishiKendram/frontend/node_modules
+/home/jj/Dev/KrishiKendram/frontend/public
+/home/jj/Dev/KrishiKendram/frontend/src
+/home/jj/Dev/KrishiKendram/frontend/src/assets
+/home/jj/Dev/KrishiKendram/frontend/src/components
+/home/jj/Dev/KrishiKendram/frontend/src/components/data
+/home/jj/Dev/KrishiKendram/frontend/src/components/security
+/home/jj/Dev/KrishiKendram/frontend/src/components/ui
+/home/jj/Dev/KrishiKendram/frontend/src/hooks
+/home/jj/Dev/KrishiKendram/frontend/src/lib
+/home/jj/Dev/KrishiKendram/frontend/src/lib/platform
+/home/jj/Dev/KrishiKendram/frontend/src/pages
+/home/jj/Dev/KrishiKendram/frontend/src/pages/activity
+/home/jj/Dev/KrishiKendram/frontend/src/pages/admin
+/home/jj/Dev/KrishiKendram/frontend/src/pages/crops
+/home/jj/Dev/KrishiKendram/frontend/src/pages/farms
+/home/jj/Dev/KrishiKendram/frontend/src/pages/intake
+/home/jj/Dev/KrishiKendram/frontend/src/pages/livestock
+/home/jj/Dev/KrishiKendram/frontend/src/pages/marketplace
+/home/jj/Dev/KrishiKendram/frontend/src/stores
+/home/jj/Dev/KrishiKendram/scripts
+=== KK FILES BY SIZE ===
+424467 bytes | 2026-10-02 05:22:06.7524137680 | /home/jj/Dev/KrishiKendram/backend/package-lock.json
+248984 bytes | 2026-09-29 15:27:11.6933118050 | /home/jj/Dev/KrishiKendram/frontend/package-lock.json
+132573 bytes | 2026-10-05 06:46:24.4077808230 | /home/jj/Dev/KrishiKendram/docs/CTO-MASTER-BLUEPRINT.md
+78821 bytes | 2026-10-05 06:46:28.5485029570 | /home/jj/Dev/KrishiKendram/docs/CTO-EXECUTION-BIBLE.md
+78417 bytes | 2026-09-07 18:35:21.2045228020 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersPage.tsx.20260907_183955.bak
+78417 bytes | 2026-09-07 18:35:21.2045228020 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersPage.tsx.20260907_183851.bak
+63772 bytes | 2026-10-02 08:12:12.1217573760 | /home/jj/Dev/KrishiKendram/frontend/src/pages/farms/FarmsPage.tsx
+56586 bytes | 2026-10-06 12:49:29.4743516350 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-repair/schema-before-20261004160000_god_mode_authority_tier.sql
+53973 bytes | 2026-10-05 07:36:22.1546597070 | /home/jj/Dev/KrishiKendram/frontend/src/App.tsx
+53073 bytes | 2026-10-02 08:12:51.9867569630 | /home/jj/Dev/KrishiKendram/docs/CHANGELOG.md
+49996 bytes | 2026-09-30 23:11:18.4006284430 | /home/jj/Dev/KrishiKendram/Absolutely KK PMD.docx.bak.20260930-audit
+49515 bytes | 2026-10-04 23:34:59.6541766390 | /home/jj/Dev/KrishiKendram/Absolutely KK PMD.docx
+48501 bytes | 2026-09-30 23:12:29.4802643370 | /home/jj/Dev/KrishiKendram/Absolutely KK PMD.docx.bak.20260930-audit-hardening
+46111 bytes | 2026-09-30 23:24:32.6335022220 | /home/jj/Dev/KrishiKendram/backend/src/farms/farms.service.spec.ts
+45795 bytes | 2026-10-01 23:43:53.8380892100 | /home/jj/Dev/KrishiKendram/frontend/src/pages/activity/HistoryPage.tsx
+43951 bytes | 2026-10-05 07:32:42.7798186410 | /home/jj/Dev/KrishiKendram/backend/src/users/users.service.ts
+36931 bytes | 2026-10-01 16:49:22.8018674850 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersPage.tsx
+33091 bytes | 2026-09-07 22:28:55.8564556130 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersPage.tsx.20260907_223325.bak
+32824 bytes | 2026-09-07 00:13:49.8775646350 | /home/jj/Dev/KrishiKendram/frontend/src/App.tsx.backup
+31895 bytes | 2026-10-02 08:12:02.2322994350 | /home/jj/Dev/KrishiKendram/frontend/src/pages/crops/CropsPage.tsx
+27682 bytes | 2026-09-26 12:26:00.5902390300 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/authorization.service.spec.ts
+26884 bytes | 2026-10-05 06:40:56.0120339430 | /home/jj/Dev/KrishiKendram/backend/prisma/schema.prisma
+25537 bytes | 2026-10-02 09:06:05.3727075910 | /home/jj/Dev/KrishiKendram/backend/src/farms/farms.service.ts
+23350 bytes | 2026-10-02 00:34:51.8097086740 | /home/jj/Dev/KrishiKendram/frontend/src/lib/api.ts
+22621 bytes | 2026-10-01 11:03:59.2777643380 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship.service.ts
+22527 bytes | 2026-10-04 22:32:10.6866465930 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/SystemPage.tsx
+21775 bytes | 2026-09-27 16:49:19.6885774370 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/registry.service.spec.ts
+21478 bytes | 2026-10-01 21:36:08.2932934930 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UserEditDialog.tsx
+19841 bytes | 2026-10-01 23:04:34.8990093920 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/transfer-request.service.spec.ts
+18443 bytes | 2026-09-30 23:24:08.7722682280 | /home/jj/Dev/KrishiKendram/backend/src/crops/crops.service.spec.ts
+18418 bytes | 2026-10-01 23:01:26.3601880480 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/transfer-request.service.ts
+18276 bytes | 2026-10-02 09:14:24.0757734120 | /home/jj/Dev/KrishiKendram/backend/src/crops/crops.service.ts
+16758 bytes | 2026-10-02 12:26:10.1991966620 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-resource-lineage.service.spec.ts
+15602 bytes | 2026-10-05 16:07:59.6004793760 | /home/jj/Dev/KrishiKendram/backend/src/platform/god-mode/god-mode.controller.ts
+14915 bytes | 2026-10-02 12:22:11.4343193570 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-resource-lineage.service.ts
+14753 bytes | 2026-10-01 21:52:40.1218980580 | /home/jj/Dev/KrishiKendram/frontend/src/index.css
+14222 bytes | 2026-09-16 20:11:57.7419265850 | /home/jj/Dev/KrishiKendram/frontend/src/pages/intake/AIIntakePage.tsx
+14049 bytes | 2026-09-27 14:55:59.5272786820 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/permission.service.spec.ts
+13159 bytes | 2026-10-02 10:30:36.1181053460 | /home/jj/Dev/KrishiKendram/backend/test/app.e2e-spec.ts
+13156 bytes | 2026-09-23 23:57:32.9886765390 | /home/jj/Dev/KrishiKendram/backend/scripts/kk-permission-persistence-block.sh
+13057 bytes | 2026-09-07 00:13:49.8799286560 | /home/jj/Dev/KrishiKendram/frontend/src/assets/hero.png
+12747 bytes | 2026-10-06 18:24:15.1588173490 | /home/jj/Dev/KrishiKendram/docs/KK-ENVIRONMENT-FILE-MAP.txt
+12588 bytes | 2026-10-05 16:08:08.4080671480 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/registry.service.ts
+12317 bytes | 2026-10-05 16:07:28.8165335780 | /home/jj/Dev/KrishiKendram/backend/src/platform/god-mode/god-configuration.service.ts
+12134 bytes | 2026-10-01 22:24:00.9425530880 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/ResourcesPage.tsx
+11734 bytes | 2026-10-03 21:55:41.8914185900 | /home/jj/Dev/KrishiKendram/backend/src/platform/super-admin/super-admin-control.controller.ts
+11452 bytes | 2026-10-02 09:55:08.1876405430 | /home/jj/Dev/KrishiKendram/backend/src/livestock/livestock.service.spec.ts
+11373 bytes | 2026-09-30 23:24:35.3973512730 | /home/jj/Dev/KrishiKendram/backend/src/users/users.service.spec.ts
+10976 bytes | 2026-10-05 16:09:13.5505313160 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/ValidationPolicyPage.tsx
+10901 bytes | 2026-09-29 14:23:13.1925785610 | /home/jj/Dev/KrishiKendram/backend/src/users/users.controller.spec.ts
+10873 bytes | 2026-09-30 23:21:38.4910231290 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-resource-lifecycle.service.ts
+10796 bytes | 2026-10-02 09:19:28.4225261530 | /home/jj/Dev/KrishiKendram/backend/src/intake/intake.service.spec.ts
+10669 bytes | 2026-10-01 15:01:17.8124150780 | /home/jj/Dev/KrishiKendram/backend/src/users/users.controller.ts
+10431 bytes | 2026-10-01 22:24:48.4792242590 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/PlatformDashboardPage.tsx
+10249 bytes | 2026-10-04 16:22:12.3833263210 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/authorization.service.ts
+10076 bytes | 2026-10-02 00:34:18.8826214370 | /home/jj/Dev/KrishiKendram/frontend/src/pages/marketplace/MarketplacePage.tsx
+9973 bytes | 2026-09-30 21:36:06.9341180870 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship.service.spec.ts
+9921 bytes | 2026-09-13 15:00:09.5783416860 | /home/jj/Dev/KrishiKendram/backend/scripts/test-ownership.sh
+9633 bytes | 2026-10-01 22:27:33.5560683600 | /home/jj/Dev/KrishiKendram/frontend/src/pages/activity/ActivitiesPage.tsx
+9612 bytes | 2026-10-04 23:32:50.5518039390 | /home/jj/Dev/KrishiKendram/docs/GOD-MODE-ARCHITECTURE.md
+9522 bytes | 2026-09-07 00:13:49.8693340180 | /home/jj/Dev/KrishiKendram/frontend/public/favicon.svg
+9296 bytes | 2026-09-13 22:53:23.3809819740 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/field-policy.service.spec.ts
+9172 bytes | 2026-09-07 22:10:48.3241151100 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersTable.tsx
+9001 bytes | 2026-10-04 23:33:13.4249862380 | /home/jj/Dev/KrishiKendram/docs/CTO-ENHANCEMENT-REGISTER.md
+8814 bytes | 2026-09-23 11:35:22.3668091590 | /home/jj/Dev/KrishiKendram/backend/scripts/kk-shutdown.sh
+8760 bytes | 2026-10-04 16:21:56.6449372900 | /home/jj/Dev/KrishiKendram/backend/src/auth/auth.service.ts
+8709 bytes | 2026-09-07 00:13:49.8854485050 | /home/jj/Dev/KrishiKendram/frontend/src/assets/vite.svg
+8495 bytes | 2026-09-12 09:43:02.5276403550 | /home/jj/Dev/KrishiKendram/backend/scripts/audit-user-field-policy.sh
+8438 bytes | 2026-10-01 22:23:47.5786064280 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/CapabilitiesPage.tsx
+8418 bytes | 2026-10-04 23:33:13.4809937870 | /home/jj/Dev/KrishiKendram/docs/ARCHITECTURE-DECISIONS.md
+8376 bytes | 2026-09-27 10:25:14.8773674650 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UserActivityDialog.tsx
+8314 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship-resolver.service.spec.ts
+8093 bytes | 2026-09-28 22:56:10.9529805270 | /home/jj/Dev/KrishiKendram/backend/src/farms/farms.controller.ts
+8038 bytes | 2026-10-05 07:12:03.1976593650 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/GodModePage.tsx
+7916 bytes | 2026-10-02 10:03:35.1446996230 | /home/jj/Dev/KrishiKendram/backend/src/livestock/livestock.service.ts
+7883 bytes | 2026-10-02 12:02:49.2683375970 | /home/jj/Dev/KrishiKendram/backend/src/marketplace/marketplace.service.ts
+7867 bytes | 2026-10-01 22:22:55.7082890020 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/RolesPage.tsx
+7817 bytes | 2026-09-28 22:26:33.2006765470 | /home/jj/Dev/KrishiKendram/backend/scripts/kk-restart-all.sh
+7633 bytes | 2026-10-02 03:49:24.4435886740 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/ModulesPage.tsx
+7556 bytes | 2026-09-13 15:37:48.4174479020 | /home/jj/Dev/KrishiKendram/backend/scripts/test-crop-ownership.sh
+7364 bytes | 2026-09-30 23:21:38.5070250160 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-asset-custody.service.ts
+7319 bytes | 2026-09-30 23:22:03.3607282330 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-resource-lifecycle.service.spec.ts
+7228 bytes | 2026-09-26 12:26:00.5902390300 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/farm-access.service.spec.ts
+7159 bytes | 2026-10-01 16:04:34.7680720960 | /home/jj/Dev/KrishiKendram/frontend/src/pages/livestock/LivestockPage.tsx
+7143 bytes | 2026-09-13 23:04:31.2501132730 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/field-policy-evaluation.service.spec.ts
+7115 bytes | 2026-09-27 14:47:01.8819291450 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/permission.service.ts
+7075 bytes | 2026-10-04 22:23:15.9953292500 | /home/jj/Dev/KrishiKendram/backend/src/recover-super-admin.ts
+6973 bytes | 2026-09-30 23:29:13.1655653170 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-asset-lease.service.ts
+6576 bytes | 2026-10-04 23:59:23.9173693190 | /home/jj/Dev/KrishiKendram/backend/src/auth/auth.service.spec.ts
+6226 bytes | 2026-09-27 08:24:59.0239732370 | /home/jj/Dev/KrishiKendram/frontend/src/pages/farms/FarmAssetLeasePanel.tsx
+6211 bytes | 2026-09-12 00:42:17.9517854820 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/field-validation.service.ts
+6107 bytes | 2026-10-02 10:22:18.4344188720 | /home/jj/Dev/KrishiKendram/backend/src/marketplace/marketplace.service.spec.ts
+6054 bytes | 2026-10-01 21:36:08.2915719490 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UserCreateDialog.tsx
+5920 bytes | 2026-10-02 09:57:50.2397836550 | /home/jj/Dev/KrishiKendram/backend/test/livestock-lifecycle.e2e-spec.ts
+5736 bytes | 2026-09-07 00:54:28.9614511020 | /home/jj/Dev/KrishiKendram/backend/project-structure.txt
+5457 bytes | 2026-09-29 17:42:50.8432067320 | /home/jj/Dev/KrishiKendram/backend/src/bootstrap-super-admin.ts
+5393 bytes | 2026-10-05 16:39:10.5917012790 | /home/jj/Dev/KrishiKendram/backend/prisma/seed.ts
+5339 bytes | 2026-09-11 00:33:21.0997395170 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/field-validation.service.spec.ts
+5323 bytes | 2026-10-01 22:23:21.7247841430 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/PermissionsPage.tsx
+5275 bytes | 2026-09-13 22:56:47.9211902400 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/field-policy.service.ts
+5226 bytes | 2026-09-30 23:22:03.3687294520 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-asset-lease.service.spec.ts
+5179 bytes | 2026-10-03 16:57:22.2115989530 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/registry.controller.ts
+5126 bytes | 2026-09-07 00:13:49.6781139680 | /home/jj/Dev/KrishiKendram/backend/README.md
+5031 bytes | 2026-09-07 00:13:49.8719275700 | /home/jj/Dev/KrishiKendram/frontend/public/icons.svg
+4994 bytes | 2026-10-01 22:24:15.2073032510 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/AuditPage.tsx
+4837 bytes | 2026-09-12 19:36:48.4292335720 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/module-lifecycle.service.spec.ts
+4778 bytes | 2026-09-30 23:22:03.3647288420 | /home/jj/Dev/KrishiKendram/backend/src/farms/farm-asset-custody.service.spec.ts
+4725 bytes | 2026-09-27 00:04:24.4623315160 | /home/jj/Dev/KrishiKendram/frontend/src/pages/farms/FarmAssetMergePanel.tsx
+4712 bytes | 2026-10-05 16:39:49.8494294770 | /home/jj/Dev/KrishiKendram/backend/src/platform/god-mode/god-database-credential.service.ts
+4711 bytes | 2026-10-05 06:45:21.3405448480 | /home/jj/Dev/KrishiKendram/frontend/src/lib/platform/registry.ts
+4630 bytes | 2026-10-02 03:51:38.1111955830 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/DatabasePage.tsx
+4554 bytes | 2026-10-01 11:02:44.2702581670 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movement-integrity.ts
+4518 bytes | 2026-10-04 14:50:21.7426055160 | /home/jj/Dev/KrishiKendram/backend/config/system-truth.json
+4478 bytes | 2026-09-08 01:25:07.1441656920 | /home/jj/Dev/KrishiKendram/backend/tools/kk-copy.sh
+4424 bytes | 2026-09-07 00:13:49.8693340180 | /home/jj/Dev/KrishiKendram/frontend/kkf.sh
+4205 bytes | 2026-09-12 14:28:19.2201702990 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/fields/user-field-definitions.ts
+4201 bytes | 2026-10-06 14:50:13.4673255270 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/god-mode.service.ts
+4126 bytes | 2026-09-07 00:13:49.8854485050 | /home/jj/Dev/KrishiKendram/frontend/src/assets/react.svg
+4108 bytes | 2026-10-05 09:00:34.9573017470 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/ConnectionsPage.tsx
+4035 bytes | 2026-10-02 09:30:47.2376276660 | /home/jj/Dev/KrishiKendram/backend/test/intake-atomicity.e2e-spec.ts
+3941 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship-resolution.types.spec.ts
+3745 bytes | 2026-09-27 09:44:39.8734985940 | /home/jj/Dev/KrishiKendram/frontend/src/pages/farms/FarmAssetSplitPanel.tsx
+3711 bytes | 2026-10-04 16:18:55.8830516360 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/registry.module.ts
+3659 bytes | 2026-10-04 16:36:09.1150568930 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/AccessPage.tsx
+3612 bytes | 2026-10-03 15:37:28.4981319540 | /home/jj/Dev/KrishiKendram/backend/package.json
+3538 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship-resolver.service.ts
+3424 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship-access.policy.spec.ts
+3404 bytes | 2026-09-29 18:35:38.8905647020 | /home/jj/Dev/KrishiKendram/scripts/kk-phase1-diagnostic.sh
+3373 bytes | 2026-09-29 08:34:56.4236609210 | /home/jj/Dev/KrishiKendram/frontend/src/stores/auth.store.ts
+3274 bytes | 2026-09-26 18:59:02.1130122620 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926170000_resource_transfer_request_member_identity/migration.sql
+3263 bytes | 2026-10-03 21:55:48.3328612420 | /home/jj/Dev/KrishiKendram/backend/src/platform/super-admin/infrastructure.controller.ts
+3246 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movement-resolver.service.spec.ts
+3230 bytes | 2026-09-07 00:13:49.8892302180 | /home/jj/Dev/KrishiKendram/frontend/src/components/ui/button.tsx
+3142 bytes | 2026-09-12 20:02:53.3980336060 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/module-lifecycle.service.ts
+3109 bytes | 2026-09-26 12:26:00.5622343820 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201041_resource_movement_foundation/migration.sql
+3046 bytes | 2026-10-02 09:06:05.3735649060 | /home/jj/Dev/KrishiKendram/backend/src/intake/intake.service.ts
+2984 bytes | 2026-09-07 00:13:49.7239074820 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903065450_authorization_permission_persistence/migration.sql
+2979 bytes | 2026-10-04 16:29:26.1721055530 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/farm-access.service.ts
+2929 bytes | 2026-10-06 14:51:21.0279036070 | /home/jj/Dev/KrishiKendram/backend/src/platform/god-mode/god-mode.service.ts
+2891 bytes | 2026-09-07 00:13:49.8719275700 | /home/jj/Dev/KrishiKendram/frontend/src/App.css
+2865 bytes | 2026-09-13 23:02:03.4038645910 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/field-policy.repository.spec.ts
+2859 bytes | 2026-10-06 14:50:28.5903752760 | /home/jj/Dev/KrishiKendram/backend/src/credential-artifact.service.ts
+2814 bytes | 2026-10-06 14:50:13.4565684480 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/credential-artifact.service.ts
+2809 bytes | 2026-10-02 07:51:42.9736758850 | /home/jj/Dev/KrishiKendram/backend/src/platform/audit/audit.service.ts
+2780 bytes | 2026-09-29 15:55:05.5238582280 | /home/jj/Dev/KrishiKendram/docs/DEPLOYMENT.md
+2734 bytes | 2026-10-01 11:03:32.7744366520 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movement-integrity.spec.ts
+2705 bytes | 2026-10-03 21:46:41.0936700720 | /home/jj/Dev/KrishiKendram/frontend/src/lib/platform/routes.ts
+2636 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movement-resolver.service.ts
+2599 bytes | 2026-10-01 15:21:56.8085548840 | /home/jj/Dev/KrishiKendram/frontend/src/components/app-error-center.tsx
+2573 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/evidence-resolver.service.ts
+2567 bytes | 2026-09-07 00:13:49.8585967610 | /home/jj/Dev/KrishiKendram/backend/tools/kk-lib.sh
+2544 bytes | 2026-09-12 11:15:03.3265671110 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/fields/farm-field-definitions.ts
+2540 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship.types.spec.ts
+2514 bytes | 2026-09-27 13:29:51.4146963850 | /home/jj/Dev/KrishiKendram/frontend/src/lib/platform/field-policy.ts
+2508 bytes | 2026-09-26 12:26:00.5662350460 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926063500_relationship_evidence_foundation/migration.sql
+2501 bytes | 2026-10-04 23:55:00.7465994990 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004200000_god_configuration_registry/migration.sql
+2448 bytes | 2026-09-26 12:26:00.5622343820 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925082619_resource_relationship_persistence/migration.sql
+2427 bytes | 2026-09-07 00:13:49.8693340180 | /home/jj/Dev/KrishiKendram/frontend/README.md
+2375 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/lineage-resolver.service.ts
+2371 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/evidence-resolver.service.spec.ts
+2339 bytes | 2026-09-29 13:42:00.1484556020 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/transfer-request.controller.ts
+2279 bytes | 2026-09-27 17:56:03.4107903740 | /home/jj/Dev/KrishiKendram/frontend/src/components/theme-provider.tsx
+2247 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship.types.ts
+2165 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship-access.policy.ts
+2162 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/lineage-resolver.service.spec.ts
+2142 bytes | 2026-09-26 12:26:00.5662350460 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201732_resource_lineage_foundation/migration.sql
+2138 bytes | 2026-10-01 20:59:06.2715409250 | /home/jj/Dev/KrishiKendram/docker-compose.prod.yml
+2095 bytes | 2026-10-04 23:57:18.7240335150 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/registry.controller.spec.ts
+2094 bytes | 2026-09-26 12:26:00.5958795660 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/user.resource.ts
+2070 bytes | 2026-09-13 22:09:04.6735000370 | /home/jj/Dev/KrishiKendram/backend/scripts/test-assets.sh
+2032 bytes | 2026-09-28 22:41:01.3765061870 | /home/jj/Dev/KrishiKendram/backend/src/crops/crops.controller.ts
+2017 bytes | 2026-09-13 23:04:31.2341111720 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/field-policy-evaluation.service.ts
+1981 bytes | 2026-09-07 00:13:49.7134217590 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260723140416_init/migration.sql
+1971 bytes | 2026-09-12 00:42:17.9513899450 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/field-definition.interface.ts
+1920 bytes | 2026-09-28 23:31:22.2494604520 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/farm.resource.ts
+1901 bytes | 2026-09-27 04:27:53.7758293560 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/farm-asset.resource.ts
+1896 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationship-resolution.types.ts
+1860 bytes | 2026-09-07 00:13:49.8322184810 | /home/jj/Dev/KrishiKendram/backend/src/intake/extractor/intake-extractor.service.ts
+1851 bytes | 2026-10-01 16:46:23.0019067310 | /home/jj/Dev/KrishiKendram/frontend/src/hooks/use-live-refresh.ts
+1841 bytes | 2026-10-06 14:50:13.5125751060 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/bootstrap-pattern.ts
+1827 bytes | 2026-09-27 16:09:52.5851173910 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/crop.resource.ts
+1734 bytes | 2026-09-12 14:28:18.8093369120 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/fields/farm-record-field-definitions.ts
+1679 bytes | 2026-09-12 11:15:49.7925958880 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/fields/farm-asset-field-definitions.ts
+1674 bytes | 2026-09-07 00:54:28.9698239230 | /home/jj/Dev/KrishiKendram/backend/src/users/dto/update-user.dto.ts
+1627 bytes | 2026-10-04 23:56:43.9283563610 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/system-truth.service.ts
+1596 bytes | 2026-10-03 15:24:45.0396983340 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/filesystem-registry.service.ts
+1549 bytes | 2026-09-29 07:03:27.6711098920 | /home/jj/Dev/KrishiKendram/backend/src/livestock/livestock.controller.ts
+1527 bytes | 2026-10-04 16:18:15.9807850490 | /home/jj/Dev/KrishiKendram/backend/src/app.module.ts
+1517 bytes | 2026-10-04 16:28:34.6335640010 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/authorization.module.ts
+1508 bytes | 2026-09-27 14:15:50.2542873170 | /home/jj/Dev/KrishiKendram/frontend/src/lib/platform/contracts.ts
+1459 bytes | 2026-10-01 11:00:36.3283855240 | /home/jj/Dev/KrishiKendram/backend/scripts/kk
+1446 bytes | 2026-09-27 22:01:13.1365974210 | /home/jj/Dev/KrishiKendram/backend/src/auth/auth.controller.ts
+1440 bytes | 2026-09-29 14:43:19.2394690970 | /home/jj/Dev/KrishiKendram/backend/src/auth/auth.module.ts
+1436 bytes | 2026-09-29 07:28:07.4250340240 | /home/jj/Dev/KrishiKendram/backend/src/marketplace/marketplace.controller.ts
+1435 bytes | 2026-09-29 07:04:47.1219603970 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/fields/livestock-field-definitions.ts
+1427 bytes | 2026-09-29 07:28:36.4004228570 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/marketplace-listing.resource.ts
+1421 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movement.types.spec.ts
+1415 bytes | 2026-10-02 08:00:45.2695598850 | /home/jj/Dev/KrishiKendram/backend/src/platform/audit/audit.service.spec.ts
+1403 bytes | 2026-09-29 07:05:37.6715650490 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/livestock.resource.ts
+1390 bytes | 2026-09-29 15:52:45.8270261390 | /home/jj/Dev/KrishiKendram/backend/src/main.ts
+1380 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movement.types.ts
+1351 bytes | 2026-09-27 16:37:09.9768155080 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/permission-admin.controller.ts
+1351 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationships.module.spec.ts
+1343 bytes | 2026-10-04 16:21:11.0174105500 | /home/jj/Dev/KrishiKendram/backend/src/auth/strategies/jwt.strategy.ts
+1279 bytes | 2026-09-07 00:13:49.7346292370 | /home/jj/Dev/KrishiKendram/backend/scripts/fix-project.sh
+1277 bytes | 2026-10-02 15:38:09.8532995180 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261002100809_add_scale_indexes/migration.sql
+1273 bytes | 2026-09-27 00:15:09.2302020310 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/farm-record.resource.ts
+1250 bytes | 2026-10-01 21:38:19.2429072610 | /home/jj/Dev/KrishiKendram/frontend/src/components/security/SensitiveInput.tsx
+1240 bytes | 2026-09-29 14:22:16.4802547630 | /home/jj/Dev/KrishiKendram/backend/src/platform/audit/audit-admin.controller.ts
+1238 bytes | 2026-10-03 15:37:14.2593005560 | /home/jj/Dev/KrishiKendram/backend/scripts/validate-env.ts
+1232 bytes | 2026-09-13 15:09:50.1091030970 | /home/jj/Dev/KrishiKendram/backend/scripts/test-intake.sh
+1195 bytes | 2026-09-27 15:27:00.1415748980 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/relationships.module.ts
+1180 bytes | 2026-09-29 07:29:56.3424778430 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929015956_add_marketplace_listing/migration.sql
+1164 bytes | 2026-09-13 15:09:49.9603874650 | /home/jj/Dev/KrishiKendram/backend/scripts/test-records.sh
+1163 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/lineage.types.spec.ts
+1155 bytes | 2026-09-07 00:13:49.7134217590 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260803102300_crop_module/migration.sql
+1154 bytes | 2026-10-03 17:45:31.1467814340 | /home/jj/Dev/KrishiKendram/backend/atplace/JjKk__20261003121531150.svg
+1154 bytes | 2026-10-03 15:18:58.8933055680 | /home/jj/Dev/KrishiKendram/backend/config/super-admin-runtime/JjKk__OCTber____.svg
+1153 bytes | 2026-10-01 16:59:10.9564284570 | /home/jj/Dev/KrishiKendram/backend/Dockerfile
+1147 bytes | 2026-09-07 00:13:49.7279080250 | /home/jj/Dev/KrishiKendram/backend/restart.sh
+1144 bytes | 2026-09-29 15:27:11.2492627080 | /home/jj/Dev/KrishiKendram/frontend/package.json
+1139 bytes | 2026-10-01 15:21:49.7514997570 | /home/jj/Dev/KrishiKendram/frontend/src/stores/app-error.store.ts
+1119 bytes | 2026-09-07 00:13:49.8521490860 | /home/jj/Dev/KrishiKendram/backend/test-api.sh
+1117 bytes | 2026-09-07 00:13:49.7346292370 | /home/jj/Dev/KrishiKendram/backend/scripts/dev.sh
+1104 bytes | 2026-09-29 07:28:42.9475387320 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/fields/marketplace-field-definitions.ts
+1092 bytes | 2026-09-07 00:54:28.9574503750 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260906115421_add_user_history/migration.sql
+1087 bytes | 2026-10-01 15:19:27.8199403480 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/validation-policy.ts
+1057 bytes | 2026-09-07 00:13:49.7134217590 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260731172054_flexible_farm_model/migration.sql
+1023 bytes | 2026-09-29 07:29:16.4848417390 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/index.ts
+999 bytes | 2026-09-26 12:26:00.5902390300 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/global-farm-access.policy.spec.ts
+994 bytes | 2026-09-07 00:54:28.9534496490 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260905092313_user_activity_audit_foundation/migration.sql
+986 bytes | 2026-09-29 07:07:28.9596921910 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929013728_add_livestock/migration.sql
+960 bytes | 2026-09-28 22:06:33.4625617260 | /home/jj/Dev/KrishiKendram/frontend/eslint.config.js
+959 bytes | 2026-09-30 18:26:36.4962109590 | /home/jj/Dev/KrishiKendram/backend/Dockerfile.bak.20260930-studio
+957 bytes | 2026-10-03 15:40:09.6579396760 | /home/jj/Dev/KrishiKendram/backend/config/resource-paths.json
+935 bytes | 2026-09-29 08:48:59.0850013660 | /home/jj/Dev/KrishiKendram/backend/src/farms/farms.module.ts
+934 bytes | 2026-09-07 00:13:49.6781139680 | /home/jj/Dev/KrishiKendram/backend/eslint.config.mjs
+932 bytes | 2026-09-13 15:09:50.0359773120 | /home/jj/Dev/KrishiKendram/backend/scripts/test-crud.sh
+920 bytes | 2026-10-03 18:44:14.3018325260 | /home/jj/Dev/KrishiKendram/backend/src/platform/platform.module.ts
+888 bytes | 2026-10-01 11:00:32.9165439910 | /home/jj/Dev/KrishiKendram/backend/scripts/studio.sh
+885 bytes | 2026-09-07 00:13:49.6781139680 | /home/jj/Dev/KrishiKendram/backend/.gitignore
+880 bytes | 2026-09-26 23:40:29.5082326060 | /home/jj/Dev/KrishiKendram/backend/src/crops/crops.module.spec.ts
+843 bytes | 2026-09-27 13:43:05.2723190860 | /home/jj/Dev/KrishiKendram/frontend/src/stores/theme.store.ts
+833 bytes | 2026-09-13 23:02:03.3878624220 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/field-policy.repository.ts
+829 bytes | 2026-09-28 15:39:58.4888864730 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/dto/create-transfer-request.dto.ts
+818 bytes | 2026-09-13 15:09:49.8877465320 | /home/jj/Dev/KrishiKendram/backend/scripts/test-farm.sh
+806 bytes | 2026-09-11 23:06:48.6506232460 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/authorization.types.ts
+803 bytes | 2026-09-23 11:01:40.7766731300 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/resource-definition.interface.ts
+795 bytes | 2026-09-27 15:03:46.3983951270 | /home/jj/Dev/KrishiKendram/frontend/src/components/ui/input.tsx
+795 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/lineage.module.spec.ts
+788 bytes | 2026-09-07 00:13:49.7279080250 | /home/jj/Dev/KrishiKendram/backend/scripts/analyze.sh
+781 bytes | 2026-10-05 06:42:14.3293489710 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261005010000_god_configuration_snapshots/migration.sql
+765 bytes | 2026-09-13 22:09:04.6745542790 | /home/jj/Dev/KrishiKendram/backend/scripts/test-crops.sh
+756 bytes | 2026-10-05 16:40:57.3587858830 | /home/jj/Dev/KrishiKendram/backend/src/platform/god-mode/god-mode.module.ts
+752 bytes | 2026-09-07 00:13:49.8546677270 | /home/jj/Dev/KrishiKendram/backend/tools/kk-doctor.sh
+737 bytes | 2026-09-07 00:13:49.8119194260 | /home/jj/Dev/KrishiKendram/backend/src/crops/dto/create-crop.dto.ts
+734 bytes | 2026-10-03 15:24:52.8432125440 | /home/jj/Dev/KrishiKendram/backend/tsconfig.json
+724 bytes | 2026-09-18 22:38:40.3821679820 | /home/jj/Dev/KrishiKendram/backend/src/intake/intake.module.ts
+703 bytes | 2026-10-06 14:50:13.5245765320 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/bootstrap-pattern.spec.ts
+683 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/lineage.types.ts
+679 bytes | 2026-09-29 09:13:13.5285140960 | /home/jj/Dev/KrishiKendram/backend/src/livestock/livestock.module.ts
+664 bytes | 2026-09-07 00:13:49.7359091110 | /home/jj/Dev/KrishiKendram/backend/scripts/reports.sh
+659 bytes | 2026-10-06 14:50:13.4765708260 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/credential-delivery.ts
+649 bytes | 2026-09-29 09:00:19.7163892370 | /home/jj/Dev/KrishiKendram/backend/src/crops/crops.module.ts
+639 bytes | 2026-09-07 00:13:49.7439101970 | /home/jj/Dev/KrishiKendram/backend/src/app.controller.spec.ts
+636 bytes | 2026-09-27 07:41:50.1910848300 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/transfer-resource.dto.ts
+621 bytes | 2026-09-07 00:13:49.9046397090 | /home/jj/Dev/KrishiKendram/frontend/tsconfig.app.json
+616 bytes | 2026-09-26 12:26:00.5958795660 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/evidence-resolution.types.ts
+608 bytes | 2026-09-07 00:13:49.7239074820 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903045612_farm_entity_required/migration.sql
+606 bytes | 2026-09-07 00:13:49.6781139680 | /home/jj/Dev/KrishiKendram/backend/kk
+598 bytes | 2026-10-04 16:35:50.4270440650 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/index.ts
+597 bytes | 2026-09-07 00:13:49.8322184810 | /home/jj/Dev/KrishiKendram/backend/src/intake/intake.controller.ts
+595 bytes | 2026-09-07 00:13:49.7745754580 | /home/jj/Dev/KrishiKendram/backend/src/common/middleware/request-id/request-id.middleware.ts
+590 bytes | 2026-09-29 07:03:22.4553351550 | /home/jj/Dev/KrishiKendram/backend/src/livestock/dto/create-livestock.dto.ts
+571 bytes | 2026-09-12 17:57:18.8771397380 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/module-definition.interface.ts
+568 bytes | 2026-09-28 19:15:14.8481279710 | /home/jj/Dev/KrishiKendram/start-frontend.sh
+566 bytes | 2026-09-07 00:13:49.7134217590 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260730195959_add_user_soft_delete/migration.sql
+559 bytes | 2026-10-03 21:48:44.8569902860 | /home/jj/Dev/KrishiKendram/backend/src/platform/super-admin/super-admin-control.module.ts
+559 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/lineage-resolution.types.ts
+558 bytes | 2026-09-07 00:13:49.9046397090 | /home/jj/Dev/KrishiKendram/frontend/tsconfig.node.json
+538 bytes | 2026-09-11 01:12:44.7351166970 | /home/jj/Dev/KrishiKendram/backend/src/users/users.module.ts
+533 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movements.module.ts
+532 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/evidence.module.ts
+531 bytes | 2026-09-29 07:27:58.1678769700 | /home/jj/Dev/KrishiKendram/backend/src/marketplace/dto/create-listing.dto.ts
+530 bytes | 2026-09-07 00:13:49.8226912880 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/create-farm.dto.ts
+528 bytes | 2026-09-27 08:07:32.0929777530 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/end-resource-lease.dto.ts
+523 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/movement-resolution.types.ts
+523 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/lineage.module.ts
+515 bytes | 2026-09-07 00:13:49.8693340180 | /home/jj/Dev/KrishiKendram/frontend/components.json
+507 bytes | 2026-09-07 00:13:49.7583338540 | /home/jj/Dev/KrishiKendram/backend/src/auth/dto/register.dto.ts
+497 bytes | 2026-10-06 15:52:38.9228626680 | /home/jj/Dev/KrishiKendram/.gitignore
+497 bytes | 2026-10-01 13:21:01.5675695850 | /home/jj/Dev/KrishiKendram/backend/src/marketplace/marketplace.module.ts
+475 bytes | 2026-09-26 12:26:00.5973554110 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/evidence.types.ts
+466 bytes | 2026-10-03 16:17:29.2016152960 | /home/jj/Dev/KrishiKendram/backend/.env.example
+454 bytes | 2026-09-26 17:49:38.8253380500 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/merge-farm-assets.dto.ts
+452 bytes | 2026-09-07 00:13:49.7199069390 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902175113_farm_entity_bridge/migration.sql
+441 bytes | 2026-09-27 14:01:20.9007237970 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/permission.resource.ts
+440 bytes | 2026-09-29 07:28:01.1882228270 | /home/jj/Dev/KrishiKendram/backend/src/marketplace/dto/update-listing.dto.ts
+436 bytes | 2026-09-29 07:28:23.1145704620 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/modules/index.ts
+436 bytes | 2026-09-27 14:26:27.2420302810 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/definitions/resources/audit.resource.ts
+429 bytes | 2026-09-27 15:26:46.4871690090 | /home/jj/Dev/KrishiKendram/backend/src/platform/audit/audit.module.ts
+422 bytes | 2026-09-30 10:55:56.8002785450 | /home/jj/Dev/KrishiKendram/.env
+421 bytes | 2026-09-30 16:49:08.2969193290 | /home/jj/Dev/KrishiKendram/docker-compose.yml
+421 bytes | 2026-09-07 00:13:49.7199069390 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902173340_universal_entity_foundation/migration.sql
+420 bytes | 2026-10-01 15:21:10.7616945410 | /home/jj/Dev/KrishiKendram/frontend/src/main.tsx
+408 bytes | 2026-09-26 16:43:55.8839810910 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/split-farm-asset.dto.ts
+395 bytes | 2026-10-06 14:50:13.4965732040 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/credential-artifact.json
+379 bytes | 2026-09-07 00:13:49.8493656080 | /home/jj/Dev/KrishiKendram/backend/src/prisma/prisma.service.ts
+378 bytes | 2026-10-01 10:16:46.5396134680 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261001100000_enforce_single_active_owner/migration.sql
+372 bytes | 2026-09-07 00:13:49.8221283120 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/create-farm-asset.dto.ts
+360 bytes | 2026-09-07 00:13:49.8693340180 | /home/jj/Dev/KrishiKendram/frontend/index.html
+353 bytes | 2026-09-07 00:13:49.8226912880 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/create-farm-record.dto.ts
+333 bytes | 2026-09-28 16:31:52.0667082020 | /home/jj/Dev/KrishiKendram/frontend/Dockerfile
+313 bytes | 2026-09-07 00:13:49.8079188830 | /home/jj/Dev/KrishiKendram/backend/src/core/interceptors/logging/logging.interceptor.ts
+311 bytes | 2026-09-07 00:13:49.8292917840 | /home/jj/Dev/KrishiKendram/backend/src/health/health.service.ts
+307 bytes | 2026-10-06 14:51:30.4112914600 | /home/jj/Dev/KrishiKendram/backend/config/credential-artifact.json
+303 bytes | 2026-09-07 00:13:49.8322184810 | /home/jj/Dev/KrishiKendram/backend/src/intake/dto/create-intake.dto.ts
+301 bytes | 2026-09-28 21:45:13.1068364610 | /home/jj/Dev/KrishiKendram/backend/prisma.config.ts
+293 bytes | 2026-09-07 00:13:49.9046397090 | /home/jj/Dev/KrishiKendram/frontend/vite.config.ts
+293 bytes | 2026-09-07 00:13:49.8239210550 | /home/jj/Dev/KrishiKendram/backend/src/health/health.controller.ts
+284 bytes | 2026-09-07 00:13:49.7503158660 | /home/jj/Dev/KrishiKendram/backend/src/app.controller.ts
+265 bytes | 2026-09-26 19:01:32.0659832320 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926171000_backfill_member_ids/migration.sql
+264 bytes | 2026-09-07 00:13:49.7522687310 | /home/jj/Dev/KrishiKendram/backend/src/auth/decorators/current-user.decorator.ts
+260 bytes | 2026-09-11 01:12:44.7391135500 | /home/jj/Dev/KrishiKendram/backend/src/users/dto/create-user.dto.ts
+254 bytes | 2026-09-07 00:13:49.8292917840 | /home/jj/Dev/KrishiKendram/backend/src/health/health.module.ts
+253 bytes | 2026-09-07 00:13:49.8639264840 | /home/jj/Dev/KrishiKendram/frontend/.gitignore
+246 bytes | 2026-09-28 16:26:06.5058088320 | /home/jj/Dev/KrishiKendram/frontend/nginx.conf
+236 bytes | 2026-10-02 07:56:13.0960174620 | /home/jj/Dev/KrishiKendram/backend/src/core/core.module.ts
+235 bytes | 2026-10-06 14:51:27.3727064770 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/credential-delivery.ts
+226 bytes | 2026-09-29 14:22:15.8721871520 | /home/jj/Dev/KrishiKendram/backend/src/platform/audit/dto/audit-query.dto.ts
+226 bytes | 2026-09-29 14:22:02.7341308880 | /home/jj/Dev/KrishiKendram/backend/src/users/dto/limit-query.dto.ts
+226 bytes | 2026-09-07 00:13:49.7359091110 | /home/jj/Dev/KrishiKendram/backend/scripts/get-token.sh
+225 bytes | 2026-09-29 18:10:14.4196068740 | /home/jj/Dev/KrishiKendram/.env.backup.20260929-181014
+217 bytes | 2026-09-07 00:13:49.8459448440 | /home/jj/Dev/KrishiKendram/backend/src/prisma/prisma.module.ts
+207 bytes | 2026-09-23 11:01:40.7700894070 | /home/jj/Dev/KrishiKendram/backend/src/platform/registry/capability-definition.interface.ts
+204 bytes | 2026-09-07 00:13:49.8585967610 | /home/jj/Dev/KrishiKendram/backend/tools/kk-restart.sh
+201 bytes | 2026-09-07 00:13:49.7679134540 | /home/jj/Dev/KrishiKendram/backend/src/common/middleware/request-id/request-id.middleware.spec.ts
+195 bytes | 2026-09-07 00:13:49.8021824050 | /home/jj/Dev/KrishiKendram/backend/src/core/filters/http-exception/http-exception.filter.ts
+192 bytes | 2026-09-07 00:13:49.8546677270 | /home/jj/Dev/KrishiKendram/backend/test/jest-e2e.json
+190 bytes | 2026-09-07 00:13:49.8639264840 | /home/jj/Dev/KrishiKendram/docs/environment-checkpoint-2026-07-10.md
+189 bytes | 2026-09-29 07:03:24.9678904580 | /home/jj/Dev/KrishiKendram/backend/src/livestock/dto/update-livestock.dto.ts
+187 bytes | 2026-09-29 13:57:00.0841916320 | /home/jj/Dev/KrishiKendram/backend/src/users/dto/bulk-delete-users.dto.ts
+182 bytes | 2026-09-26 12:26:00.5902390300 | /home/jj/Dev/KrishiKendram/backend/src/platform/authorization/global-farm-access.policy.ts
+179 bytes | 2026-09-07 00:13:49.6781139680 | /home/jj/Dev/KrishiKendram/backend/nest-cli.json
+173 bytes | 2026-09-07 00:13:49.8226912880 | /home/jj/Dev/KrishiKendram/backend/src/farms/dto/update-farm.dto.ts
+173 bytes | 2026-09-07 00:13:49.8178539320 | /home/jj/Dev/KrishiKendram/backend/src/crops/dto/update-crop.dto.ts
+168 bytes | 2026-10-04 16:37:51.2233450960 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004110000_god_mode_authority_tier/migration.sql
+163 bytes | 2026-09-07 00:13:49.7599123680 | /home/jj/Dev/KrishiKendram/backend/src/auth/guards/jwt-auth.guard.ts
+160 bytes | 2026-09-26 19:12:07.1053690960 | /home/jj/Dev/KrishiKendram/backend/src/platform/identity/member-id.ts
+150 bytes | 2026-09-07 00:13:49.7503158660 | /home/jj/Dev/KrishiKendram/backend/src/app.service.ts
+149 bytes | 2026-09-29 13:52:20.8610563290 | /home/jj/Dev/KrishiKendram/backend/src/platform/relationships/dto/approve-transfer-request.dto.ts
+149 bytes | 2026-09-07 17:57:58.4544572560 | /home/jj/Dev/KrishiKendram/backend/src/auth/dto/login.dto.ts
+128 bytes | 2026-10-02 15:38:09.8572999900 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/migration_lock.toml
+120 bytes | 2026-09-07 00:13:49.7583338540 | /home/jj/Dev/KrishiKendram/backend/src/auth/dto/refresh-token.dto.ts
+119 bytes | 2026-09-07 00:13:49.9046397090 | /home/jj/Dev/KrishiKendram/frontend/tsconfig.json
+119 bytes | 2026-09-07 00:13:49.7399096540 | /home/jj/Dev/KrishiKendram/backend/scripts/stop.sh
+101 bytes | 2026-09-07 00:13:49.8599259410 | /home/jj/Dev/KrishiKendram/backend/tsconfig.build.json
+90 bytes | 2026-09-07 00:13:49.8079188830 | /home/jj/Dev/KrishiKendram/backend/src/core/logger.service.ts
+87 bytes | 2026-10-05 07:28:28.4803873230 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003113000_core_staff_roles/migration.sql
+87 bytes | 2026-10-05 07:28:28.4802556050 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003100000_user_progressive_access/migration.sql
+86 bytes | 2026-09-27 12:55:46.8488291360 | /home/jj/Dev/KrishiKendram/frontend/src/lib/platform/index.ts
+83 bytes | 2026-09-07 00:13:49.8079188830 | /home/jj/Dev/KrishiKendram/backend/src/core/logger.module.ts
+83 bytes | 2026-09-07 00:13:49.7662784320 | /home/jj/Dev/KrishiKendram/backend/src/common/common.module.ts
+74 bytes | 2026-09-28 22:59:39.2194394670 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260928172939_add_farm_archive/migration.sql
+70 bytes | 2026-09-28 22:20:25.2426375670 | /home/jj/Dev/KrishiKendram/frontend/frontend-dev.log
+66 bytes | 2026-09-29 15:07:46.9836987550 | /home/jj/Dev/KrishiKendram/frontend/.dockerignore
+58 bytes | 2026-09-07 00:13:49.7279080250 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260904084731_add_unknown_crop_season/migration.sql
+56 bytes | 2026-09-07 00:13:49.6781139680 | /home/jj/Dev/KrishiKendram/backend/.prettierrc
+53 bytes | 2026-09-28 16:32:06.2938122240 | /home/jj/Dev/KrishiKendram/backend/.dockerignore
+47 bytes | 2026-09-28 16:26:14.4347588880 | /home/jj/Dev/KrishiKendram/frontend/.env.example
+38 bytes | 2026-10-06 14:55:16.9809037830 | /home/jj/Dev/KrishiKendram/backend/config/god-mode/rootpathss.kkt
+38 bytes | 2026-10-06 14:55:16.9729029090 | /home/jj/Dev/KrishiKendram/backend/config/god-mode/rootpathss
+24 bytes | 2026-09-07 00:13:49.8968711550 | /home/jj/Dev/KrishiKendram/frontend/src/lib/utils.ts
+16 bytes | 2026-09-07 00:13:49.6719004240 | /home/jj/Dev/KrishiKendram/backend/.gitattributes
+1 bytes | 2026-10-03 18:15:23.8918754110 | /home/jj/Dev/KrishiKendram/.frontend.pid
+1 bytes | 2026-10-03 18:15:23.8878749160 | /home/jj/Dev/KrishiKendram/.backend.pid
+0 bytes | 2026-10-05 15:07:10.3007263410 | /home/jj/Dev/KrishiKendram/frontend-dev.log
+0 bytes | 2026-10-05 15:07:03.6155804290 | /home/jj/Dev/KrishiKendram/backend-dev.log
+0 bytes | 2026-10-03 21:32:21.2790469630 | /home/jj/Dev/KrishiKendram/backend/atplace/JjKk__20261003160221280.txt
+0 bytes | 2026-10-03 21:32:21.2790469630 | /home/jj/Dev/KrishiKendram/backend/atplace/JjKk03OCTbertwentytwentysix.txt
+0 bytes | 2026-10-03 21:24:41.2967099690 | /home/jj/Dev/KrishiKendram/backend/atplace/jimson@jimson.jimson.txt
+0 bytes | 2026-10-03 21:24:41.2967099690 | /home/jj/Dev/KrishiKendram/backend/atplace/JjKk__20261003155441297.txt
+0 bytes | 2026-10-03 21:09:02.7619539200 | /home/jj/Dev/KrishiKendram/backend/atplace/JjKk__20261003153902762.txt
+0 bytes | 2026-10-03 17:45:31.1507819590 | /home/jj/Dev/KrishiKendram/backend/atplace/JjKk__20261003121531156.txt
+0 bytes | 2026-09-18 21:00:50.2089936100 | /home/jj/Dev/KrishiKendram/backend/backend@0.0.1
+0 bytes | 2026-09-07 00:13:49.7279080250 | /home/jj/Dev/KrishiKendram/backend/reports/.gitkeep
+0 bytes | 2026-09-07 00:13:49.6781139680 | /home/jj/Dev/KrishiKendram/backend/nest
+0 bytes | 2026-09-07 00:13:49.6638993390 | /home/jj/Dev/KrishiKendram/README.md
+=== LARGE >50MB ===
+=== BACKUP/ARCHIVE NAMES ===
+78417 bytes | 2026-09-07 18:35:21.204522802 +0530 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersPage.tsx.20260907_183955.bak
+78417 bytes | 2026-09-07 18:35:21.204522802 +0530 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersPage.tsx.20260907_183851.bak
+56586 bytes | 2026-10-06 12:49:29.474351635 +0530 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-repair/schema-before-20261004160000_god_mode_authority_tier.sql
+33091 bytes | 2026-09-07 22:28:55.856455613 +0530 | /home/jj/Dev/KrishiKendram/frontend/src/pages/admin/UsersPage.tsx.20260907_223325.bak
+32824 bytes | 2026-09-07 00:13:49.877564635 +0530 | /home/jj/Dev/KrishiKendram/frontend/src/App.tsx.backup
+3274 bytes | 2026-09-26 18:59:02.113012262 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926170000_resource_transfer_request_member_identity/migration.sql
+3109 bytes | 2026-09-26 12:26:00.562234382 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201041_resource_movement_foundation/migration.sql
+2984 bytes | 2026-09-07 00:13:49.723907482 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903065450_authorization_permission_persistence/migration.sql
+2508 bytes | 2026-09-26 12:26:00.566235046 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926063500_relationship_evidence_foundation/migration.sql
+2501 bytes | 2026-10-04 23:55:00.746599499 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004200000_god_configuration_registry/migration.sql
+2448 bytes | 2026-09-26 12:26:00.562234382 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925082619_resource_relationship_persistence/migration.sql
+2142 bytes | 2026-09-26 12:26:00.566235046 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201732_resource_lineage_foundation/migration.sql
+1981 bytes | 2026-09-07 00:13:49.713421759 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260723140416_init/migration.sql
+1277 bytes | 2026-10-02 15:38:09.853299518 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261002100809_add_scale_indexes/migration.sql
+1180 bytes | 2026-09-29 07:29:56.342477843 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929015956_add_marketplace_listing/migration.sql
+1155 bytes | 2026-09-07 00:13:49.713421759 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260803102300_crop_module/migration.sql
+1092 bytes | 2026-09-07 00:54:28.957450375 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260906115421_add_user_history/migration.sql
+1057 bytes | 2026-09-07 00:13:49.713421759 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260731172054_flexible_farm_model/migration.sql
+994 bytes | 2026-09-07 00:54:28.953449649 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260905092313_user_activity_audit_foundation/migration.sql
+986 bytes | 2026-09-29 07:07:28.959692191 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929013728_add_livestock/migration.sql
+781 bytes | 2026-10-05 06:42:14.329348971 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261005010000_god_configuration_snapshots/migration.sql
+608 bytes | 2026-09-07 00:13:49.723907482 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903045612_farm_entity_required/migration.sql
+566 bytes | 2026-09-07 00:13:49.713421759 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260730195959_add_user_soft_delete/migration.sql
+452 bytes | 2026-09-07 00:13:49.719906939 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902175113_farm_entity_bridge/migration.sql
+421 bytes | 2026-09-07 00:13:49.719906939 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902173340_universal_entity_foundation/migration.sql
+378 bytes | 2026-10-01 10:16:46.539613468 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261001100000_enforce_single_active_owner/migration.sql
+265 bytes | 2026-09-26 19:01:32.065983232 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926171000_backfill_member_ids/migration.sql
+168 bytes | 2026-10-04 16:37:51.223345096 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004110000_god_mode_authority_tier/migration.sql
+87 bytes | 2026-10-05 07:28:28.480387323 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003113000_core_staff_roles/migration.sql
+87 bytes | 2026-10-05 07:28:28.480255605 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003100000_user_progressive_access/migration.sql
+74 bytes | 2026-09-28 22:59:39.219439467 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260928172939_add_farm_archive/migration.sql
+58 bytes | 2026-09-07 00:13:49.727908025 +0530 | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260904084731_add_unknown_crop_season/migration.sql
+=== GIT ===
+## main...origin/main [ahead 30]
+?? .cto-backup/
+?? docs/KK-ENVIRONMENT-FILE-MAP.txt
+71c14e6 (HEAD -> main) Finalize backend platform and God Mode credential checkpoint
+c6e94a1 Expand God Mode field policy and database credential controls
+cb56dad Fix infrastructure connections API route
+77b6d04 Add
+fa00367 Add governed module lifecycle control
+e712a27 Expose God Mode module and resource registry
+3e7b0e4 Add God Mode authority governance foundation
+d2fe6d6 Expose governed validation policy endpoints
+60a3476 Add God Mode validation policy center
+afe2778 Add governed validation policy controls
+2af424c Complete God Mode snapshot and recovery foundation
+4328767 Add reason metadata to God Mode changes
+=== NODE ===
+/usr/bin/node
+v22.22.1
+/usr/bin/npm
+9.2.0
+NVM_DIR=not-set
+/home/jj/.nvm/versions/node
+/home/jj/.nvm/versions/node/v24.18.0
+/home/jj/.nvm/versions/node/v24.18.0/bin
+/home/jj/.nvm/versions/node/v24.18.0/include
+/home/jj/.nvm/versions/node/v24.18.0/lib
+/home/jj/.nvm/versions/node/v24.18.0/share
+=== PACKAGE FILES ===
+/home/jj/Dev/KrishiKendram/backend/node_modules/accepts/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/acorn-import-phases/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/acorn-jsx/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/acorn-walk/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/acorn/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ajv-formats/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ajv-keywords/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ajv/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ansi-colors/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ansi-escapes/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ansi-regex/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ansi-styles/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ansis/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/anymatch/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/append-field/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/arg/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/argparse/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/array-timsort/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/asap/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/asynckit/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/babel-jest/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/babel-plugin-istanbul/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/babel-plugin-jest-hoist/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/babel-preset-current-node-syntax/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/babel-preset-jest/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/balanced-match/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/base64-js/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/baseline-browser-mapping/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/bcrypt/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/bl/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/body-parser/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/brace-expansion/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/browserslist/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/bs-logger/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/bser/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/buffer-equal-constant-time/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/buffer-from/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/buffer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/busboy/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/bytes/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/c12/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/call-bind-apply-helpers/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/call-bound/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/callsites/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/camelcase/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/caniuse-lite/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/chalk/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/char-regex/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/chardet/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/chokidar/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/chrome-trace-event/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ci-info/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/citty/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cjs-module-lexer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/class-transformer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/class-validator/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cli-cursor/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cli-spinners/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cli-table3/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cli-width/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cliui/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/clone/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/co/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/collect-v8-coverage/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/color-convert/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/color-name/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/combined-stream/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/combined-stream/yarn.lock
+/home/jj/Dev/KrishiKendram/backend/node_modules/commander/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/comment-json/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/component-emitter/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/concat-map/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/confbox/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/consola/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/content-disposition/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/content-type/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/convert-source-map/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cookie-signature/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cookie/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cookiejar/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cors/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cosmiconfig/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/create-require/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/cross-spawn/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/debug/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/dedent/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/deep-is/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/deepmerge-ts/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/deepmerge/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/defaults/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/defu/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/delayed-stream/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/depd/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/destr/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/detect-newline/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/dezalgo/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/diff/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/dotenv-expand/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/dotenv/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/dunder-proto/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/eastasianwidth/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ecdsa-sig-formatter/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ee-first/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/effect/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/electron-to-chromium/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/emittery/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/emoji-regex/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/empathic/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/encodeurl/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/enhanced-resolve/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/error-ex/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/es-define-property/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/es-errors/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/es-module-lexer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/es-object-atoms/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/es-set-tostringtag/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/esbuild/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/escalade/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/escape-html/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/escape-string-regexp/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/eslint-config-prettier/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/eslint-plugin-prettier/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/eslint-scope/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/eslint-visitor-keys/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/eslint/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/espree/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/esprima/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/esquery/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/esrecurse/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/estraverse/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/esutils/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/etag/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/events/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/execa/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/exit-x/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/expect/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/express/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/exsolve/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fast-check/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fast-deep-equal/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fast-diff/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fast-json-stable-stringify/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fast-levenshtein/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fast-safe-stringify/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fast-uri/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fb-watchman/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fdir/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/file-entry-cache/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/file-type/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/finalhandler/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/find-up/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/flat-cache/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/flatted/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/foreground-child/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fork-ts-checker-webpack-plugin/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/form-data/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/formidable/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/forwarded/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fresh/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fs-extra/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fs-monkey/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/fs.realpath/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/function-bind/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/gensync/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/get-caller-file/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/get-intrinsic/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/get-package-type/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/get-proto/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/get-stream/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/giget/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/glob-parent/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/glob-to-regexp/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/glob/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/globals/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/gopd/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/graceful-fs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/handlebars/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/has-flag/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/has-symbols/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/has-tostringtag/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/hasown/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/helmet/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/html-escaper/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/http-errors/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/human-signals/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/iconv-lite/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ieee754/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ignore/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/import-fresh/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/import-local/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/imurmurhash/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/inflight/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/inherits/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ipaddr.js/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-arrayish/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-extglob/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-fullwidth-code-point/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-generator-fn/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-glob/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-interactive/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-promise/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-stream/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/is-unicode-supported/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/isexe/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/istanbul-lib-coverage/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/istanbul-lib-instrument/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/istanbul-lib-report/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/istanbul-lib-source-maps/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/istanbul-reports/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/iterare/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jackspeak/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-changed-files/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-circus/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-cli/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-config/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-diff/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-docblock/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-each/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-environment-node/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-haste-map/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-leak-detector/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-matcher-utils/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-message-util/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-mock/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-pnp-resolver/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-regex-util/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-resolve-dependencies/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-resolve/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-runner/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-runtime/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-snapshot/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-util/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-validate/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-watcher/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest-worker/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jest/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jiti/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/joi/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/js-tokens/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/js-yaml/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jsesc/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/json-buffer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/json-parse-even-better-errors/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/json-schema-traverse/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/json-stable-stringify-without-jsonify/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/json5/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jsonc-parser/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jsonfile/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jsonwebtoken/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jwa/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/jws/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/keyv/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/leven/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/levn/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/libphonenumber-js/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lines-and-columns/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/load-esm/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/loader-runner/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/locate-path/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.includes/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.isboolean/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.isinteger/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.isnumber/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.isplainobject/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.isstring/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.memoize/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.merge/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash.once/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lodash/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/log-symbols/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/lru-cache/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/magic-string/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/make-dir/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/make-error/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/makeerror/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/math-intrinsics/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/media-typer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/memfs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/merge-descriptors/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/merge-stream/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/methods/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/mime-db/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/mime-types/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/mime/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/mimic-fn/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/minimatch/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/minimist/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/minimizer-webpack-plugin/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/minipass/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ms/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/multer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/mute-stream/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/napi-postinstall/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/natural-compare/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/negotiator/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/neo-async/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/node-abort-controller/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/node-addon-api/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/node-emoji/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/node-fetch-native/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/node-gyp-build/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/node-int64/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/node-releases/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/normalize-path/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/npm-run-path/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/nypm/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/object-assign/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/object-inspect/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ohash/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/on-finished/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/once/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/onetime/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/optionator/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ora/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/p-limit/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/p-locate/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/p-try/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/package-json-from-dist/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/parent-module/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/parse-json/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/parseurl/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/passport-jwt/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/passport-local/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/passport-strategy/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/passport/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/path-exists/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/path-is-absolute/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/path-key/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/path-scurry/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/path-to-regexp/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/path-type/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pathe/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pause/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/perfect-debounce/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/picocolors/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/picomatch/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pirates/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pkg-dir/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pkg-types/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pluralize/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/prelude-ls/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/prettier-linter-helpers/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/prettier/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pretty-format/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/prisma/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/proxy-addr/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/punycode/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/pure-rand/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/qs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/range-parser/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/raw-body/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/rc9/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/react-is-18/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/react-is-19/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/readable-stream/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/readdirp/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/reflect-metadata/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/require-directory/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/require-from-string/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/resolve-cwd/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/resolve-from/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/restore-cursor/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/router/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/rxjs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/safe-buffer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/safer-buffer/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/schema-utils/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/semver/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/send/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/serve-static/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/setprototypeof/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/shebang-command/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/shebang-regex/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/side-channel-list/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/side-channel-map/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/side-channel-weakmap/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/side-channel/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/signal-exit/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/slash/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/source-map-support/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/source-map/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/sprintf-js/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/stack-utils/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/statuses/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/streamsearch/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/string-length/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/string-width-cjs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/string-width/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/string_decoder/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/strip-ansi-cjs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/strip-ansi/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/strip-bom/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/strip-final-newline/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/strip-json-comments/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/strtok3/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/superagent/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/supertest/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/supports-color/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/symbol-observable/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/synckit/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tapable/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/terser-webpack-plugin/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/terser/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/test-exclude/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tinyexec/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tinyglobby/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tmpl/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/toidentifier/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/token-types/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ts-api-utils/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ts-jest/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ts-loader/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/ts-node/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tsconfig-paths-webpack-plugin/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tsconfig-paths/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tslib/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/tsx/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/type-check/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/type-detect/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/type-fest/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/type-is/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/typescript-eslint/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/typescript/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/uglify-js/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/uid/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/uint8array-extras/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/undici-types/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/universalify/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/unpipe/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/unrs-resolver/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/update-browserslist-db/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/uri-js/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/uri-js/yarn.lock
+/home/jj/Dev/KrishiKendram/backend/node_modules/util-deprecate/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/utils-merge/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/v8-compile-cache-lib/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/v8-to-istanbul/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/validator/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/vary/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/walker/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/watchpack/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/wcwidth/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/webpack-node-externals/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/webpack-sources/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/webpack/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/which/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/word-wrap/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/wordwrap/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/wrap-ansi-cjs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/wrap-ansi/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/wrappy/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/write-file-atomic/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/y18n/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/yallist/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/yargs-parser/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/yargs/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/yn/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/yocto-queue/package.json
+/home/jj/Dev/KrishiKendram/backend/node_modules/yoctocolors-cjs/package.json
+/home/jj/Dev/KrishiKendram/backend/package-lock.json
+/home/jj/Dev/KrishiKendram/backend/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/accepts/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/acorn-jsx/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/acorn/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ajv-formats/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ajv/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ansi-colors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ansi-regex/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/argparse/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ast-types/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/atomically/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/balanced-match/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/baseline-browser-mapping/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/body-parser/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/brace-expansion/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/braces/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/browserslist/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/bundle-name/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/bytes/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/call-bind-apply-helpers/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/call-bound/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/callsites/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/caniuse-lite/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/chalk/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/class-variance-authority/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cli-cursor/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cli-spinners/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/clsx/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cn/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/code-block-writer/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/commander/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/conf/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/content-disposition/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/content-type/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/convert-source-map/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cookie-signature/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cookie/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cosmiconfig/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cross-spawn/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/cssesc/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/csstype/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/debounce-fn/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/debug/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/dedent/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/deep-is/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/deepmerge/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/default-browser-id/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/default-browser/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/define-lazy-prop/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/depd/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/detect-libc/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/diff/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/dot-prop/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/dotenv/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/dunder-proto/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ee-first/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/electron-to-chromium/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/emoji-regex/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/encodeurl/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/enhanced-resolve/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/enquirer/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/env-paths/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/error-ex/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/es-define-property/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/es-errors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/es-object-atoms/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/escalade/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/escape-html/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/escape-string-regexp/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/eslint-plugin-react-hooks/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/eslint-plugin-react-refresh/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/eslint-scope/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/eslint-visitor-keys/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/eslint/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/espree/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/esprima/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/esquery/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/esrecurse/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/estraverse/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/esutils/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/etag/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/eventsource-parser/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/eventsource/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/execa/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/express-rate-limit/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/express/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fast-deep-equal/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fast-glob/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fast-json-stable-stringify/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fast-levenshtein/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fast-uri/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fastq/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fdir/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/figures/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/file-entry-cache/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fill-range/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/finalhandler/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/find-up/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/flat-cache/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/flatted/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/forwarded/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/framer-motion/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fresh/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fs-extra/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/function-bind/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/fuzzysort/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/gensync/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/get-east-asian-width/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/get-intrinsic/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/get-own-enumerable-keys/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/get-proto/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/get-stream/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/glob-parent/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/globals/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/gopd/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/graceful-fs/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/has-symbols/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/hasown/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/hermes-estree/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/hermes-parser/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/hono/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/http-errors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/human-signals/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/iconv-lite/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ignore/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/import-fresh/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/imurmurhash/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/inherits/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ip-address/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ipaddr.js/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-arrayish/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-docker/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-extglob/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-glob/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-in-ssh/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-inside-container/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-interactive/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-number/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-obj/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-plain-obj/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-promise/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-regexp/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-stream/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-unicode-supported/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/is-wsl/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/isexe/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/jiti/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/jose/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/js-tokens/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/js-yaml/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/jsesc/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/json-buffer/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/json-parse-even-better-errors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/json-schema-traverse/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/json-schema-typed/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/json-stable-stringify-without-jsonify/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/json5/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/jsonfile/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/keyv/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/kleur/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/levn/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/lightningcss-linux-x64-gnu/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/lightningcss/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/lines-and-columns/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/locate-path/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/log-symbols/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/lru-cache/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/lucide-react/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/magic-string/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/math-intrinsics/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/media-typer/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/merge-descriptors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/merge-stream/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/merge2/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/micromatch/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/mime-db/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/mime-types/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/mimic-fn/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/mimic-function/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/minimatch/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/minimist/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/motion-dom/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/motion-utils/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/motion/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ms/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/nanoid/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/natural-compare/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/negotiator/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/node-releases/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/npm-run-path/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/object-assign/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/object-inspect/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/object-treeify/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/on-finished/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/once/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/onetime/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/open/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/optionator/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ora/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/p-limit/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/p-locate/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/p-try/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/parent-module/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/parse-json/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/parse-ms/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/parseurl/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/path-browserify/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/path-exists/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/path-key/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/path-to-regexp/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/picocolors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/picomatch/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/pkce-challenge/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/pkg-up/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/postcss-selector-parser/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/postcss/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/powershell-utils/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/prelude-ls/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/pretty-ms/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/prompts/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/proxy-addr/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/punycode/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/qs/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/queue-microtask/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/range-parser/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/raw-body/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/react-dom/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/react-hook-form/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/react-router-dom/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/react-router/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/react/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/recast/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/require-from-string/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/reselect/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/resolve-from/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/restore-cursor/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/reusify/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/rolldown/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/router/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/run-applescript/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/run-parallel/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/safer-buffer/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/scheduler/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/semver/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/send/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/serve-static/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/set-cookie-parser/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/setprototypeof/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/shadcn/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/shebang-command/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/shebang-regex/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/side-channel-list/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/side-channel-map/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/side-channel-weakmap/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/side-channel/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/signal-exit/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/sisteransi/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/smart-buffer/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/socks/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/source-map-js/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/source-map/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/statuses/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/stdin-discarder/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/string-width/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/stringify-object/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/strip-ansi/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/strip-bom/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/strip-final-newline/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/systeminformation/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/tailwindcss/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/tapable/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/tiny-invariant/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/tinyglobby/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/to-regex-range/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/toidentifier/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ts-api-utils/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/ts-morph/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/tsconfig-paths/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/tslib/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/tw-animate-css/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/type-check/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/type-is/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/typescript-eslint/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/typescript/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/undici-types/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/undici/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/unicorn-magic/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/universalify/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/unpipe/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/update-browserslist-db/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/uri-js/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/uri-js/yarn.lock
+/home/jj/Dev/KrishiKendram/frontend/node_modules/use-sync-external-store/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/util-deprecate/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/validate-npm-package-name/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/vary/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/vite/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/which/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/word-wrap/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/wrappy/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/wsl-utils/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/yallist/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/yocto-queue/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/yocto-spinner/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/yoctocolors/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/zod-to-json-schema/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/zod-validation-error/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/zod/package.json
+/home/jj/Dev/KrishiKendram/frontend/node_modules/zustand/package.json
+/home/jj/Dev/KrishiKendram/frontend/package-lock.json
+/home/jj/Dev/KrishiKendram/frontend/package.json
+=== DOCKER ===
+Client=29.8.1 Server=29.8.1
+default
+krishikendram-postgres | postgres:17 | Up 7 hours | 0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+DRIVER    VOLUME NAME
+local     0dc072014bab92077d7e54599cf31a768497a5dbaa65bbeed2d09901ed8ee402
+local     2acdb58793abc05fcb795b77a264c05a8cc668d7a682a44b2396711758160504
+local     8c136d3940c607ccdb89d23e7d8c22b4774b0c33e10ed2765f1f537b6b7e541b
+local     9d68b770a5cc2345feb44c8765104d42176d0363ee3c2985033cf2fabc38502f
+local     944c5b727095856f2e5eee69ba5c6289774f263ed9889169ffd8321b8e53bc6e
+local     08270c111489a1efe19caa1075c3ed741a557953775cc81a99aa1208c1db089f
+local     krishikendram-development_postgres_data
+local     krishikendram_krishikendram_postgres_data
+local     krishikendram_postgres_data
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          1         1         645.2MB   0B (0%)
+Containers      1         1         20.48kB   0B (0%)
+Local Volumes   9         1         254.8MB   187.2MB (73%)
+Build Cache     0         0         0B        0B
+=== COMPOSE/DOCKERFILES ===
+/home/jj/Dev/KrishiKendram/backend/Dockerfile
+/home/jj/Dev/KrishiKendram/backend/Dockerfile.bak.20260930-studio
+/home/jj/Dev/KrishiKendram/backend/node_modules/bcrypt/Dockerfile
+/home/jj/Dev/KrishiKendram/backend/node_modules/bcrypt/Dockerfile-alpine
+/home/jj/Dev/KrishiKendram/docker-compose.prod.yml
+/home/jj/Dev/KrishiKendram/docker-compose.yml
+/home/jj/Dev/KrishiKendram/frontend/Dockerfile
+=== PRISMA/SQL ===
+56586 bytes | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-repair/schema-before-20261004160000_god_mode_authority_tier.sql
+26884 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/schema.prisma
+3274 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926170000_resource_transfer_request_member_identity/migration.sql
+3109 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201041_resource_movement_foundation/migration.sql
+2984 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903065450_authorization_permission_persistence/migration.sql
+2508 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926063500_relationship_evidence_foundation/migration.sql
+2501 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004200000_god_configuration_registry/migration.sql
+2448 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925082619_resource_relationship_persistence/migration.sql
+2142 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260925201732_resource_lineage_foundation/migration.sql
+1981 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260723140416_init/migration.sql
+1277 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261002100809_add_scale_indexes/migration.sql
+1180 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929015956_add_marketplace_listing/migration.sql
+1155 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260803102300_crop_module/migration.sql
+1092 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260906115421_add_user_history/migration.sql
+1057 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260731172054_flexible_farm_model/migration.sql
+994 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260905092313_user_activity_audit_foundation/migration.sql
+986 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260929013728_add_livestock/migration.sql
+781 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261005010000_god_configuration_snapshots/migration.sql
+608 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260903045612_farm_entity_required/migration.sql
+566 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260730195959_add_user_soft_delete/migration.sql
+452 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902175113_farm_entity_bridge/migration.sql
+421 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260902173340_universal_entity_foundation/migration.sql
+378 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261001100000_enforce_single_active_owner/migration.sql
+265 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260926171000_backfill_member_ids/migration.sql
+168 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261004110000_god_mode_authority_tier/migration.sql
+87 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003113000_core_staff_roles/migration.sql
+87 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20261003100000_user_progressive_access/migration.sql
+74 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260928172939_add_farm_archive/migration.sql
+58 bytes | /home/jj/Dev/KrishiKendram/backend/prisma/migrations/20260904084731_add_unknown_crop_season/migration.sql
+=== CONFIG NAMES ===
+424467 bytes | /home/jj/Dev/KrishiKendram/backend/package-lock.json
+248984 bytes | /home/jj/Dev/KrishiKendram/frontend/package-lock.json
+4518 bytes | /home/jj/Dev/KrishiKendram/backend/config/system-truth.json
+3612 bytes | /home/jj/Dev/KrishiKendram/backend/package.json
+2138 bytes | /home/jj/Dev/KrishiKendram/docker-compose.prod.yml
+1144 bytes | /home/jj/Dev/KrishiKendram/frontend/package.json
+1045 bytes | /home/jj/Dev/KrishiKendram/backend/dist/config/resource-paths.json
+957 bytes | /home/jj/Dev/KrishiKendram/backend/config/resource-paths.json
+734 bytes | /home/jj/Dev/KrishiKendram/backend/tsconfig.json
+621 bytes | /home/jj/Dev/KrishiKendram/frontend/tsconfig.app.json
+558 bytes | /home/jj/Dev/KrishiKendram/frontend/tsconfig.node.json
+515 bytes | /home/jj/Dev/KrishiKendram/frontend/components.json
+466 bytes | /home/jj/Dev/KrishiKendram/backend/.env.example
+422 bytes | /home/jj/Dev/KrishiKendram/.env
+421 bytes | /home/jj/Dev/KrishiKendram/docker-compose.yml
+395 bytes | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/credential-artifact.json
+307 bytes | /home/jj/Dev/KrishiKendram/backend/config/credential-artifact.json
+225 bytes | /home/jj/Dev/KrishiKendram/.env.backup.20260929-181014
+192 bytes | /home/jj/Dev/KrishiKendram/backend/test/jest-e2e.json
+179 bytes | /home/jj/Dev/KrishiKendram/backend/nest-cli.json
+119 bytes | /home/jj/Dev/KrishiKendram/frontend/tsconfig.json
+101 bytes | /home/jj/Dev/KrishiKendram/backend/tsconfig.build.json
+47 bytes | /home/jj/Dev/KrishiKendram/frontend/.env.example
+=== USER TOOL LOCATIONS ===
+28K	/home/jj/.config
+67M	/home/jj/.cache
+203M	/home/jj/.local
+4.7G	/home/jj/.npm
+556K	/home/jj/.docker
+236M	/home/jj/.nvm
+20K	/home/jj/.ssh
+1.7G	/home/jj/.codex
+=== DOCS ===
+128131 bytes | 2026-10-06 18:26:40.7641679270 | /home/jj/Dev/KrishiKendram/docs/KK-ENVIRONMENT-FILE-MAP.txt
+132573 bytes | 2026-10-05 06:46:24.4077808230 | /home/jj/Dev/KrishiKendram/docs/CTO-MASTER-BLUEPRINT.md
+190 bytes | 2026-09-07 00:13:49.8639264840 | /home/jj/Dev/KrishiKendram/docs/environment-checkpoint-2026-07-10.md
+2780 bytes | 2026-09-29 15:55:05.5238582280 | /home/jj/Dev/KrishiKendram/docs/DEPLOYMENT.md
+53073 bytes | 2026-10-02 08:12:51.9867569630 | /home/jj/Dev/KrishiKendram/docs/CHANGELOG.md
+78821 bytes | 2026-10-05 06:46:28.5485029570 | /home/jj/Dev/KrishiKendram/docs/CTO-EXECUTION-BIBLE.md
+8418 bytes | 2026-10-04 23:33:13.4809937870 | /home/jj/Dev/KrishiKendram/docs/ARCHITECTURE-DECISIONS.md
+9001 bytes | 2026-10-04 23:33:13.4249862380 | /home/jj/Dev/KrishiKendram/docs/CTO-ENHANCEMENT-REGISTER.md
+9612 bytes | 2026-10-04 23:32:50.5518039390 | /home/jj/Dev/KrishiKendram/docs/GOD-MODE-ARCHITECTURE.md
+=== GOD MODE STRUCTURE (CONTENT OMITTED) ===
+d | mode=755 | size=4096 | /home/jj/Dev/KrishiKendram/backend/config
+d | mode=755 | size=4096 | /home/jj/Dev/KrishiKendram/backend/config/god-mode
+d | mode=755 | size=4096 | /home/jj/Dev/KrishiKendram/backend/config/super-admin-runtime
+f | mode=600 | size=38 | /home/jj/Dev/KrishiKendram/backend/config/god-mode/rootpathss
+f | mode=600 | size=38 | /home/jj/Dev/KrishiKendram/backend/config/god-mode/rootpathss.kkt
+f | mode=644 | size=1154 | /home/jj/Dev/KrishiKendram/backend/config/super-admin-runtime/JjKk__OCTber____.svg
+f | mode=644 | size=307 | /home/jj/Dev/KrishiKendram/backend/config/credential-artifact.json
+f | mode=644 | size=4518 | /home/jj/Dev/KrishiKendram/backend/config/system-truth.json
+f | mode=644 | size=957 | /home/jj/Dev/KrishiKendram/backend/config/resource-paths.json
+=== CTO BACKUP STRUCTURE ===
+d | mode=755 | size=4096 | /home/jj/Dev/KrishiKendram/.cto-backup
+d | mode=755 | size=4096 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448
+d | mode=755 | size=4096 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-repair
+f | mode=644 | size=1841 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/bootstrap-pattern.ts
+f | mode=644 | size=2814 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/credential-artifact.service.ts
+f | mode=644 | size=395 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/credential-artifact.json
+f | mode=644 | size=4201 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/god-mode.service.ts
+f | mode=644 | size=56586 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-repair/schema-before-20261004160000_god_mode_authority_tier.sql
+f | mode=644 | size=659 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/credential-delivery.ts
+f | mode=644 | size=703 | /home/jj/Dev/KrishiKendram/.cto-backup/god-mode-credential-cleanup-20261006-1448/bootstrap-pattern.spec.ts
+=== PORTS ===
+LISTEN 0      511           0.0.0.0:4000      0.0.0.0:*    users:(("MainThread",pid=4376,fd=20))
+LISTEN 0      4096                *:5432            *:*
+LISTEN 0      511                 *:3000            *:*    users:(("MainThread",pid=5821,fd=29))
+=== /home/jj/Dev PROJECT DIRECTORIES ===
+/home/jj/Dev/2026-09-26
+/home/jj/Dev/2026-09-26/read-only-test-do-not-modify
+/home/jj/Dev/KrishiKendram
+/home/jj/Dev/KrishiKendram-Development
+/home/jj/Dev/KrishiKendram-Development/.git
+/home/jj/Dev/KrishiKendram-Development/backend
+/home/jj/Dev/KrishiKendram-Development/docs
+/home/jj/Dev/KrishiKendram-Development/frontend
+/home/jj/Dev/KrishiKendram-Integration
+/home/jj/Dev/KrishiKendram-Integration/.git
+/home/jj/Dev/KrishiKendram-Integration/backend
+/home/jj/Dev/KrishiKendram-Integration/docs
+/home/jj/Dev/KrishiKendram-Integration/frontend
+/home/jj/Dev/KrishiKendram/.cto-backup
+/home/jj/Dev/KrishiKendram/.git
+/home/jj/Dev/KrishiKendram/backend
+/home/jj/Dev/KrishiKendram/docs
+/home/jj/Dev/KrishiKendram/frontend
+/home/jj/Dev/KrishiKendram/scripts
+/home/jj/Dev/KrishiKendram_backup_20260907
+/home/jj/Dev/KrishiKendram_backup_20260907/.git
+/home/jj/Dev/KrishiKendram_backup_20260907/backend
+/home/jj/Dev/KrishiKendram_backup_20260907/docs
+/home/jj/Dev/KrishiKendram_backup_20260907/frontend
+=== E DRIVE ===
+Filesystem     Type  Size  Used Avail Use% Mounted on
+E:\            9p    235G  131G  105G  56% /mnt/e
+=== END ===

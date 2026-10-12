@@ -1,0 +1,24 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-RUNTIMES-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "runtimes": [
+    {
+      "runtimeId": "KK-AI-RUNTIME-BACKEND-NESTJS",
+      "kind": "APPLICATION_SERVICE",
+      "implementation": "backend/src/ai/ai.module.ts",
+      "providerRegistration": "ASR_PROVIDER",
+      "runtimeStatus": "REGISTERED",
+      "healthStatus": "NOT_YET_INDEPENDENTLY_PROBED"
+    },
+    {
+      "runtimeId": "KK-AI-RUNTIME-TEXT-GENERATION",
+      "kind": "MODEL_RUNTIME",
+      "implementation": "backend/src/ai/providers/unavailable-text-generation.provider.ts",
+      "providerRegistration": "TEXT_GENERATION_PROVIDER",
+      "runtimeStatus": "DISABLED",
+      "healthStatus": "NOT_INSTALLED"
+    }
+  ]
+}

@@ -415,6 +415,35 @@ export const api = {
       },
     ),
 
+  createAiConversation: (token: string, primaryLanguage?: string) =>
+    request<{ id: string }>('/ai/conversations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(
+        primaryLanguage ? { primaryLanguage } : {},
+      ),
+    }),
+
+  appendAiConversationMessage: (
+    token: string,
+    conversationId: string,
+    content: string,
+    source: 'TEXT' | 'VOICE',
+    language?: string,
+  ) =>
+    request<unknown>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/messages`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          content,
+          source,
+          ...(language ? { language } : {}),
+        }),
+      },
+    ),
+
   refresh: (refreshToken: string) =>
     request<{
       accessToken: string

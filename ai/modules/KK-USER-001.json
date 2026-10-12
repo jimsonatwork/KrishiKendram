@@ -1,0 +1,59 @@
+{
+  "moduleId": "KK-USER-001",
+  "registryId": "KK-AI-REGISTRY-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "contract": {
+    "moduleName": "Canonical User Foundation",
+    "allowedCapabilities": [
+      "CONVERSATION",
+      "EXTRACTION",
+      "SPEECH_TO_TEXT",
+      "TEXT_TO_SPEECH",
+      "FACT_MATCHING",
+      "CONSISTENCY",
+      "CLASSIFICATION"
+    ],
+    "contextReferences": [
+      "userId",
+      "screenId",
+      "entityType",
+      "entityId",
+      "sessionId"
+    ],
+    "allowedFields": [
+      "identity",
+      "profile",
+      "names",
+      "contacts",
+      "locations",
+      "family",
+      "relationships",
+      "occupations",
+      "personas",
+      "preferences",
+      "facts",
+      "flags",
+      "onboarding",
+      "verification"
+    ],
+    "restrictedFields": [
+      "passwordHash",
+      "credentials",
+      "secrets",
+      "tokens"
+    ],
+    "candidateFactTargets": [
+      "UserProfile",
+      "UserFact",
+      "UserPersona",
+      "UserLocation",
+      "UserOccupation",
+      "UserPreference",
+      "UserRelationship"
+    ],
+    "confirmationPolicy": "REQUIRED_FOR_CANONICAL_USER_FACTS",
+    "provenancePolicy": "REQUIRED",
+    "auditPolicy": "REQUIRED"
+  }
+}

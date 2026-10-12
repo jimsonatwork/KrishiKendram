@@ -1238,3 +1238,76 @@ Do not create parallel configuration sources or frontend-only authorization. Can
 ### 2026-10-05 Batch — Snapshot & Recovery Foundation
 
 God Mode Phase 3 now includes a real persisted recovery foundation rather than metadata-only snapshot policy. `GodConfigurationSnapshot` stores pre-change configuration values, version, actor, reason, source/status and timestamps. Protected list and rollback routes are available to the God identity. Rollback creates a new pre-rollback snapshot and advances configuration version, preserving an auditable lineage instead of rewriting history. Verification: Prisma migration status up to date; backend 42/42 suites and 387/387 tests pass; frontend production build passes.
+
+
+## 2026-10-11 — Canonical AI Control Plane & Central Configuration Layout
+
+**Status: IMPLEMENTATION ACTIVE — canonical registry and module contract split established; verification pending.**
+
+KrishiKendram must operate one AI control plane, not a collection of module-specific AI configuration systems. The canonical entrypoint is `ai/registry/ai-platform-registry.json` (registry ID `KK-AI-REGISTRY-001`). The application filesystem map `backend/config/resource-paths.json` registers the AI root, registry, module contracts, providers, runtimes, policies, evaluations and governance documentation. Paths are resolved through registered canonical references; new hardcoded per-page paths and duplicate registries are prohibited.
+
+The root registry owns shared capabilities, global context and safety rules, conversation/fact lifecycle, provider constraints, God Mode control areas and stable-ID links. Module-specific contracts stay in the centrally governed `ai/modules/` directory and are loaded by the root manifest. Provider/runtime inventories, policy indexes and evaluation indexes stay in their own centrally governed subdirectories and are linked from the same root entrypoint.
+
+Initial module contracts: `KK-USER-001`, `KK-FARM-001`, `KK-CROP-001`, `KK-LIVESTOCK-001`, `KK-MARKETPLACE-001`. Each contract declares module-owned allowed capabilities, context references, allowed/restricted fields, candidate fact targets, confirmation, provenance and audit policies. Shared policy must be declared once and reused, not copied into each module file.
+
+Backend `AiRegistryService` hydrates module contracts from the manifest and rejects missing linked files, wrong registry/module identities, non-canonical contracts, missing initial-module links, or unsafe policy changes. AI remains prohibited from direct canonical database writes. All AI-proposed writes must pass backend authorization, central validation, explicit user confirmation, provenance attribution and audit. Secret values must not be stored in the registry or source control; only secret references are permitted.
+
+Execution sequence: (1) prove build/tests and registry contract loading, (2) expose read-only inventory and health in God Mode, (3) add versioned governed editing through existing God Configuration Registry and snapshot/audit/rollback, (4) implement provider discovery and installation/health checks, (5) implement consented evaluation and cost/scale controls, (6) connect voice-guided drafts to module forms with validate-preview-confirm-apply, and (7) add authenticated cross-device conversation sessions. Never declare a provider production-ready from a manifest entry alone.
+
+Related canonical documents: `docs/KK-AI-PLATFORM-REGISTRY.md`, `docs/KK-AI-CONVERSATION-AND-CONTEXT.md`, `docs/AI-VOICE-PLATFORM-AND-GOVERNANCE.md`, `docs/GOD-MODE-ARCHITECTURE.md`, `docs/CTO-MASTER-BLUEPRINT.md`, and the product master document `Absolutely KK PMD.docx`.
+
+
+### 2026-10-11 implementation checkpoint — read-only God Mode AI inventory
+
+- Added the authenticated God Mode route `GET /api/v1/admin/god-mode/ai-control-plane`, guarded by JWT and the immutable God identity assertion.
+- The route reuses `AiRegistryService` and returns canonical registry metadata, hydrated module contracts, linked provider/runtime/policy/evaluation inventory and safety posture without secret values.
+- God Mode now has a read-only AI Control Plane panel for module contracts, provider/runtime entries, central links and safety requirements.
+- Registered eight AI governance domains in the existing God Configuration Registry: control plane, module contracts, providers, runtimes, policies, evaluations, cost/scale, and voice/conversation. These remain metadata-only until file-backed governed updates are implemented.
+- Verification before the final registry-domain seed: backend build PASS; focused AI registry tests 12/12 PASS; frontend production build PASS after fixing VoiceAgent transcript speaker literal types; API health HTTP 200 and UI HTTP 200. The backend needs one final rebuild/restart to seed the newly added AI domains and verify the live endpoint.
+
+
+### Final verification — 2026-10-11
+
+- Backend Nest build PASS after AI God Configuration domain registration.
+- Focused AI registry suite PASS: 1 suite / 12 tests.
+- Frontend production build PASS (TypeScript and Vite).
+- Backend service restarted on the built application; health endpoint HTTP 200; frontend HTTP 200.
+- Runtime route map includes `/api/admin/god-mode/ai-control-plane`; unauthenticated request to the versioned endpoint returns HTTP 401, confirming the guard is active.
+- Direct Prisma verification found all 8 AI governance domains in the existing God Configuration table. They are intentionally non-editable metadata until the file-backed mutation/snapshot/rollback workflow is implemented.
+
+
+## CTO execution checkpoint — centralized AI platform — 2026-10-11
+
+### Verified
+- Focused AI registry tests: 19/19 passed.
+- Backend NestJS production build: exit code 0.
+- Frontend TypeScript/Vite production build: exit code 0; 2,325 modules transformed.
+- The focused suite covers canonical registry loading, God Mode inventory linkage, allowlisted revision tokens, stale-revision protection, invalid config rejection, snapshot save/rollback, path traversal and symlink defenses, module/capability authorization, context-field policy, and blocking canonical database writes through the AI registry layer.
+
+### Scope and caveat
+These results establish the focused test suite and compilation only. They do not prove that every route, browser workflow, live AI provider, credential, or production runtime is healthy. Do not report end-to-end health without separate runtime/API checks.
+
+### Next execution order
+1. Verify actual AI registry/controller route registration and access guards.
+2. Exercise read-only inventory/diagnostic endpoints and confirm the God Mode UI consumes the canonical backend response rather than duplicating registry metadata.
+3. Verify revision-aware save and rollback through the authenticated API, including stale revision and unauthorized-role rejection.
+4. Route shared provider/runtime/policy selection through the canonical registry and central AI service; keep module contracts centrally stored and linked by registry IDs.
+5. Run focused tests, backend/frontend builds, then relevant integration tests and a smoke test.
+
+### Guardrails
+- Canonical project root remains `/home/jj/Dev/KrishiKendram`.
+- Preserve uncommitted work; do not reset or overwrite user changes.
+- Do not delete Docker volumes, reset PostgreSQL, or expose secrets in logs/UI.
+- Authorization must happen before AI context assembly. Respect module field allowlists and attribution/audit metadata. AI must not write canonical database records directly; mutations go through validated, authorized application services.
+
+## Verified AI Governance Checkpoint — 2026-10-11
+
+**Status:** Code-level verification passed.
+
+- Conversation service requires central-registry-defined provenance for AI assistant messages and proposed fact candidates.
+- Provenance timestamps are validated; message model metadata is checked for consistency.
+- Ordinary user messages do not need AI provenance.
+- Proposed facts cannot bypass the confirmation gate by being created as confirmed/applied or by disabling confirmation.
+- Verification evidence: 4 AI test suites passed (42 tests); NestJS backend build passed; `git diff --check` passed.
+- Remaining validation: full backend regression suite and runtime/API integration checks.
+- Do not mark production deployment complete based on unit tests or a successful build alone.

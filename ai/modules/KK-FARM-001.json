@@ -1,0 +1,54 @@
+{
+  "moduleId": "KK-FARM-001",
+  "registryId": "KK-AI-REGISTRY-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "contract": {
+    "moduleName": "Farm Foundation",
+    "allowedCapabilities": [
+      "CONVERSATION",
+      "EXTRACTION",
+      "VISION",
+      "DOCUMENT",
+      "SPEECH_TO_TEXT",
+      "FACT_MATCHING",
+      "CONSISTENCY",
+      "AGRI_ASSISTANT"
+    ],
+    "contextReferences": [
+      "userId",
+      "moduleId",
+      "screenId",
+      "entityType",
+      "entityId",
+      "farmId",
+      "sessionId"
+    ],
+    "allowedFields": [
+      "farm",
+      "land",
+      "ownership",
+      "tenure",
+      "location",
+      "crops",
+      "livestock",
+      "assets",
+      "activities",
+      "documents"
+    ],
+    "restrictedFields": [
+      "financialCredentials",
+      "secrets",
+      "tokens"
+    ],
+    "candidateFactTargets": [
+      "Farm",
+      "Land",
+      "FarmActivity",
+      "FarmAsset"
+    ],
+    "confirmationPolicy": "REQUIRED_FOR_CANONICAL_FARM_FACTS",
+    "provenancePolicy": "REQUIRED",
+    "auditPolicy": "REQUIRED"
+  }
+}

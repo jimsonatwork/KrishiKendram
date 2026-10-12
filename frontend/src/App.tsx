@@ -63,6 +63,7 @@ import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { SensitiveInput } from '@/components/security/SensitiveInput'
+import { VoiceAgent } from '@/components/ui/VoiceAgent'
 import { api } from '@/lib/api'
 import { platformRegistry } from '@/lib/platform/registry'
 import { APP_PATH, canRenderRoute, routeForPath } from '@/lib/platform/routes'
@@ -1255,6 +1256,7 @@ function PortalLayout({
             {content}
           </Suspense>
         </main>
+        <VoiceAgent role={user.role} />
       </div>
     </div>
   )

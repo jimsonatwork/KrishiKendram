@@ -1,0 +1,28 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-PROVIDERS-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "providers": [
+    {
+      "providerId": "KK-AI-ASR-INDIC-CONFORMER",
+      "capability": "SPEECH_TO_TEXT",
+      "implementation": "backend/src/ai/providers/indic-conformer.provider.ts",
+      "contract": "backend/src/ai/contracts/asr-provider.ts",
+      "status": "PLACEHOLDER_NOT_PRODUCTION_READY",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "secretValuesStoredHere": false
+    },
+    {
+      "providerId": "KK-AI-TEXT-GENERATION-LOCAL-UNAVAILABLE",
+      "capability": "CONVERSATION",
+      "implementation": "backend/src/ai/providers/unavailable-text-generation.provider.ts",
+      "contract": "backend/src/ai/contracts/text-generation-provider.ts",
+      "status": "DISABLED_RUNTIME_NOT_INSTALLED",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "secretValuesStoredHere": false
+    }
+  ]
+}

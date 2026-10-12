@@ -25,6 +25,14 @@ const DEFINITIONS = [
   ['diagnostics.routes', 'Routes & API Diagnostics', 'Routes', 'Route health and API diagnostics policy.', 'object', 'HIGH'],
   ['diagnostics.system', 'System Diagnostics', 'Diagnostics', 'System health and diagnostic controls.', 'object', 'HIGH'],
   ['dependencies.graph', 'Dependency Graph', 'Dependencies', 'Dependency impact analysis policy.', 'object', 'HIGH'],
+  ['ai.control-plane', 'AI Platform Control Plane', 'AI Control Plane', 'Canonical AI registry entrypoint and shared policy inventory.', 'object', 'CRITICAL'],
+  ['ai.module-contracts', 'AI Module Contracts', 'AI Module Contracts', 'Centrally stored module contracts linked from KK-AI-REGISTRY-001.', 'object', 'HIGH'],
+  ['ai.providers', 'AI Providers & Model Sources', 'AI Providers', 'Provider identity, source, capability, execution mode and readiness policy.', 'object', 'HIGH'],
+  ['ai.runtimes', 'AI Runtime & Install Paths', 'AI Runtimes', 'Runtime, installation path, dependency and health-probe policy.', 'object', 'HIGH'],
+  ['ai.policies', 'AI Data & Action Policies', 'AI Policies', 'Consent, data classification, action authorization, validation and approval policy.', 'object', 'CRITICAL'],
+  ['ai.evaluations', 'AI Evaluation & Quality', 'AI Evaluations', 'Versioned language, accuracy, safety and regression evaluation policy.', 'object', 'HIGH'],
+  ['ai.cost-and-scale', 'AI Cost & Scale', 'AI Cost and Scale', 'Budget, quota, concurrency, deployment scale and fallback policy.', 'object', 'HIGH'],
+  ['ai.voice-and-conversation', 'AI Voice & Conversation', 'AI Voice and Conversation', 'Conversation, transcript retention, accessibility and cross-device session policy.', 'object', 'HIGH'],
 ] as const;
 
 @Injectable()

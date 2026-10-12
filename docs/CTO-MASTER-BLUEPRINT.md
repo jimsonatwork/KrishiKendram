@@ -3129,3 +3129,34 @@ God Mode remains the authoritative administrative root defined in `docs/GOD-MODE
 - Added protected snapshot listing and rollback endpoints under `/api/v1/admin/god-mode/configuration/:stableId`.
 - Added God Mode UI visibility for snapshot/recovery history.
 - Frontend build: PASS. Backend regression: 42 suites / 387 tests PASS. Prisma migration status: up to date.
+
+
+## AI Platform — Single Entry Point, Maximum Reuse, Centrally Governed Module Files
+
+The canonical AI control plane is `ai/registry/ai-platform-registry.json` (KK-AI-REGISTRY-001), linked from `backend/config/resource-paths.json`. Shared capabilities, conversation/context rules, safety policy, provenance, confirmation, audit and provider restrictions are defined once and reused across all modules. The root manifest links centrally stored module contracts in `ai/modules/`, provider inventory in `ai/providers/`, runtime inventory in `ai/runtimes/`, policy index in `ai/policies/`, evaluation index in `ai/evaluations/`, and the governing documents.
+
+Module contracts are modular by ownership, not isolated by location: each remains in the central AI configuration area and must be loaded and governed through the root registry. Initial registered module contracts cover users, farms, crops, livestock and marketplace. A module may not create its own competing AI registry or duplicate shared policy.
+
+God Mode is the operational control surface for inventory, sources/vendors, model/provider capability, runtime/install paths, language quality, environment variables (secret references only), connection status, cost/budget, scaling, data classification/consent, authorization/action policies, approvals, health, audit and rollback. Edits must use the existing central God Configuration Registry with validation, dependency analysis, pre-change snapshots, authorization, apply, health check and audit.
+
+The first code increment establishes central manifest links and contract hydration. Build/tests must pass before the change is considered verified. Actual provider/model execution, live health probing, editable God Mode forms, evaluation suites, voice-guided form submission and cross-device server sessions are separate implementation gates and must not be represented as already completed.
+
+
+## AI platform verification checkpoint — 2026-10-11
+
+The focused AI registry suite passed 19 tests, and both backend and frontend production builds completed successfully. The focused tests cover canonical registry loading, revision-aware edits, invalid-config rejection, snapshot rollback, path-traversal and symlink defenses, module/capability/context-field checks, and blocking direct canonical database writes through the AI registry layer.
+
+This confirms compilation and focused unit tests only, not complete end-to-end or production health. Next: verify authenticated API and God Mode UI integration, then route shared provider/runtime/policy selection through the central AI platform. Module-specific AI contracts remain centrally stored, registry-linked, and governed; shared provider behavior must not be duplicated per module.
+
+## AI Governance Implementation Record — 2026-10-11
+
+The conversation layer now has automated checks for AI provenance and proposed-fact confirmation controls. Provenance requirements are sourced from the central AI registry rather than duplicated as a separate list in the conversation service.
+
+Governance rules:
+- AI-generated assistant messages and proposed facts require complete registry-defined provenance.
+- Provenance timestamps and assistant metadata consistency are validated.
+- User-authored messages are not forced to provide AI provenance.
+- Proposed facts cannot enter confirmed/applied states directly at creation.
+- Confirmation cannot be disabled at the request level.
+
+Verification checkpoint: 42 AI tests passed across 4 suites; backend build and `git diff --check` passed. Full backend regression and runtime integration verification remain separate gates.

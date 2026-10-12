@@ -1,0 +1,8 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-EVALUATIONS-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "evaluationSuites": [],
+  "note": "Add versioned, consented multilingual benchmarks here before declaring any model production-ready."
+}

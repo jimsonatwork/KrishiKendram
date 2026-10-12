@@ -55,7 +55,8 @@ export class UserAiContextService {
       if (module.allowedFields.includes(field) && !module.restrictedFields?.includes(field) && Object.prototype.hasOwnProperty.call(request.values, field)) projectedFields[field] = request.values[field];
     }
 
-    const allowedReferences = new Set([...module.contextReferences, ...this.registry.getRegistry().conversation.optionalReferences]);
+    // Keep projection aligned with the same module-specific allowlist used above.
+    const allowedReferences = new Set(module.contextReferences);
     const projectedReferences: Record<string, unknown> = {};
     for (const reference of request.references ?? []) {
       if (allowedReferences.has(reference) && Object.prototype.hasOwnProperty.call(request.values, reference)) projectedReferences[reference] = request.values[reference];

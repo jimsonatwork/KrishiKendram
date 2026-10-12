@@ -1,0 +1,54 @@
+{
+  "moduleId": "KK-LIVESTOCK-001",
+  "registryId": "KK-AI-REGISTRY-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "contract": {
+    "moduleName": "Livestock Foundation",
+    "allowedCapabilities": [
+      "CONVERSATION",
+      "EXTRACTION",
+      "VISION",
+      "DOCUMENT",
+      "SPEECH_TO_TEXT",
+      "FACT_MATCHING",
+      "CONSISTENCY",
+      "RECOMMENDATION",
+      "AGRI_ASSISTANT"
+    ],
+    "contextReferences": [
+      "userId",
+      "moduleId",
+      "screenId",
+      "entityType",
+      "entityId",
+      "farmId",
+      "livestockId",
+      "sessionId"
+    ],
+    "allowedFields": [
+      "animal",
+      "species",
+      "breed",
+      "ownership",
+      "health",
+      "feeding",
+      "breeding",
+      "production",
+      "movement",
+      "documents"
+    ],
+    "restrictedFields": [
+      "secrets",
+      "tokens"
+    ],
+    "candidateFactTargets": [
+      "Livestock",
+      "LivestockActivity",
+      "LivestockHealthRecord"
+    ],
+    "confirmationPolicy": "REQUIRED_FOR_CANONICAL_LIVESTOCK_FACTS",
+    "provenancePolicy": "REQUIRED",
+    "auditPolicy": "REQUIRED"
+  }
+}

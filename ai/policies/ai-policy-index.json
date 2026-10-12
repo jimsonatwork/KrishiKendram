@@ -1,0 +1,19 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-POLICIES-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "governedPolicyDocuments": [
+    "docs/KK-AI-PLATFORM-REGISTRY.md",
+    "docs/KK-AI-CONVERSATION-AND-CONTEXT.md",
+    "docs/AI-VOICE-PLATFORM-AND-GOVERNANCE.md"
+  ],
+  "enforcement": {
+    "authorizationBeforeContext": true,
+    "centralRegistryValidationRequired": true,
+    "explicitUserConfirmationRequired": true,
+    "directAiDatabaseWriteAllowed": false,
+    "rawConversationTrainingAllowed": false,
+    "cloudFallbackAllowedByDefault": false
+  }
+}

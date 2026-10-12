@@ -130,7 +130,83 @@ export class ConversationService {
     });
   }
 
-  async appendMessage(input: AppendMessageInput) {
+
+  /**
+   * Fail closed when governed AI provenance is missing or malformed.
+   * Required fields are owned by the central AI registry, not duplicated here.
+   */
+  private assertRequiredProvenance(
+    provenance: Prisma.InputJsonValue | undefined,
+    subject: string,
+  ): Record<string, unknown> {
+    const raw: unknown = provenance;
+
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new BadRequestException(`${subject} requires a provenance object.`);
+    }
+
+    const record = raw as Record<string, unknown>;
+    const required = this.registry.getProvenanceRequirements();
+
+    if (!Array.isArray(required) || required.length === 0) {
+      throw new BadRequestException(
+        'AI provenance requirements are unavailable; operation denied.',
+      );
+    }
+
+    for (const field of required) {
+      if (
+        typeof field !== 'string' ||
+        typeof record[field] !== 'string' ||
+        !(record[field] as string).trim()
+      ) {
+        throw new BadRequestException(
+          `${subject} provenance is missing required field: ${String(field)}.`,
+        );
+      }
+    }
+
+    if (
+      typeof record.generatedAt !== 'string' ||
+      Number.isNaN(Date.parse(record.generatedAt))
+    ) {
+      throw new BadRequestException(
+        `${subject} provenance generatedAt must be a valid date string.`,
+      );
+    }
+
+    return record;
+  }
+
+async appendMessage(input: AppendMessageInput) {
+    if (input.role === ConversationMessageRole.ASSISTANT) {
+      const provenance = this.assertRequiredProvenance(
+        input.provenance,
+        'Assistant message',
+      );
+
+      for (const field of ['providerId', 'modelId', 'modelVersion'] as const) {
+        const value = input[field];
+        if (typeof value !== 'string' || !value.trim()) {
+          throw new BadRequestException(
+            `Assistant message requires ${field}.`,
+          );
+        }
+        if (provenance[field] !== value) {
+          throw new BadRequestException(
+            `Assistant message ${field} must match provenance.`,
+          );
+        }
+      }
+
+      if (input.language && provenance.language !== input.language) {
+        throw new BadRequestException(
+          'Assistant message language must match provenance.',
+        );
+      }
+    }
+
+
     if (!input.content.trim())
       throw new BadRequestException(
         'Conversation message content cannot be empty.',
@@ -212,6 +288,35 @@ export class ConversationService {
   }
 
   async createFactCandidate(input: CreateFactCandidateInput) {
+    this.assertRequiredProvenance(
+      input.provenance,
+      'AI fact candidate',
+    );
+
+    const allowedInitialStatuses = new Set<ConversationFactCandidateStatus>([
+      ConversationFactCandidateStatus.DETECTED,
+      ConversationFactCandidateStatus.NORMALIZED,
+      ConversationFactCandidateStatus.VALIDATION_PENDING,
+      ConversationFactCandidateStatus.CONFLICT,
+      ConversationFactCandidateStatus.AWAITING_CONFIRMATION,
+    ]);
+
+    if (input.status !== undefined && !allowedInitialStatuses.has(input.status)) {
+      throw new BadRequestException(
+        'A fact candidate cannot be created in a confirmed, applied, or terminal state.',
+      );
+    }
+
+    if (
+      input.requiresConfirmation === false ||
+      !this.registry.requiresUserConfirmation()
+    ) {
+      throw new BadRequestException(
+        'AI fact candidates must require explicit user confirmation.',
+      );
+    }
+
+
     const conversation = await this.requireConversation(input.conversationId);
     if (conversation.userId !== input.userId)
       throw new BadRequestException(

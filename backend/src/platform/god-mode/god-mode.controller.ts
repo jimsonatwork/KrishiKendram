@@ -10,6 +10,7 @@ import { ModuleLifecycleService } from '../registry/module-lifecycle.service';
 import { GodModeService } from './god-mode.service';
 import { GodConfigurationService } from './god-configuration.service';
 import { GodDatabaseCredentialService } from './god-database-credential.service';
+import { AiRegistryService } from '../../ai/registry/ai-registry.service';
 
 @Controller('admin/god-mode')
 @UseGuards(JwtAuthGuard)
@@ -23,6 +24,7 @@ export class GodModeController {
     private readonly registry: RegistryService,
     private readonly lifecycle: ModuleLifecycleService,
     private readonly databaseCredentials: GodDatabaseCredentialService,
+    private readonly aiRegistry: AiRegistryService,
   ) {}
 
   @Get('overview')
@@ -62,6 +64,94 @@ export class GodModeController {
       recentAudit,
       recovery: { singletonEnforced: gods === 1, canonicalIdentityPresent: true, protected: true },
     };
+  }
+
+  @Get('ai-control-plane')
+  async aiControlPlane(@Req() request: Request) {
+    await this.assertGod(request);
+    return this.aiRegistry.getControlPlaneOverview();
+  }
+
+  @Get('ai-control-plane/files/:key')
+  async getAiConfigurationFile(@Req() request: Request, @Param('key') key: string) {
+    await this.assertGod(request);
+    return this.aiRegistry.getGovernedFile(key);
+  }
+
+  @Get('ai-control-plane/files/:key/revision')
+  async aiConfigurationRevision(@Req() request: Request, @Param('key') key: string) {
+    await this.assertGod(request);
+    return this.aiRegistry.getGovernedFileRevision(key);
+  }
+
+  @Get('ai-control-plane/files/:key/snapshots')
+  async aiConfigurationSnapshots(@Req() request: Request, @Param('key') key: string) {
+    await this.assertGod(request);
+    return this.aiRegistry.listGovernedSnapshots(key);
+  }
+
+  @Post('ai-control-plane/files/:key/rollback')
+  async rollbackAiConfiguration(
+    @Req() request: Request,
+    @Param('key') key: string,
+    @Body() body: { snapshotId?: string; expectedSha256?: string; reason?: string },
+  ) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+    if (!body?.reason || body.reason.trim().length < 8 || body.reason.length > 500) {
+      throw new ForbiddenException('A meaningful rollback reason (8–500 characters) is required.');
+    }
+    await this.audit.create({
+      actorId, action: 'GOD_MODE_AI_CONFIGURATION_ROLLBACK_REQUESTED',
+      resourceType: 'AI_REGISTRY_FILE', resourceId: key,
+      description: 'AI registry snapshot rollback requested. Snapshot: ' + (body.snapshotId ?? 'missing') + '; reason: ' + body.reason.trim(),
+    });
+    const result = this.aiRegistry.restoreGovernedSnapshot(key, body.snapshotId ?? '', body.expectedSha256 ?? '');
+    await this.audit.create({
+      actorId, action: 'GOD_MODE_AI_CONFIGURATION_ROLLED_BACK',
+      resourceType: 'AI_REGISTRY_FILE', resourceId: key,
+      description: 'AI registry snapshot restored. Revision: ' + result.sha256 + '; recovery snapshot: ' + result.snapshotId,
+    }).catch(async (error) => {
+      try { this.aiRegistry.restoreGovernedSnapshot(key, result.snapshotId, result.sha256); }
+      catch { throw new Error('Rollback audit failed and automatic configuration recovery failed; inspect God Mode recovery snapshots immediately.'); }
+      throw error;
+    });
+    return { ...result, audited: true };
+  }
+
+  @Patch('ai-control-plane/files/:key')
+  async updateAiConfiguration(
+    @Req() request: Request,
+    @Param('key') key: string,
+    @Body() body: { value?: unknown; expectedSha256?: string; reason?: string },
+  ) {
+    await this.assertGod(request);
+    const actorId = (request.user as { userId?: string }).userId;
+    if (!actorId) throw new ForbiddenException('God Mode identity required.');
+    if (!body?.reason || body.reason.trim().length < 8 || body.reason.length > 500) {
+      throw new ForbiddenException('A meaningful change reason (8–500 characters) is required.');
+    }
+    await this.audit.create({
+      actorId, action: 'GOD_MODE_AI_CONFIGURATION_CHANGE_REQUESTED',
+      resourceType: 'AI_REGISTRY_FILE', resourceId: key,
+      description: 'Governed AI configuration change requested. Reason: ' + body.reason.trim(),
+    });
+    const result = this.aiRegistry.updateGovernedFile(key, body.value, body.expectedSha256 ?? '');
+    try {
+      await this.audit.create({
+        actorId,
+        action: 'GOD_MODE_AI_CONFIGURATION_UPDATED',
+        resourceType: 'AI_REGISTRY_FILE',
+        resourceId: key,
+        description: 'Governed AI registry file updated. Reason: ' + body.reason.trim() + '; revision: ' + result.sha256 + '; snapshot: ' + result.snapshotId,
+      });
+    } catch (auditError) {
+      try { this.aiRegistry.restoreGovernedSnapshot(key, result.snapshotId, result.sha256); }
+      catch { throw new Error('AI configuration audit failed and automatic recovery failed; inspect God Mode recovery snapshots immediately.'); }
+      throw auditError;
+    }
+    return { ...result, audited: true };
   }
 
   @Get('system-truth')

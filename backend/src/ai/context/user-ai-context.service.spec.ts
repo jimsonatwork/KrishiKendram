@@ -70,6 +70,11 @@ describe('UserAiContextService', () => {
     expect(JSON.stringify(result)).not.toContain('MUST_NOT_LEAK');
   });
 
+  it('rejects cross-module references before authorization or context projection', async () => {
+    await expect(service.buildContext({ ...request(), references: ['farmId'] })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(auth.authorizeFields).not.toHaveBeenCalled();
+  });
+
   it('rejects restricted fields before authorization can expand access', async () => {
     await expect(service.buildContext({ ...request(), fields: ['passwordHash'] })).rejects.toBeInstanceOf(ForbiddenException);
     expect(auth.authorizeFields).not.toHaveBeenCalled();

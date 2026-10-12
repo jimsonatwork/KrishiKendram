@@ -1,3 +1,10 @@
+## 2026-10-11 - God Mode AI configuration recovery hardening
+
+- Added regression tests for completion-audit failures, automatic snapshot rollback, recovery-failure escalation, and failure to write the pre-change audit intent.
+- Hardened governed AI JSON resolution against symlinked/non-regular targets and enforced snapshot-directory containment under the protected backup area.
+- Snapshot enumeration ignores symlinked and non-regular entries; rollback remains limited to validated snapshot identifiers and revision tokens.
+- Verification: rerun focused backend suites and backend build for final acceptance.
+
 ## 2026-10-02 — Post-RC integration continuation
 
 - Reconciled authenticated runtime coverage: Registry module tests now authenticate as Super Admin, matching the production authorization boundary.
@@ -1117,3 +1124,49 @@ V0.5.6 platform administration integration: connect capability/field visibility 
 - Added manual Refresh actions to Farms and Crops list workspaces.
 - Preserved automatic live-refresh behavior and existing error/loading states.
 - Recorded Indian-language localization and farmer AI-assisted data capture as controlled future-scope roadmap items.
+
+
+## 2026-10-11 — AI Control Plane foundation
+
+- Registered canonical AI root, module contract files, provider/runtime inventory, policy/evaluation indexes and governance docs.
+- Split five initial module contracts from the root AI registry and added a manifest map so shared rules remain single-source.
+- Updated backend AI registry loading to verify linked-file presence and contract identity before exposing module policies.
+- Updated resource path registry and AI platform documentation. Build/test verification remains pending; provider execution and God Mode editing are not yet complete.
+
+
+- Added authenticated, God-only read endpoint `GET /api/v1/admin/god-mode/ai-control-plane` and a read-only AI inventory panel in God Mode.
+- Added eight metadata-only AI governance domains to the existing God Configuration Registry; no parallel registry or secret storage was introduced.
+- Verification checkpoint: backend build PASS, AI registry tests 12/12 PASS, frontend production build PASS, API/UI HTTP 200, unauthenticated AI route HTTP 401. Final rebuild/restart is pending after the added AI domain definitions.
+
+
+### Verification follow-up
+
+- Final backend build and focused AI registry suite passed (12/12).
+- Frontend TypeScript/Vite production build passed.
+- Restarted the built backend service; API and UI returned HTTP 200.
+- Confirmed the new God-only AI endpoint is registered and returns HTTP 401 when called without authentication.
+- Confirmed all eight AI governance domains are present in the existing database; they remain metadata-only pending governed file-backed updates.
+
+
+## 2026-10-11 — AI diagnostics follow-up
+
+- Added bounded static diagnostics to the canonical AI registry response for registered provider/runtime paths. Checks are repository-root constrained and do not execute provider code, make network calls, or expose secrets.
+- Added a focused regression test asserting that static inventory cannot be mistaken for provider/runtime readiness.
+- Added a God Mode panel for provider/runtime file-path diagnostics and explicit limitations; readiness stays false unless production health is independently verified.
+- Verification: backend build passed and focused AI registry tests passed 13/13. Frontend production build was running at the last check; its final result must be confirmed before this slice is considered fully verified.
+
+## 2026-10-11 — AI platform verification
+
+- Added regression coverage for cross-module context-reference rejection and aligned projection with the requesting module contract.
+- AI tests: 31 passed across 3 suites. Backend
+est build: passed, exit code 0 (approximately 106 seconds).
+- Build latency is high in this WSL environment; the process eventually completed successfully, so avoid destructive cache, dependency, or Docker-volume cleanup as a response to the delay.
+
+## 2026-10-11 — AI Conversation Governance
+
+- Enforced registry-defined provenance for AI assistant messages and proposed fact candidates.
+- Added timestamp and assistant model-metadata consistency validation.
+- Prevented proposed fact creation from bypassing the user-confirmation workflow.
+- Added conversation governance tests; AI test suites passed 42 tests across 4 suites.
+- Backend build and `git diff --check` passed.
+- Full backend regression and runtime integration checks remain pending.

@@ -21,6 +21,18 @@
     "reports": "backend/reports",
     "scripts": "backend/scripts",
     "documentation": "docs",
-    "frontendPublic": "frontend/public"
+    "frontendPublic": "frontend/public",
+    "aiRoot": "ai",
+    "aiRegistryDirectory": "ai/registry",
+    "aiPlatformRegistry": "ai/registry/ai-platform-registry.json",
+    "aiModuleDefinitions": "ai/modules",
+    "aiProviderDefinitions": "ai/providers",
+    "aiRuntimeDefinitions": "ai/runtimes",
+    "aiPromptPolicies": "ai/policies",
+    "aiEvaluationAssets": "ai/evaluations",
+    "aiVoiceGovernanceDocumentation": "docs/AI-VOICE-PLATFORM-AND-GOVERNANCE.md",
+    "aiPlatformRegistryDocumentation": "docs/KK-AI-PLATFORM-REGISTRY.md",
+    "aiConversationDocumentation": "docs/KK-AI-CONVERSATION-AND-CONTEXT.md",
+    "aiProductionDeploymentDocumentation": "docs/AI-Production-Deployment.md"
   }
 }
