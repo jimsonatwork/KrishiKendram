@@ -43,9 +43,7 @@
       "tokens"
     ],
     "candidateFactTargets": [
-      "Livestock",
-      "LivestockActivity",
-      "LivestockHealthRecord"
+      "Livestock"
     ],
     "confirmationPolicy": "REQUIRED_FOR_CANONICAL_LIVESTOCK_FACTS",
     "provenancePolicy": "REQUIRED",

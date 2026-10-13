@@ -174,3 +174,73 @@ Planned evaluation suites are recorded in ai/evaluations/evaluation-index.json; 
 The manifest is discovery only. It does not replace route guards, `AuthorizationService`, field policy, ownership checks, or the confirmation workflow. Administrative AI intents are God-authorized; a `SUPER_ADMIN` role alone is not sufficient to expose the privileged voice routes.
 
 The central `ai/connections/cloud-connection-policy.json` appears in the God Mode AI control plane as an intentionally disabled configuration slot. A candidate provider is listed as not implemented and not production-ready. No cloud calls, automatic fallback, or credential storage in JSON are enabled. Activation remains blocked until the cloud adapter and proposal/God-approval/consent/license/audit/rollback gates are implemented and tested.
+
+
+## Conversation-to-module fact-draft pipeline (2026-10-13)
+
+- Central conversations remain owned by `KK-AI-CONVERSATION-001`; a fact candidate may target a different registered module only when that module's canonical AI contract allows extraction and the target entity is listed in `candidateFactTargets`.
+- `POST /api/v1/ai/conversations/:conversationId/fact-candidates` creates a draft proposal only. `GET /api/v1/ai/conversations/:conversationId/fact-candidates` lists proposals for the authenticated owner. Both routes remain under the JWT-protected conversation controller.
+- Each proposal must cite an existing user-authored message from the same owned conversation. The service does not claim a model performed extraction; provenance explicitly records `providerId=conversation-draft-service`, `modelId/modelVersion=not-applicable`, `mode=DISABLED`, `source=USER_AUTHORED_EVIDENCE`, and `extractionModelUsed=false`.
+- Entity eligibility comes from the central AI module contract. Field identity, normalization, and validation come from the existing platform `RegistryService` resource/field definitions and validation policy. The canonical `AuthorizationService.authorizeFields` path must approve resource CREATE (or UPDATE for the authenticated user's own profile) and field WRITE policy before a draft is saved.
+- Proposals are created in `VALIDATION_PENDING`, carry `validationResult`, and always require explicit user confirmation. Invalid values remain visible as flagged proposals for correction; they are never applied. Existing-record targeting is rejected except for the authenticated user's own registered User profile fields, which require UPDATE authorization. Other existing-record changes need their dedicated authorized workflow.
+- No database schema migration, direct AI domain write, model installation, cloud activation, or credential change is part of this increment. The remaining work is an explicit candidate review/confirmation state machine, audited apply through normal module APIs, and frontend draft-preview integration.
+
+
+### Cross-registry target alignment (2026-10-13)
+The AI module contracts now advertise only fact target model names present in `RESOURCE_DEFINITIONS`: User, Farm/FarmAsset/FarmRecord, Crop, Livestock, and MarketplaceListing. The internal AI conversation module has no farmer-fact targets. Module contracts were versioned to v2, and `ai-module-resource-cohesion.spec.ts` guards against future drift between the central AI registry and platform resource registry. Missing resource/field definitions fail closed rather than being guessed.
+
+
+### Fact-draft review and explicit confirmation (2026-10-13)
+- Draft list responses include a server-computed SHA-256 preview hash binding the candidate identity, module/entity/field target, proposed and previous values, confidence, evidence reference, provenance and validation result. Confirm/reject requests must return this hash; stale or tampered previews are rejected.
+- Confirmation re-checks the current AI module contract, registered platform resource/field, user-authored evidence, resource-level CREATE/UPDATE permission and field WRITE policy. A compare-and-set status transition and audit event are committed in one Prisma transaction.
+- Rejection uses the same preview binding and atomic status-plus-audit transition. Confirmation records `CONFIRMED` only; `applied=false` remains explicit because normal module API application is not implemented by this endpoint.
+- The Voice Agent now has a saved-draft review panel that shows the target, proposed value, original user evidence, validation errors, and confirm/reject controls. It does not fabricate candidates when the approved extraction provider is unavailable.
+
+Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. If the audit service is unavailable, the transaction fails and no candidate is saved. Confirmation and rejection each commit their status transition with the corresponding audit event in one transaction.
+
+
+## 2026-10-13 - Local Ollama provider adapter groundwork (PARTIAL)
+
+The backend now contains an Ollama-compatible text-generation adapter behind the shared TextGenerationProvider contract. It restricts the configured endpoint to loopback or host.docker.internal, applies bounded input/history/output and timeout limits, records provider/model/version/language provenance, exposes a runtime/model health probe, rejects malformed responses, and never falls back to a cloud provider.
+
+The user-space scripts scripts/kk-ai-runtime-start.sh and scripts/kk-ai-runtime-stop.sh manage the local Ollama process. It binds only to 127.0.0.1:11434. The binary install path is D:/KrishiKendram/08-AI/Tools/Ollama; model storage is configurable with KK_AI_OLLAMA_MODELS_DIR and defaults to /mnt/d/KrishiKendram/08-AI/KrishiKendram-AI/Models/Ollama. The backend example environment keeps KK_AI_ALLOW_LOCAL_EVALUATION=false by default.
+
+Evaluation-only generation is permitted only when the canonical provider inventory explicitly says EVALUATION_ONLY, the provider is LOCAL, KK_AI_ALLOW_LOCAL_EVALUATION=true, and NODE_ENV is not production. Evaluation is not production readiness. No model response may write domain data; canonical validation, confirmation, normal module services and audit remain required.
+
+Status at this checkpoint: the adapter unit tests and focused service/controller tests pass. The Docker image pull stalled and was stopped without touching application/database containers. The official user-space .tar.zst archive is downloading; the model has not yet been pulled or tested, so no real inference or production readiness is claimed. Provider/runtime inventories must not be marked EVALUATION_ONLY until the runtime and exact model digest are verified.
+
+
+### Runtime verification checkpoint - 2026-10-13 16:49 IST
+
+The official Ollama Linux archive was downloaded to D: and extracted successfully. Local archive SHA-256: CE6F8B671A699BF1EBAFB28D60DBBABF4F37B30B499145FA308A8BA72DE021D6. Runtime version 0.40.3 answers GET /api/tags with HTTP 200 on 127.0.0.1:11434. Model storage is on the D: AI root. The configured model pull is in progress; the model is not installed and no inference has been verified.
+
+The first local startup used Ollama's default cloud setting and attempted only model-recommendation/cloud-cache metadata requests; no user conversation or farm context had been sent because no model was loaded and no generation was invoked. That process was stopped and restarted with OLLAMA_NO_CLOUD=true. The current runtime log confirms OLLAMA_NO_CLOUD=true and "Ollama cloud disabled: true". The backend provider remains EVALUATION_IN_PROGRESS and cannot generate until the model and checks are verified.
+
+
+## 2026-10-13 — Local model evaluation checkpoint (not production approval)
+
+- Ollama 0.40.3 is installed under the configured D: AI tools directory and is bound to loopback at 127.0.0.1:11434 with cloud features disabled.
+- Qwen3 1.7B Q4_K_M is installed in the D: model directory. Observed Ollama model digest: 8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7. Runtime metadata and model presence are verified; a captured successful generation response and English/Telugu quality evaluation are still pending.
+- The NestJS AI module now binds the text-generation token to the Ollama provider. The provider only accepts loopback/host.docker.internal HTTP endpoints, limits request/history/output sizes, times out bounded requests, returns provider/model provenance, and never falls back to cloud.
+- Local evaluation is opt-in only: provider inventory must mark evaluationOnly and EVALUATION_IN_PROGRESS, cloud fallback must remain false, KK_AI_ALLOW_LOCAL_EVALUATION=true, and NODE_ENV must not be production. The default remains disabled. This is not a production-ready state.
+- The authenticated conversation status endpoint exposes provider/model identity, canGenerate, runtime reachability, and whether the configured model is installed. Runtime health does not imply generation authorization.
+- Verification on the development branch: 11 AI test suites / 100 tests passed; backend Nest build passed; git diff --check passed. No commit/push or A/B/C promotion has occurred.
+- Next gate: capture real inference and latency, evaluate English and Telugu output against a synthetic non-sensitive test set, then complete a governed module workflow and its authorization/audit tests before any production-readiness change.
+
+
+## 2026-10-13 — Governed fact-draft application slice
+- Confirming a fact draft is not itself a domain write. A separate authenticated apply endpoint now supports only the authenticated user's own User profile, and only the allowlisted fields `name`, `mobile`, `preferredLanguage`, and `preferredInputMethod`.
+- Application rechecks conversation ownership, user-authored evidence, exact preview hash, canonical AI module eligibility, resource/field authorization, and central validation. It compares the profile value captured at draft creation, locks the User row, and rejects stale proposals rather than overwriting later changes.
+- The application uses `UsersService.update()` inside the same Prisma transaction as the fact-candidate APPLIED transition and AI application audit. The normal user history/audit logic remains authoritative; no generic direct-Prisma domain write is permitted.
+- SUPER_ADMIN profile drafts fail closed unless a separate explicit God Mode authorization path is implemented. Ordinary SUPER_ADMIN role is not God authorization.
+- Farm, Crop, Livestock and Marketplace candidates remain confirmed-but-unapplied until their own module-owned handlers can supply complete DTO/relationship context and re-run module authorization, validation, idempotency and audit rules. A single field must never be misrepresented as a complete new entity.
+- Verification on this slice: focused tests 3 suites/43 tests passed; full AI suite 11 suites/103 tests passed; backend and frontend builds passed; `git diff --check` passed. The local Ollama provider remains `EVALUATION_IN_PROGRESS` with `productionReady=false`; a captured model response and English/Telugu quality remain unverified.
+
+
+## 2026-10-14 — Provider Inference and Provenance Checkpoint
+
+The local Ollama provider was exercised from the compiled backend adapter using synthetic prompts only. The installed Qwen3 1.7B Q4_K_M model returned an English response in 6.1 seconds warm and a Telugu response in 29.9 seconds warm. Both results carried the observed installed model digest 8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7. Runtime binds to loopback; OLLAMA_NO_CLOUD=true; no cloud fallback was attempted.
+
+A provenance defect was fixed: generation now checks runtime/model health before sending the prompt and uses the actual installed model digest instead of UNVERIFIED_LOCAL_MODEL. Missing model/runtime fails closed. AI tests: 11 suites / 105 tests PASS; backend build PASS; frontend build PASS; git diff --check PASS.
+
+The provider remains EVALUATION_IN_PROGRESS and productionReady=false. Synthetic phrases are not a native-speaker quality or safety benchmark. The fact-draft lifecycle has validated preview, exact-preview confirmation, rejection, authorization rechecks and transactional audit, but only the authenticated user's allowlisted profile fields currently have an apply handler through UsersService.update. Farm/Crop/Livestock/Marketplace drafts remain unapplied until the reusable multi-field workflow calls each normal authorized module service. Indic ASR remains a placeholder. Do not claim the AI platform or all modules COMPLETE.

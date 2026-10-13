@@ -8,6 +8,7 @@ import { ConversationService } from './conversation.service';
 import { AiRegistryService } from '../registry/ai-registry.service';
 import { TextGenerationService } from '../text-generation.service';
 import { UserAiContextService } from '../context/user-ai-context.service';
+import { FactDraftService } from './fact-draft.service';
 
 describe('AiConversationController', () => {
   let controller: AiConversationController;
@@ -18,9 +19,10 @@ describe('AiConversationController', () => {
     listHistory: jest.Mock;
   };
   let registry: { getConversationModuleId: jest.Mock };
-  let textGeneration: { getStatus: jest.Mock; generate: jest.Mock };
+  let textGeneration: { getStatus: jest.Mock; getDetailedStatus: jest.Mock; generate: jest.Mock };
   let userAiContext: { buildContext: jest.Mock };
   let voiceCapabilities: { getIntentsForUser: jest.Mock };
+  let factDrafts: { createDraft: jest.Mock; listDrafts: jest.Mock; confirmDraft: jest.Mock; rejectDraft: jest.Mock };
 
   const req = { user: { userId: 'jwt-user-1', role: 'FARMER' } };
   const contextEnvelope = {
@@ -45,6 +47,7 @@ describe('AiConversationController', () => {
       getConversationModuleId: jest.fn().mockReturnValue('KK-AI-CONVERSATION-001'),
     };
     textGeneration = {
+      getDetailedStatus: jest.fn().mockResolvedValue({ enabled: false, ready: false, canGenerate: false, cloudFallback: false, runtime: { reachable: true, modelInstalled: true } }),
       getStatus: jest.fn().mockReturnValue({
         enabled: false,
         ready: true,
@@ -54,6 +57,12 @@ describe('AiConversationController', () => {
     };
     userAiContext = { buildContext: jest.fn().mockResolvedValue(contextEnvelope) };
     voiceCapabilities = { getIntentsForUser: jest.fn().mockResolvedValue({ intents: [] }) };
+    factDrafts = {
+      createDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1' }, validation: { valid: true, applied: false } }),
+      listDrafts: jest.fn().mockResolvedValue([]),
+      confirmDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1', status: 'CONFIRMED' }, applied: false }),
+      rejectDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1', status: 'REJECTED' }, applied: false }),
+    };
 
     controller = new AiConversationController(
       conversations as unknown as ConversationService,
@@ -61,6 +70,7 @@ describe('AiConversationController', () => {
       textGeneration as unknown as TextGenerationService,
       userAiContext as unknown as UserAiContextService,
       voiceCapabilities as never,
+      factDrafts as unknown as FactDraftService,
     );
   });
 
@@ -72,14 +82,19 @@ describe('AiConversationController', () => {
     expect(voiceCapabilities.getIntentsForUser).toHaveBeenCalledWith('jwt-user-1');
   });
 
-  it('reports the centrally governed text-generation status', () => {
-    textGeneration.getStatus.mockReturnValue({ enabled: false, ready: false, cloudFallback: false });
-    expect(controller.status()).toMatchObject({
+  it('reports centrally governed provider and runtime health', async () => {
+    textGeneration.getDetailedStatus.mockResolvedValue({
+      enabled: false, ready: false, canGenerate: false, cloudFallback: false,
+      runtime: { reachable: true, modelInstalled: true },
+    });
+    await expect(controller.status()).resolves.toMatchObject({
       enabled: false,
       ready: false,
+      canGenerate: false,
       cloudFallback: false,
+      runtime: { reachable: true, modelInstalled: true },
     });
-    expect(textGeneration.getStatus).toHaveBeenCalledTimes(1);
+    expect(textGeneration.getDetailedStatus).toHaveBeenCalledTimes(1);
   });
 
   it('checks conversation ownership before requesting generation', async () => {
@@ -231,6 +246,80 @@ describe('AiConversationController', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(conversations.appendMessage).not.toHaveBeenCalled();
+  });
+
+  it('creates a centrally validated fact draft using the authenticated actor and explicit evidence', async () => {
+    const body = {
+      targetModuleId: 'KK-FARM-001',
+      targetEntityType: 'Farm',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'Green Valley',
+      confidence: 0.95,
+      sessionId: 'session-1',
+    };
+    await controller.createFactCandidate(req, 'conversation-1', body);
+    expect(factDrafts.createDraft).toHaveBeenCalledWith({
+      ...body,
+    }, { userId: 'jwt-user-1', role: 'FARMER' }, 'conversation-1');
+  });
+
+  it('rejects a client request to mutate an existing record through the draft endpoint', async () => {
+    expect(() => controller.createFactCandidate(req, 'conversation-1', {
+      targetModuleId: 'KK-FARM-001',
+      targetEntityType: 'Farm',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'Tampered',
+      targetEntityId: 'farm-123',
+    })).toThrow(BadRequestException);
+    expect(factDrafts.createDraft).not.toHaveBeenCalled();
+  });
+
+  it('permits a profile draft only for the authenticated user identity', async () => {
+    await controller.createFactCandidate(req, 'conversation-1', {
+      targetModuleId: 'KK-USER-001',
+      targetEntityType: 'User',
+      targetEntityId: 'jwt-user-1',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'Jimson',
+    });
+    expect(factDrafts.createDraft).toHaveBeenCalledWith(expect.objectContaining({
+      targetModuleId: 'KK-USER-001',
+      targetEntityId: 'jwt-user-1',
+    }), { userId: 'jwt-user-1', role: 'FARMER' }, 'conversation-1');
+  });
+
+  it('lists fact drafts through the ownership-aware service', async () => {
+    await controller.listFactCandidates(req, 'conversation-1');
+    expect(factDrafts.listDrafts).toHaveBeenCalledWith('conversation-1', 'jwt-user-1');
+  });
+
+  it('confirms a fact candidate against a preview hash and authenticated role', async () => {
+    await controller.confirmFactCandidate(req, 'conversation-1', 'candidate-1', {
+      previewHash: 'a'.repeat(64),
+    });
+    expect(factDrafts.confirmDraft).toHaveBeenCalledWith(
+      'conversation-1',
+      'candidate-1',
+      'a'.repeat(64),
+      { userId: 'jwt-user-1', role: 'FARMER' },
+    );
+  });
+
+  it('rejects a fact candidate using the exact preview hash', async () => {
+    await controller.rejectFactCandidate(req, 'conversation-1', 'candidate-1', {
+      previewHash: 'b'.repeat(64),
+      reason: 'That is not what I said.',
+    });
+    expect(factDrafts.rejectDraft).toHaveBeenCalledWith(
+      'conversation-1',
+      'candidate-1',
+      'b'.repeat(64),
+      'jwt-user-1',
+      'That is not what I said.',
+    );
   });
 
   it('retrieves history using the authenticated user identity', async () => {

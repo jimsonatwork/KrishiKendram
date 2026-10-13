@@ -24,10 +24,22 @@ export interface TextGenerationResult {
   requiresUserConfirmation: true;
 }
 
+export interface TextGenerationRuntimeHealth {
+  reachable: boolean;
+  modelInstalled: boolean;
+  providerId: string;
+  modelId: string;
+  modelVersion: string;
+  mode: AiRunMode;
+  checkedAt: string;
+  error?: string;
+}
+
 export interface TextGenerationProvider {
   readonly providerId: string;
   readonly modelId: string;
   readonly modelVersion: string;
   readonly mode: AiRunMode;
   generate(request: TextGenerationRequest): Promise<TextGenerationResult>;
+  checkHealth?(): Promise<TextGenerationRuntimeHealth>;
 }

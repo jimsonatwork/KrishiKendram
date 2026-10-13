@@ -1,7 +1,7 @@
 {
   "moduleId": "KK-USER-001",
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "contract": {
     "moduleName": "Canonical User Foundation",
@@ -44,13 +44,7 @@
       "tokens"
     ],
     "candidateFactTargets": [
-      "UserProfile",
-      "UserFact",
-      "UserPersona",
-      "UserLocation",
-      "UserOccupation",
-      "UserPreference",
-      "UserRelationship"
+      "User"
     ],
     "confirmationPolicy": "REQUIRED_FOR_CANONICAL_USER_FACTS",
     "provenancePolicy": "REQUIRED",

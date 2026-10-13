@@ -131,7 +131,7 @@ After the first complete application workflow pass, review this register and rep
 After core application stability is established, introduce a platform-level localization architecture covering all Indian languages required by the product, with centralized translation keys, user language preference, English fallback, locale-aware dates/numbers/units, and an extensible language catalog. Language preference must not alter authorization or business rules.
 
 ### E-011 â€” Farmer AI Assisted Data Capture
-**Status:** LATER
+**Status:** NOW
 **Priority:** High
 **Requested:** 2026-10-02
 
@@ -139,7 +139,7 @@ Design a governed AI-assisted input workflow for farmers who may have difficulty
 
 **Architectural dependency:** E-011 uses the AI abstraction/security boundary defined in the CTO Master Blueprint and is deferred until core workflows are stable enough to provide trustworthy target schemas.
 
-### E-012 — God Mode Authoritative Control Plane
+### E-012 ï¿½ God Mode Authoritative Control Plane
 **Status:** NOW / ARCHITECTURE BASELINE
 **Priority:** Critical
 **Requested:** 2026-10-04

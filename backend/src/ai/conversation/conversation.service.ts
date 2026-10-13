@@ -2,7 +2,9 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   ConversationFactCandidateStatus,
@@ -13,6 +15,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiRegistryService } from '../registry/ai-registry.service';
+import { RegistryService } from '../../platform/registry/registry.service';
+import { AuditService } from '../../platform/audit/audit.service';
 
 export interface CreateConversationInput {
   userId: string;
@@ -69,13 +73,14 @@ export interface CreateFactCandidateInput {
   targetEntityId?: string;
   targetFieldId?: string;
   proposedValue: Prisma.InputJsonValue;
-  previousValue?: Prisma.InputJsonValue;
+  previousValue?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
   confidence?: Prisma.Decimal | number | string;
   source: string;
   status?: ConversationFactCandidateStatus;
   requiresConfirmation?: boolean;
   evidenceReference?: string;
   provenance?: Prisma.InputJsonValue;
+  validationResult?: Prisma.InputJsonValue;
 }
 
 @Injectable()
@@ -83,6 +88,8 @@ export class ConversationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly registry: AiRegistryService,
+    @Optional() private readonly platformRegistry?: RegistryService,
+    @Optional() private readonly auditService?: AuditService,
   ) {}
 
   async createConversation(input: CreateConversationInput) {
@@ -332,11 +339,15 @@ async appendMessage(input: AppendMessageInput, actorUserId: string) {
 
     if (conversation.userId !== actorUserId)
       throw new ForbiddenException('Conversation does not belong to the authenticated actor.');
-    if (conversation.moduleId !== input.moduleId)
-      throw new BadRequestException(
-        'Fact candidate moduleId must match the conversation moduleId.',
-      );
+    // Conversations are centrally owned; fact candidates may target any
+    // registered module whose own contract and resource authorization allow it.
+    this.registry.assertModuleRegistered(input.moduleId);
     const module = this.registry.getModule(input.moduleId);
+    if (!module.candidateFactTargets.includes(input.targetEntityType ?? '')) {
+      throw new BadRequestException(
+        'AI fact target entity is not allowed by the canonical module contract.',
+      );
+    }
     if (
       input.targetFieldId &&
       module.restrictedFields?.includes(input.targetFieldId)
@@ -344,13 +355,18 @@ async appendMessage(input: AppendMessageInput, actorUserId: string) {
       throw new BadRequestException(
         'Restricted AI fields cannot become fact candidates.',
       );
-    if (
-      input.targetFieldId &&
-      !module.allowedFields.includes(input.targetFieldId)
-    )
-      throw new BadRequestException(
-        'AI fact target field is not allowed by the module registry.',
+    if (input.targetFieldId && !module.allowedFields.includes(input.targetFieldId)) {
+      const registeredResource = this.platformRegistry?.getAll().find(
+        (resource) =>
+          resource.model === input.targetEntityType &&
+          Object.prototype.hasOwnProperty.call(resource.fields ?? {}, input.targetFieldId),
       );
+      if (!registeredResource) {
+        throw new BadRequestException(
+          'AI fact target field is not allowed by the central AI module or platform field registry.',
+        );
+      }
+    }
     const requiresConfirmation =
       input.requiresConfirmation ?? this.registry.requiresUserConfirmation();
     if (!requiresConfirmation)
@@ -359,8 +375,13 @@ async appendMessage(input: AppendMessageInput, actorUserId: string) {
       );
     if (input.sessionId)
       await this.requireSession(input.sessionId, conversation.id);
-    return this.prisma.conversationFactCandidate.create({
-      data: {
+    const auditService = this.auditService;
+    if (!auditService) {
+      throw new InternalServerErrorException('Audit service is required to create a fact draft.');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const candidate = await tx.conversationFactCandidate.create({
+        data: {
         conversationId: conversation.id,
         sessionId: input.sessionId,
         userId: input.userId,
@@ -379,7 +400,35 @@ async appendMessage(input: AppendMessageInput, actorUserId: string) {
         requiresConfirmation,
         evidenceReference: input.evidenceReference,
         provenance: input.provenance,
-      },
+        validationResult: input.validationResult,
+        },
+      });
+      await auditService.createInTransaction(tx, {
+        actorId: input.userId,
+        action: 'AI_FACT_DRAFT_CREATED',
+        resourceType: 'ConversationFactCandidate',
+        resourceId: candidate.id,
+        description: 'Fact draft created for review; no domain record was written.',
+        metadata: {
+          conversationId: conversation.id,
+          moduleId: input.moduleId,
+          targetEntityType: input.targetEntityType ?? '',
+          targetFieldId: input.targetFieldId ?? '',
+          evidenceReference: input.evidenceReference ?? '',
+          status: candidate.status,
+          requiresConfirmation: true,
+          applied: false,
+        },
+      });
+      return candidate;
+    });
+  }
+
+  async listFactCandidates(conversationId: string, userId: string) {
+    const conversation = await this.requireConversationForUser(conversationId, userId);
+    return this.prisma.conversationFactCandidate.findMany({
+      where: { conversationId: conversation.id, userId },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

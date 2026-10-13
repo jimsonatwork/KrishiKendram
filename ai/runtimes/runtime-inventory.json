@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-RUNTIMES-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "runtimes": [
     {
@@ -15,10 +15,27 @@
     {
       "runtimeId": "KK-AI-RUNTIME-TEXT-GENERATION",
       "kind": "MODEL_RUNTIME",
-      "implementation": "backend/src/ai/providers/unavailable-text-generation.provider.ts",
-      "providerRegistration": "TEXT_GENERATION_PROVIDER",
-      "runtimeStatus": "DISABLED",
-      "healthStatus": "NOT_INSTALLED"
+      "implementation": "backend/src/ai/providers/ollama-text-generation.provider.ts",
+      "providerRegistration": "KK-AI-LLM-OLLAMA-LOCAL",
+      "runtimeStatus": "EVALUATION_IN_PROGRESS",
+      "healthStatus": "NOT_YET_PROBED"
+    },
+    {
+      "runtimeId": "KK-AI-RUNTIME-OLLAMA-LOCAL",
+      "kind": "MODEL_RUNTIME",
+      "implementation": "scripts/kk-ai-runtime-start.sh",
+      "providerRegistration": "KK-AI-LLM-OLLAMA-LOCAL",
+      "runtimeStatus": "INFERENCE_VERIFIED_EVALUATION_ONLY",
+      "healthStatus": "HEALTHY_SYNTHETIC_INFERENCE_VERIFIED",
+      "modelId": "qwen3:1.7b",
+      "modelDigest": "8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7",
+      "modelStoragePath": "/mnt/d/KrishiKendram/08-AI/KrishiKendram-AI/Models/Ollama",
+      "hostBinding": "127.0.0.1:11434",
+      "cloudFallbackAllowed": false,
+      "runtimeInstallPath": "/mnt/d/KrishiKendram/08-AI/Tools/Ollama",
+      "runtimeVersion": "0.40.3",
+      "archiveSha256": "CE6F8B671A699BF1EBAFB28D60DBBABF4F37B30B499145FA308A8BA72DE021D6",
+      "cloudFeaturesDisabled": true
     }
   ]
 }

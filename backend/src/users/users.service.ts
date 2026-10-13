@@ -10,6 +10,7 @@ import {
 
 import {
   InputMethod,
+  Prisma,
   UserRole,
   UserStatus,
 } from '@prisma/client'
@@ -333,9 +334,9 @@ export class UsersService {
     id: string,
     dto: UpdateUserDto,
     actorId?: string,
+    transaction?: Prisma.TransactionClient,
   ) {
-    return this.prisma.$transaction(
-      async (tx) => {
+    const updateInTransaction = async (tx: Prisma.TransactionClient) => {
         const currentUser = await tx.user.findUnique({
           where: { id },
         })
@@ -671,8 +672,10 @@ export class UsersService {
         return this.toSafeUser(
           updatedUser,
         )
-      },
-    )
+    }
+    return transaction
+      ? updateInTransaction(transaction)
+      : this.prisma.$transaction(updateInTransaction)
   }
 
   // ==========================================================

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Mic, MicOff, Volume2, VolumeX, X, ChevronUp, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../lib/api'
+import { api, type AiFactCandidate } from '../../lib/api'
 import { useAuthStore } from '../../stores/auth.store'
 
 type Recognition = {
@@ -25,6 +25,18 @@ type VoiceIntent = {
   moduleId: string
 }
 type RestrictedVoiceIntent = { intentId: string; label: string; phrases: string[]; moduleId: string }
+type AiProviderStatus = {
+  enabled: boolean
+  ready: boolean
+  canGenerate: boolean
+  evaluationOnly: boolean
+  providerId: string
+  modelId: string
+  modelVersion: string
+  status: string
+  mode: string
+  runtime: { reachable: boolean; modelInstalled: boolean; error?: string }
+}
 
 export function VoiceAgent({ role }: { role: string }) {
   const navigate = useNavigate()
@@ -45,6 +57,12 @@ export function VoiceAgent({ role }: { role: string }) {
   const [navigationPrefixes, setNavigationPrefixes] = useState<string[]>([])
   const [restrictedIntents, setRestrictedIntents] = useState<RestrictedVoiceIntent[]>([])
   const [intentManifestReady, setIntentManifestReady] = useState(false)
+  const [providerStatus, setProviderStatus] = useState<AiProviderStatus | null>(null)
+  const [factDrafts, setFactDrafts] = useState<AiFactCandidate[]>([])
+  const [draftEvidence, setDraftEvidence] = useState<Record<string, string>>({})
+  const [draftReviewOpen, setDraftReviewOpen] = useState(false)
+  const [draftBusy, setDraftBusy] = useState(false)
+  const lastEvidenceMessageId = useRef<string | null>(null)
   const admin = role === 'SUPER_ADMIN' && voiceIntents.some(intent => intent.access === 'SYSTEM_GOD')
 
   useEffect(() => {
@@ -74,6 +92,20 @@ export function VoiceAgent({ role }: { role: string }) {
       setNavigationPrefixes([])
       setRestrictedIntents([])
       setIntentManifestReady(false)
+    })
+    return () => { active = false }
+  }, [accessToken])
+
+  useEffect(() => {
+    let active = true
+    if (!accessToken) {
+      setProviderStatus(null)
+      return () => { active = false }
+    }
+    api.getAiConversationStatus(accessToken).then(status => {
+      if (active) setProviderStatus(status)
+    }).catch(() => {
+      if (active) setProviderStatus(null)
     })
     return () => { active = false }
   }, [accessToken])
@@ -111,19 +143,127 @@ export function VoiceAgent({ role }: { role: string }) {
         }
       }
 
-      await api.appendAiConversationMessage(
+      const savedMessage = await api.appendAiConversationMessage(
         token,
         id,
         content,
         source,
         lang,
       )
+      if (savedMessage?.id) lastEvidenceMessageId.current = savedMessage.id
       return id
     } catch {
       setMessage(
         'I could not save this conversation. Check your connection and sign-in, then try again.',
       )
       return null
+    }
+  }
+
+  const loadFactDrafts = async () => {
+    const token = accessToken
+    const id = conversationId.current
+    if (!token || !id) {
+      setMessage('There is no saved conversation to review yet. Ask or say something first.')
+      setDraftReviewOpen(true)
+      setFactDrafts([])
+      return false
+    }
+    setDraftBusy(true)
+    try {
+      const [candidates, history] = await Promise.all([
+        api.getAiFactCandidates(token, id),
+        api.getAiConversationHistory(token, id),
+      ])
+      setFactDrafts(candidates)
+      setDraftEvidence(Object.fromEntries(history.map(item => [item.id, item.content])))
+      setDraftReviewOpen(true)
+      setMessage(candidates.length
+        ? `Loaded ${candidates.length} saved fact draft(s). Review the proposed value and its source before confirming or rejecting.`
+        : 'No fact drafts have been created for this conversation yet. AI extraction is not active until an approved provider is enabled.')
+      return true
+    } catch {
+      setMessage('I could not load fact drafts. Check your sign-in and connection, then try again.')
+      return false
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
+  const applyFactDraft = async (draft: AiFactCandidate) => {
+    if (!accessToken || !conversationId.current) return
+    setDraftBusy(true)
+    try {
+      const applied = await api.applyAiFactCandidate(
+        accessToken,
+        conversationId.current,
+        draft.id,
+        draft.previewHash,
+      )
+      const refreshed = await loadFactDrafts()
+      setMessage(refreshed
+        ? 'Profile field ' + applied.targetFieldId + ' updated through the authorized user service and audit-recorded.'
+        : 'Profile update succeeded and was audited, but the refreshed preview could not be loaded.')
+    } catch {
+      await loadFactDrafts()
+      setMessage('The profile update could not be applied. No success is claimed; review the draft status and retry only if it remains CONFIRMED.')
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
+  const confirmFactDraft = async (draft: AiFactCandidate) => {
+    if (!accessToken || !conversationId.current) return
+    setDraftBusy(true)
+    try {
+      const confirmed = await api.confirmAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash)
+      const isOwnProfileDraft = draft.moduleId === 'KK-USER-001' &&
+        draft.targetEntityType === 'User' && Boolean(draft.targetEntityId)
+      if (isOwnProfileDraft) {
+        try {
+          const applied = await api.applyAiFactCandidate(
+            accessToken,
+            conversationId.current,
+            draft.id,
+            confirmed.previewHash,
+          )
+          const refreshed = await loadFactDrafts()
+          setMessage(refreshed
+            ? 'Profile field ' + applied.targetFieldId + ' updated through the authorized user service and audit-recorded.'
+            : 'Profile update succeeded and was audited, but the refreshed preview could not be loaded.')
+        } catch {
+          await loadFactDrafts()
+          setMessage('Draft confirmed and audit-recorded, but profile application failed. The draft remains confirmed if the transaction did not commit; review its status and use Apply confirmed to retry.')
+        }
+      } else {
+        const refreshed = await loadFactDrafts()
+        setMessage(refreshed
+          ? 'Draft confirmed and audit-recorded. This target does not yet have a registered module-owned apply handler, so no domain record was changed.'
+          : 'Draft confirmation succeeded and was audited, but the refreshed preview could not be loaded.')
+      }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : ''
+      setMessage(detail
+        ? 'The draft could not be completed: ' + detail + '. Reload the drafts and review the current status.'
+        : 'The draft could not be completed. Confirmation may have failed; reload the drafts and review the current status.')
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
+  const rejectFactDraft = async (draft: AiFactCandidate) => {
+    if (!accessToken || !conversationId.current) return
+    setDraftBusy(true)
+    try {
+      await api.rejectAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash, 'Rejected by user in Voice Agent review.')
+      const refreshed = await loadFactDrafts()
+      setMessage(refreshed
+        ? 'Draft rejected and audit-recorded. No application record was changed.'
+        : 'Draft rejection succeeded and was audited, but the refreshed preview could not be loaded.')
+    } catch {
+      setMessage('The draft could not be rejected. Reload the drafts and try again.')
+    } finally {
+      setDraftBusy(false)
     }
   }
 
@@ -199,20 +339,24 @@ export function VoiceAgent({ role }: { role: string }) {
 
     try {
       const status = await api.getAiConversationStatus(token)
-      if (!status.ready) {
-        say(
-          'Your question is saved in conversation history, but AI answers are currently unavailable because no approved, production-ready text-generation provider is installed. No cloud fallback was used.',
-        )
+      setProviderStatus(status)
+      if (!status.canGenerate) {
+        if (!status.runtime?.reachable) {
+          say('Your question is saved in conversation history, but the local AI runtime is not reachable. No cloud fallback was attempted.')
+        } else if (!status.runtime.modelInstalled) {
+          say('Your question is saved in conversation history, but the configured local model is not installed yet. No cloud fallback was attempted.')
+        } else if (status.status === 'EVALUATION_ONLY') {
+          say('The local model is evaluation-only. Explicit local evaluation is not enabled for this non-production runtime, so no model response was generated.')
+        } else {
+          say('Your question is saved in conversation history, but no provider is approved for this operation. No cloud fallback was attempted.')
+        }
         return
       }
 
-      const response = await api.requestAiConversationResponse(
-        token,
-        id,
-        original,
-        lang,
-      )
-      say(response.message.content)
+      const response = await api.requestAiConversationResponse(token, id, original, lang)
+      say(status.evaluationOnly
+        ? 'Local AI evaluation only (not production-approved; no record was changed). ' + response.message.content
+        : response.message.content)
     } catch {
       say(
         'I could not obtain an AI answer. The approved provider may be unavailable, or the request may have failed. Your question remains in conversation history; no farm record was changed.',
@@ -245,13 +389,49 @@ export function VoiceAgent({ role }: { role: string }) {
   return <div className="fixed bottom-4 right-3 z-[80] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 sm:bottom-5 sm:right-5">
     {open && <section aria-label="KrishiKendram voice assistant" className="flex max-h-[calc(100dvh-6rem)] w-[min(20rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl">
       <header className="flex shrink-0 items-center justify-between border-b px-3 py-2"><div className="flex items-center gap-2"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles size={18}/></span><div><p className="text-sm font-semibold">Krishi Voice Agent</p><p className="text-xs text-muted-foreground">{admin?'Administrator workspace':'Farm assistant'}</p></div></div><button type="button" aria-label="Close voice assistant" onClick={()=>{rec.current?.stop();setListening(false);setOpen(false)}} className="rounded-lg p-2 hover:bg-muted"><X size={16}/></button></header>
-      <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-sm">{turn.text}</p></div>)}</div><label htmlFor="kk-voice-language" className="block text-xs font-medium text-muted-foreground">Spoken language</label>
+      <div className="border-b px-3 py-1.5 text-[10px] text-muted-foreground" aria-live="polite">
+        <span className="font-semibold">AI provider:</span>{' '}
+        {providerStatus?.runtime?.reachable && providerStatus.runtime.modelInstalled
+          ? providerStatus.evaluationOnly ? 'Local evaluation only - not production approved' : providerStatus.ready ? 'Production approved' : 'Model reachable but not authorized'
+          : providerStatus?.runtime?.reachable ? 'Runtime online; configured model missing' : 'Local runtime unavailable'}
+        {providerStatus?.modelId ? ' (' + providerStatus.modelId + ')' : ''}
+      </div>
+      <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-sm">{turn.text}</p></div>)}</div>
+        {draftReviewOpen && <section aria-label="Fact draft review" className="space-y-2 rounded-lg border bg-background p-2">
+          <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">Draft review</p><button type="button" className="text-xs text-muted-foreground underline" onClick={() => setDraftReviewOpen(false)}>Hide</button></div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">Review the exact proposal and its source. Supported own-profile fields apply through the authorized user service after confirmation; other targets remain confirmed but unapplied until their module-owned handler is registered.</p>
+          {factDrafts.length === 0 ? <p className="text-xs text-muted-foreground">No saved fact drafts in this conversation.</p> : factDrafts.map(draft => {
+            const validation = draft.validationResult && typeof draft.validationResult === 'object'
+              ? draft.validationResult as { valid?: boolean; errors?: string[] }
+              : {}
+            const canConfirm = validation.valid === true && ['VALIDATION_PENDING','AWAITING_CONFIRMATION'].includes(draft.status)
+            const isOwnProfileDraft = draft.moduleId === 'KK-USER-001' &&
+              draft.targetEntityType === 'User' && Boolean(draft.targetEntityId)
+            const canApply = draft.status === 'CONFIRMED' && isOwnProfileDraft
+            const canReject = ['DETECTED','NORMALIZED','VALIDATION_PENDING','CONFLICT','AWAITING_CONFIRMATION'].includes(draft.status)
+            const value = typeof draft.proposedValue === 'string' ? draft.proposedValue : JSON.stringify(draft.proposedValue)
+            const evidence = draft.evidenceReference ? draftEvidence[draft.evidenceReference] : undefined
+            return <article key={draft.id} className="space-y-2 rounded-lg border p-2">
+              <div className="flex items-start justify-between gap-2"><p className="break-words text-xs font-semibold">{draft.targetEntityType ?? draft.moduleId}.{draft.targetFieldId ?? 'field'}</p><span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px]">{draft.status}</span></div>
+              <p className="break-words text-sm">{value}</p>
+              <p className="text-[11px] text-muted-foreground">Source: {evidence ? `“${evidence}”` : 'Original user message unavailable'}</p>
+              {validation.valid === false && <div className="rounded bg-destructive/10 p-2 text-[11px]">{(validation.errors ?? ['Central validation failed.']).join(' ')}</div>}
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={draftBusy || !canConfirm} onClick={() => void confirmFactDraft(draft)} className="h-8 min-w-0 flex-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">{isOwnProfileDraft ? 'Confirm & apply' : 'Confirm draft'}</button>
+                {canApply && <button type="button" disabled={draftBusy} onClick={() => void applyFactDraft(draft)} className="h-8 flex-1 rounded-lg border px-2 text-xs disabled:opacity-40">Apply confirmed</button>}
+                <button type="button" disabled={draftBusy || !canReject} onClick={() => void rejectFactDraft(draft)} className="h-8 rounded-lg border px-2 text-xs disabled:opacity-40">Reject</button>
+              </div>
+            </article>
+          })}
+        </section>}
+        <label htmlFor="kk-voice-language" className="block text-xs font-medium text-muted-foreground">Spoken language</label>
         <select id="kk-voice-language" value={lang} onChange={e=>{setLang(e.target.value);try{localStorage.setItem('kk-voice-language',e.target.value)}catch{/* Language preference is optional. */}}} className="h-9 w-full rounded-lg border bg-background px-2 text-xs">{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
         <div aria-live="polite" className="min-h-12 rounded-lg bg-muted/60 p-2 text-xs"><p>{message}</p>{transcript&&<p className="mt-2 border-t pt-2 text-muted-foreground">Heard: {transcript}</p>}</div>
         <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'bg-destructive text-destructive-foreground':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button></div>
+        <button type="button" disabled={draftBusy} onClick={() => void loadFactDrafts()} className="h-8 w-full rounded-lg border text-xs disabled:opacity-40">{draftBusy ? 'Loading drafts…' : 'Review saved fact drafts'}</button>
         <form onSubmit={e=>{e.preventDefault();command(transcript, 'TEXT')}} className="flex gap-2"><input aria-label="Type a voice command" value={transcript} onChange={e=>setTranscript(e.target.value)} placeholder="Or type: show my farms" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-xs"/><button type="submit" className="rounded-lg border px-2 text-xs">Go</button></form>
         {unsupported&&<p className="text-xs text-muted-foreground">Speech recognition is not available in this browser; typed commands still work.</p>}
-        <p className="text-[11px] leading-relaxed text-muted-foreground">Microphone stays off until you press Speak. Browser speech recognition may use the browser provider. AI answers require an approved, production-ready provider; record changes remain disabled until server-side authorization, validation and confirmation are wired.</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">Microphone stays off until you press Speak. Browser speech recognition may use the browser provider. Local evaluation responses are not production-approved and never write records. Saved proposals can be reviewed and confirmed, but applying them through each module's normal authorized API is still pending.</p>
       </div></section>}
     <button type="button" onClick={()=>setOpen(v=>!v)} aria-label={open?'Minimize voice assistant':'Open voice assistant'} title="Voice assistant" className="flex h-10 items-center gap-2 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-lg"><Mic size={19}/><span>Voice Agent</span><ChevronUp size={16} className={open?'rotate-180 transition-transform':'transition-transform'}/></button>
   </div>

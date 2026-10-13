@@ -83,7 +83,7 @@
     {
       "suiteId": "KK-EVAL-LLM-001",
       "name": "Local model and agricultural conversation",
-      "status": "PLANNED",
+      "status": "PARTIAL",
       "languages": [
         "en-IN",
         "te-IN",
@@ -99,7 +99,27 @@
         "latency",
         "peak RAM",
         "license/checksum"
-      ]
+      ],
+      "latestEvidence": {
+        "checkedAt": "2026-10-14T00:42:39+05:30",
+        "runtimeVersion": "0.40.3",
+        "modelId": "qwen3:1.7b",
+        "modelDigest": "8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7",
+        "executionMode": "LOCAL_LOOPBACK_ONLY",
+        "cloudFallbackAllowed": false,
+        "syntheticSmoke": {
+          "en-IN": { "status": "PASS", "warmLatencyMs": 6114 },
+          "te-IN": { "status": "PASS", "warmLatencyMs": 29862 }
+        },
+        "notYetAccepted": [
+          "native-speaker language quality review",
+          "agricultural factuality and multi-turn slot extraction",
+          "prompt-injection and action-authorization benchmark",
+          "peak memory and concurrent load",
+          "authenticated end-to-end module application and audit"
+        ],
+        "productionReady": false
+      }
     },
     {
       "suiteId": "KK-EVAL-FORM-001",

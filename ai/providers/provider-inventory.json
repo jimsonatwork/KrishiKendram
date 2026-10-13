@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-PROVIDERS-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "providers": [
     {
@@ -38,6 +38,25 @@
       "licenseReviewRequired": true,
       "productionReady": false,
       "secretValuesStoredHere": false
+    },
+    {
+      "providerId": "KK-AI-LLM-OLLAMA-LOCAL",
+      "capability": "CONVERSATION",
+      "implementation": "backend/src/ai/providers/ollama-text-generation.provider.ts",
+      "contract": "backend/src/ai/contracts/text-generation-provider.ts",
+      "status": "EVALUATION_IN_PROGRESS",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "productionReady": false,
+      "evaluationOnly": true,
+      "requiresExplicitLocalEvaluationOptIn": true,
+      "modelId": "qwen3:1.7b",
+      "modelQuantization": "Q4_K_M",
+      "modelSizeApproxBytes": 1359293444,
+      "modelVersion": "8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7",
+      "license": "Apache-2.0",
+      "source": "https://ollama.com/library/qwen3:1.7b",
+      "secretValuesStoredHere": false
     }
   ],
   "evaluationCandidates": [
@@ -54,15 +73,6 @@
       "providerId": "KK-AI-TTS-INDIC-CANDIDATE",
       "capability": "TEXT_TO_SPEECH",
       "source": "https://github.com/AI4Bharat/Indic-TTS",
-      "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
-      "executionMode": "LOCAL",
-      "cloudFallbackAllowed": false,
-      "productionReady": false
-    },
-    {
-      "providerId": "KK-AI-LLM-OLLAMA-CANDIDATE",
-      "capability": "CONVERSATION",
-      "source": "https://github.com/ollama/ollama",
       "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
       "executionMode": "LOCAL",
       "cloudFallbackAllowed": false,

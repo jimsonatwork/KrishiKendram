@@ -19,6 +19,7 @@ import { AiRegistryService } from '../registry/ai-registry.service';
 import { TextGenerationService } from '../text-generation.service';
 import { UserAiContextService } from '../context/user-ai-context.service';
 import { AiVoiceCapabilityService } from '../voice/ai-voice-capability.service';
+import { FactDraftService } from './fact-draft.service';
 
 interface AuthenticatedRequest {
   user?: {
@@ -36,6 +37,7 @@ export class AiConversationController {
     private readonly textGeneration: TextGenerationService,
     private readonly userAiContext: UserAiContextService,
     private readonly voiceCapabilities: AiVoiceCapabilityService,
+    private readonly factDrafts: FactDraftService,
   ) {}
 
   @Get('voice-intents')
@@ -45,7 +47,7 @@ export class AiConversationController {
 
   @Get('status')
   status() {
-    return this.textGeneration.getStatus();
+    return this.textGeneration.getDetailedStatus();
   }
 
   @Post(':conversationId/respond')
@@ -218,6 +220,107 @@ export class AiConversationController {
     }, userId);
   }
 
+  @Post(':conversationId/fact-candidates')
+  createFactCandidate(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId') conversationId: string,
+    @Body() body: unknown,
+  ) {
+    const data = this.asRecord(body);
+    const userId = this.requireUserId(req);
+    const targetModuleId = this.requiredText(data.targetModuleId, 'targetModuleId', 100);
+    const targetEntityType = this.requiredText(data.targetEntityType, 'targetEntityType', 100);
+    const targetEntityId = this.optionalText(data.targetEntityId, 'targetEntityId', 200);
+    const ownUserProfileTarget = targetModuleId === 'KK-USER-001' &&
+      targetEntityType === 'User' && targetEntityId === userId;
+    if (targetEntityId !== undefined && !ownUserProfileTarget) {
+      throw new BadRequestException('Existing-record changes require the dedicated authorized update workflow; only the authenticated user may draft their own profile fields here.');
+    }
+    if (!Object.prototype.hasOwnProperty.call(data, 'proposedValue') || data.proposedValue === null) {
+      throw new BadRequestException('proposedValue must be a non-null JSON value.');
+    }
+    const confidence = data.confidence;
+    if (confidence !== undefined && (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1)) {
+      throw new BadRequestException('confidence must be a number between 0 and 1.');
+    }
+    const sessionId = this.optionalText(data.sessionId, 'sessionId', 200);
+    return this.factDrafts.createDraft({
+      targetModuleId,
+      targetEntityType,
+      targetFieldId: this.requiredText(data.targetFieldId, 'targetFieldId', 100),
+      evidenceMessageId: this.requiredText(data.evidenceMessageId, 'evidenceMessageId', 200),
+      ...(targetEntityId === undefined ? {} : { targetEntityId }),
+      proposedValue: data.proposedValue,
+      ...(confidence === undefined ? {} : { confidence: confidence as number }),
+      ...(sessionId === undefined ? {} : { sessionId }),
+    }, {
+      userId,
+      role: this.requireUserRole(req),
+    }, conversationId);
+  }
+
+  @Get(':conversationId/fact-candidates')
+  listFactCandidates(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId') conversationId: string,
+  ) {
+    return this.factDrafts.listDrafts(conversationId, this.requireUserId(req));
+  }
+
+  @Post(':conversationId/fact-candidates/:candidateId/confirm')
+  confirmFactCandidate(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId') conversationId: string,
+    @Param('candidateId') candidateId: string,
+    @Body() body: unknown,
+  ) {
+    const userId = this.requireUserId(req);
+    const role = this.requireUserRole(req);
+    const data = this.asRecord(body);
+    return this.factDrafts.confirmDraft(
+      conversationId,
+      this.requiredText(candidateId, 'candidateId', 200),
+      this.requiredText(data.previewHash, 'previewHash', 64),
+      { userId, role },
+    );
+  }
+
+  @Post(':conversationId/fact-candidates/:candidateId/apply')
+  applyFactCandidate(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId') conversationId: string,
+    @Param('candidateId') candidateId: string,
+    @Body() body: unknown,
+  ) {
+    const userId = this.requireUserId(req);
+    const role = this.requireUserRole(req);
+    const data = this.asRecord(body);
+    return this.factDrafts.applyConfirmedDraft(
+      conversationId,
+      this.requiredText(candidateId, 'candidateId', 200),
+      this.requiredText(data.previewHash, 'previewHash', 64),
+      { userId, role },
+    );
+  }
+
+  @Post(':conversationId/fact-candidates/:candidateId/reject')
+  rejectFactCandidate(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId') conversationId: string,
+    @Param('candidateId') candidateId: string,
+    @Body() body: unknown,
+  ) {
+    const userId = this.requireUserId(req);
+    const data = this.asRecord(body);
+    return this.factDrafts.rejectDraft(
+      conversationId,
+      this.requiredText(candidateId, 'candidateId', 200),
+      this.requiredText(data.previewHash, 'previewHash', 64),
+      userId,
+      this.optionalText(data.reason, 'reason', 300),
+    );
+  }
+
   @Get(':conversationId/history')
   history(
     @Req() req: AuthenticatedRequest,
@@ -252,6 +355,14 @@ export class AiConversationController {
       throw new BadRequestException('Request body must be a JSON object.');
     }
     return value as Record<string, unknown>;
+  }
+
+  private requiredText(value: unknown, field: string, maxLength: number): string {
+    const parsed = this.optionalText(value, field, maxLength);
+    if (parsed === undefined) {
+      throw new BadRequestException(`${field} is required.`);
+    }
+    return parsed;
   }
 
   private optionalText(
