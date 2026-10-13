@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   ConversationFactCandidateStatus,
   ConversationMessageRole,
@@ -30,6 +30,9 @@ describe('ConversationService AI governance', () => {
           id: 'conversation-1',
           userId: 'user-1',
           moduleId: 'KK-USER-001',
+        }),
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'conversation-1', userId: 'user-1', moduleId: 'KK-USER-001', messages: [],
         }),
         update: jest.fn().mockResolvedValue({}),
       },
@@ -79,7 +82,7 @@ describe('ConversationService AI governance', () => {
         providerId: provenance.providerId,
         modelId: provenance.modelId,
         modelVersion: provenance.modelVersion,
-      }),
+      }, 'user-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.conversationMessage.create).not.toHaveBeenCalled();
@@ -95,7 +98,7 @@ describe('ConversationService AI governance', () => {
       modelId: provenance.modelId,
       modelVersion: provenance.modelVersion,
       provenance,
-    });
+    }, 'user-1');
 
     expect(prisma.conversationMessage.create).toHaveBeenCalled();
   });
@@ -105,7 +108,7 @@ describe('ConversationService AI governance', () => {
       conversationId: 'conversation-1',
       role: ConversationMessageRole.USER,
       content: 'My farm is near the village.',
-    });
+    }, 'user-1');
 
     expect(prisma.conversationMessage.create).toHaveBeenCalled();
   });
@@ -118,7 +121,7 @@ describe('ConversationService AI governance', () => {
         moduleId: 'KK-USER-001',
         proposedValue: { value: 'example' },
         source: 'AI',
-      }),
+      }, 'user-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.conversationFactCandidate.create).not.toHaveBeenCalled();
@@ -133,7 +136,7 @@ describe('ConversationService AI governance', () => {
         proposedValue: { value: 'example' },
         source: 'AI',
         provenance: { ...provenance, generatedAt: 'not-a-date' },
-      }),
+      }, 'user-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -150,7 +153,7 @@ describe('ConversationService AI governance', () => {
         source: 'AI',
         provenance,
         status,
-      }),
+      }, 'user-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.conversationFactCandidate.create).not.toHaveBeenCalled();
@@ -166,7 +169,7 @@ describe('ConversationService AI governance', () => {
         source: 'AI',
         provenance,
         requiresConfirmation: false,
-      }),
+      }, 'user-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -178,7 +181,7 @@ describe('ConversationService AI governance', () => {
       proposedValue: { value: 'example' },
       source: 'AI',
       provenance,
-    });
+    }, 'user-1');
 
     expect(prisma.conversationFactCandidate.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -188,4 +191,64 @@ describe('ConversationService AI governance', () => {
       }),
     );
   });
+
+  it('filters conversation content by owner before loading private child records', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(null);
+
+    await expect(service.getConversation('conversation-1', 'attacker-user'))
+      .rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prisma.conversation.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'conversation-1', userId: 'attacker-user' },
+      include: expect.any(Object),
+    }));
+    expect(prisma.conversation.findUnique).toHaveBeenCalledWith({
+      where: { id: 'conversation-1' },
+      select: { id: true, userId: true },
+    });
+  });
+
+  it('rejects appending to another user conversation before writing', async () => {
+    await expect(
+      service.appendMessage({
+        conversationId: 'conversation-1',
+        role: ConversationMessageRole.USER,
+        content: 'Private message',
+      }, 'attacker-user'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prisma.conversationMessage.create).not.toHaveBeenCalled();
+    expect(prisma.conversation.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a fact candidate when the actor is not the conversation owner', async () => {
+    await expect(
+      service.createFactCandidate({
+        conversationId: 'conversation-1',
+        userId: 'attacker-user',
+        moduleId: 'KK-USER-001',
+        proposedValue: { value: 'example' },
+        source: 'AI',
+        provenance,
+      }, 'attacker-user'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prisma.conversationFactCandidate.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a fact candidate whose payload user differs from the actor', async () => {
+    await expect(
+      service.createFactCandidate({
+        conversationId: 'conversation-1',
+        userId: 'different-user',
+        moduleId: 'KK-USER-001',
+        proposedValue: { value: 'example' },
+        source: 'AI',
+        provenance,
+      }, 'user-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prisma.conversationFactCandidate.create).not.toHaveBeenCalled();
+  });
+
 });

@@ -9,10 +9,11 @@ import { UserAiContextService } from './context/user-ai-context.service';
 import { TEXT_GENERATION_PROVIDER } from './contracts/text-generation-provider';
 import { UnavailableTextGenerationProvider } from './providers/unavailable-text-generation.provider';
 import { TextGenerationService } from './text-generation.service';
+import { AiVoiceCapabilityService } from './voice/ai-voice-capability.service';
 
 @Module({
   controllers: [AiConversationController],
-  providers: [AiRegistryService, IndicConformerProvider, UnavailableTextGenerationProvider, ConversationService, UserAiContextService, TextGenerationService, { provide: ASR_PROVIDER, useExisting: IndicConformerProvider }, { provide: TEXT_GENERATION_PROVIDER, useExisting: UnavailableTextGenerationProvider }, AiService],
+  providers: [AiRegistryService, IndicConformerProvider, UnavailableTextGenerationProvider, ConversationService, UserAiContextService, TextGenerationService, AiVoiceCapabilityService, { provide: ASR_PROVIDER, useExisting: IndicConformerProvider }, { provide: TEXT_GENERATION_PROVIDER, useExisting: UnavailableTextGenerationProvider }, AiService],
   exports: [AiRegistryService, ConversationService, UserAiContextService, AiService, TextGenerationService],
 })
 export class AiModule {}

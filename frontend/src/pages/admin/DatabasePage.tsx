@@ -8,6 +8,16 @@ import { useLiveRefresh } from '@/hooks/use-live-refresh'
 type DbInfo = { provider:string; host:string; port:string; database:string; username:string; password:string; databaseUrl:string; sensitiveRevealed:boolean; sensitiveViewEnabled:boolean }
 const auth = (token:string) => ({ headers: { Authorization: 'Bearer ' + token } })
 
+type FieldProps = { label: string; value: string; sensitive?: boolean }
+function Field({ label, value, sensitive = false }: FieldProps) {
+  return (
+    <div className="rounded-xl border p-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-2 overflow-x-auto font-mono text-sm whitespace-nowrap">{value || (sensitive ? 'Not configured' : '—')}</div>
+    </div>
+  )
+}
+
 export function DatabasePage() {
   const token = useAuthStore(s => s.accessToken)
   const [data,setData] = useState<DbInfo|null>(null)
@@ -31,9 +41,6 @@ export function DatabasePage() {
     finally { setRevealing(false) }
   }
   const mask = () => data && setData({...data,password:'••••••••••••',databaseUrl:'••••••••••••',sensitiveRevealed:false})
-  const Field = ({label,value,sensitive=false}:{label:string,value:string,sensitive?:boolean}) => (
-    <div className="rounded-xl border p-4"><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-2 overflow-x-auto font-mono text-sm whitespace-nowrap">{value || (sensitive ? 'Not configured' : '—')}</div></div>
-  )
   return <div className="space-y-6">
     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Platform control</div><h1 className="mt-1 text-3xl font-semibold tracking-tight">Database Parameters</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">Runtime connection information. Sensitive values remain masked until explicitly unmasked.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={loading?'size-4 animate-spin':'size-4'}/>Refresh</Button></div>
     {error && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}

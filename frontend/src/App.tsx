@@ -894,7 +894,7 @@ function PortalLayout({
   const toggleSidebar = () => {
     setSidebarCollapsed((collapsed) => {
       const next = !collapsed
-      try { localStorage.setItem('kk-sidebar-collapsed', String(next)) } catch {}
+      try { localStorage.setItem('kk-sidebar-collapsed', String(next)) } catch { /* Sidebar preference is optional. */ }
       return next
     })
   }

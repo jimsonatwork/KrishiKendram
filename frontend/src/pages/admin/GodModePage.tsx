@@ -17,6 +17,7 @@ type AiControlPlane = {
     runtimes?: { runtimes?: Array<{ runtimeId: string; runtimeStatus: string; healthStatus?: string }> } | null
     policies?: { enforcement?: Record<string, boolean> } | null
     evaluations?: { evaluationSuites?: unknown[] } | null
+    cloudConnectionPolicy?: Record<string, unknown> | null
   }
   linkedFiles: Record<string, string>
   moduleFiles: Record<string, string>
@@ -183,7 +184,7 @@ export function GodModePage() {
           <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-semibold">Governed AI configuration editor</h3><p className="mt-1 text-xs text-muted-foreground">Only registered JSON inventories and module contracts are editable. Each save requires the current revision, a reason, schema checks, a snapshot and an audit event.</p></div><span className="rounded-md border px-2 py-1 text-[10px]">God Mode only</span></div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <select className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm" value={aiFileKey} onChange={(event) => { setAiFileKey(event.target.value); setAiFileText(''); setAiFileRevision(''); setAiFileMessage('') }}>
-              <option value="providerInventory">Provider inventory</option><option value="runtimeInventory">Runtime inventory</option><option value="policyIndex">AI policy index</option><option value="evaluationIndex">Evaluation index</option>
+              <option value="providerInventory">Provider inventory</option><option value="runtimeInventory">Runtime inventory</option><option value="policyIndex">AI policy index</option><option value="evaluationIndex">Evaluation index</option><option value="cloudConnectionPolicy">Cloud connection policy (disabled)</option>
               {aiControlPlane.moduleContracts.map((module) => <option key={module.moduleId} value={'module:' + module.moduleId}>Module: {module.moduleName}</option>)}
             </select>
             <Button variant="outline" size="sm" onClick={() => void loadAiFile()} disabled={aiFileBusy}>{aiFileBusy ? 'Working…' : 'Load current file'}</Button>

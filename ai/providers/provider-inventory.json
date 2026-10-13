@@ -23,6 +23,50 @@
       "executionMode": "LOCAL",
       "cloudFallbackAllowed": false,
       "secretValuesStoredHere": false
+    },
+    {
+      "providerId": "KK-AI-CLOUD-TEXT-CONNECTION-CANDIDATE",
+      "capability": "CONVERSATION",
+      "implementation": "backend/src/ai/providers/approved-cloud-text-generation.provider.ts",
+      "contract": "backend/src/ai/contracts/text-generation-provider.ts",
+      "status": "NOT_IMPLEMENTED_GOD_APPROVAL_REQUIRED",
+      "executionMode": "CLOUD",
+      "cloudFallbackAllowed": false,
+      "credentialSource": "EXTERNAL_SECRET_STORE_ONLY",
+      "requiresGodModeAuthorization": true,
+      "requiresPerDisclosureConsent": true,
+      "licenseReviewRequired": true,
+      "productionReady": false,
+      "secretValuesStoredHere": false
+    }
+  ],
+  "evaluationCandidates": [
+    {
+      "providerId": "KK-AI-ASR-WHISPER-CPP-CANDIDATE",
+      "capability": "SPEECH_TO_TEXT",
+      "source": "https://github.com/ggerganov/whisper.cpp",
+      "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "productionReady": false
+    },
+    {
+      "providerId": "KK-AI-TTS-INDIC-CANDIDATE",
+      "capability": "TEXT_TO_SPEECH",
+      "source": "https://github.com/AI4Bharat/Indic-TTS",
+      "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "productionReady": false
+    },
+    {
+      "providerId": "KK-AI-LLM-OLLAMA-CANDIDATE",
+      "capability": "CONVERSATION",
+      "source": "https://github.com/ollama/ollama",
+      "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "productionReady": false
     }
   ]
 }

@@ -136,7 +136,10 @@
     "evaluationIndex": "../evaluations/evaluation-index.json",
     "governanceDocument": "../../docs/AI-VOICE-PLATFORM-AND-GOVERNANCE.md",
     "platformRegistryDocument": "../../docs/KK-AI-PLATFORM-REGISTRY.md",
-    "conversationContextDocument": "../../docs/KK-AI-CONVERSATION-AND-CONTEXT.md"
+    "conversationContextDocument": "../../docs/KK-AI-CONVERSATION-AND-CONTEXT.md",
+    "supportingComponents": "../supporting-components.json",
+    "voiceIntents": "../voice/voice-intents.json",
+    "cloudConnectionPolicy": "../connections/cloud-connection-policy.json"
   },
   "moduleFiles": {
     "KK-USER-001": "../modules/KK-USER-001.json",

@@ -1,0 +1,36 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-CLOUD-CONNECTION-POLICY-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "mode": "EXPLICIT_APPROVED_PRIMARY_ONLY",
+  "enabled": false,
+  "providerId": null,
+  "endpoint": null,
+  "credentialReference": null,
+  "approvedByGodUserId": null,
+  "approvedAt": null,
+  "approvalReason": null,
+  "policy": {
+    "requiresGodModeAuthorization": true,
+    "requiresSuperAdminProposal": true,
+    "requiresUserConsentForEachCloudDisclosure": true,
+    "cloudFallbackAllowed": false,
+    "secretsMayBeStoredInThisFile": false,
+    "endpointMustUseHttps": true,
+    "providerMustBeLicenseReviewed": true,
+    "modelAndDatasetLicensesReviewedSeparately": true,
+    "healthAndCapabilityEvaluationRequired": true,
+    "disableAndRollbackRequired": true
+  },
+  "statusReason": "Not configured. This is a safe, centrally governed connection slot; no cloud provider, endpoint, credentials, or fallback is active.",
+  "acceptanceGates": [
+    "provider license reviewed",
+    "endpoint verified over HTTPS",
+    "credentials stored outside repository and registry JSON",
+    "God Mode approval recorded",
+    "data-disclosure consent implemented",
+    "provider capability and failure tests pass",
+    "audit and rollback verified"
+  ]
+}

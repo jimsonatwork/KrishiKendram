@@ -139,9 +139,16 @@ async function seedResourceCapabilities() {
           );
         }
 
-        // FARMER role assignment remains an explicit seed policy.
-        // Registry scopes describe what the resource supports; they do NOT
-        // automatically grant every supported scope to FARMER.
+        // Every authenticated role may read its own conversation only.
+        // The OWN scope is enforced by AuthorizationService ownerId matching;
+        // no global conversation-read capability is created.
+        if (resource.name === 'conversation' && scope === 'OWN') {
+          await reconcileRolePermissions(permission.id, ALL_USER_ROLES);
+          continue;
+        }
+
+        // FARMER role assignment remains an explicit seed policy for domain data.
+        // Registry scopes do NOT automatically grant every supported scope.
         const farmerScope = getFarmerScope(resource);
 
         if (farmerScope === scope) {

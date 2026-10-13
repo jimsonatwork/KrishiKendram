@@ -3,6 +3,7 @@ import { AuthorizationService } from '../../platform/authorization/authorization
 import type { AuthorizationContext, AuthorizationRequest } from '../../platform/authorization/authorization.service';
 import { AuthorizationAction } from '../../platform/authorization/authorization.types';
 import type { FieldPolicyOperation } from '../../platform/authorization/field-policy.service';
+import type { UserAiContextEnvelope } from '../contracts/ai-context';
 import { AiRegistryService } from '../registry/ai-registry.service';
 
 export interface AiContextValues { [key: string]: unknown; }
@@ -11,18 +12,12 @@ export interface UserAiContextRequest {
   actor: AuthorizationContext;
   moduleId: string;
   capability: string;
+  /** Permission namespace in the platform resource registry; context policy still uses moduleId. */
+  authorizationModule?: 'platform';
   references?: string[];
   fields: string[];
-  authorization: Omit<AuthorizationRequest, 'user' | 'module'> & { action?: AuthorizationAction };
+  authorization: Omit<AuthorizationRequest, 'user' | 'module' | 'action'> & { action?: AuthorizationAction };
   values: AiContextValues;
-}
-
-export interface UserAiContextEnvelope {
-  policy: { registryId: string; authorizationBeforeContext: true; databaseWriteAllowed: false; userConfirmationRequired: true };
-  actor: { userId: string };
-  module: { moduleId: string; capability: string };
-  references: Record<string, unknown>;
-  fields: Record<string, unknown>;
 }
 
 @Injectable()
@@ -34,6 +29,9 @@ export class UserAiContextService {
     if (!request.moduleId) throw new BadRequestException('AI context requires a moduleId.');
     if (!request.capability) throw new BadRequestException('AI context requires an AI capability.');
     if (!Array.isArray(request.fields) || request.fields.length === 0) throw new BadRequestException('AI context requires explicit fields.');
+    if (request.authorizationModule !== undefined && (request.moduleId !== this.registry.getConversationModuleId() || request.authorizationModule !== 'platform' || request.authorization.resource !== 'conversation')) {
+      throw new BadRequestException('AI context authorization namespace is not registered for this module.');
+    }
 
     this.registry.assertModuleRegistered(request.moduleId);
     this.registry.assertCapabilityAllowed(request.moduleId, request.capability);
@@ -42,11 +40,21 @@ export class UserAiContextService {
     const authorizationRequest: AuthorizationRequest = {
       ...request.authorization,
       user: request.actor,
-      module: request.moduleId,
+      module: request.authorizationModule ?? request.moduleId,
       action: request.authorization.action ?? AuthorizationAction.READ,
     };
     const decision = await this.authorizationService.authorizeFields(authorizationRequest, request.fields, 'READ');
-    if (!decision.allowed) throw new BadRequestException(`AI context authorization denied for ${request.moduleId}/${authorizationRequest.resource}.`);
+    // Fail closed unless both resource authorization and field-policy evaluation
+    // return the complete successful contract from AuthorizationService.
+    if (
+      decision?.allowed !== true ||
+      decision.decision?.allowed !== true ||
+      typeof decision.decision.permissionId !== 'string' ||
+      decision.decision.permissionId.length === 0 ||
+      decision.fieldPolicy?.allowed !== true
+    ) {
+      throw new BadRequestException(`AI context authorization denied for ${request.moduleId}/${authorizationRequest.resource}.`);
+    }
 
     this.registry.assertCanonicalWriteForbidden();
     const module = this.registry.getModule(request.moduleId);

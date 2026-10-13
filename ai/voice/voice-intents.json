@@ -1,0 +1,276 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-VOICE-INTENTS-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "description": "Central voice navigation intent map. This is discovery only; destination routes and module APIs still enforce server-side authorization.",
+  "defaults": {
+    "unknownIntent": "ASK_CLARIFICATION",
+    "noCapability": "EXPLAIN_UNAVAILABLE",
+    "neverInferPermissionFromVoice": true
+  },
+  "navigationPrefixes": [
+    "open ", "show ", "go to ", "navigate to ", "take me to ", "please open ",
+    "చూపించు", "తెరువు", "వెళ్ళు", "చూపించండి", "తెరవండి",
+    "खोलो", "दिखाओ", "जाओ", "खोलिए", "दिखाइए",
+    "திற", "காட்டு", "செல்", "ತೆರೆ", "ನೋಡು", "ಹೋಗು",
+    "തുറക്കുക", "കാണിക്കുക", "പോകുക", "খুলুন", "দেখান",
+    "দেখাও", "खोला", "दाखवा", "ઉઘાડો", "દેખાડો", "ਖੋਲ੍ਹੋ", "ਦਿਖਾਓ"
+  ],
+  "intents": [
+    {
+      "intentId": "NAV-DASHBOARD",
+      "label": "Dashboard",
+      "phrases": [
+        "dashboard",
+        "home",
+        "డాష్‌బోర్డ్",
+        "मुख्य पृष्ठ"
+      ],
+      "path": "/app",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-USER-001"
+    },
+    {
+      "intentId": "NAV-FARMS",
+      "label": "Farms",
+      "phrases": [
+        "farm",
+        "farms",
+        "my farm",
+        "my farms",
+        "ఖేత్",
+        "खेत"
+      ],
+      "path": "/app/farms",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-FARM-001"
+    },
+    {
+      "intentId": "NAV-CROPS",
+      "label": "Crops",
+      "phrases": [
+        "crop",
+        "crops",
+        "పంటలు",
+        "फसल"
+      ],
+      "path": "/app/crops",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-CROP-001"
+    },
+    {
+      "intentId": "NAV-LIVESTOCK",
+      "label": "Livestock",
+      "phrases": [
+        "livestock",
+        "animals",
+        "పశువులు",
+        "पशुधन"
+      ],
+      "path": "/app/livestock",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-LIVESTOCK-001"
+    },
+    {
+      "intentId": "NAV-MARKETPLACE",
+      "label": "Marketplace",
+      "phrases": [
+        "marketplace",
+        "market",
+        "మార్కెట్",
+        "बाज़ार"
+      ],
+      "path": "/app/marketplace",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-MARKETPLACE-001"
+    },
+    {
+      "intentId": "NAV-ACTIVITIES",
+      "label": "Activities",
+      "phrases": [
+        "activities",
+        "activity",
+        "పనులు"
+      ],
+      "path": "/app/activities",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-FARM-001"
+    },
+    {
+      "intentId": "NAV-HISTORY",
+      "label": "History",
+      "phrases": [
+        "history",
+        "records",
+        "చరిత్ర",
+        "इतिहास"
+      ],
+      "path": "/app/history",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-USER-001"
+    },
+    {
+      "intentId": "NAV-AI-INTAKE",
+      "label": "AI intake",
+      "phrases": [
+        "ai intake",
+        "ai assistant",
+        "smart intake",
+        "ఏఐ"
+      ],
+      "path": "/app/intake",
+      "access": "AUTHENTICATED",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-GOD-MODE",
+      "label": "God Mode",
+      "phrases": [
+        "god mode"
+      ],
+      "path": "/app/god-mode",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-ADMIN-PLATFORM",
+      "label": "Admin platform",
+      "phrases": [
+        "platform",
+        "admin dashboard"
+      ],
+      "path": "/app",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-VALIDATION",
+      "label": "Validation policy",
+      "phrases": [
+        "validation",
+        "validation policy",
+        "నియమాలు"
+      ],
+      "path": "/app/validation-policy",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-USERS",
+      "label": "Users",
+      "phrases": [
+        "users",
+        "వినియోగదారులు"
+      ],
+      "path": "/app/users",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-USER-001"
+    },
+    {
+      "intentId": "NAV-ROLES",
+      "label": "Roles",
+      "phrases": [
+        "roles"
+      ],
+      "path": "/app/roles",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-AUDIT",
+      "label": "Audit",
+      "phrases": [
+        "audit",
+        "activity log"
+      ],
+      "path": "/app/audit",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-PERMISSIONS",
+      "label": "Permissions",
+      "phrases": [
+        "permissions",
+        "authorization",
+        "అనుమతులు"
+      ],
+      "path": "/app/permissions",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-RESOURCES",
+      "label": "Resources",
+      "phrases": [
+        "resources"
+      ],
+      "path": "/app/resources",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-MODULES",
+      "label": "Modules",
+      "phrases": [
+        "modules"
+      ],
+      "path": "/app/modules",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-CAPABILITIES",
+      "label": "Capabilities",
+      "phrases": [
+        "capabilities"
+      ],
+      "path": "/app/capabilities",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-DATABASE",
+      "label": "Database",
+      "phrases": [
+        "database",
+        "డేటాబేస్"
+      ],
+      "path": "/app/database",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-CONNECTIONS",
+      "label": "Connections",
+      "phrases": [
+        "connections"
+      ],
+      "path": "/app/connections",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-ACCESS",
+      "label": "Access",
+      "phrases": [
+        "access"
+      ],
+      "path": "/app/access",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    },
+    {
+      "intentId": "NAV-SYSTEM",
+      "label": "System",
+      "phrases": [
+        "system",
+        "సిస్టమ్"
+      ],
+      "path": "/app/system",
+      "access": "SYSTEM_GOD",
+      "moduleId": "KK-AI-CONVERSATION-001"
+    }
+  ]
+}

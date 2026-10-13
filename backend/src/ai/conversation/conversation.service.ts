@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -101,9 +102,11 @@ export class ConversationService {
     });
   }
 
-  async getConversation(conversationId: string, userId?: string) {
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id: conversationId },
+  async getConversation(conversationId: string, userId: string) {
+    // Filter by owner in the query so private messages/contexts are never
+    // loaded for a non-owner before the ownership decision.
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
       include: {
         sessions: { orderBy: { createdAt: 'asc' } },
         messages: { orderBy: { createdAt: 'asc' } },
@@ -113,14 +116,20 @@ export class ConversationService {
         actions: { orderBy: { proposedAt: 'asc' } },
       },
     });
-    if (!conversation)
-      throw new NotFoundException('Conversation was not found.');
-    this.assertUserAccess(conversation.userId, userId);
-    return conversation;
+    if (conversation) return conversation;
+
+    // Keep the established not-found vs forbidden behavior using metadata only.
+    const ownership = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, userId: true },
+    });
+    if (!ownership) throw new NotFoundException('Conversation was not found.');
+    this.assertUserAccess(ownership.userId, userId);
+    throw new NotFoundException('Conversation was not found.');
   }
 
-  async createSession(input: CreateSessionInput) {
-    const conversation = await this.requireConversation(input.conversationId);
+  async createSession(input: CreateSessionInput, actorUserId: string) {
+    const conversation = await this.requireConversationForUser(input.conversationId, actorUserId);
     return this.prisma.conversationSession.create({
       data: {
         conversationId: conversation.id,
@@ -178,7 +187,8 @@ export class ConversationService {
     return record;
   }
 
-async appendMessage(input: AppendMessageInput) {
+async appendMessage(input: AppendMessageInput, actorUserId: string) {
+    const conversation = await this.requireConversationForUser(input.conversationId, actorUserId);
     if (input.role === ConversationMessageRole.ASSISTANT) {
       const provenance = this.assertRequiredProvenance(
         input.provenance,
@@ -211,7 +221,6 @@ async appendMessage(input: AppendMessageInput) {
       throw new BadRequestException(
         'Conversation message content cannot be empty.',
       );
-    const conversation = await this.requireConversation(input.conversationId);
     if (input.sessionId)
       await this.requireSession(input.sessionId, conversation.id);
     const message = await this.prisma.conversationMessage.create({
@@ -236,8 +245,8 @@ async appendMessage(input: AppendMessageInput) {
     return message;
   }
 
-  async addContext(input: AddContextInput) {
-    const conversation = await this.requireConversation(input.conversationId);
+  async addContext(input: AddContextInput, actorUserId: string) {
+    const conversation = await this.requireConversationForUser(input.conversationId, actorUserId);
     if (conversation.moduleId !== input.moduleId)
       throw new BadRequestException(
         'Context moduleId must match the conversation moduleId.',
@@ -265,8 +274,8 @@ async appendMessage(input: AppendMessageInput) {
     });
   }
 
-  async addReference(input: AddReferenceInput) {
-    const conversation = await this.requireConversation(input.conversationId);
+  async addReference(input: AddReferenceInput, actorUserId: string) {
+    const conversation = await this.requireConversationForUser(input.conversationId, actorUserId);
     if (conversation.moduleId !== input.moduleId)
       throw new BadRequestException(
         'Reference moduleId must match the conversation moduleId.',
@@ -287,7 +296,11 @@ async appendMessage(input: AppendMessageInput) {
     });
   }
 
-  async createFactCandidate(input: CreateFactCandidateInput) {
+  async createFactCandidate(input: CreateFactCandidateInput, actorUserId: string) {
+    const conversation = await this.requireConversationForUser(input.conversationId, actorUserId);
+    if (input.userId !== actorUserId) {
+      throw new ForbiddenException('Fact candidate userId must match the authenticated actor.');
+    }
     this.assertRequiredProvenance(
       input.provenance,
       'AI fact candidate',
@@ -317,11 +330,8 @@ async appendMessage(input: AppendMessageInput) {
     }
 
 
-    const conversation = await this.requireConversation(input.conversationId);
-    if (conversation.userId !== input.userId)
-      throw new BadRequestException(
-        'Fact candidate userId must match the conversation owner.',
-      );
+    if (conversation.userId !== actorUserId)
+      throw new ForbiddenException('Conversation does not belong to the authenticated actor.');
     if (conversation.moduleId !== input.moduleId)
       throw new BadRequestException(
         'Fact candidate moduleId must match the conversation moduleId.',
@@ -373,9 +383,8 @@ async appendMessage(input: AppendMessageInput) {
     });
   }
 
-  async listHistory(conversationId: string, userId?: string) {
-    const conversation = await this.requireConversation(conversationId);
-    this.assertUserAccess(conversation.userId, userId);
+  async listHistory(conversationId: string, userId: string) {
+    const conversation = await this.requireConversationForUser(conversationId, userId);
     return this.prisma.conversationMessage.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
@@ -406,10 +415,17 @@ async appendMessage(input: AppendMessageInput) {
     return session;
   }
 
-  private assertUserAccess(ownerUserId: string, requestedUserId?: string) {
-    if (requestedUserId !== undefined && ownerUserId !== requestedUserId)
-      throw new BadRequestException(
-        'Conversation does not belong to the requested user.',
-      );
+  private async requireConversationForUser(conversationId: string, actorUserId: string) {
+    if (typeof actorUserId !== 'string' || !actorUserId.trim()) {
+      throw new ForbiddenException('A valid authenticated actor is required.');
+    }
+    const conversation = await this.requireConversation(conversationId);
+    this.assertUserAccess(conversation.userId, actorUserId);
+    return conversation;
+  }
+
+  private assertUserAccess(ownerUserId: string, requestedUserId: string) {
+    if (!requestedUserId || ownerUserId !== requestedUserId)
+      throw new ForbiddenException('Conversation does not belong to the authenticated actor.');
   }
 }

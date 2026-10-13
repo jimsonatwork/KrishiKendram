@@ -1,4 +1,5 @@
 import type { AiRunMode } from './asr-provider';
+import type { UserAiContextEnvelope } from './ai-context';
 
 export const TEXT_GENERATION_PROVIDER = Symbol('TEXT_GENERATION_PROVIDER');
 
@@ -7,6 +8,8 @@ export interface TextGenerationRequest {
   language?: string;
   conversationId: string;
   requestedBy: string;
+  /** Minimal context already authorized and projected by UserAiContextService. */
+  context?: UserAiContextEnvelope;
 }
 
 export interface TextGenerationResult {

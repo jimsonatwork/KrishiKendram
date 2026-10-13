@@ -25,6 +25,7 @@ describe('TextGenerationService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    provider.mode = 'DISABLED';
     registry.getControlPlaneOverview.mockReturnValue({
       inventories: {
         providers: {
@@ -60,6 +61,31 @@ describe('TextGenerationService', () => {
 
     expect(provider.generate).not.toHaveBeenCalled();
     expect(registry.assertCapabilityAllowed).not.toHaveBeenCalled();
+  });
+
+  it('passes the authorized context envelope unchanged to an approved provider', async () => {
+    provider.mode = 'LOCAL';
+    registry.getControlPlaneOverview.mockReturnValue({
+      inventories: { providers: { providers: [{
+        providerId: provider.providerId, capability: 'CONVERSATION',
+        status: 'PRODUCTION_READY', cloudFallbackAllowed: false,
+      }] } },
+      providerRules: { cloudFallback: false },
+    });
+    const context = {
+      policy: { registryId: 'KK-AI-REGISTRY-001', authorizationBeforeContext: true, databaseWriteAllowed: false, userConfirmationRequired: true },
+      actor: { userId: 'user-1' },
+      module: { moduleId: 'KK-AI-CONVERSATION-001', capability: 'CONVERSATION' },
+      references: { userId: 'user-1', moduleId: 'KK-AI-CONVERSATION-001' },
+      fields: { conversation: { id: 'conversation-1' }, messages: [] },
+    };
+    const request = { content: 'Hello', conversationId: 'conversation-1', requestedBy: 'user-1', context };
+    const generated = { content: 'Hello back', providerId: provider.providerId, modelId: 'local-model', modelVersion: '1', mode: 'LOCAL', generatedAt: '2026-10-13T00:00:00.000Z', requiresValidation: true, requiresUserConfirmation: true };
+    provider.generate.mockResolvedValue(generated);
+
+    await expect(service.generate(request)).resolves.toEqual(generated);
+    expect(provider.generate).toHaveBeenCalledWith(request);
+    expect(registry.assertCapabilityAllowed).toHaveBeenCalledWith('KK-AI-CONVERSATION-001', 'CONVERSATION');
   });
 
   it('fails closed if the provider is absent from the canonical inventory', async () => {

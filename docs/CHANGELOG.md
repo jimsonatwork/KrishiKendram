@@ -1,3 +1,11 @@
+## 2026-10-13 — Governed AI conversation context integration
+
+- Wired the response route to the centralized, fail-closed AI context projection after conversation ownership checks. Context assembly is skipped when the provider is unavailable. The shared envelope type lives in `backend/src/ai/contracts/ai-context.ts`; unauthorized context/permission namespace mappings are rejected. Conversation reads now filter by owner before loading private child records.
+- Added minimal bounded conversation/message context to the provider request contract and a platform READ/OWN conversation permission, reconciled additively for existing roles. No GLOBAL conversation access was added.
+- Verification: focused AI tests 38/38; full backend regression 48 suites / 452 tests; backend build PASS; frontend TypeScript/Vite build PASS (2,325 modules); `git diff --check` PASS. Runtime smoke after backend-only restart: API 200, UI 200, unauthenticated AI status 401.
+- The real text-generation provider remains disabled; no successful real-model response or full authenticated browser E2E claim is made.
+- Rollback artifacts: `.cto-backup/ai-context-integration-20261013-101607/` and `/home/jj/Dev/cto-recovery-snapshots/pre-ai-context-permission-20261013-102818/` (verified DB dump, permission manifest, targeted DB rollback, source rollback, and protected pre-restart God Mode artifact backups).
+
 ## 2026-10-11 - God Mode AI configuration recovery hardening
 
 - Added regression tests for completion-audit failures, automatic snapshot rollback, recovery-failure escalation, and failure to write the pre-change audit intent.
@@ -1170,3 +1178,49 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Added conversation governance tests; AI test suites passed 42 tests across 4 suites.
 - Backend build and `git diff --check` passed.
 - Full backend regression and runtime integration checks remain pending.
+
+## 2026-10-12 — Canonical A lint repair and regression verification
+
+- Fixed three frontend lint blockers in `App.tsx`, `VoiceAgent.tsx`, and `DatabasePage.tsx`: clarified optional-storage catch blocks, replaced a transcript ternary side effect with explicit branching, and moved the database `Field` component to module scope.
+- Frontend lint now reports 0 errors and 83 warnings; the warnings remain tracked follow-up work rather than being treated as resolved.
+- Frontend production build: PASS. Backend production build: PASS.
+- Full backend regression: 48 suites and 439 tests passed. `git diff --check`: PASS.
+- Evidence: `/home/jj/Dev/cto-recovery-snapshots/A-post-lint-verification-20261012-232242.txt`.
+- Scope: canonical A only. No database migrations/resets, Docker changes, commits/pushes, or B/C modifications were part of this verification.
+- Acceptance caveat: these checks do not establish live authenticated UI, voice-agent end-to-end, or database/runtime acceptance. Complete the PMD-aligned acceptance matrix before accepting A or propagating its baseline.
+
+## 2026-10-13 — AI Conversation Response Integration
+
+- Added authenticated AI text-generation status and conversation response routes.
+- Verified conversation ownership before the response controller calls generation.
+- Persisted assistant responses with provenance and validation/confirmation metadata.
+- Connected the Voice Agent's ordinary-question path to the governed response endpoint and made provider unavailability explicit.
+- Verification: focused tests 2 suites/12 tests; full backend tests 48 suites/442 tests; backend and frontend builds passed; frontend lint 0 errors/83 warnings; `git diff --check` passed.
+- Provider remains disabled/not production-ready; live authenticated runtime/browser end-to-end behavior is not yet verified.
+- Follow-up: harden actor ownership at internal conversation-service boundaries before exposing those operations through further routes; triage remaining lint warnings.
+- Canonical A only. No database/Docker changes, commits, or remote operations.
+
+## 2026-10-13 — AI Conversation Ownership Hardening and Regression
+
+- Hardened AI conversation service methods to require the authenticated actor and reject missing or cross-owner access before writes.
+- Retained controller-level ownership checks as defense in depth.
+- Focused AI conversation tests: 21/21 passed across 2 suites.
+- Full backend regression: 48 suites and 445 tests passed; backend build passed.
+- Frontend lint passed with 0 errors and 83 warnings; frontend production build passed.
+- `git diff --check` passed.
+- Authenticated browser end-to-end behavior remains unverified; text generation remains unavailable until an approved provider is installed/enabled under policy.
+- No database, Docker, commit, push, or B/C operations were performed.
+
+## 2026-10-13 — Open-source voice platform and conversational form-fill plan
+- Merged the no-learning-curve, multilingual, multi-turn conversational form-fill goal into the CTO Execution Bible and AI Voice Governance/Deployment docs.
+- Added canonical ai/supporting-components.json linked from the central AI registry, with free/open-source constraints, host baseline, candidates, status and license gates.
+- Added planned language/voice, ASR, TTS, LLM and form-fill acceptance suites to the evaluation index. These are planned, not completed results.
+- Recorded role gap: VoiceAgent has hard-coded route phrases and a SUPER_ADMIN branch; it remains a navigation/help helper, not a complete role-governed action engine.
+- No runtime/model install/download, DB/Docker/migration, commit or push. The incomplete unverified installer was removed; provider and ASR remain disabled/placeholders.
+
+
+### AI platform cohesion — 2026-10-13
+
+- Added the canonical voice-intent manifest and authenticated server endpoint; removed the duplicate frontend route/phrase tables.
+- Added persisted account-status and canonical God Mode authority filtering for privileged voice intents, with explicit restricted-intent explanations.
+- Added a centrally linked, disabled cloud-connection policy and an unimplemented provider candidate; cloud activation and fallback remain blocked pending the full approval/consent/provider/secret-store/evaluation/audit/rollback workflow.

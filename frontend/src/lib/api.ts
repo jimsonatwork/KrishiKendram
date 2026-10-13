@@ -415,6 +415,62 @@ export const api = {
       },
     ),
 
+  getAiVoiceIntents: (token: string) =>
+    request<{
+      registryId: string
+      manifestId: string
+      manifestVersion: number
+      navigationPrefixes: string[]
+      authorizationSource: string
+      privilegedIntentsAvailable: boolean
+      restrictedIntents: Array<{ intentId: string; label: string; phrases: string[]; moduleId: string }>
+      intents: Array<{
+        intentId: string
+        label: string
+        phrases: string[]
+        path: string
+        access: 'AUTHENTICATED' | 'SYSTEM_GOD'
+        moduleId: string
+      }>
+    }>('/ai/conversations/voice-intents', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  getAiConversationStatus: (token: string) =>
+    request<{
+      enabled: boolean
+      ready: boolean
+      providerId: string
+      status: string
+      mode: string
+      cloudFallback: false
+      databaseWriteAllowed: false
+    }>('/ai/conversations/status', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  requestAiConversationResponse: (
+    token: string,
+    conversationId: string,
+    content: string,
+    language?: string,
+  ) =>
+    request<{
+      message: { id: string; content: string }
+      requiresValidation: true
+      requiresUserConfirmation: true
+    }>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/respond`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          content,
+          ...(language ? { language } : {}),
+        }),
+      },
+    ),
+
   createAiConversation: (token: string, primaryLanguage?: string) =>
     request<{ id: string }>('/ai/conversations', {
       method: 'POST',

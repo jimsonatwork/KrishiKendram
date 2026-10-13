@@ -5,7 +5,14 @@ import { AuthorizationAction } from '../../platform/authorization/authorization.
 
 function makeAuth() {
   return {
-    authorizeFields: jest.fn().mockResolvedValue({ allowed: true }),
+    authorizeFields: jest.fn().mockResolvedValue({
+      allowed: true,
+      decision: {
+        allowed: true,
+        permissionId: 'permission-user-read',
+      },
+      fieldPolicy: { allowed: true },
+    }),
   } as any;
 }
 
@@ -55,9 +62,44 @@ describe('UserAiContextService', () => {
   });
 
   it('authorizes before exposing context', async () => {
-    auth.authorizeFields.mockResolvedValue({ allowed: false });
+    auth.authorizeFields.mockResolvedValue({
+      allowed: false,
+      decision: { allowed: false },
+    });
     await expect(service.buildContext(request())).rejects.toBeInstanceOf(BadRequestException);
     expect(auth.authorizeFields).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when authorization returns an incomplete success result', async () => {
+    auth.authorizeFields.mockResolvedValue({ allowed: true });
+
+    await expect(service.buildContext(request())).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('uses the configured platform permission namespace while retaining the AI context contract', async () => {
+    const input = request({
+      moduleId: 'KK-AI-CONVERSATION-001',
+      authorizationModule: 'platform',
+      references: ['userId', 'moduleId'],
+      fields: ['conversation', 'messages'],
+      authorization: { resource: 'conversation', resourceId: 'conversation-1', ownerId: 'user-1' },
+      values: { userId: 'user-1', moduleId: 'KK-AI-CONVERSATION-001', conversation: { id: 'conversation-1' }, messages: [] },
+    });
+
+    const result = await service.buildContext(input);
+
+    expect(auth.authorizeFields).toHaveBeenCalledWith(
+      expect.objectContaining({ module: 'platform', resource: 'conversation', resourceId: 'conversation-1', ownerId: 'user-1' }),
+      ['conversation', 'messages'],
+      'READ',
+    );
+    expect(result.module.moduleId).toBe('KK-AI-CONVERSATION-001');
+  });
+
+  it('rejects an authorization namespace not linked to the canonical conversation module', async () => {
+    await expect(service.buildContext(request({ authorizationModule: 'platform' } as any)))
+      .rejects.toBeInstanceOf(BadRequestException);
+    expect(auth.authorizeFields).not.toHaveBeenCalled();
   });
 
   it('projects only registry-approved fields and references', async () => {

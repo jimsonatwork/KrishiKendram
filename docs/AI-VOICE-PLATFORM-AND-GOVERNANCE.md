@@ -122,3 +122,55 @@ The shared VoiceAgent UI is mounted in the application shell with a transcript/s
 ### Verification
 
 The AI test suites passed 42 tests across 4 suites, and the backend build and whitespace validation passed on 2026-10-11. These are code-level checks, not proof of production deployment.
+
+## 2026-10-13 — Voice-first, no-learning-curve Agri-OS plan (merged requirement)
+
+### Product outcome
+KrishiKendram must be manageable through ordinary conversation for users who may not know module names, form structure, or technical terminology. A user should be able to speak naturally in their preferred supported Indian language, including code-mixing, describe a farm/task over several turns, correct earlier answers, and have the agent ask only for missing or conflicting details. The UI shows understood words and draft field values in the active module, then explains and confirms the proposed change in the same language before applying it through the normal module API. This enhances the existing PMD/Bible principles; it does not bypass centralized field policy, authorization, audit, or confirmation.
+
+### Canonical conversation-to-task pipeline
+1. Microphone is opt-in; show language, listening state, transcript, actual provider mode, stop/mute and typed alternative. Never claim offline/local handling unless verified.
+2. ASR returns transcript and language metadata. Preserve original text; normalization/translation is a linked derivative with provenance, never a silent replacement.
+3. Resolve intent using active screen/entity plus the server-authorized module capability manifest. Browser phrase matching is navigation help only, not the final router.
+4. Keep per-user/per-conversation draft state. Map answers to the central field registry; track known, missing, uncertain, invalid, conflicting and corrected values. Ask short follow-up questions for the next required field; never invent a required value.
+5. Validate through central Field Policy/Registry. Display draft beside the correct form; never silently overwrite saved data.
+6. Read back the exact target and proposed changes in the user's language. Require explicit confirmation before applying changes, submissions, publishing, approvals, permission changes or high-impact operations.
+7. Invoke only allowlisted server-side handlers under the signed-in actor; backend repeats role, ownership, field and business-policy checks. No model SQL, direct database writes, arbitrary code or model-controlled policy changes.
+8. Audit provider/model versions, language, source message IDs, extracted field references, validation, confirmation, action result and rollback reference. Minimize audio/transcript retention; no raw conversation training by default.
+9. Report what succeeded/failed and remaining work; keep visible subtitles and a typed/manual path.
+
+### Role and authorization alignment
+The current VoiceAgent has a frontend SUPER_ADMIN branch and hard-coded FARM/ADMIN phrase-to-route arrays. Treat these as Phase 1 navigation helpers only, not final role policy. The next implementation must consume a backend-authorized capability manifest and stable registered intent IDs. All roles see only permitted tasks; God Mode actions require separate server authorization and high-risk confirmation. Voice, accent, phrase match or speaker identity never grants permission.
+
+### Open-source/free-only support stack
+The observed host is Intel i3-5005U (2 cores/4 threads), about 12 GiB RAM, Intel HD Graphics 5500, about 5.7 GiB WSL-visible memory and about 95.6 GiB free on D:. Prefer CPU-first small components and defer heavyweight NeMo/PyTorch installation until measured need and capacity justify it.
+
+- Local LLM: Ollama plus a small quantized model is an evaluation candidate only; not installed, no model downloaded, and no production readiness implied.
+- ASR baseline: whisper.cpp with a quantized multilingual tiny/base model; measure Telugu, code-mixing, noisy farm speech, names, numbers, WER/CER, latency and RAM.
+- Indic ASR comparison: AI4Bharat IndicConformerASR; defer heavy NeMo/PyTorch setup until a resource test supports it.
+- Indic TTS: evaluate AI4Bharat Indic-TTS checkpoints for Telugu and other supported languages; verify exact checkpoint and dependency licenses. IndicF5 is deferred pending reference-audio and resource review.
+- Translation: IndicTrans2 is optional, not a mandatory hop; model checkpoints are MIT while some dataset artifacts have separate attribution terms.
+- Browser Web Speech API is a progressive fallback only; browser/provider may handle recognition remotely and support varies.
+- FFmpeg is not installed by this plan; use only if the chosen audio contract needs it, and record exact build/license.
+
+The canonical license-aware inventory is ai/supporting-components.json linked from the root registry. Code, model/checkpoint, dataset, voice and dependency licenses are separate review items. No paid/credit-metered hosted API or implicit cloud fallback is allowed under the current requirement.
+
+### Acceptance gates
+- Official source, pinned version/revision, integrity checksum/signature, code/model/dataset/dependency licenses, notices and rollback.
+- Cold/warm start, first-token/first-audio latency, real-time factor, peak RAM, CPU, disk, concurrency and impact on app/Postgres/Docker.
+- Consented Telugu-first evaluation, then Hindi and additional languages; native-speaker review for dialects, accents, code-mixing, agricultural vocabulary, numbers/units and noisy audio.
+- Multi-turn form completion for profile/onboarding, farms, crops/crop cycles, livestock, activities and marketplace, including corrections, missing-field prompts, conflict detection, validation, draft preview, confirmation, normal API submission and audit/rollback.
+- Cross-role/cross-owner denial, prompt injection, allowlisted tools, confirmation bound to exact preview, rate limits, timeouts, idempotency, retention/deletion and accessibility.
+- Only after all gates pass may a provider be explicitly approved/enabled. Installation or build success alone is not acceptance.
+
+### Current status
+Planned evaluation suites are recorded in ai/evaluations/evaluation-index.json; planned suites are not passing test results. No runtime/model was installed or downloaded in this checkpoint. The incomplete unverified Ollama installer from the preceding attempt was removed. Provider remains disabled and ASR remains a placeholder.
+
+
+## Central voice intent manifest and cloud connection boundary (2026-10-13)
+
+`ai/voice/voice-intents.json` is the single maintained source for navigation intent IDs, phrases, paths, owning AI module, and access class. The frontend retrieves the filtered manifest from `GET /api/v1/ai/conversations/voice-intents`; it no longer owns separate farmer/admin route phrase arrays. The endpoint verifies active account status and the canonical persisted God Mode identity before disclosing privileged intents. Restricted phrases are returned without privileged destinations so the agent can explain the boundary without guessing.
+
+The manifest is discovery only. It does not replace route guards, `AuthorizationService`, field policy, ownership checks, or the confirmation workflow. Administrative AI intents are God-authorized; a `SUPER_ADMIN` role alone is not sufficient to expose the privileged voice routes.
+
+The central `ai/connections/cloud-connection-policy.json` appears in the God Mode AI control plane as an intentionally disabled configuration slot. A candidate provider is listed as not implemented and not production-ready. No cloud calls, automatic fallback, or credential storage in JSON are enabled. Activation remains blocked until the cloud adapter and proposal/God-approval/consent/license/audit/rollback gates are implemented and tested.

@@ -3,6 +3,123 @@
   "inventoryId": "KK-AI-EVALUATIONS-001",
   "version": 1,
   "status": "CANONICAL",
-  "evaluationSuites": [],
-  "note": "Add versioned, consented multilingual benchmarks here before declaring any model production-ready."
+  "evaluationSuites": [
+    {
+      "suiteId": "KK-EVAL-VOICE-001",
+      "name": "Voice pipeline capability and consent",
+      "status": "PLANNED",
+      "languages": [
+        "en-IN",
+        "te-IN",
+        "hi-IN",
+        "ta-IN",
+        "kn-IN",
+        "ml-IN",
+        "bn-IN",
+        "mr-IN",
+        "gu-IN",
+        "pa-IN"
+      ],
+      "measures": [
+        "mic permission and stop",
+        "provider mode truthfulness",
+        "typed fallback",
+        "retention/deletion",
+        "latency",
+        "cross-browser support"
+      ]
+    },
+    {
+      "suiteId": "KK-EVAL-ASR-001",
+      "name": "Indic field speech benchmark",
+      "status": "PLANNED",
+      "languages": [
+        "te-IN",
+        "hi-IN",
+        "ta-IN",
+        "kn-IN",
+        "ml-IN",
+        "bn-IN",
+        "mr-IN",
+        "gu-IN",
+        "pa-IN"
+      ],
+      "measures": [
+        "WER/CER",
+        "farm terms and proper nouns",
+        "numbers/units",
+        "noisy audio",
+        "code-mixing",
+        "latency",
+        "peak RAM",
+        "correction rate"
+      ],
+      "dataPolicy": "Consented, purpose-limited recordings; no raw conversation training by default."
+    },
+    {
+      "suiteId": "KK-EVAL-TTS-001",
+      "name": "Indic speech output and accessibility",
+      "status": "PLANNED",
+      "languages": [
+        "te-IN",
+        "hi-IN",
+        "ta-IN",
+        "kn-IN",
+        "ml-IN",
+        "bn-IN",
+        "mr-IN",
+        "gu-IN",
+        "pa-IN"
+      ],
+      "measures": [
+        "pronunciation",
+        "intelligibility",
+        "naturalness",
+        "first-audio latency",
+        "CPU/RAM",
+        "mute/stop"
+      ]
+    },
+    {
+      "suiteId": "KK-EVAL-LLM-001",
+      "name": "Local model and agricultural conversation",
+      "status": "PLANNED",
+      "languages": [
+        "en-IN",
+        "te-IN",
+        "hi-IN"
+      ],
+      "measures": [
+        "instruction following",
+        "multi-turn slot extraction",
+        "clarification",
+        "agronomic factuality",
+        "prompt injection",
+        "tool authorization",
+        "latency",
+        "peak RAM",
+        "license/checksum"
+      ]
+    },
+    {
+      "suiteId": "KK-EVAL-FORM-001",
+      "name": "Conversational module form completion",
+      "status": "PLANNED",
+      "languages": [
+        "en-IN",
+        "te-IN",
+        "hi-IN"
+      ],
+      "measures": [
+        "field mapping",
+        "central validation",
+        "conflict detection",
+        "confirmation before apply",
+        "audit/provenance",
+        "rollback",
+        "cross-role denial"
+      ]
+    }
+  ],
+  "note": "Planned suites are acceptance requirements, not completed results. Production readiness requires versioned per-language, model and device results."
 }

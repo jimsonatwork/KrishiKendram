@@ -1311,3 +1311,156 @@ These results establish the focused test suite and compilation only. They do not
 - Verification evidence: 4 AI test suites passed (42 tests); NestJS backend build passed; `git diff --check` passed.
 - Remaining validation: full backend regression suite and runtime/API integration checks.
 - Do not mark production deployment complete based on unit tests or a successful build alone.
+
+## 2026-10-12 — Canonical A Frontend Lint Repair and Verification
+
+### Scope and source of truth
+- Canonical workspace: `/home/jj/Dev/KrishiKendram` (A).
+- Verification checkpoint: `8b8e82d10f1df7faf2d09835af3349cd94ee9adf` (`Integrate governed AI platform and voice agent`), with the three source repairs below remaining uncommitted at verification time.
+- Integration (B) and Development (C) remain frozen and are not modified by this work.
+
+### Repairs made
+- `frontend/src/App.tsx`: documented the intentionally optional sidebar-preference storage failure in the catch block.
+- `frontend/src/components/ui/VoiceAgent.tsx`: replaced the transcript-result ternary expression with explicit final/interim transcript branching; documented optional language-preference storage failure.
+- `frontend/src/pages/admin/DatabasePage.tsx`: moved the `Field` component to module scope to preserve component identity and satisfy the React Compiler lint rule.
+
+### Verified evidence
+- Frontend ESLint: **0 errors, 83 warnings**. Warnings remain open for a deliberate follow-up; they were not suppressed or represented as resolved.
+- Frontend production build: PASS.
+- Backend production build: PASS.
+- Full backend test suite: **48/48 suites and 439/439 tests passed**.
+- `git diff --check`: PASS.
+- Source patch review showed only the three intended tracked source files modified at this checkpoint.
+- Evidence report: `/home/jj/Dev/cto-recovery-snapshots/A-post-lint-verification-20261012-232242.txt`.
+
+### Acceptance boundary and remaining work
+- This checkpoint verifies builds, the full backend unit-test suite, lint error removal, and whitespace integrity.
+- It does not by itself prove live authenticated UI workflows, voice-agent end-to-end integration, database/runtime acceptance, or complete product/module acceptance.
+- Remaining frontend lint warnings require risk-based review, prioritizing effect dependencies/state timing, type safety, and React Compiler memoization diagnostics. Do not apply blanket suppressions or mechanically rewrite effects.
+- Preserve existing backup artifacts. Do not reset or migrate the database, alter Docker volumes, or modify B/C as part of this checkpoint.
+
+### Next execution target
+Complete the canonical A acceptance matrix against PMD/Bible expectations, record evidence and unresolved gaps in existing governance records, then request explicit acceptance before copying the verified A baseline into B and C.
+
+## 2026-10-13 — AI Conversation Response Integration and Regression Gate
+
+### Scope
+Canonical project A only: `/home/jj/Dev/KrishiKendram`. No changes to B or C. No database writes or migrations, Docker changes, Git commits, or remote operations were performed.
+
+### Implemented
+- Added an authenticated text-generation status endpoint to the AI conversation controller.
+- Added an authenticated conversation response endpoint.
+- The response controller verifies that the JWT user owns the conversation before passing content to the generation service.
+- Assistant responses are appended to conversation history with provider/model provenance and validation/confirmation requirements.
+- Added frontend API methods for provider status and governed responses.
+- Connected ordinary Voice Agent questions to the response path; local navigation/help shortcuts remain separate.
+- The frontend explicitly explains when a production-ready provider is unavailable rather than fabricating an answer.
+
+### Verification evidence
+- Focused controller and text-generation tests: 2 suites, 12 tests passed.
+- Full backend regression: 48 suites, 442 tests passed.
+- Backend production build: passed.
+- Frontend TypeScript/Vite production build: passed.
+- Frontend ESLint: 0 errors, 83 warnings.
+- `git diff --check`: passed.
+- Regression report: `/tmp/kk-a-ai-voice-regression-20261012-235908.txt`.
+- Implementation backup: `.cto-backup/ai-voice-response-20261012-235258/`.
+
+### Acceptance limits and outstanding work
+- The configured text-generation provider remains disabled/not production-ready. A successful build or mocked unit test does not establish that live AI answers work.
+- Authenticated runtime/API and browser end-to-end verification remain outstanding.
+- Review internal `ConversationService` methods that operate on a conversation without an actor parameter (`createSession`, `appendMessage`, `addContext`, `addReference`, and related paths). Before exposing any such operation through additional routes or callers, enforce ownership/authorization at the service boundary as appropriate and add cross-user negative tests. The response route currently performs its owner check at the controller boundary before generation.
+- Validate that the provider status response shape and disabled-provider UX match the live runtime.
+- Frontend lint warnings remain technical debt. Do not suppress warnings wholesale or claim lint-clean status.
+
+### Safety invariants
+Authorization must precede AI context/generation; no direct AI database writes; no cloud fallback unless explicitly governed and approved; generated facts/actions require validation and user confirmation; provenance and audit requirements remain in force.
+
+### Acceptance status
+Integration code and regression gates: PASS. Live provider readiness and authenticated end-to-end acceptance: NOT YET VERIFIED. AI module completion: NOT CLAIMED.
+
+## 2026-10-13 — AI Conversation Ownership Hardening and Full Regression
+
+### Implemented
+- Enforced authenticated-user ownership at the AI conversation service boundary for conversation access, sessions, messages, context, references, fact candidates, and history.
+- Kept controller-level ownership checks as defense in depth before response generation and user-message writes.
+- Added/updated negative ownership tests, including cross-owner write rejection.
+- AI-generated responses remain subject to the centralized text-generation policy; this change does not enable a disabled provider or permit direct AI database writes.
+
+### Verification evidence
+- Focused AI conversation controller/service tests: 2 suites, 21 tests passed.
+- Full backend regression: 48 suites, 445 tests passed.
+- Backend production build: passed.
+- Frontend lint: exit code 0, 0 errors, 83 warnings.
+- Frontend production build: passed.
+- `git diff --check`: passed.
+
+### Boundaries and remaining acceptance work
+- This was a code/test/build verification gate, not an authenticated browser end-to-end acceptance test.
+- Text generation remains unavailable while the configured provider is disabled/not installed; no cloud fallback is implied.
+- Frontend lint warnings remain tracked cleanup, including the VoiceAgent effect warning and warnings in other pages.
+- No database migrations, database writes/resets, Docker operations, commits, pushes, or B/C changes were part of this gate.
+- Canonical A remains the only active repair target. B and C remain untouched until A is accepted.
+
+
+## 2026-10-13 — Governed AI Conversation Context Integration
+
+### Implemented and verified
+- Connected `AiConversationController.respond` to the canonical `UserAiContextService` after conversation ownership verification.
+- `ConversationService.getConversation` now filters by `id` and authenticated `userId` in the initial query before loading messages, contexts, references, candidates, or actions. A non-owner lookup fetches only `id`/`userId` metadata to preserve not-found vs forbidden behavior.
+- Kept the shared context-envelope type in `backend/src/ai/contracts/ai-context.ts`; the context service rejects authorization-namespace overrides not mapped to the canonical conversation module/resource.
+- Context assembly occurs only when the canonical provider inventory reports a ready provider. If the provider is unavailable, the request follows the existing service-unavailable path without assembling private context.
+- The context envelope contains only minimal conversation metadata and the most recent 20 messages (role, content, language, timestamp), projected through the `KK-AI-CONVERSATION-001` module contract. Credentials, tokens, unrestricted user records, candidate facts, and unrelated domain records are not included.
+- Extended the text-generation request contract to carry the already-authorized context envelope; the provider remains responsible for using that contract without bypassing registry readiness.
+- Added the platform `conversation` resource with READ/OWN scope only. The additive permission seed reconciles that permission to existing user roles; it introduces no GLOBAL conversation-read permission. Context field allowlisting remains owned by the canonical AI module contract.
+- Preserved the fail-closed resource and field authorization contract and added positive/negative regression coverage for context authorization, provider-unavailable behavior, and provider request propagation.
+
+### Recovery and verification evidence
+- Pre-change source checkpoint: `.cto-backup/ai-context-integration-20261013-101607/` (contains pre-existing uncommitted changes as they stood before this batch, plus a tracked-worktree patch and status/HEAD records).
+- Verified database dump before the additive permission update: `/home/jj/Dev/cto-recovery-snapshots/pre-ai-context-permission-20261013-102818/krishikendram-pre-ai-context-permission.dump`; `pg_restore --list` succeeded inside the PostgreSQL container. SHA-256 is recorded in the same directory.
+- Permission-change manifest and targeted rollback: `/home/jj/Dev/cto-recovery-snapshots/pre-ai-context-permission-20261013-102818/permission-change-manifest.json` and `rollback-conversation-permission.cjs`. The source rollback script is `rollback-source.sh` in that directory. God Mode credential artifacts were copied to the protected `god-mode-artifacts-before-backend-restart/` subdirectory before the backend restart; their contents were not printed.
+- Focused AI regression: 4 suites / 38 tests passed.
+- Full backend regression after query-level ownership filtering: 48 suites / 452 tests passed.
+- Backend production build: PASS. Frontend TypeScript/Vite production build: PASS (2,325 modules transformed). `git diff --check`: PASS.
+- Runtime smoke after backend-only restart: API health HTTP 200; frontend HTTP 200; unauthenticated AI status request HTTP 401 as expected.
+
+### Acceptance boundary
+- The text-generation provider remains disabled/not production-ready. No real-model answer or authenticated successful generation was claimed or tested. Provider readiness, credentials, language quality, and full browser end-to-end acceptance remain separate gates.
+- The conversation permission was added additively; no Prisma migration, database reset, Docker volume operation, Git commit, push, or B/C repository change was performed.
+- AI module completion remains PARTIAL until a real approved provider and authenticated end-to-end context-to-response workflow pass their acceptance tests.
+
+## 2026-10-13 — PMD merge: conversational, multilingual, role-governed Agri-OS
+
+### Decision
+Merge the no-learning-curve, voice-first requirement into the canonical plan. Users should describe tasks conversationally in supported Indian languages over multiple turns. KrishiKendram asks for missing details, builds validated drafts across registered modules, and completes work through normal authorized APIs after read-back and explicit confirmation. This enhances, not replaces, centralized registry ownership, field policy, authorization-before-context, provenance/audit and no-direct-AI-database-write rules.
+
+### Architecture
+- Shared Voice Agent is the conversational entry point; module contracts remain in central ai/modules files linked from the root AI registry.
+- Pipeline: opt-in voice/text -> ASR transcript and language metadata -> intent resolution against active screen and server-authorized capabilities -> multi-turn draft/fact extraction -> central field validation -> visible draft and conflict clarification -> exact preview/read-back -> explicit confirmation -> authenticated module API -> audit/provenance/result/rollback reference.
+- Preserve original transcript. Normalization, translation, extraction and inference retain provenance/confidence; never silently replace wording or invent uncertain required values.
+- Never silently overwrite saved values. No model SQL, direct Prisma writes, arbitrary code, shell, unrestricted URL access or model-controlled policy changes.
+- Role/resource/field policy is enforced server-side. Voice, accent, phrase match or speaker identity is not authorization. High-risk God Mode actions retain normal approvals.
+- Report success/failure and remaining work. Raw conversation training remains disabled by default.
+
+### Role alignment finding
+Current VoiceAgent supports basic navigation/help, browser speech APIs where available, typed fallback and authenticated conversation storage. Its frontend SUPER_ADMIN branch and hard-coded FARM/ADMIN phrase arrays are only Phase 1 navigation helpers, not a final capability policy. Replace them with a backend-authorized capability manifest and stable registered intent IDs; execute module actions only through allowlisted server handlers.
+
+### Open-source/free supporting inventory
+Created ai/supporting-components.json and linked it from ai/registry/ai-platform-registry.json. It records candidates and exact license/integrity gates. Candidates: Ollama plus a small quantized local LLM; whisper.cpp CPU ASR baseline; AI4Bharat IndicConformerASR comparison; AI4Bharat Indic-TTS for Indic speech; IndicTrans2 as optional local translation; browser Web Speech API as capability-dependent fallback. IndicF5 and FFmpeg are deferred pending need/resource/license review. No paid/credit-metered service or implicit cloud fallback is approved.
+
+Host snapshot: Intel i3-5005U, 2 cores/4 threads, about 12 GiB RAM, Intel HD Graphics 5500, about 5.7 GiB WSL-visible memory and about 95.6 GiB free on D:. Prefer CPU-first small components; defer heavyweight NeMo/PyTorch installs until measured need and capacity justify them.
+
+Planned evaluation suites were added for consent/capability, Indic ASR, Indic TTS, local LLM conversation and conversational form completion. They are plans, not completed results. Acceptance requires exact artifact licenses/integrity, latency/RAM measurements, Telugu-first native-speaker benchmarks, multi-turn module form completion, role/ownership denials, prompt-injection resistance, exact-preview confirmation, audit and rollback. Installation/build success alone is not readiness.
+
+### Recovery boundary
+This checkpoint changes docs and central JSON inventory only. No runtime/model was installed or downloaded, no database or Docker operation was performed, no data/model directory was deleted, and no commit/push was made. The incomplete unverified Ollama installer from the preceding attempt was removed. Provider remains disabled and ASR remains placeholder pending separately tested implementation and approval.
+
+
+## 2026-10-13 Cohesion Gate — Central Voice Intent and Cloud Approval
+
+- `ai/registry/ai-platform-registry.json` remains the only AI entrypoint. Voice navigation is defined in `ai/voice/voice-intents.json` and loaded/validated by `AiRegistryService`; the frontend must not maintain a parallel route/phrase policy.
+- The authenticated `GET /api/v1/ai/conversations/voice-intents` endpoint filters the central manifest using persisted active-account identity. General intents are discoverable to authenticated users; privileged administrative intents are returned only for the canonical `SYSTEM_GOD` identity (`GodModeService.GOD_EMAIL` + `SUPER_ADMIN` + active status). Voice, phrasing, browser recognition, and client-supplied role never grant authority.
+- Intent discovery is navigation only. Every route, resource API, field, write, and God Mode operation must independently enforce server-side authorization. Unknown, restricted, or unregistered intents must not trigger guessed actions.
+- `ai/connections/cloud-connection-policy.json` is the central cloud-connection slot linked from the AI root registry and visible through the God Mode AI control-plane inventory. It is intentionally disabled and validation rejects enabling it while the production cloud adapter and approval workflow are absent. No credentials belong in this JSON or in source control; cloud fallback remains disabled.
+- Before cloud execution can be activated, implement a registered provider adapter, external secret-store reference, super-admin proposal, canonical God Mode approval, per-disclosure user consent, license/model/dataset review, bounded health and capability evaluation, audit, and rollback. A registry entry is not proof of runtime availability.
+- Acceptance gates: backend capability-manifest tests; role/God boundary tests; root-registry link and startup validation; frontend and backend production builds; API smoke test; no AI record mutation without module authorization, central validation, preview, explicit user confirmation, and audit/provenance.

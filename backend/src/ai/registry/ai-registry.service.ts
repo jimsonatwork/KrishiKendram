@@ -325,7 +325,7 @@ export class AiRegistryService {
   }
 
   private resolveGovernedFile(key: string): string {
-    const inventoryKeys = new Set(['providerInventory', 'runtimeInventory', 'policyIndex', 'evaluationIndex']);
+    const inventoryKeys = new Set(['providerInventory', 'runtimeInventory', 'policyIndex', 'evaluationIndex', 'cloudConnectionPolicy']);
     let relativeFile: string | undefined;
     if (inventoryKeys.has(key)) relativeFile = this.registry.linkedFiles[key];
     else if (key.startsWith('module:')) relativeFile = this.registry.moduleFiles[key.slice(7)];
@@ -401,6 +401,39 @@ export class AiRegistryService {
       return;
     }
 
+    if (key === 'cloudConnectionPolicy') {
+      const policy = doc.policy;
+      if (
+        doc.registryId !== this.registry.registryId ||
+        doc.inventoryId !== 'KK-AI-CLOUD-CONNECTION-POLICY-001' ||
+        doc.status !== 'CANONICAL' ||
+        doc.mode !== 'EXPLICIT_APPROVED_PRIMARY_ONLY' ||
+        doc.enabled !== false ||
+        !policy || typeof policy !== 'object' || Array.isArray(policy)
+      ) {
+        throw new BadRequestException('Cloud connection policy is invalid or attempts to enable an unverified cloud provider.');
+      }
+      const rules = policy as Record<string, unknown>;
+      const required: Record<string, boolean> = {
+        requiresGodModeAuthorization: true,
+        requiresSuperAdminProposal: true,
+        requiresUserConsentForEachCloudDisclosure: true,
+        cloudFallbackAllowed: false,
+        secretsMayBeStoredInThisFile: false,
+        endpointMustUseHttps: true,
+        providerMustBeLicenseReviewed: true,
+        modelAndDatasetLicensesReviewedSeparately: true,
+        healthAndCapabilityEvaluationRequired: true,
+        disableAndRollbackRequired: true,
+      };
+      for (const [field, expected] of Object.entries(required)) {
+        if (rules[field] !== expected) {
+          throw new BadRequestException('Cloud connection safety invariant is invalid: ' + field + '.');
+        }
+      }
+      return;
+    }
+
     const collection = key === 'providerInventory' ? 'providers' : key === 'runtimeInventory' ? 'runtimes' : 'evaluations';
     if (!Array.isArray(doc[collection]) || (doc[collection] as unknown[]).length > 500 || (doc[collection] as unknown[]).some((item) => !item || typeof item !== 'object' || Array.isArray(item))) throw new BadRequestException('AI inventory structure is invalid for ' + collection + '.');
   }
@@ -435,7 +468,9 @@ export class AiRegistryService {
         runtimes: readLinkedJson('runtimeInventory'),
         policies: readLinkedJson('policyIndex'),
         evaluations: readLinkedJson('evaluationIndex'),
+        cloudConnectionPolicy: this.getCloudConnectionPolicy(),
       },
+      voiceIntents: this.getVoiceIntentDefinitions(),
       linkedFiles: structuredClone(this.registry.linkedFiles),
       moduleFiles: structuredClone(this.registry.moduleFiles),
       healthDiagnostics: this.getHealthDiagnostics(),
@@ -532,6 +567,89 @@ export class AiRegistryService {
     return this.registry.conversation.moduleId;
   }
 
+  /** Reads and validates the central cloud policy; credentials are prohibited. */
+  getCloudConnectionPolicy(): Record<string, unknown> {
+    const value = this.getGovernedFile('cloudConnectionPolicy').value;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Canonical cloud connection policy must be a JSON object.');
+    }
+    this.assertNoSecretFields(value);
+    this.validateGovernedDocument('cloudConnectionPolicy', value);
+    return value as Record<string, unknown>;
+  }
+
+  getVoiceNavigationPrefixes(): string[] {
+    const relativeFile = this.registry.linkedFiles.voiceIntents;
+    if (!relativeFile) throw new Error('Canonical voice intent manifest is not linked.');
+    const path = resolve(dirname(this.registryPath), relativeFile);
+    const raw = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    if (!Array.isArray(raw.navigationPrefixes) ||
+        !raw.navigationPrefixes.every((prefix) => typeof prefix === 'string' && prefix.trim())) {
+      throw new Error('Canonical voice navigation prefixes are invalid.');
+    }
+    return [...new Set(raw.navigationPrefixes as string[])];
+  }
+
+  /**
+   * Canonical voice intent manifest. Validated on each read so stale or
+   * malformed route policy fails closed instead of enabling guessed actions.
+   */
+  getVoiceIntentDefinitions(): Array<{
+    intentId: string;
+    label: string;
+    phrases: string[];
+    path: string;
+    access: 'AUTHENTICATED' | 'SYSTEM_GOD';
+    moduleId: string;
+  }> {
+    const relativeFile = this.registry.linkedFiles.voiceIntents;
+    if (!relativeFile) throw new Error('Canonical voice intent manifest is not linked.');
+    const path = resolve(dirname(this.registryPath), relativeFile);
+    let raw: unknown;
+    try { raw = JSON.parse(readFileSync(path, 'utf8')) as unknown; }
+    catch { throw new Error('Canonical voice intent manifest is missing or invalid JSON.'); }
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('Canonical voice intent manifest must be a JSON object.');
+    }
+    const document = raw as Record<string, unknown>;
+    if (document.registryId !== this.registry.registryId ||
+        document.inventoryId !== 'KK-AI-VOICE-INTENTS-001' ||
+        document.status !== 'CANONICAL' || !Number.isInteger(document.version) ||
+        !Array.isArray(document.intents)) {
+      throw new Error('Canonical voice intent manifest identity or structure is invalid.');
+    }
+    const seen = new Set<string>();
+    const intents = document.intents.map((value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('Voice intent entry must be an object.');
+      }
+      const intent = value as Record<string, unknown>;
+      if (typeof intent.intentId !== 'string' || !intent.intentId.trim() ||
+          seen.has(intent.intentId) ||
+          typeof intent.label !== 'string' ||
+          !Array.isArray(intent.phrases) || intent.phrases.length === 0 ||
+          !intent.phrases.every((phrase) => typeof phrase === 'string' && phrase.trim()) ||
+          typeof intent.path !== 'string' || !(intent.path === '/app' || intent.path.startsWith('/app/')) ||
+          (intent.access !== 'AUTHENTICATED' && intent.access !== 'SYSTEM_GOD') ||
+          typeof intent.moduleId !== 'string' || !this.registry.moduleFiles[intent.moduleId]) {
+        throw new Error('Canonical voice intent entry is invalid.');
+      }
+      if (intent.access === 'SYSTEM_GOD' && !(intent.path === '/app' || intent.path.startsWith('/app/'))) {
+        throw new Error('Privileged voice intent must target a specific application route.');
+      }
+      seen.add(intent.intentId);
+      return {
+        intentId: intent.intentId,
+        label: intent.label,
+        phrases: intent.phrases as string[],
+        path: intent.path,
+        access: intent.access as 'AUTHENTICATED' | 'SYSTEM_GOD',
+        moduleId: intent.moduleId,
+      };
+    });
+    return intents;
+  }
+
   getModule(moduleId: string): AiModuleContract {
     const module = this.registry.modules[moduleId];
 
@@ -619,6 +737,9 @@ export class AiRegistryService {
     // Validate the external canonical policy at startup. Unsafe policy prevents
     // the AI registry from being constructed.
     this.getEffectivePolicy();
+    this.getVoiceIntentDefinitions();
+    this.getVoiceNavigationPrefixes();
+    this.getCloudConnectionPolicy();
 
     if (this.registry.registryId !== 'KK-AI-REGISTRY-001') {
       throw new Error('Invalid KK AI registry ID.');

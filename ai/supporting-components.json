@@ -1,0 +1,112 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-SUPPORT-COMPONENTS-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "policy": {
+    "openSourceOrFreeOnly": true,
+    "noPaidServiceByDefault": true,
+    "noCloudFallbackByDefault": true,
+    "verifyCodeAndModelLicensesSeparately": true,
+    "noInstallOrModelDownloadWithoutVerifiedSourceAndCapacityCheck": true,
+    "productionReadyRequiresLanguageBenchmarks": true
+  },
+  "hostProfile": {
+    "cpu": "Intel Core i3-5005U, 2 cores / 4 threads, 2.0 GHz",
+    "ramGiB": 11.91,
+    "gpu": "Intel HD Graphics 5500; no NVIDIA runtime observed",
+    "wslMemoryGiBObserved": 5.7,
+    "dDriveFreeGiBObserved": 95.6,
+    "decision": "Prefer lightweight CPU-first trials; avoid heavy GPU/PyTorch stacks until measured capacity justifies them."
+  },
+  "components": [
+    {
+      "componentId": "KK-SUPPORT-OLLAMA",
+      "category": "LOCAL_LLM_RUNTIME",
+      "name": "Ollama",
+      "source": "https://github.com/ollama/ollama",
+      "license": "MIT project code; model license independent",
+      "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
+      "targetPath": "D:/KrishiKendram/08-AI/Tools",
+      "modelStorageTarget": "D:/KrishiKendram/08-AI/Models",
+      "purpose": "Serve a small local instruction model behind the governed NestJS adapter.",
+      "gate": "Verify official artifact integrity, exact model license, provenance, RAM/latency and Telugu agricultural quality before enabling."
+    },
+    {
+      "componentId": "KK-SUPPORT-WHISPER-CPP",
+      "category": "SPEECH_TO_TEXT",
+      "name": "whisper.cpp",
+      "source": "https://github.com/ggerganov/whisper.cpp",
+      "license": "MIT implementation; verify model asset license/provenance separately",
+      "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
+      "purpose": "CPU-capable multilingual ASR baseline for Telugu and code-mixed speech.",
+      "gate": "Benchmark quantized tiny/base model on consented field speech; record WER/CER, latency and memory."
+    },
+    {
+      "componentId": "KK-SUPPORT-INDIC-CONFORMER",
+      "category": "SPEECH_TO_TEXT",
+      "name": "AI4Bharat IndicConformerASR",
+      "source": "https://github.com/AI4Bharat/IndicConformerASR",
+      "license": "MIT repository claim; verify exact checkpoint and dependencies",
+      "status": "SPECIALIST_EVALUATION_CANDIDATE_NOT_INSTALLED",
+      "purpose": "Indic-language ASR comparison.",
+      "gate": "Defer heavyweight NeMo/PyTorch setup until resource testing justifies it; compare accuracy and RAM."
+    },
+    {
+      "componentId": "KK-SUPPORT-INDIC-TTS",
+      "category": "TEXT_TO_SPEECH",
+      "name": "AI4Bharat Indic-TTS",
+      "source": "https://github.com/AI4Bharat/Indic-TTS",
+      "license": "Exact code, checkpoint, dataset and dependency licenses require per-artifact verification",
+      "status": "EVALUATION_CANDIDATE_NOT_INSTALLED",
+      "purpose": "Evaluate Telugu and other supported Indic-language speech output.",
+      "gate": "Verify checkpoint availability, license, CPU feasibility, pronunciation and dependencies."
+    },
+    {
+      "componentId": "KK-SUPPORT-INDIC-F5",
+      "category": "TEXT_TO_SPEECH",
+      "name": "AI4Bharat IndicF5",
+      "source": "https://github.com/AI4Bharat/IndicF5",
+      "license": "Verify repository, model, reference-audio and dependency licenses separately",
+      "status": "RESEARCH_ONLY_DEFERRED",
+      "purpose": "Later comparison for expressive multilingual TTS.",
+      "gate": "Requires reference audio and a heavier model stack; not first deployment choice."
+    },
+    {
+      "componentId": "KK-SUPPORT-INDICTRANS2",
+      "category": "TRANSLATION",
+      "name": "AI4Bharat IndicTrans2",
+      "source": "https://github.com/AI4Bharat/IndicTrans2",
+      "license": "MIT checkpoints; some dataset artifacts require CC-BY-4.0 attribution",
+      "status": "OPTIONAL_EVALUATION_CANDIDATE",
+      "purpose": "Optional local translation aid; not a mandatory translation hop.",
+      "gate": "Benchmark translation fidelity, preserve original transcript, label translations, measure RAM/latency."
+    },
+    {
+      "componentId": "KK-SUPPORT-BROWSER-SPEECH",
+      "category": "CLIENT_SPEECH_APIS",
+      "name": "Web Speech API",
+      "source": "https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API",
+      "license": "Browser capability; implementation and data routing depend on browser/vendor",
+      "status": "CURRENT_FALLBACK_NOT_GUARANTEED_OFFLINE",
+      "purpose": "Progressive fallback only, not a guarantee of privacy, offline use, coverage or cross-browser support.",
+      "gate": "Show actual capability/provider mode, obtain microphone permission and retain typed fallback."
+    },
+    {
+      "componentId": "KK-SUPPORT-FFMPEG",
+      "category": "AUDIO_UTILITY",
+      "name": "FFmpeg",
+      "source": "https://ffmpeg.org/",
+      "license": "Build-dependent LGPL/GPL; review exact build",
+      "status": "OPTIONAL_NOT_INSTALLED",
+      "purpose": "Audio normalization only if required by chosen ASR pipeline.",
+      "gate": "Do not install until required formats are defined; pin and record build/license."
+    }
+  ],
+  "notApproved": [
+    "Paid APIs or metered hosted AI as an implicit default",
+    "Credit-limited hosted service as a free unlimited dependency",
+    "Browser speech recognition described as guaranteed on-device/offline",
+    "Production readiness without exact asset license, integrity, language quality and security checks"
+  ]
+}
