@@ -271,14 +271,20 @@ export function VoiceAgent({ role }: { role: string }) {
 
     setMessage('Saving your question and preparing a local answer…')
     const id = await persistence
-    if (!id || controller.signal.aborted) {
+    if (controller.signal.aborted) {
       if (activeRequest.current === controller) {
         activeRequest.current = null
         commandInFlight.current = false
       }
       return
     }
+    if (!id) {
+      // Persistence failures must end in a visible assistant turn, not a silent return.
+      say('I could not save your question, so I did not send it for AI generation. Check your connection and sign-in, then try again.')
+      return
+    }
 
+    setMessage('Your question is saved. The local assistant is generating a reply…')
     try {
       const response = await api.requestAiConversationResponse(
         token,
@@ -287,11 +293,18 @@ export function VoiceAgent({ role }: { role: string }) {
         lang,
         controller.signal,
       )
-      if (!controller.signal.aborted) say(response.message.content)
-    } catch {
       if (!controller.signal.aborted) {
+        const answer = typeof response?.message?.content === 'string'
+          ? response.message.content.trim()
+          : ''
+        say(answer || 'The local AI service returned an empty answer. Your question is saved; please try once more. No farm record was changed.')
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        const detail = error instanceof Error ? error.message.trim() : ''
+        const safeDetail = detail && detail.length < 180 ? ' Details: ' + detail : ''
         say(
-          'I could not obtain an AI answer. The local provider may be unavailable, or the request may have failed. Your question remains in conversation history; no farm record was changed.',
+          'I could not obtain an AI answer from the local provider. Your question remains in conversation history; no farm record was changed. Please try again or check the AI provider status.' + safeDetail,
         )
       }
     } finally {

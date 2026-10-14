@@ -1237,3 +1237,4 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Removed the per-turn provider-status round trip, shortened local generation budgets, extended local model keep-alive, and removed the duplicated current question from prompt history.
 - Adjusted default spoken reply rate and pitch.
 - Added best-effort synthetic local-model warm-up at backend startup to reduce first-question cold-start delay without using or storing farmer data.
+- Hardened response visibility: the Voice Agent now shows a distinct local-generation status and emits a visible assistant message for persistence failures, empty response payloads, and API/provider errors instead of silently returning.
