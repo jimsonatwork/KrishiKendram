@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import type {
   TextGenerationProvider,
   TextGenerationRequest,
@@ -9,6 +9,12 @@ interface OllamaChatPayload {
   model?: string;
   message?: { role?: string; content?: string };
   done?: boolean;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
 }
 interface OllamaTagsPayload {
   models?: Array<{ name?: string; digest?: string; modified_at?: string }>;
@@ -25,9 +31,9 @@ export interface OllamaRuntimeHealth {
 }
 
 const MAX_INPUT_CHARS = 6000;
-const MAX_HISTORY_MESSAGES = 12;
-const MAX_HISTORY_MESSAGE_CHARS = 2000;
-const MAX_CONTEXT_CHARS = 10000;
+const MAX_HISTORY_MESSAGES = 4;
+const MAX_HISTORY_MESSAGE_CHARS = 600;
+const MAX_CONTEXT_CHARS = 7000;
 const MAX_OUTPUT_TOKENS = 96;
 const CROP_LIST_OUTPUT_TOKENS = 48;
 const SYSTEM_PROMPT = [
@@ -45,6 +51,8 @@ const SYSTEM_PROMPT = [
 
 @Injectable()
 export class OllamaTextGenerationProvider implements TextGenerationProvider {
+  private readonly logger = new Logger(OllamaTextGenerationProvider.name);
+  private cachedHealth?: { expiresAt: number; value: OllamaRuntimeHealth };
   readonly providerId = 'KK-AI-LLM-OLLAMA-LOCAL';
   readonly modelId = process.env.KK_AI_OLLAMA_MODEL?.trim() || 'qwen3:1.7b';
   private readonly configuredModelVersion = process.env.KK_AI_OLLAMA_MODEL_VERSION?.trim() || '';
@@ -114,6 +122,9 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
     if (!runtime.reachable || !runtime.modelInstalled) {
       throw new ServiceUnavailableException('The configured local model is not healthy or installed. No cloud fallback was attempted.');
     }
+    const messages = this.buildMessages(request);
+    const promptChars = messages.reduce((sum, item) => sum + item.content.length, 0);
+    const generationStartedAt = Date.now();
     let response: Response;
     try {
       response = await fetch(this.endpoint('/api/chat'), {
@@ -124,7 +135,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           // Qwen3 otherwise spends much of a small response budget in hidden reasoning.
           // The local API supports think=false; only the user-facing answer is needed here.
           think: false,
-          messages: this.buildMessages(request),
+          messages,
           stream: false,
           keep_alive: '30m',
           options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 2048 },
@@ -144,6 +155,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
       throw new ServiceUnavailableException('The local Ollama runtime returned invalid JSON.');
     }
     const content = payload?.message?.content;
+    this.logger.log(JSON.stringify({ event: 'ollama_generation_timing', elapsedMs: Date.now() - generationStartedAt, promptChars, promptEvalTokens: payload?.prompt_eval_count, promptEvalMs: payload?.prompt_eval_duration == null ? undefined : Math.round(payload.prompt_eval_duration / 1e6), generatedTokens: payload?.eval_count, generationMs: payload?.eval_duration == null ? undefined : Math.round(payload.eval_duration / 1e6), modelLoadMs: payload?.load_duration == null ? undefined : Math.round(payload.load_duration / 1e6), totalRuntimeMs: payload?.total_duration == null ? undefined : Math.round(payload.total_duration / 1e6) }));
     if (typeof content !== 'string' || !content.trim() || content.length > 24000) {
       throw new ServiceUnavailableException('The local Ollama runtime returned an empty or oversized response.');
     }
@@ -161,6 +173,13 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
   }
 
   async checkHealth(): Promise<OllamaRuntimeHealth> {
+    if (this.cachedHealth && this.cachedHealth.expiresAt > Date.now()) return this.cachedHealth.value;
+    const value = await this.fetchHealth();
+    this.cachedHealth = { value, expiresAt: Date.now() + (value.reachable && value.modelInstalled ? 15000 : 3000) };
+    return value;
+  }
+
+  private async fetchHealth(): Promise<OllamaRuntimeHealth> {
     const checkedAt = new Date().toISOString();
     try {
       const response = await fetch(this.endpoint('/api/tags'), {

@@ -120,6 +120,7 @@ describe('AiConversationController', () => {
     expect(conversations.getConversation).toHaveBeenCalledWith(
       'conversation-1',
       'jwt-user-1',
+      { responseOnly: true },
     );
     expect(userAiContext.buildContext).toHaveBeenCalledWith(expect.objectContaining({
       actor: { userId: 'jwt-user-1', role: 'FARMER' },

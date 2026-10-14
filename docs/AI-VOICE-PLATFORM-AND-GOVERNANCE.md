@@ -220,3 +220,13 @@ Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. I
 - The local provider now performs a best-effort background warm-up at backend startup using a synthetic one-token prompt, with a 30-minute keep-alive. Warm-up does not include user data, persist a conversation, or enable cloud fallback; if it fails, the normal governed request path remains authoritative.
 - Follow-up response-visibility hardening: after persistence succeeds, the panel now changes its status to explicitly say the local model is generating; a failed persistence step, an empty response payload, or a generation/API error is surfaced as a visible assistant turn instead of silently returning. Error details are bounded, and no farm record is changed by this path.
 - Frontend production build passed after this change. Authenticated browser interaction still needs a live user-session check; do not treat a successful build or healthy service as proof that the model answered correctly.
+
+
+## 2026-10-14 — AI initialization and latency diagnostics
+
+- Reduced retained conversation history sent to local inference from up to 12 messages/2,000 characters per message to 4 messages/600 characters per message, and reduced the overall prompt character budget from 10,000 to 7,000. The current user question and authorized structured context remain separate; crop JSON is never cut into invalid fragments.
+- Added a short provider-health cache (15 seconds when healthy, 3 seconds when unhealthy) so normal turns do not repeatedly make a separate Ollama `/api/tags` request. This is a readiness optimization, not an authorization cache; conversation ownership and module READ authorization still run for each request.
+- Added content-free timing telemetry for the conversation pipeline stages and Ollama generation metrics (prompt character/token counts, prompt evaluation, model load, generation, and total runtime). Logs deliberately omit farmer text, crop names, IDs, and record payloads.
+- Validation: backend Nest build passed; focused AI provider/controller/conversation service tests passed (3 suites, 36 tests). `git diff --check` passed. The new timing events are exercised in controller tests, but real authenticated latency measurements and browser audio remain to be verified against the running app.
+
+- The response endpoint now requests a bounded conversation projection (latest four messages only) rather than eagerly loading every session, message, context, reference, fact candidate, and action relation. The owner filter remains in the database query; latest messages are restored to chronological order before authorized context construction.

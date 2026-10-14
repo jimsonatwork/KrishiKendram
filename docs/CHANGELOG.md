@@ -1238,3 +1238,5 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Adjusted default spoken reply rate and pitch.
 - Added best-effort synthetic local-model warm-up at backend startup to reduce first-question cold-start delay without using or storing farmer data.
 - Hardened response visibility: the Voice Agent now shows a distinct local-generation status and emits a visible assistant message for persistence failures, empty response payloads, and API/provider errors instead of silently returning.
+
+- 2026-10-14: Reduced local AI prompt history/context budgets, cached local model readiness briefly to avoid a per-turn tags request, limited response requests to the latest four conversation messages instead of eagerly loading all related records, and added content-free end-to-end/model timing telemetry. Backend build passed; focused AI provider/controller/conversation tests passed (36 tests). Live authenticated latency and browser audio still need verification.

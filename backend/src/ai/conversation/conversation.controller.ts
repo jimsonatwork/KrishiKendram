@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   Post,
   Req,
@@ -33,6 +34,8 @@ interface AuthenticatedRequest {
 @Controller('ai/conversations')
 @UseGuards(JwtAuthGuard)
 export class AiConversationController {
+  private readonly logger = new Logger(AiConversationController.name);
+
   constructor(
     private readonly conversations: ConversationService,
     private readonly registry: AiRegistryService,
@@ -59,6 +62,14 @@ export class AiConversationController {
     @Param('conversationId') conversationId: string,
     @Body() body: unknown,
   ) {
+    const requestStartedAt = Date.now();
+    const stages: Record<string, number> = {};
+    let stageStartedAt = requestStartedAt;
+    const markStage = (name: string) => {
+      const now = Date.now();
+      stages[name] = now - stageStartedAt;
+      stageStartedAt = now;
+    };
     const userId = this.requireUserId(req);
     const data = this.asRecord(body);
 
@@ -79,7 +90,9 @@ export class AiConversationController {
     const conversation = await this.conversations.getConversation(
       conversationId,
       userId,
+      { responseOnly: true },
     );
+    markStage('conversationLoadMs');
 
     const generationRequest = {
       content,
@@ -117,7 +130,7 @@ export class AiConversationController {
             primaryLanguage: conversation.primaryLanguage,
             status: conversation.status,
           },
-          messages: conversation.messages.slice(-20).map((message) => ({
+          messages: [...conversation.messages].reverse().map((message) => ({
             role: message.role,
             content: message.content,
             language: message.language,
@@ -126,9 +139,11 @@ export class AiConversationController {
           ...(needsCropContext ? { context: {} } : {}),
         },
       });
+      markStage('authorizedContextMs');
       if (needsCropContext && dataContextIntent) {
         // CropsService performs its own READ authorization and owner scoping.
         const ownedCrops = await this.crops.findMyCrops(userId, this.requireUserRole(req));
+        markStage('ownedCropReadMs');
         aiContext.fields.context = {
           intentId: dataContextIntent.intentId,
           sourceModuleId: dataContextIntent.moduleId,
@@ -145,12 +160,28 @@ export class AiConversationController {
         };
       }
     }
-    const result = providerStatus.ready === true
-      ? await this.textGeneration.generate({
-          ...generationRequest,
-          ...(aiContext ? { context: aiContext } : {}),
-        })
-      : await this.textGeneration.generate(generationRequest);
+    let result: Awaited<ReturnType<TextGenerationService['generate']>>;
+    try {
+      result = providerStatus.ready === true
+        ? await this.textGeneration.generate({
+            ...generationRequest,
+            ...(aiContext ? { context: aiContext } : {}),
+          })
+        : await this.textGeneration.generate(generationRequest);
+    } catch (error) {
+      markStage('generationFailedMs');
+      this.logger.warn(JSON.stringify({
+        event: 'ai_conversation_pipeline_failure',
+        totalMs: Date.now() - requestStartedAt,
+        stages,
+        failureType: error instanceof Error ? error.name : 'UnknownError',
+        contextIncluded: Boolean(aiContext),
+        cropIntent: Boolean(aiContext?.fields?.context),
+      }));
+      throw error;
+    }
+
+    markStage('generationMs');
 
     const provenance = {
       providerId: result.providerId,
@@ -173,6 +204,9 @@ export class AiConversationController {
       provenance,
       ...(result.language === undefined ? {} : { language: result.language }),
     }, userId);
+
+    markStage('assistantPersistenceMs');
+    this.logger.log(JSON.stringify({ event: 'ai_conversation_pipeline_timing', totalMs: Date.now() - requestStartedAt, stages, contextIncluded: Boolean(aiContext), cropIntent: Boolean(aiContext?.fields?.context) }));
 
     return {
       message: savedMessage,
