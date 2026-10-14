@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { AiRegistryService } from './ai-registry.service';
 
 type RegisteredModel = { modelId: string; displayName: string; providerId: string; runtime: 'OLLAMA_LOCAL'; linked: boolean; role: string; source: string; productionReady: boolean };
-type ModelLinkDocument = { registryId: string; inventoryId: string; version: number; status: string; activeModelId: string; runtime: 'OLLAMA_LOCAL'; cloudFallbackAllowed: false; models: RegisteredModel[]; rules: Record<string, boolean> };
+type ModelLinkDocument = { registryId: string; inventoryId: string; version: number; status: string; activeModelId: string; evaluationModelId?: string | null; runtime: 'OLLAMA_LOCAL'; cloudFallbackAllowed: false; models: RegisteredModel[]; rules: Record<string, boolean> };
 type OllamaTags = { models?: Array<{ name?: string; digest?: string; size?: number }> };
 
 @Injectable()
@@ -36,6 +36,7 @@ export class AiModelLinkRegistryService {
       version: document.version,
       runtime: document.runtime,
       activeModelId: document.activeModelId,
+      evaluationModelId: document.evaluationModelId ?? null,
       cloudFallbackAllowed: false,
       moduleContractsMutableByModelLink: false,
       runtimeReachable: installed.reachable,
@@ -64,6 +65,7 @@ export class AiModelLinkRegistryService {
       if (document.activeModelId === modelId) throw new ConflictException('Activate another linked and installed model before unlinking the active model.');
       model.linked = false;
       model.role = 'EVALUATION_CANDIDATE';
+      if (document.evaluationModelId === modelId) document.evaluationModelId = null;
       document.version += 1;
     });
   }
@@ -73,6 +75,7 @@ export class AiModelLinkRegistryService {
     const model = document.models.find((item) => item.modelId === modelId);
     if (!model) throw new BadRequestException('Model is not in the centrally approved model catalogue.');
     if (!model.linked) throw new ConflictException('Link this model before activating it.');
+    if (model.productionReady !== true) throw new ConflictException('This model is evaluation-only. Select it for benchmarking and obtain production approval before switching the live AI model.');
     const installed = await this.getInstalledModels();
     if (!installed.reachable) throw new ServiceUnavailableException('Local Ollama is unavailable. Model activation was not changed.');
     if (!installed.models.some((item) => item.name === modelId || item.name?.startsWith(modelId + ':'))) {
@@ -80,11 +83,32 @@ export class AiModelLinkRegistryService {
     }
     if (document.activeModelId !== modelId) {
       document.activeModelId = modelId;
+      if (document.evaluationModelId === modelId) document.evaluationModelId = null;
       document.models.forEach((item) => { if (item.linked) item.role = item.modelId === modelId ? 'ACTIVE_BASELINE' : 'LINKED_CANDIDATE'; });
       document.version += 1;
       this.writeDocument(document);
     }
     return { registryId: document.registryId, version: document.version, activeModelId: document.activeModelId, changed: true };
+  }
+
+  async selectForEvaluation(modelId: string) {
+    const document = this.readDocument();
+    const model = document.models.find((item) => item.modelId === modelId);
+    if (!model) throw new BadRequestException('Model is not in the centrally approved model catalogue.');
+    if (!model.linked) throw new ConflictException('Link this model before selecting it for evaluation.');
+    if (modelId === document.activeModelId) throw new ConflictException('The live model cannot be selected as its own evaluation candidate.');
+    if (model.productionReady === true) throw new ConflictException('This model is already production-approved and is not an evaluation-only candidate.');
+    const installed = await this.getInstalledModels();
+    if (!installed.reachable) throw new ServiceUnavailableException('Local Ollama is unavailable. Evaluation selection was not changed.');
+    if (!installed.models.some((item) => item.name === modelId || item.name?.startsWith(modelId + ':'))) {
+      throw new ConflictException('Model is not installed locally. No download or live-model change was attempted.');
+    }
+    if (document.evaluationModelId !== modelId) {
+      document.evaluationModelId = modelId;
+      document.version += 1;
+      this.writeDocument(document);
+    }
+    return { registryId: document.registryId, version: document.version, activeModelId: document.activeModelId, evaluationModelId: document.evaluationModelId, liveModelChanged: false };
   }
 
   private mutate(modelId: string, action: (document: ModelLinkDocument, model: RegisteredModel) => void) {
@@ -104,6 +128,12 @@ export class AiModelLinkRegistryService {
     const document = raw as ModelLinkDocument;
     if (document.registryId !== this.registry.getRegistryId() || document.inventoryId !== 'KK-AI-MODEL-LINKS-001' || document.status !== 'CANONICAL' || document.runtime !== 'OLLAMA_LOCAL' || document.cloudFallbackAllowed !== false || !Array.isArray(document.models) || !document.models.length || !document.models.some((item) => item.modelId === document.activeModelId && item.linked)) {
       throw new ServiceUnavailableException('Canonical AI model-link registry identity or safety rules are invalid.');
+    }
+    if (document.evaluationModelId) {
+      const evaluationModel = document.models.find((item) => item.modelId === document.evaluationModelId);
+      if (!evaluationModel || !evaluationModel.linked || evaluationModel.modelId === document.activeModelId || evaluationModel.productionReady === true) {
+        throw new ServiceUnavailableException('Canonical AI evaluation selection is invalid or conflicts with the live model.');
+      }
     }
     return document;
   }

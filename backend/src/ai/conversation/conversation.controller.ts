@@ -104,10 +104,14 @@ export class AiConversationController {
     // The canonical registry chooses which module-owned records are relevant.
     // Authorize the AI context envelope before loading any protected module data.
     const providerStatus = this.textGeneration.getStatus() as { ready?: boolean };
+    const dataContextIntent = this.registry.resolveDataContextIntent(content);
+    const needsCropContext = dataContextIntent?.resolver === 'USER_OWNED_CROPS';
     let aiContext: UserAiContextEnvelope | undefined;
-    if (providerStatus.ready === true) {
-      const dataContextIntent = this.registry.resolveDataContextIntent(content);
-      const needsCropContext = dataContextIntent?.resolver === 'USER_OWNED_CROPS';
+    let ownedCrops: Awaited<ReturnType<CropsService['findMyCrops']>> | undefined;
+    // Deterministic registry-backed answers remain available when the LLM is
+    // warming, unavailable, or not yet production-approved. They still require
+    // the same authorization gate and the module's owner-scoped service.
+    if (providerStatus.ready === true || needsCropContext) {
       aiContext = await this.userAiContext.buildContext({
         actor: { userId, role: this.requireUserRole(req) },
         moduleId: this.registry.getConversationModuleId(),
@@ -142,7 +146,7 @@ export class AiConversationController {
       markStage('authorizedContextMs');
       if (needsCropContext && dataContextIntent) {
         // CropsService performs its own READ authorization and owner scoping.
-        const ownedCrops = await this.crops.findMyCrops(userId, this.requireUserRole(req));
+        ownedCrops = await this.crops.findMyCrops(userId, this.requireUserRole(req));
         markStage('ownedCropReadMs');
         aiContext.fields.context = {
           intentId: dataContextIntent.intentId,
@@ -162,12 +166,28 @@ export class AiConversationController {
     }
     let result: Awaited<ReturnType<TextGenerationService['generate']>>;
     try {
-      result = providerStatus.ready === true
-        ? await this.textGeneration.generate({
-            ...generationRequest,
-            ...(aiContext ? { context: aiContext } : {}),
-          })
-        : await this.textGeneration.generate(generationRequest);
+      if (needsCropContext && dataContextIntent && ownedCrops) {
+        // This answer is derived from owner-authorized module records, not a
+        // probabilistic model. It is O(1) generation work and cannot invent rows.
+        result = {
+          content: this.formatOwnedCropsAnswer(ownedCrops),
+          providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
+          modelId: 'rule:' + dataContextIntent.intentId,
+          modelVersion: 'registry-v' + this.registry.getRegistry().version,
+          mode: 'LOCAL',
+          ...(language ? { language } : {}),
+          generatedAt: new Date().toISOString(),
+          requiresValidation: true,
+          requiresUserConfirmation: true,
+        };
+      } else if (providerStatus.ready === true) {
+        result = await this.textGeneration.generate({
+          ...generationRequest,
+          ...(aiContext ? { context: aiContext } : {}),
+        });
+      } else {
+        result = await this.textGeneration.generate(generationRequest);
+      }
     } catch (error) {
       markStage('generationFailedMs');
       this.logger.warn(JSON.stringify({
@@ -189,7 +209,7 @@ export class AiConversationController {
       modelVersion: result.modelVersion,
       mode: result.mode,
       language: result.language ?? language ?? 'en',
-      source: 'TEXT',
+      source: result.providerId === 'KK-AI-INTENT-ROUTER-LOCAL' ? 'CENTRAL_REGISTRY_RULE' : 'TEXT',
       generatedAt: result.generatedAt,
     };
 
@@ -382,6 +402,22 @@ export class AiConversationController {
       throw new BadRequestException('A valid authenticated user role is required for AI context.');
     }
     return role as UserRole;
+  }
+
+  private formatOwnedCropsAnswer(crops: Awaited<ReturnType<CropsService['findMyCrops']>>): string {
+    if (crops.length === 0) {
+      return 'You have no crops registered in KrishiKendram yet. You can add one from the Crops module.';
+    }
+    const rows = crops.slice(0, 8).map((crop) => {
+      const details = [
+        crop.variety ? 'variety ' + crop.variety : undefined,
+        crop.sowingDate ? 'sown ' + new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.sowingDate) : undefined,
+        crop.harvestDate ? 'harvest ' + new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.harvestDate) : undefined,
+      ].filter((item): item is string => Boolean(item));
+      return '- ' + crop.name + (details.length ? ' (' + details.join('; ') + ')' : '');
+    });
+    const remaining = crops.length - rows.length;
+    return 'You have ' + crops.length + ' registered crop' + (crops.length === 1 ? '' : 's') + ':\n' + rows.join('\n') + (remaining > 0 ? '\n- Plus ' + remaining + ' more.' : '');
   }
 
   private requireUserId(req: AuthenticatedRequest): string {

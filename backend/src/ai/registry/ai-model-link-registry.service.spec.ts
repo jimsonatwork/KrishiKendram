@@ -43,8 +43,26 @@ describe('AiModelLinkRegistryService', () => {
     expect(service.getActiveModelId()).toBe('qwen3:1.7b');
   });
 
-  it('activates only linked models installed in the local runtime', async () => {
+  it('selects an installed linked candidate for evaluation without changing the live model', async () => {
     service.link('qwen3.5:0.8b');
+    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ models: [{ name: 'qwen3.5:0.8b', digest: 'test' }] }), { status: 200 })) as any;
+    const result = await service.selectForEvaluation('qwen3.5:0.8b');
+    expect(result).toMatchObject({ activeModelId: 'qwen3:1.7b', evaluationModelId: 'qwen3.5:0.8b', liveModelChanged: false });
+    expect(service.getActiveModelId()).toBe('qwen3:1.7b');
+  });
+
+  it('refuses to activate an evaluation-only candidate even when it is installed', async () => {
+    service.link('qwen3.5:0.8b');
+    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ models: [{ name: 'qwen3.5:0.8b', digest: 'test' }] }), { status: 200 })) as any;
+    await expect(service.activate('qwen3.5:0.8b')).rejects.toThrow('evaluation-only');
+    expect(service.getActiveModelId()).toBe('qwen3:1.7b');
+  });
+
+  it('activates only linked, installed and explicitly production-approved models', async () => {
+    service.link('qwen3.5:0.8b');
+    const document = JSON.parse(readFileSync(filePath, 'utf8'));
+    document.models.find((model: any) => model.modelId === 'qwen3.5:0.8b').productionReady = true;
+    writeFileSync(filePath, JSON.stringify(document, null, 2));
     global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ models: [{ name: 'qwen3.5:0.8b', digest: 'test' }] }), { status: 200 })) as any;
     const result = await service.activate('qwen3.5:0.8b');
     expect(result.activeModelId).toBe('qwen3.5:0.8b');
@@ -54,7 +72,7 @@ describe('AiModelLinkRegistryService', () => {
   it('refuses activation when the local runtime is unavailable', async () => {
     service.link('qwen3.5:0.8b');
     global.fetch = jest.fn().mockRejectedValue(new Error('offline')) as any;
-    await expect(service.activate('qwen3.5:0.8b')).rejects.toThrow('Local Ollama is unavailable');
+    await expect(service.selectForEvaluation('qwen3.5:0.8b')).rejects.toThrow('Local Ollama is unavailable');
     expect(service.getActiveModelId()).toBe('qwen3:1.7b');
   });
 });

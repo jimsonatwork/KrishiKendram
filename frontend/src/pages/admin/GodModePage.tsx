@@ -7,9 +7,10 @@ type GodSnapshot = { id: string; version: number; value: unknown; actorId?: stri
 type AiSnapshot = { snapshotId: string; sha256: string; byteLength: number }
 type AiModelStatus = {
   activeModelId: string
+  evaluationModelId: string | null
   runtimeReachable: boolean
   cloudFallbackAllowed: false
-  models: Array<{ modelId: string; displayName: string; linked: boolean; active: boolean; installed: boolean; role: string; source: string }>
+  models: Array<{ modelId: string; displayName: string; linked: boolean; active: boolean; installed: boolean; role: string; productionReady: boolean; source: string }>
 }
 
 type AiControlPlane = {
@@ -129,13 +130,13 @@ export function GodModePage() {
     return [...grouped.entries()]
   }, [items])
 
-  const changeModelLink = async (modelId: string, action: 'link' | 'unlink' | 'activate') => {
+  const changeModelLink = async (modelId: string, action: 'link' | 'unlink' | 'activate' | 'evaluate') => {
     if (!token) return
     setAiModelsBusy(true); setAiModelsMessage('')
     try {
       await requestModelApi(token, '/' + encodeURIComponent(modelId) + '/' + action, 'POST')
       setAiModels(await requestModelApi<AiModelStatus>(token))
-      setAiModelsMessage(action === 'activate' ? 'Active model changed. Module contracts were not changed.' : action === 'link' ? 'Model linked. It is available for governed activation; it was not downloaded.' : 'Model unlinked. Model files and conversation history were preserved.')
+      setAiModelsMessage(action === 'activate' ? 'Production model changed after approval. Module contracts were not changed.' : action === 'evaluate' ? 'Model selected for benchmarking only. The live model and module contracts were not changed.' : action === 'link' ? 'Model linked. It was not downloaded or activated.' : 'Model unlinked. Model files and conversation history were preserved.')
     } catch (cause) {
       setAiModelsMessage(cause instanceof Error ? cause.message : 'Model connection change failed.')
     } finally { setAiModelsBusy(false) }
@@ -207,9 +208,9 @@ export function GodModePage() {
         </div>
         <div className="rounded-xl border p-4"><h3 className="font-semibold">Central entrypoint links</h3><div className="mt-3 grid gap-2 sm:grid-cols-2">{Object.entries(aiControlPlane.linkedFiles).map(([key, path]) => <div key={key} className="rounded-lg bg-muted/30 px-3 py-2"><div className="text-xs font-medium">{key}</div><code className="mt-1 block break-all text-[11px] text-muted-foreground">{path}</code></div>)}</div></div>
         <div className="rounded-xl border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-semibold">Model connections</h3><p className="mt-1 text-xs text-muted-foreground">Link or unlink supported local models here. Linking does not download or activate a model; activating changes the model behind the shared AI interface, not the farm modules.</p></div><Button variant="outline" size="sm" onClick={() => { if (token) void requestModelApi<AiModelStatus>(token).then(setAiModels).catch((cause) => setAiModelsMessage(cause instanceof Error ? cause.message : 'Unable to refresh model links.')) }} disabled={aiModelsBusy}>Refresh models</Button></div>
+          <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-semibold">Model connections</h3><p className="mt-1 text-xs text-muted-foreground">Link/unlink models and select evaluation candidates here. Evaluation selection never changes the live model. Production switching is blocked until a model is explicitly approved.</p></div><Button variant="outline" size="sm" onClick={() => { if (token) void requestModelApi<AiModelStatus>(token).then(setAiModels).catch((cause) => setAiModelsMessage(cause instanceof Error ? cause.message : 'Unable to refresh model links.')) }} disabled={aiModelsBusy}>Refresh models</Button></div>
           {aiModels ? <><div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-md border px-2 py-1">Active: {aiModels.activeModelId}</span><span className="rounded-md border px-2 py-1">Local Ollama: {aiModels.runtimeReachable ? 'reachable' : 'unavailable'}</span><span className="rounded-md border px-2 py-1">Cloud fallback: disabled</span></div>
-            <div className="mt-3 space-y-2">{aiModels.models.map((model) => <div key={model.modelId} className="rounded-lg border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-sm font-semibold">{model.displayName}</div><code className="text-[11px] text-muted-foreground">{model.modelId}</code></div><div className="flex flex-wrap gap-1 text-[10px]">{model.active && <span className="rounded-md border px-2 py-1">ACTIVE</span>}<span className="rounded-md border px-2 py-1">{model.linked ? 'LINKED' : 'UNLINKED'}</span><span className="rounded-md border px-2 py-1">{model.installed ? 'INSTALLED' : 'NOT INSTALLED'}</span></div></div><div className="mt-3 flex flex-wrap gap-2">{model.linked && !model.active && <Button size="sm" variant="outline" disabled={aiModelsBusy || !model.installed || !aiModels.runtimeReachable} onClick={() => void changeModelLink(model.modelId, 'activate')}>Activate</Button>}{model.linked && !model.active && <Button size="sm" variant="outline" disabled={aiModelsBusy} onClick={() => void changeModelLink(model.modelId, 'unlink')}>Unlink</Button>}{!model.linked && <Button size="sm" variant="outline" disabled={aiModelsBusy} onClick={() => void changeModelLink(model.modelId, 'link')}>Link model</Button>}</div></div>)}</div>
+            <div className="mt-3 space-y-2">{aiModels.models.map((model) => <div key={model.modelId} className="rounded-lg border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-sm font-semibold">{model.displayName}</div><code className="text-[11px] text-muted-foreground">{model.modelId}</code></div><div className="flex flex-wrap gap-1 text-[10px]">{model.active && <span className="rounded-md border px-2 py-1">LIVE SELECTION</span>}{aiModels.evaluationModelId === model.modelId && <span className="rounded-md border px-2 py-1">EVALUATION ONLY</span>}<span className="rounded-md border px-2 py-1">{model.linked ? 'LINKED' : 'UNLINKED'}</span><span className="rounded-md border px-2 py-1">{model.installed ? 'INSTALLED' : 'NOT INSTALLED'}</span></div></div><div className="mt-3 flex flex-wrap gap-2">{model.linked && !model.active && !model.productionReady && <Button size="sm" variant="outline" disabled={aiModelsBusy || !model.installed || !aiModels.runtimeReachable} onClick={() => void changeModelLink(model.modelId, 'evaluate')}>{aiModels.evaluationModelId === model.modelId ? 'Selected for evaluation' : 'Select for evaluation'}</Button>}{model.linked && !model.active && model.productionReady && <Button size="sm" variant="outline" disabled={aiModelsBusy || !model.installed || !aiModels.runtimeReachable} onClick={() => void changeModelLink(model.modelId, 'activate')}>Activate approved model</Button>}{model.linked && !model.active && <Button size="sm" variant="outline" disabled={aiModelsBusy} onClick={() => void changeModelLink(model.modelId, 'unlink')}>Unlink</Button>}{!model.linked && <Button size="sm" variant="outline" disabled={aiModelsBusy} onClick={() => void changeModelLink(model.modelId, 'link')}>Link model</Button>}</div></div>)}</div>
           </> : <p className="mt-3 text-sm text-muted-foreground">Model connection controls are unavailable. This is restricted to the canonical God Mode identity.</p>}
           {aiModelsMessage && <p role="status" className="mt-3 break-words rounded-lg border p-3 text-xs">{aiModelsMessage}</p>}
         </div>

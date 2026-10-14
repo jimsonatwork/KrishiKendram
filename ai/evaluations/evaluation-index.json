@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-EVALUATIONS-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "evaluationSuites": [
     {
@@ -83,7 +83,7 @@
     {
       "suiteId": "KK-EVAL-LLM-001",
       "name": "Local model and agricultural conversation",
-      "status": "PLANNED",
+      "status": "READY_FOR_EVALUATION",
       "languages": [
         "en-IN",
         "te-IN",
@@ -99,7 +99,8 @@
         "latency",
         "peak RAM",
         "license/checksum"
-      ]
+      ],
+      "manifest": "./KK-EVAL-LLM-001.json"
     },
     {
       "suiteId": "KK-EVAL-FORM-001",

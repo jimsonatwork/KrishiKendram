@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-MODEL-LINKS-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "purpose": "Central model link catalogue. Linking makes a model available; activation is separate. Model links never alter module contracts.",
   "activeModelId": "qwen3:1.7b",
@@ -46,6 +46,9 @@
     "unlinkActiveModelAllowed": false,
     "deleteModelArtifactsOnUnlink": false,
     "cloudFallback": false,
-    "auditRequired": true
-  }
+    "auditRequired": true,
+    "evaluationSelectionChangesActiveModel": false,
+    "activateOnlyProductionApprovedModels": true
+  },
+  "evaluationModelId": null
 }

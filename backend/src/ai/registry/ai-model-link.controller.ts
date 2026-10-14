@@ -31,6 +31,14 @@ export class AiModelLinkController {
     return result;
   }
 
+  @Post(':modelId/evaluate')
+  async selectForEvaluation(@Req() request: ModelAdminRequest, @Param('modelId') modelId: string) {
+    await this.assertGodMode(request);
+    const result = await this.models.selectForEvaluation(modelId);
+    await this.auditChange(request, 'AI_MODEL_SELECTED_FOR_EVALUATION', modelId, result);
+    return result;
+  }
+
   @Post(':modelId/activate')
   async activate(@Req() request: ModelAdminRequest, @Param('modelId') modelId: string) {
     await this.assertGodMode(request);

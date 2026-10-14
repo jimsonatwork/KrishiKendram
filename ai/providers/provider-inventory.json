@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-PROVIDERS-001",
-  "version": 2,
+  "version": 3,
   "status": "CANONICAL",
   "providers": [
     {
@@ -12,6 +12,19 @@
       "status": "PLACEHOLDER_NOT_PRODUCTION_READY",
       "executionMode": "LOCAL",
       "cloudFallbackAllowed": false,
+      "secretValuesStoredHere": false
+    },
+    {
+      "providerId": "KK-AI-INTENT-ROUTER-LOCAL",
+      "capability": "CONVERSATION",
+      "implementation": "backend/src/ai/conversation/conversation.controller.ts",
+      "contract": "backend/src/ai/contracts/text-generation-provider.ts",
+      "status": "PRODUCTION_READY",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "productionReady": true,
+      "evaluationOnly": false,
+      "purpose": "Registry-backed deterministic answers from separately authorized module services; no LLM or additional runtime.",
       "secretValuesStoredHere": false
     },
     {

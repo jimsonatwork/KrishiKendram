@@ -18,7 +18,7 @@ describe('AiConversationController', () => {
     appendMessage: jest.Mock;
     listHistory: jest.Mock;
   };
-  let registry: { getConversationModuleId: jest.Mock; resolveDataContextIntent: jest.Mock };
+  let registry: { getConversationModuleId: jest.Mock; getRegistry: jest.Mock; resolveDataContextIntent: jest.Mock };
   let textGeneration: { getStatus: jest.Mock; generate: jest.Mock };
   let userAiContext: { buildContext: jest.Mock };
   let voiceCapabilities: { getIntentsForUser: jest.Mock };
@@ -46,6 +46,7 @@ describe('AiConversationController', () => {
     };
     registry = {
       getConversationModuleId: jest.fn().mockReturnValue('KK-AI-CONVERSATION-001'),
+      getRegistry: jest.fn().mockReturnValue({ version: 2 }),
       resolveDataContextIntent: jest.fn().mockReturnValue(undefined),
     };
     textGeneration = {
@@ -154,7 +155,8 @@ describe('AiConversationController', () => {
     );
   });
 
-  it('supplies only owner-authorized crop fields for a registered crop-list intent', async () => {
+  it('answers a registered crop-list intent from owner-authorized records without invoking the LLM', async () => {
+    textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
     registry.resolveDataContextIntent.mockReturnValue({
       intentId: 'KK-AI-CONTEXT-CROPS-001',
       moduleId: 'KK-CROP-001',
@@ -172,16 +174,6 @@ describe('AiConversationController', () => {
       sowingDate: new Date('2026-10-01T00:00:00.000Z'),
       harvestDate: null,
     }]);
-    textGeneration.generate.mockResolvedValue({
-      content: 'Your registered crop is Wheat.',
-      providerId: 'KK-AI-LLM-OLLAMA-LOCAL',
-      modelId: 'qwen3:1.7b',
-      modelVersion: 'test-digest',
-      mode: 'LOCAL',
-      generatedAt: '2026-10-14T00:00:00.000Z',
-      requiresValidation: true,
-      requiresUserConfirmation: true,
-    });
 
     await controller.respond(req, 'conversation-1', { content: 'What are my crops?' });
 
@@ -192,23 +184,29 @@ describe('AiConversationController', () => {
     expect(crops.findMyCrops).toHaveBeenCalledWith('jwt-user-1', 'FARMER');
     expect(userAiContext.buildContext.mock.invocationCallOrder[0])
       .toBeLessThan(crops.findMyCrops.mock.invocationCallOrder[0]);
-    expect(textGeneration.generate).toHaveBeenCalledWith(expect.objectContaining({
-      context: expect.objectContaining({
-        fields: expect.objectContaining({
-          context: expect.objectContaining({
-            intentId: 'KK-AI-CONTEXT-CROPS-001',
-            totalCount: 1,
-            crops: [{
-              crop: 'Wheat',
-              variety: 'HD-2967',
-              sowing: '2026-10-01T00:00:00.000Z',
-              harvest: null,
-              farmId: 'farm-1',
-            }],
-          }),
-        }),
-      }),
-    }));
+    expect(textGeneration.generate).not.toHaveBeenCalled();
+    expect(conversations.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Wheat (variety HD-2967; sown 1 Oct 2026)'),
+      providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
+      modelId: 'rule:KK-AI-CONTEXT-CROPS-001',
+      provenance: expect.objectContaining({ source: 'CENTRAL_REGISTRY_RULE' }),
+    }), 'jwt-user-1');
+  });
+
+  it('answers an empty crop list deterministically without requiring a model', async () => {
+    textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
+    registry.resolveDataContextIntent.mockReturnValue({
+      intentId: 'KK-AI-CONTEXT-CROPS-001', moduleId: 'KK-CROP-001',
+      capability: 'CONVERSATION', resolver: 'USER_OWNED_CROPS',
+      phrases: ['what are my crops'], fields: ['crop'], references: ['userId'],
+    });
+    crops.findMyCrops.mockResolvedValue([]);
+    await controller.respond(req, 'conversation-1', { content: 'What are my crops?' });
+    expect(conversations.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('no crops registered'),
+      providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
+    }), 'jwt-user-1');
+    expect(textGeneration.generate).not.toHaveBeenCalled();
   });
 
   it('does not assemble context when the provider is unavailable', async () => {

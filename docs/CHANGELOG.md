@@ -1251,3 +1251,12 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Added the central model-link registry pointer and local model catalogue, separating model availability from active model selection.
 - Added God Mode-only link, unlink, status, and activation endpoints with audit events. Activation requires an installed local Ollama model; the active model cannot be unlinked first.
 - Wired the local text-generation provider to read the active model from the registry so module contracts remain unchanged. Cloud fallback remains disabled and model artifacts are never deleted by unlinking.
+
+
+## 2026-10-14 - Low-footprint AI orchestration
+- Added deterministic-first routing for the centrally registered, owner-authorized crop-list intent; it now returns a short fact-based answer without invoking the LLM.
+- Separated evaluation-model selection from live model selection. Candidate models cannot become live unless explicitly marked production-ready; evaluation selection is audited and leaves the live model unchanged.
+- Added the AI platform optimization plan with upstream GitHub research, local-hardware constraints, model/RAG/voice evaluation gates and the no-cloud/no-direct-write governance requirements.
+
+
+- Candidate model download was paused before completion after D: storage I/O contention was observed during app rebuild/restart. Partial model blobs were preserved; resume only in a quiet/maintenance window. The live model was not switched.
