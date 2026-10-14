@@ -17,6 +17,8 @@ Deliver a useful, low-latency AI assistant across KrishiKendram without making e
 
 ## Architecture decisions
 
+The canonical execution boundary and plug-and-play contract are documented in [AI Execution Architecture](./AI-EXECUTION-ARCHITECTURE.md) and linked from the central AI platform registry. The backend remains authoritative; provider/runtime choices are replaceable adapters, and each module opts in through a versioned capability contract.
+
 1. **Deterministic-first orchestration.** Resolve centrally registered intents before calling an LLM. Exact user-owned record queries use the authorized module service and return a deterministic answer. This is faster and cannot hallucinate database rows. Unknown/free-form questions may use the local model if provider policy allows it.
 2. **Separate link, evaluation, and production activation.** Linking does not download or activate a model. Evaluation selection does not alter the live model. Production activation is rejected unless the model is explicitly marked production-ready by the governed approval process. Unlinking never deletes model files or history.
 3. **Keep Ollama as the first runtime.** Its local API supports keep-alive, streaming, think=false, tool calls and structured output. Do not add llama.cpp as a second daemon until same-model/same-quantization benchmarks prove a material advantage. llama.cpp supports quantized CPU inference and an OpenAI-compatible server, but duplicate runtimes cost disk, memory and operational complexity.

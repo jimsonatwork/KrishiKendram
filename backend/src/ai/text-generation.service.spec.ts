@@ -1,4 +1,4 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { HttpException, ServiceUnavailableException } from '@nestjs/common';
 import { TextGenerationService } from './text-generation.service';
 
 describe('TextGenerationService', () => {
@@ -119,6 +119,24 @@ describe('TextGenerationService', () => {
     await expect(service.generate(request)).resolves.toEqual(generated);
     expect(provider.generate).toHaveBeenCalledWith(request);
     expect(registry.assertCapabilityAllowed).toHaveBeenCalledWith('KK-AI-CONVERSATION-001', 'CONVERSATION');
+  });
+
+  it('rejects concurrent local generation with a typed busy response', async () => {
+    provider.mode = 'LOCAL';
+    registry.getControlPlaneOverview.mockReturnValue({
+      inventories: { providers: { providers: [{
+        providerId: provider.providerId, capability: 'CONVERSATION',
+        status: 'PRODUCTION_READY', productionReady: true, cloudFallbackAllowed: false,
+      }] } },
+      providerRules: { cloudFallback: false },
+    });
+    provider.generate.mockImplementation(() => new Promise(() => undefined));
+
+    void service.generate({ content: 'First request', conversationId: 'conversation-1', requestedBy: 'user-1' });
+    await expect(service.generate({
+      content: 'Second request', conversationId: 'conversation-2', requestedBy: 'user-2',
+    })).rejects.toMatchObject({ status: 429 });
+    expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
   it('fails closed if the provider is absent from the canonical inventory', async () => {

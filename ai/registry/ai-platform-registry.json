@@ -144,7 +144,8 @@
     "modelLinkRegistry": "../providers/model-link-registry.json",
     "optimizationPlanDocument": "../../docs/AI-PLATFORM-OPTIMIZATION-PLAN.md",
     "modelBenchmarkSuite": "../evaluations/KK-EVAL-LLM-001.json",
-    "benchmarkRunner": "../../backend/scripts/kk-ai-benchmark.mjs"
+    "benchmarkRunner": "../../backend/scripts/kk-ai-benchmark.mjs",
+    "executionArchitecture": "../../docs/AI-EXECUTION-ARCHITECTURE.md"
   },
   "moduleFiles": {
     "KK-USER-001": "../modules/KK-USER-001.json",

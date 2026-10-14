@@ -84,6 +84,7 @@ describe('AiRegistryService', () => {
     try {
       cpSync(resolve(process.cwd(), '../ai'), join(root, 'ai'), { recursive: true });
       cpSync(resolve(process.cwd(), '../docs'), join(root, 'docs'), { recursive: true });
+      cpSync(resolve(process.cwd(), 'scripts'), join(root, 'backend/scripts'), { recursive: true });
       const isolated = new AiRegistryService(join(root, 'ai/registry/ai-platform-registry.json'));
       const before = isolated.getGovernedFile('providerInventory');
       const value = before.value as { providers: Array<Record<string, unknown>> };
@@ -110,6 +111,7 @@ describe('AiRegistryService', () => {
     try {
       cpSync(resolve(process.cwd(), '../ai'), join(root, 'ai'), { recursive: true });
       cpSync(resolve(process.cwd(), '../docs'), join(root, 'docs'), { recursive: true });
+      cpSync(resolve(process.cwd(), 'scripts'), join(root, 'backend/scripts'), { recursive: true });
       const registryPath = join(root, 'ai/registry/ai-platform-registry.json');
       const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as { linkedFiles: Record<string, string> };
       const target = resolve(join(root, 'ai/registry'), registry.linkedFiles.providerInventory);
@@ -130,11 +132,12 @@ describe('AiRegistryService', () => {
     expect(diagnostics.executedProviderCode).toBe(false);
     expect(diagnostics.networkChecksPerformed).toBe(false);
     expect(diagnostics.secretValuesExposed).toBe(false);
-    // Diagnostics include ASR, unavailable generation, evaluation-only local generation, and the disabled cloud candidate; none may be reported ready from file presence alone.
-    expect(diagnostics.providers).toHaveLength(4);
+    // The deterministic intent router is ready without an LLM; model-backed providers remain gated by runtime and approval evidence.
+    expect(diagnostics.providers).toHaveLength(5);
+    expect(diagnostics.providers.find((provider) => provider.providerId === 'KK-AI-INTENT-ROUTER-LOCAL')?.ready).toBe(true);
     expect(diagnostics.providers.find((provider) => provider.providerId === 'KK-AI-CLOUD-TEXT-CONNECTION-CANDIDATE')?.ready).toBe(false);
     expect(diagnostics.runtimes).toHaveLength(2);
-    expect(diagnostics.providers.every((provider) => provider.ready === false)).toBe(true);
+    expect(diagnostics.providers.filter((provider) => provider.providerId !== 'KK-AI-INTENT-ROUTER-LOCAL').every((provider) => provider.ready === false)).toBe(true);
     expect(diagnostics.runtimes.every((runtime) => runtime.ready === false)).toBe(true);
   });
 
