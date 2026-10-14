@@ -16,6 +16,10 @@ describe('FactDraftService central validation and authorization', () => {
   let tx: any;
   let audit: any;
   let users: any;
+  let farms: any;
+  let crops: any;
+  let livestock: any;
+  let marketplace: any;
   const evidence = {
     id: 'user-message-1',
     role: ConversationMessageRole.USER,
@@ -40,6 +44,7 @@ describe('FactDraftService central validation and authorization', () => {
       getModule: jest.fn().mockReturnValue({
         allowedCapabilities: ['CONVERSATION', 'EXTRACTION'],
         candidateFactTargets: ['Farm'],
+        applyFields: { Farm: ['name'] },
       }),
     };
     platformRegistry = {
@@ -56,6 +61,7 @@ describe('FactDraftService central validation and authorization', () => {
       }),
     };
     authorization = {
+      authorize: jest.fn().mockResolvedValue({ allowed: true, metadata: { scope: 'GLOBAL' } }),
       authorizeFields: jest.fn().mockResolvedValue({
         allowed: true,
         decision: { allowed: true, permissionId: 'permission-1' },
@@ -67,6 +73,14 @@ describe('FactDraftService central validation and authorization', () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: null }),
       },
+      farm: {
+        findFirst: jest.fn().mockImplementation(({ select }: any) =>
+          select?.ownerId ? { id: 'farm-1', ownerId: 'farmer-1' } : { name: 'Old Farm' }),
+        update: jest.fn().mockResolvedValue({ id: 'farm-1', name: 'New Farm' }),
+      },
+      crop: { findFirst: jest.fn(), update: jest.fn() },
+      livestock: { findFirst: jest.fn(), update: jest.fn() },
+      marketplaceListing: { findFirst: jest.fn(), update: jest.fn() },
       conversationFactCandidate: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUnique: jest.fn().mockImplementation(({ where }: any) => ({
@@ -78,6 +92,14 @@ describe('FactDraftService central validation and authorization', () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: null }),
       },
+      farm: {
+        findFirst: jest.fn().mockImplementation(({ select }: any) =>
+          select?.ownerId ? { id: 'farm-1', ownerId: 'farmer-1' } : { name: 'Old Farm' }),
+      },
+      crop: { findFirst: jest.fn() },
+      livestock: { findFirst: jest.fn() },
+      marketplaceListing: { findFirst: jest.fn() },
+      resourceRelationship: { findFirst: jest.fn().mockResolvedValue(null) },
       conversationFactCandidate: {
         findFirst: jest.fn(),
       },
@@ -85,6 +107,10 @@ describe('FactDraftService central validation and authorization', () => {
     };
     audit = { createInTransaction: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
     users = { update: jest.fn().mockResolvedValue({ id: 'farmer-1', name: 'New Name' }) };
+    farms = { update: jest.fn().mockResolvedValue({ id: 'farm-1', name: 'New Farm' }) };
+    crops = { update: jest.fn().mockResolvedValue({ id: 'crop-1', name: 'New Crop' }) };
+    livestock = { update: jest.fn().mockResolvedValue({ id: 'livestock-1', name: 'New Animal' }) };
+    marketplace = { update: jest.fn().mockResolvedValue({ id: 'listing-1', title: 'New Listing' }) };
     service = new FactDraftService(
       conversations as ConversationService,
       aiRegistry as AiRegistryService,
@@ -93,6 +119,10 @@ describe('FactDraftService central validation and authorization', () => {
       prisma,
       audit,
       users,
+      farms,
+      crops,
+      livestock,
+      marketplace,
     );
   });
 
@@ -135,6 +165,87 @@ describe('FactDraftService central validation and authorization', () => {
       validationResult: expect.objectContaining({ valid: true, policySource: 'CENTRAL_PLATFORM_REGISTRY' }),
     }), 'farmer-1');
     expect(result.validation.applied).toBe(false);
+  });
+
+  it('captures an existing Farm field only after UPDATE field authorization and uses the real owner context', async () => {
+    const result = await service.createDraft({
+      targetModuleId: 'KK-FARM-001',
+      targetEntityType: 'Farm',
+      targetEntityId: 'farm-1',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'New Farm',
+    }, { userId: 'farmer-1', role: UserRole.FARMER }, 'conversation-1');
+
+    expect(authorization.authorizeFields).toHaveBeenCalledWith(expect.objectContaining({
+      module: 'farms',
+      resource: 'farm',
+      action: 'UPDATE',
+      resourceId: 'farm-1',
+      ownerId: 'farmer-1',
+    }), ['name'], 'WRITE');
+    expect(prisma.farm.findFirst.mock.invocationCallOrder[1])
+      .toBeGreaterThan(authorization.authorizeFields.mock.invocationCallOrder[0]);
+    expect(conversations.createFactCandidate).toHaveBeenCalledWith(expect.objectContaining({
+      targetEntityId: 'farm-1',
+      previousValue: 'Old Farm',
+      targetFieldId: 'name',
+    }), 'farmer-1');
+    expect(result.validation.applied).toBe(false);
+  });
+
+  it('applies a confirmed Farm field through FarmsService inside the same transaction and audits the module handler', async () => {
+    const candidate = {
+      id: 'candidate-farm-1',
+      conversationId: 'conversation-1',
+      userId: 'farmer-1',
+      moduleId: 'KK-FARM-001',
+      targetEntityType: 'Farm',
+      targetEntityId: 'farm-1',
+      targetFieldId: 'name',
+      proposedValue: 'New Farm',
+      previousValue: 'Old Farm',
+      confidence: 0.9,
+      source: 'CONVERSATION_DRAFT',
+      status: 'CONFIRMED',
+      evidenceReference: 'user-message-1',
+      provenance: { providerId: 'conversation-draft-service' },
+      validationResult: { valid: true, errors: [] },
+    };
+    prisma.conversationFactCandidate.findFirst.mockResolvedValue(candidate);
+    conversations.listFactCandidates.mockResolvedValue([candidate]);
+    platformRegistry.validateResourceField.mockReturnValue({ valid: true, value: 'New Farm', errors: [] });
+    tx.farm.findFirst.mockResolvedValue({ name: 'Old Farm' });
+    tx.conversationFactCandidate.findUnique.mockResolvedValue({ ...candidate, status: 'APPLIED' });
+    const [preview] = await service.listDrafts('conversation-1', 'farmer-1');
+
+    const result = await service.applyConfirmedDraft('conversation-1', candidate.id, preview.previewHash, {
+      userId: 'farmer-1', role: UserRole.FARMER,
+    });
+
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(farms.update).toHaveBeenCalledWith(
+      'farm-1',
+      'farmer-1',
+      UserRole.FARMER,
+      { name: 'New Farm' },
+      tx,
+    );
+    expect(tx.conversationFactCandidate.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: candidate.id, status: 'CONFIRMED' }),
+      data: expect.objectContaining({ status: 'APPLIED', appliedAt: expect.any(Date) }),
+    }));
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      action: 'AI_FACT_DRAFT_APPLIED',
+      resourceId: candidate.id,
+      metadata: expect.objectContaining({ applied: true, applicationService: 'FarmService.update' }),
+    }));
+    expect(result).toMatchObject({
+      applied: true,
+      targetEntityType: 'Farm',
+      targetEntityId: 'farm-1',
+      targetFieldId: 'name',
+    });
   });
 
   it('denies candidates when resource or field authorization fails', async () => {
@@ -208,6 +319,7 @@ describe('FactDraftService central validation and authorization', () => {
     aiRegistry.getModule.mockReturnValue({
       allowedCapabilities: ['EXTRACTION'],
       candidateFactTargets: ['User'],
+      applyFields: { User: ['name'] },
     });
     platformRegistry.getAll.mockReturnValue([{
       name: 'user',
@@ -239,6 +351,7 @@ describe('FactDraftService central validation and authorization', () => {
     aiRegistry.getModule.mockReturnValue({
       allowedCapabilities: ['EXTRACTION'],
       candidateFactTargets: ['User'],
+      applyFields: { User: ['name'] },
     });
     platformRegistry.getAll.mockReturnValue([{
       name: 'user', model: 'User', module: 'users',
@@ -255,6 +368,39 @@ describe('FactDraftService central validation and authorization', () => {
       .rejects.toBeInstanceOf(ForbiddenException);
     expect(authorization.authorizeFields).not.toHaveBeenCalled();
     expect(conversations.createFactCandidate).not.toHaveBeenCalled();
+  });
+
+  it('allows a SUPER_ADMIN business AI draft only when the authorization service reports GOD_MODE', async () => {
+    authorization.authorize.mockResolvedValue({ allowed: true, metadata: { scope: 'GOD_MODE' } });
+    aiRegistry.getModule.mockReturnValue({
+      allowedCapabilities: ['EXTRACTION'],
+      candidateFactTargets: ['Farm'],
+      applyFields: { Farm: ['name'] },
+    });
+    platformRegistry.getAll.mockReturnValue([{
+      name: 'farm', model: 'Farm', module: 'farms',
+      fields: { name: { definition: 'farmName' } },
+    }]);
+
+    await service.createDraft({
+      targetModuleId: 'KK-FARM-001',
+      targetEntityType: 'Farm',
+      targetEntityId: 'farm-1',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'New Farm',
+    }, { userId: 'farmer-1', role: UserRole.SUPER_ADMIN }, 'conversation-1');
+
+    expect(authorization.authorize).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'UPDATE',
+      resourceId: 'farm-1',
+      ownerId: 'farmer-1',
+    }));
+    expect(authorization.authorizeFields).not.toHaveBeenCalled();
+    expect(conversations.createFactCandidate).toHaveBeenCalledWith(expect.objectContaining({
+      previousValue: 'Old Farm',
+      targetEntityId: 'farm-1',
+    }), 'farmer-1');
   });
 
   it('confirms only the exact currently validated preview and audits the transition atomically', async () => {
@@ -335,6 +481,7 @@ describe('FactDraftService central validation and authorization', () => {
     aiRegistry.getModule.mockReturnValue({
       allowedCapabilities: ['EXTRACTION'],
       candidateFactTargets: ['User'],
+      applyFields: { User: ['name'] },
     });
     platformRegistry.getAll.mockReturnValue([{
       name: 'user', model: 'User', module: 'users',
@@ -370,10 +517,93 @@ describe('FactDraftService central validation and authorization', () => {
     expect(result.applied).toBe(true);
   });
 
+  it.each([
+    { entityType: 'Crop', moduleId: 'KK-CROP-001', entityId: 'crop-1', field: 'name', previous: 'Old Crop', proposed: 'New Crop', resourceName: 'crop', resourceModule: 'farms', delegate: 'crop', service: 'crops' },
+    { entityType: 'Livestock', moduleId: 'KK-LIVESTOCK-001', entityId: 'livestock-1', field: 'name', previous: 'Old Animal', proposed: 'New Animal', resourceName: 'livestock', resourceModule: 'livestock', delegate: 'livestock', service: 'livestock' },
+    { entityType: 'MarketplaceListing', moduleId: 'KK-MARKETPLACE-001', entityId: 'listing-1', field: 'title', previous: 'Old Listing', proposed: 'New Listing', resourceName: 'marketplaceListing', resourceModule: 'marketplace', delegate: 'marketplaceListing', service: 'marketplace' },
+  ])('applies an authorized $entityType draft through its module service in the shared transaction', async (testCase) => {
+    aiRegistry.getModule.mockReturnValue({
+      allowedCapabilities: ['EXTRACTION'],
+      candidateFactTargets: [testCase.entityType],
+      applyFields: { [testCase.entityType]: [testCase.field] },
+    });
+    platformRegistry.getAll.mockReturnValue([{
+      name: testCase.resourceName,
+      model: testCase.entityType,
+      module: testCase.resourceModule,
+      fields: { [testCase.field]: { definition: testCase.field } },
+    }]);
+    platformRegistry.validateResourceField.mockReturnValue({
+      valid: true, value: testCase.proposed, errors: [],
+    });
+    const delegate = prisma[testCase.delegate];
+    delegate.findFirst.mockImplementation(({ select }: any) => {
+      if (testCase.entityType === 'MarketplaceListing') {
+        return select?.sellerId
+          ? { id: testCase.entityId, sellerId: 'farmer-1' }
+          : { [testCase.field]: testCase.previous };
+      }
+      return select?.farm
+        ? { id: testCase.entityId, farmId: 'farm-1', farm: { ownerId: 'farmer-1' } }
+        : { [testCase.field]: testCase.previous };
+    });
+    tx[testCase.delegate].findFirst.mockResolvedValue({ [testCase.field]: testCase.previous });
+
+    const candidate = {
+      id: 'candidate-' + testCase.entityId,
+      conversationId: 'conversation-1',
+      userId: 'farmer-1',
+      moduleId: testCase.moduleId,
+      targetEntityType: testCase.entityType,
+      targetEntityId: testCase.entityId,
+      targetFieldId: testCase.field,
+      proposedValue: testCase.proposed,
+      previousValue: testCase.previous,
+      confidence: 0.9,
+      source: 'CONVERSATION_DRAFT',
+      status: 'CONFIRMED',
+      evidenceReference: 'user-message-1',
+      provenance: { providerId: 'conversation-draft-service' },
+      validationResult: { valid: true, errors: [] },
+    };
+    prisma.conversationFactCandidate.findFirst.mockResolvedValue(candidate);
+    conversations.listFactCandidates.mockResolvedValue([candidate]);
+    tx.conversationFactCandidate.findUnique.mockResolvedValue({ ...candidate, status: 'APPLIED' });
+    const [preview] = await service.listDrafts('conversation-1', 'farmer-1');
+    const result = await service.applyConfirmedDraft('conversation-1', candidate.id, preview.previewHash, {
+      userId: 'farmer-1', role: UserRole.FARMER,
+    });
+
+    const moduleService = testCase.service === 'crops' ? crops
+      : testCase.service === 'livestock' ? livestock : marketplace;
+    expect(moduleService.update).toHaveBeenCalledWith(
+      'farmer-1',
+      UserRole.FARMER,
+      testCase.entityId,
+      { [testCase.field]: testCase.proposed },
+      tx,
+    );
+    expect(tx.$queryRaw).toHaveBeenCalled();
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      action: 'AI_FACT_DRAFT_APPLIED',
+      metadata: expect.objectContaining({
+        applied: true,
+        applicationService: testCase.entityType + 'Service.update',
+      }),
+    }));
+    expect(result).toMatchObject({
+      applied: true,
+      targetEntityType: testCase.entityType,
+      targetEntityId: testCase.entityId,
+      targetFieldId: testCase.field,
+    });
+  });
+
   it('rejects profile drafts for privileged fields before storing a candidate', async () => {
     aiRegistry.getModule.mockReturnValue({
       allowedCapabilities: ['EXTRACTION'],
       candidateFactTargets: ['User'],
+      applyFields: { User: ['name'] },
     });
     platformRegistry.getAll.mockReturnValue([{
       name: 'user', model: 'User', module: 'users',

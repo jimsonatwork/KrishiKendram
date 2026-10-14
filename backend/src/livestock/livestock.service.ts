@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthorizationService } from '../platform/authorization/authorization.service';
@@ -157,6 +157,7 @@ export class LivestockService {
     role: UserRole,
     id: string,
     dto: UpdateLivestockDto,
+    transaction?: Prisma.TransactionClient,
   ) {
     const item = await this.context(id);
     await this.assert(userId, role, AuthorizationAction.UPDATE, item);
@@ -164,7 +165,7 @@ export class LivestockService {
     const data = this.validate(dto);
     delete data.farmId;
     delete data.acquiredAt;
-    return this.prisma.$transaction(async (tx) => {
+    const performUpdate = async (tx: Prisma.TransactionClient) => {
       const updated = await tx.livestock.update({
         where: { id },
         data: {
@@ -182,7 +183,8 @@ export class LivestockService {
         description: 'Livestock updated.',
       });
       return updated;
-    });
+    };
+    return transaction ? performUpdate(transaction) : this.prisma.$transaction(performUpdate);
   }
 
   async archive(userId: string, role: UserRole, id: string) {

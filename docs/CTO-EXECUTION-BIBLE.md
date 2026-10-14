@@ -1547,3 +1547,19 @@ Implement and test a reusable multi-field draft lifecycle that asks for missing 
 ## 2026-10-14 — Remote Publication Guard
 
 C is 91 commits ahead and 7 commits behind origin/main because its active branch tracks the local canonical/main history rather than origin/main. The verified AI milestone may be committed locally in C, but this branch must not be pushed directly until its merge-base and changed paths are reconciled; otherwise a single feature push could expose a large divergent history. No force-push, rebase, reset, B staging mutation, or direct C → A promotion is authorized by this checkpoint. B remains untouched.
+
+## 2026-10-14 - Canonical AI Apply Fields and Transactional Existing-Record Updates
+
+**Status: PARTIAL.** Existing-record single-field updates are supported for registered targets. Multi-field creation and authenticated database-backed end-to-end acceptance remain open.
+
+- The root AI registry now requires applyFields on module contracts. Centrally stored module contracts own the write-field allowlist; the conversation service no longer duplicates module field lists. Root registry schema version is 2; affected module contract versions were advanced.
+- The registry validates applyFields structure and target membership. The AI/resource cohesion test checks each apply field against the platform resource registry. Crop application is limited to name because that is currently the only field registered on the central Crop resource.
+- Existing target context is minimal: owner identity and farm boundary are resolved before field authorization; the protected current field value is read only after authorization. Farm, Crop and Livestock use current owner-relationship context; Marketplace listings use seller ownership.
+- Farm, Crop, Livestock and Marketplace update services accept an optional Prisma transaction client. Ordinary API calls retain their existing transaction behavior; AI application reuses the draft transaction.
+- Application locks the target row, compares the current value to the reviewed previous value, rejects stale previews, performs a conditional CONFIRMED-to-APPLIED transition, invokes the module-owned update service, and writes audit records in the same transaction. Generic AI Prisma domain updates remain prohibited.
+- Super Admin business-record AI writes require the authorization service to report GOD_MODE; an ordinary SUPER_ADMIN role or global permission is insufficient. Super Admin self-profile draft creation remains explicitly blocked in this slice. God authority is never inferred from role alone.
+- Fail-closed limits remain: new-record single-field drafts cannot be applied until a module-owned multi-field creation workflow exists; FarmAsset and FarmRecord do not have apply handlers; unregistered resource fields are denied.
+- Verification on 2026-10-14: backend production build PASS; full backend regression 53 suites / 500 tests PASS; frontend production build PASS; focused AI authorization and registry tests PASS; frontend and backend health endpoints HTTP 200. Final diff validation follows documentation changes.
+- This is not production approval for the local model. Indic-language quality, safety, concurrency, and authenticated database-backed end-to-end behavior remain separate acceptance gates. AI provider productionReady remains false.
+
+C remains the implementation workspace and promotion remains C -> B -> A. No direct push to main, no force-push/rebase/reset, and no mutation of B existing staged integration set. This checkpoint is not a production-readiness declaration.

@@ -14,9 +14,13 @@ import { OllamaTextGenerationProvider } from './providers/ollama-text-generation
 import { TextGenerationService } from './text-generation.service';
 import { AiVoiceCapabilityService } from './voice/ai-voice-capability.service';
 import { UsersModule } from '../users/users.module';
+import { FarmsModule } from '../farms/farms.module';
+import { CropsModule } from '../crops/crops.module';
+import { LivestockModule } from '../livestock/livestock.module';
+import { MarketplaceModule } from '../marketplace/marketplace.module';
 
 @Module({
-  imports: [AuditModule, UsersModule],
+  imports: [AuditModule, UsersModule, FarmsModule, CropsModule, LivestockModule, MarketplaceModule],
   controllers: [AiConversationController],
   providers: [AiRegistryService, IndicConformerProvider, UnavailableTextGenerationProvider, OllamaTextGenerationProvider, ConversationService, FactDraftService, UserAiContextService, TextGenerationService, AiVoiceCapabilityService, { provide: ASR_PROVIDER, useExisting: IndicConformerProvider }, { provide: TEXT_GENERATION_PROVIDER, useExisting: OllamaTextGenerationProvider }, AiService],
   exports: [AiRegistryService, ConversationService, UserAiContextService, AiService, TextGenerationService],

@@ -540,6 +540,7 @@ export class CropsService {
     role: UserRole,
     cropId: string,
     dto: UpdateCropDto,
+    transaction?: Prisma.TransactionClient,
   ) {
     /*
      * Only load the minimum Crop/Farm context needed to authorize the update.
@@ -600,7 +601,7 @@ export class CropsService {
       };
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const performUpdate = async (tx: Prisma.TransactionClient) => {
       const updated = await tx.crop.update({
         where: {
           id: cropId,
@@ -618,7 +619,8 @@ export class CropsService {
       });
 
       return updated;
-    });
+    };
+    return transaction ? performUpdate(transaction) : this.prisma.$transaction(performUpdate);
   }
 
   private validateCropName(name: string): string {

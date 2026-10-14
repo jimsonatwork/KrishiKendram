@@ -168,3 +168,13 @@ The first read-only God Mode AI inventory is implemented. Backend build passed, 
 ### Final seed and runtime verification — 2026-10-11
 
 **First AI control-plane slice: DONE.** Backend build PASS; focused AI registry tests 12/12 PASS; frontend build PASS; service restart PASS; API health HTTP 200; UI HTTP 200; protected AI route is registered and rejects unauthenticated access with HTTP 401; all eight AI God Configuration domains were verified in PostgreSQL. Next active batch: implement schema-validated file-backed configuration mutation with pre-change snapshots, dependency checks, audit and rollback; then wire provider/runtime probes.
+
+## 2026-10-14 - E-011 Governed AI Application Checkpoint
+
+**Status: IN PROGRESS - existing-record update slice implemented; full farmer data-capture lifecycle is not complete.**
+
+The central AI module contracts now own applyFields allowlists and are linked through the canonical AI registry. Existing-record proposals can be reviewed and applied for registered Farm, Crop, Livestock and MarketplaceListing fields through each module normal update service. The workflow enforces actual ownership context, field authorization before reading the prior value, central validation, explicit confirmation, stale-value detection, row locking, conditional state transition, and transactional audit.
+
+Super Admin business-record AI writes require the canonical authorization decision to return GOD_MODE; a role label or global permission is not sufficient. Super Admin self-profile drafting remains blocked in this slice.
+
+Remaining E-011 gates: multi-field creation for new records, additional central Crop field definitions, FarmAsset/FarmRecord handlers, authenticated database-backed end-to-end acceptance, and Indic-language model quality/safety/concurrency evaluation. Local model productionReady remains false. Verification on 2026-10-14: backend build PASS, backend 53 suites / 500 tests PASS, frontend build PASS, focused AI authorization/registry tests PASS.

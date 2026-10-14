@@ -17,6 +17,7 @@ export interface AiModuleContract {
   allowedFields: string[];
   restrictedFields?: string[];
   candidateFactTargets: string[];
+  applyFields: Record<string, string[]>;
   confirmationPolicy: string;
   provenancePolicy: string;
   auditPolicy: string;
@@ -361,8 +362,22 @@ export class AiRegistryService {
       const moduleId = key.slice(7);
       if (doc.moduleId !== moduleId || doc.registryId !== 'KK-AI-REGISTRY-001' || doc.status !== 'CANONICAL' || !doc.contract || typeof doc.contract !== 'object' || Array.isArray(doc.contract)) throw new BadRequestException('Module identity, canonical status, or contract is invalid.');
       const contract = doc.contract as Record<string, unknown>;
-      for (const field of ['moduleName', 'allowedCapabilities', 'contextReferences', 'allowedFields', 'restrictedFields', 'candidateFactTargets', 'confirmationPolicy', 'provenancePolicy', 'auditPolicy']) if (!(field in contract)) throw new BadRequestException('Module contract is missing required field: ' + field);
+      for (const field of ['moduleName', 'allowedCapabilities', 'contextReferences', 'allowedFields', 'restrictedFields', 'candidateFactTargets', 'applyFields', 'confirmationPolicy', 'provenancePolicy', 'auditPolicy']) if (!(field in contract)) throw new BadRequestException('Module contract is missing required field: ' + field);
       for (const field of ['allowedCapabilities', 'contextReferences', 'allowedFields', 'restrictedFields', 'candidateFactTargets']) if (!Array.isArray(contract[field]) || !(contract[field] as unknown[]).every((item) => typeof item === 'string')) throw new BadRequestException('Module contract array is invalid: ' + field);
+      {
+        const applyFields = contract.applyFields;
+        if (!applyFields || typeof applyFields !== 'object' || Array.isArray(applyFields)) {
+          throw new BadRequestException('Module applyFields must be an entity-to-field allowlist object.');
+        }
+        for (const [entityType, fields] of Object.entries(applyFields as Record<string, unknown>)) {
+          if (!(contract.candidateFactTargets as string[]).includes(entityType)) {
+            throw new BadRequestException('Module applyFields target is not in candidateFactTargets: ' + entityType);
+          }
+          if (!Array.isArray(fields) || !fields.every((item) => typeof item === 'string')) {
+            throw new BadRequestException('Module applyFields entry must be an array of field IDs: ' + entityType);
+          }
+        }
+      }
       return;
     }
     if (key === 'policyIndex') {
@@ -790,6 +805,14 @@ export class AiRegistryService {
           throw new Error(
             `${moduleId} is missing registry contract field: ${required}`,
           );
+        }
+      }
+      if (!module.applyFields || typeof module.applyFields !== 'object' || Array.isArray(module.applyFields)) {
+        throw new Error('Module ' + moduleId + ' has an invalid applyFields allowlist.');
+      }
+      for (const [target, fields] of Object.entries(module.applyFields)) {
+        if (!module.candidateFactTargets.includes(target) || !Array.isArray(fields) || !fields.every((field) => typeof field === 'string')) {
+          throw new Error('Module ' + moduleId + ' has an invalid applyFields target: ' + target + '.');
         }
       }
     }

@@ -323,6 +323,7 @@ export class FarmsService {
     userId: string,
     role: UserRole,
     dto: UpdateFarmDto,
+    transaction?: Prisma.TransactionClient,
   ) {
     /*
      * Retrieve only the minimum farm context required for authorization.
@@ -359,7 +360,7 @@ export class FarmsService {
 
     const updateData = this.validateFarmFields(dto);
 
-    return this.prisma.$transaction(async (tx) => {
+    const performUpdate = async (tx: Prisma.TransactionClient) => {
       const farm = await tx.farm.update({
         where: { id },
         data: updateData,
@@ -373,7 +374,8 @@ export class FarmsService {
         metadata: { fields: Object.keys(dto) },
       });
       return farm;
-    });
+    };
+    return transaction ? performUpdate(transaction) : this.prisma.$transaction(performUpdate);
   }
 
   async getFarmMovementHistory(

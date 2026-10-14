@@ -3160,3 +3160,17 @@ Governance rules:
 - Confirmation cannot be disabled at the request level.
 
 Verification checkpoint: 42 AI tests passed across 4 suites; backend build and `git diff --check` passed. Full backend regression and runtime integration verification remain separate gates.
+
+## 2026-10-14 - Governed AI Existing-Record Apply Pipeline (Partial)
+
+The canonical AI module contracts now own explicit applyFields maps. The root AI registry requires the property, validates its structure and candidate-target membership, and advances the registry schema version. The module/resource cohesion gate ensures each apply field is present in the platform resource registry. This preserves one central policy source instead of duplicating field allowlists inside the conversation service.
+
+The shared fact-draft lifecycle supports existing-record single-field application for registered Farm, Crop, Livestock and MarketplaceListing fields. The current User profile allowlist remains non-privileged only. Crop writes are intentionally restricted to name until the central Crop resource registers additional fields.
+
+The application contract is: resolve minimal ownership context -> authorize resource and field -> read the previous field value -> normalize through central field validation -> present exact preview -> require explicit confirmation -> recheck authorization and evidence -> lock the target row -> reject stale previous values -> conditionally transition CONFIRMED to APPLIED -> invoke the module-owned update service -> persist domain and AI audit records in the same database transaction. Generic AI domain writes remain prohibited.
+
+Existing update services accept an optional Prisma transaction client; standard API callers keep their existing transaction behavior. Super Admin business-record AI writes require explicit GOD_MODE from the canonical authorization service. Ordinary SUPER_ADMIN role membership or global permissions do not grant God authority. Super Admin self-profile draft creation remains fail-closed in this implementation slice.
+
+Open gates: multi-field create handlers for new Farm/Crop/Livestock/Marketplace records; FarmAsset/FarmRecord apply handlers; central Crop field definitions beyond name; authenticated database-backed end-to-end tests; full God Mode UI approval path; Indic-language model quality/safety/concurrency acceptance. This slice is PARTIAL and does not change provider productionReady=false.
+
+Verification checkpoint - 2026-10-14: backend production build passed; full backend regression passed (53 suites / 500 tests); frontend production build passed; focused AI authorization and registry tests passed; API and UI health endpoints returned HTTP 200. Final diff validation follows documentation updates.
