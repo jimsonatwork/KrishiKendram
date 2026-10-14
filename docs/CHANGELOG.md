@@ -1240,3 +1240,8 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Hardened response visibility: the Voice Agent now shows a distinct local-generation status and emits a visible assistant message for persistence failures, empty response payloads, and API/provider errors instead of silently returning.
 
 - 2026-10-14: Reduced local AI prompt history/context budgets, cached local model readiness briefly to avoid a per-turn tags request, limited response requests to the latest four conversation messages instead of eagerly loading all related records, and added content-free end-to-end/model timing telemetry. Backend build passed; focused AI provider/controller/conversation tests passed (36 tests). Live authenticated latency and browser audio still need verification.
+## 2026-10-14 — AI latency follow-up
+
+- Keep the local Ollama model resident for up to four hours to avoid repeated cold model loads during a work session.
+- Reduce general response output to 64 tokens and prompt history to two messages of up to 400 characters each. Crop-list responses retain their dedicated output limit.
+- Preserve local-only inference, authorized context boundaries, and existing record-write governance.

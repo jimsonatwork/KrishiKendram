@@ -31,10 +31,10 @@ export interface OllamaRuntimeHealth {
 }
 
 const MAX_INPUT_CHARS = 6000;
-const MAX_HISTORY_MESSAGES = 4;
-const MAX_HISTORY_MESSAGE_CHARS = 600;
+const MAX_HISTORY_MESSAGES = 2;
+const MAX_HISTORY_MESSAGE_CHARS = 400;
 const MAX_CONTEXT_CHARS = 7000;
-const MAX_OUTPUT_TOKENS = 96;
+const MAX_OUTPUT_TOKENS = 64;
 const CROP_LIST_OUTPUT_TOKENS = 48;
 const SYSTEM_PROMPT = [
   'You are the local KrishiKendram assistant for Indian farm management.',
@@ -83,7 +83,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           messages: [{ role: 'user', content: 'Reply with OK.' }],
           stream: false,
           think: false,
-          keep_alive: '30m',
+          keep_alive: '4h',
           options: { temperature: 0, num_predict: 2, num_ctx: 2048 },
         }),
         signal: AbortSignal.timeout(this.timeoutMs),
@@ -137,7 +137,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           think: false,
           messages,
           stream: false,
-          keep_alive: '30m',
+          keep_alive: '4h',
           options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 2048 },
         }),
         signal: AbortSignal.timeout(this.timeoutMs),

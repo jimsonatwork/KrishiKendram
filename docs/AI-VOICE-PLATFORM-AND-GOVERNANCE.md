@@ -230,3 +230,8 @@ Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. I
 - Validation: backend Nest build passed; focused AI provider/controller/conversation service tests passed (3 suites, 36 tests). `git diff --check` passed. The new timing events are exercised in controller tests, but real authenticated latency measurements and browser audio remain to be verified against the running app.
 
 - The response endpoint now requests a bounded conversation projection (latest four messages only) rather than eagerly loading every session, message, context, reference, fact candidate, and action relation. The owner filter remains in the database query; latest messages are restored to chronological order before authorized context construction.
+
+
+## AI response latency follow-up
+
+The local Ollama model is kept resident for up to four hours after use to avoid cold-load latency during an active work session. General replies are capped at 64 generated tokens, and conversation history is limited to the latest two messages (400 characters each). Crop-list responses retain their dedicated output budget. Local-only generation and authorization-before-context safeguards remain unchanged.
