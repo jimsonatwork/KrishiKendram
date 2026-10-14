@@ -475,6 +475,7 @@ export const api = {
       enabled: boolean
       ready: boolean
       canGenerate: boolean
+      productionReady: boolean
       evaluationOnly: boolean
       providerId: string
       modelId: string
@@ -483,15 +484,7 @@ export const api = {
       mode: string
       cloudFallback: false
       databaseWriteAllowed: false
-      runtime: {
-        reachable: boolean
-        modelInstalled: boolean
-        providerId?: string
-        modelId?: string
-        modelVersion?: string
-        checkedAt?: string
-        error?: string
-      }
+      runtime: { reachable: boolean; modelInstalled: boolean; error?: string }
     }>('/ai/conversations/status', {
       headers: { Authorization: `Bearer ${token}` },
     }),
@@ -501,6 +494,7 @@ export const api = {
     conversationId: string,
     content: string,
     language?: string,
+    signal?: AbortSignal,
   ) =>
     request<{
       message: { id: string; content: string }
@@ -515,6 +509,7 @@ export const api = {
           content,
           ...(language ? { language } : {}),
         }),
+        ...(signal ? { signal } : {}),
       },
     ),
 

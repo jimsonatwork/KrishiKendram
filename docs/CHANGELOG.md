@@ -1231,44 +1231,32 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - 2026-10-13: Added preview-hash-bound fact draft confirmation/rejection with reauthorization and atomic audit/status transitions. Voice Agent can list and review drafts with original evidence and validation errors; confirmation is explicitly not application to domain records.
 
 - 2026-10-13: Made fact-draft creation atomic with `AI_FACT_DRAFT_CREATED` audit logging; a missing audit service now fails closed instead of saving an unlogged candidate.
+## 2026-10-14 — Voice Agent responsiveness
+- Fixed accumulated speech-recognition results causing repeated voice submissions; added per-session submission and short duplicate guards.
+- Added Stop conversation control to stop recognition, browser speech and the active response request; closing the panel also stops activity.
+- Removed the per-turn provider-status round trip, shortened local generation budgets, extended local model keep-alive, and removed the duplicated current question from prompt history.
+- Adjusted default spoken reply rate and pitch.
+- Added best-effort synthetic local-model warm-up at backend startup to reduce first-question cold-start delay without using or storing farmer data.
+- Hardened response visibility: the Voice Agent now shows a distinct local-generation status and emits a visible assistant message for persistence failures, empty response payloads, and API/provider errors instead of silently returning.
+
+- 2026-10-14: Reduced local AI prompt history/context budgets, cached local model readiness briefly to avoid a per-turn tags request, limited response requests to the latest four conversation messages instead of eagerly loading all related records, and added content-free end-to-end/model timing telemetry. Backend build passed; focused AI provider/controller/conversation tests passed (36 tests). Live authenticated latency and browser audio still need verification.
+## 2026-10-14 — AI latency follow-up
+
+- Keep the local Ollama model resident for up to four hours to avoid repeated cold model loads during a work session.
+- Reduce general response output to 64 tokens and prompt history to two messages of up to 400 characters each. Crop-list responses retain their dedicated output limit.
+- Preserve local-only inference, authorized context boundaries, and existing record-write governance.
 
 
-### 2026-10-13 - Local AI provider adapter groundwork (PARTIAL)
-
-- Added an Ollama-compatible local text-generation provider adapter with bounded input/history/output, timeout handling, provenance and runtime health checks.
-- Added an explicit evaluation-only gate that is disabled by default and cannot be enabled in production.
-- Added user-space Ollama runtime start/stop scripts and documented configurable D: model storage.
-- Focused provider/service/controller tests passed (29/29). Real model inference remains pending while the official runtime archive downloads; no production-ready claim or domain write path is enabled.
+## 2026-10-14 - Central AI model linking
+- Added the central model-link registry pointer and local model catalogue, separating model availability from active model selection.
+- Added God Mode-only link, unlink, status, and activation endpoints with audit events. Activation requires an installed local Ollama model; the active model cannot be unlinked first.
+- Wired the local text-generation provider to read the active model from the registry so module contracts remain unchanged. Cloud fallback remains disabled and model artifacts are never deleted by unlinking.
 
 
-### 2026-10-13 - Local runtime online (evaluation pending)
-
-- Installed Ollama 0.40.3 in the D: AI tools area without system-wide installation; local API health check passed on loopback.
-- Model storage is on D:. Runtime restarted with OLLAMA_NO_CLOUD=true; current logs confirm cloud features disabled.
-- Qwen3 1.7B model download and actual inference tests remain in progress; provider is not production-ready.
-
-
-## 2026-10-13 — Local AI provider wired for gated evaluation
-
-- Registered the local Ollama text-generation provider in the central AI module and added a shared runtime-health contract.
-- Added explicit local-evaluation gating: the registry must mark the provider evaluation-only, local evaluation opt-in must be explicitly enabled, cloud fallback must remain disabled, and production mode always denies evaluation.
-- The conversation status endpoint now reports model/provider identity, generation authorization, runtime reachability and model-installed state for the VoiceAgent status UI.
-- Installed runtime/model evidence: Ollama 0.40.3; qwen3:1.7b Q4_K_M; digest 8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7.
-- Verification: 11 AI suites / 100 tests passed; backend build passed; git diff --check passed.
-- Still pending: capture a successful real inference response, evaluate English/Telugu quality and latency, complete the authorized module apply/audit workflow, and promote C -> B -> A only after integration review. Provider status remains EVALUATION_IN_PROGRESS and not production-ready.
+## 2026-10-14 - Low-footprint AI orchestration
+- Added deterministic-first routing for the centrally registered, owner-authorized crop-list intent; it now returns a short fact-based answer without invoking the LLM.
+- Separated evaluation-model selection from live model selection. Candidate models cannot become live unless explicitly marked production-ready; evaluation selection is audited and leaves the live model unchanged.
+- Added the AI platform optimization plan with upstream GitHub research, local-hardware constraints, model/RAG/voice evaluation gates and the no-cloud/no-direct-write governance requirements.
 
 
-## 2026-10-13 — Governed profile fact-draft application
-- Added a dedicated authenticated apply endpoint for confirmed fact drafts, initially restricted to the user's own non-privileged profile fields.
-- Added prior-value capture, stale-preview rejection, row locking, shared transaction with `UsersService.update()`, candidate APPLIED transition and AI application audit.
-- Added fail-closed SUPER_ADMIN guard where explicit God Mode authorization is not available.
-- Updated Voice Agent with confirm-and-apply for supported profile drafts and a retry path for confirmed drafts. Other module targets remain confirmed but unapplied until their own authorized handlers are implemented.
-- Verification: full AI tests 11 suites/103 tests, focused tests 3 suites/43 tests, backend build PASS, frontend build PASS, diff check PASS. Local provider inference and English/Telugu quality remain NOT VERIFIED; provider remains evaluation-only and not production-ready.
-
-
-## 2026-10-14 — Local AI Provider Provenance and Inference Gate
-
-- Verified the compiled local Ollama provider against synthetic English and Telugu prompts using Qwen3 1.7B Q4_K_M on the registered D: model store. Warm responses completed in 6.1s (English) and 29.9s (Telugu); provider health reported the pinned installed model digest.
-- Fixed provider provenance to health-check the loopback runtime/model before generation and record the observed installed model digest rather than UNVERIFIED_LOCAL_MODEL. Missing/unhealthy model fails closed; cloud fallback remains disabled.
-- Regression verification: full backend tests 53 suites / 493 tests PASS (AI subset 11 suites / 105 tests); backend build PASS; frontend build PASS; git diff --check PASS.
-- Status remains PARTIAL / EVALUATION_IN_PROGRESS. Synthetic smoke tests do not establish Telugu quality, safety, or production readiness. Multi-field draft grouping and normal authorized apply handlers for Farm/Crop/Livestock/Marketplace remain open; only allowlisted self-profile application is currently implemented.
+- Candidate model download was paused before completion after D: storage I/O contention was observed during app rebuild/restart. Partial model blobs were preserved; resume only in a quiet/maintenance window. The live model was not switched.

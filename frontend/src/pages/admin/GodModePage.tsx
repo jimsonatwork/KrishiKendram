@@ -5,6 +5,13 @@ import { useAuthStore } from '@/stores/auth.store'
 
 type GodSnapshot = { id: string; version: number; value: unknown; actorId?: string | null; reason?: string | null; createdAt: string }
 type AiSnapshot = { snapshotId: string; sha256: string; byteLength: number }
+type AiModelStatus = {
+  activeModelId: string
+  evaluationModelId: string | null
+  runtimeReachable: boolean
+  cloudFallbackAllowed: false
+  models: Array<{ modelId: string; displayName: string; linked: boolean; active: boolean; installed: boolean; role: string; productionReady: boolean; source: string }>
+}
 
 type AiControlPlane = {
   registryId: string
@@ -53,10 +60,19 @@ type GodConfig = {
   updatedAt: string
 }
 
-const BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1') + '/admin/god-mode'
+const API_ROOT = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1'
+const BASE = API_ROOT + '/admin/god-mode'
+const MODEL_BASE = API_ROOT + '/admin/ai/models'
 
 async function requestJson<T>(token: string, path: string, method: 'PATCH' | 'POST', body: unknown): Promise<T> {
   const response = await fetch(BASE + path, { method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const result = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(typeof result.message === 'string' ? result.message : response.status + ' ' + response.statusText)
+  return result as T
+}
+
+async function requestModelApi<T>(token: string, path = '', method: 'GET' | 'POST' = 'GET'): Promise<T> {
+  const response = await fetch(MODEL_BASE + path, { method, headers: { Authorization: 'Bearer ' + token } })
   const result = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(typeof result.message === 'string' ? result.message : response.status + ' ' + response.statusText)
   return result as T
@@ -76,6 +92,9 @@ export function GodModePage() {
   const [error, setError] = useState<string | null>(null)
   const [snapshots, setSnapshots] = useState<GodSnapshot[]>([])
   const [aiControlPlane, setAiControlPlane] = useState<AiControlPlane | null>(null)
+  const [aiModels, setAiModels] = useState<AiModelStatus | null>(null)
+  const [aiModelsBusy, setAiModelsBusy] = useState(false)
+  const [aiModelsMessage, setAiModelsMessage] = useState('')
   const [aiFileKey, setAiFileKey] = useState('providerInventory')
   const [aiFileText, setAiFileText] = useState('')
   const [aiFileRevision, setAiFileRevision] = useState('')
@@ -93,6 +112,7 @@ export function GodModePage() {
       setItems(data)
       setSelected((current) => current ? data.find((item) => item.stableId === current.stableId) ?? current : data[0] ?? null)
       try { setAiControlPlane(await request<AiControlPlane>(token, '/ai-control-plane')) } catch { setAiControlPlane(null) }
+      try { setAiModels(await requestModelApi<AiModelStatus>(token)) } catch { setAiModels(null) }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load God Mode configuration.')
     } finally { setLoading(false) }
@@ -109,6 +129,18 @@ export function GodModePage() {
     for (const item of items) grouped.set(item.category, [...(grouped.get(item.category) ?? []), item])
     return [...grouped.entries()]
   }, [items])
+
+  const changeModelLink = async (modelId: string, action: 'link' | 'unlink' | 'activate' | 'evaluate') => {
+    if (!token) return
+    setAiModelsBusy(true); setAiModelsMessage('')
+    try {
+      await requestModelApi(token, '/' + encodeURIComponent(modelId) + '/' + action, 'POST')
+      setAiModels(await requestModelApi<AiModelStatus>(token))
+      setAiModelsMessage(action === 'activate' ? 'Production model changed after approval. Module contracts were not changed.' : action === 'evaluate' ? 'Model selected for benchmarking only. The live model and module contracts were not changed.' : action === 'link' ? 'Model linked. It was not downloaded or activated.' : 'Model unlinked. Model files and conversation history were preserved.')
+    } catch (cause) {
+      setAiModelsMessage(cause instanceof Error ? cause.message : 'Model connection change failed.')
+    } finally { setAiModelsBusy(false) }
+  }
 
   const loadAiFile = async () => {
     if (!token) return
@@ -175,6 +207,13 @@ export function GodModePage() {
           <div className="rounded-xl border p-4"><h3 className="font-semibold">Provider and runtime inventory</h3><div className="mt-3 space-y-2">{(aiControlPlane.inventories.providers?.providers ?? []).map((provider) => <div key={provider.providerId} className="rounded-lg border px-3 py-2"><div className="text-sm font-medium">{provider.providerId}</div><div className="mt-1 text-xs text-muted-foreground">{provider.capability} · {provider.executionMode ?? 'mode unspecified'}</div><div className="mt-1 text-xs">Status: {provider.status}</div></div>)}{(aiControlPlane.inventories.runtimes?.runtimes ?? []).map((runtime) => <div key={runtime.runtimeId} className="rounded-lg border px-3 py-2"><div className="text-sm font-medium">{runtime.runtimeId}</div><div className="mt-1 text-xs text-muted-foreground">{runtime.runtimeStatus} · {runtime.healthStatus ?? 'health not reported'}</div></div>)}</div></div>
         </div>
         <div className="rounded-xl border p-4"><h3 className="font-semibold">Central entrypoint links</h3><div className="mt-3 grid gap-2 sm:grid-cols-2">{Object.entries(aiControlPlane.linkedFiles).map(([key, path]) => <div key={key} className="rounded-lg bg-muted/30 px-3 py-2"><div className="text-xs font-medium">{key}</div><code className="mt-1 block break-all text-[11px] text-muted-foreground">{path}</code></div>)}</div></div>
+        <div className="rounded-xl border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-semibold">Model connections</h3><p className="mt-1 text-xs text-muted-foreground">Link/unlink models and select evaluation candidates here. Evaluation selection never changes the live model. Production switching is blocked until a model is explicitly approved.</p></div><Button variant="outline" size="sm" onClick={() => { if (token) void requestModelApi<AiModelStatus>(token).then(setAiModels).catch((cause) => setAiModelsMessage(cause instanceof Error ? cause.message : 'Unable to refresh model links.')) }} disabled={aiModelsBusy}>Refresh models</Button></div>
+          {aiModels ? <><div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-md border px-2 py-1">Active: {aiModels.activeModelId}</span><span className="rounded-md border px-2 py-1">Local Ollama: {aiModels.runtimeReachable ? 'reachable' : 'unavailable'}</span><span className="rounded-md border px-2 py-1">Cloud fallback: disabled</span></div>
+            <div className="mt-3 space-y-2">{aiModels.models.map((model) => <div key={model.modelId} className="rounded-lg border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className="text-sm font-semibold">{model.displayName}</div><code className="text-[11px] text-muted-foreground">{model.modelId}</code></div><div className="flex flex-wrap gap-1 text-[10px]">{model.active && <span className="rounded-md border px-2 py-1">LIVE SELECTION</span>}{aiModels.evaluationModelId === model.modelId && <span className="rounded-md border px-2 py-1">EVALUATION ONLY</span>}<span className="rounded-md border px-2 py-1">{model.linked ? 'LINKED' : 'UNLINKED'}</span><span className="rounded-md border px-2 py-1">{model.installed ? 'INSTALLED' : 'NOT INSTALLED'}</span></div></div><div className="mt-3 flex flex-wrap gap-2">{model.linked && !model.active && !model.productionReady && <Button size="sm" variant="outline" disabled={aiModelsBusy || !model.installed || !aiModels.runtimeReachable} onClick={() => void changeModelLink(model.modelId, 'evaluate')}>{aiModels.evaluationModelId === model.modelId ? 'Selected for evaluation' : 'Select for evaluation'}</Button>}{model.linked && !model.active && model.productionReady && <Button size="sm" variant="outline" disabled={aiModelsBusy || !model.installed || !aiModels.runtimeReachable} onClick={() => void changeModelLink(model.modelId, 'activate')}>Activate approved model</Button>}{model.linked && !model.active && <Button size="sm" variant="outline" disabled={aiModelsBusy} onClick={() => void changeModelLink(model.modelId, 'unlink')}>Unlink</Button>}{!model.linked && <Button size="sm" variant="outline" disabled={aiModelsBusy} onClick={() => void changeModelLink(model.modelId, 'link')}>Link model</Button>}</div></div>)}</div>
+          </> : <p className="mt-3 text-sm text-muted-foreground">Model connection controls are unavailable. This is restricted to the canonical God Mode identity.</p>}
+          {aiModelsMessage && <p role="status" className="mt-3 break-words rounded-lg border p-3 text-xs">{aiModelsMessage}</p>}
+        </div>
         <div className="rounded-xl border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Health & installation-path diagnostics</h3><span className="rounded-md border px-2 py-1 text-[10px]">{aiControlPlane.healthDiagnostics?.probeMode ?? 'Diagnostics unavailable'}</span></div>
           <p className="mt-1 text-xs text-muted-foreground">{aiControlPlane.healthDiagnostics?.note ?? 'Static diagnostics are not available from this backend version.'}</p>
           {aiControlPlane.healthDiagnostics && <><div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-md border px-2 py-1">Provider code executed: {String(aiControlPlane.healthDiagnostics.executedProviderCode)}</span><span className="rounded-md border px-2 py-1">Network checks: {String(aiControlPlane.healthDiagnostics.networkChecksPerformed)}</span><span className="rounded-md border px-2 py-1">Secrets exposed: {String(aiControlPlane.healthDiagnostics.secretValuesExposed)}</span></div>

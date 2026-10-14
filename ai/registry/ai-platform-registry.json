@@ -1,6 +1,6 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 2,
+  "version": 3,
   "status": "CANONICAL",
   "modes": [
     "LOCAL",
@@ -141,7 +141,12 @@
     "supportingComponents": "../supporting-components.json",
     "voiceIntents": "../voice/voice-intents.json",
     "cloudConnectionPolicy": "../connections/cloud-connection-policy.json",
-    "dataContextIntents": "../context/data-context-intents.json"
+    "dataContextIntents": "../context/data-context-intents.json",
+    "modelLinkRegistry": "../providers/model-link-registry.json",
+    "optimizationPlanDocument": "../../docs/AI-PLATFORM-OPTIMIZATION-PLAN.md",
+    "modelBenchmarkSuite": "../evaluations/KK-EVAL-LLM-001.json",
+    "benchmarkRunner": "../../backend/scripts/kk-ai-benchmark.mjs",
+    "executionArchitecture": "../../docs/AI-EXECUTION-ARCHITECTURE.md"
   },
   "moduleFiles": {
     "KK-USER-001": "../modules/KK-USER-001.json",
@@ -150,5 +155,14 @@
     "KK-LIVESTOCK-001": "../modules/KK-LIVESTOCK-001.json",
     "KK-MARKETPLACE-001": "../modules/KK-MARKETPLACE-001.json",
     "KK-AI-CONVERSATION-001": "../modules/KK-AI-CONVERSATION-001.json"
+  },
+  "orchestration": {
+    "intentSource": "../context/data-context-intents.json",
+    "deterministicFirst": true,
+    "deterministicResolversRequireAuthorization": true,
+    "useLocalModelForFreeformOnly": true,
+    "modelEvaluationChangesLiveSelection": false,
+    "productionSwitchRequiresApprovedModel": true,
+    "cloudFallback": false
   }
 }

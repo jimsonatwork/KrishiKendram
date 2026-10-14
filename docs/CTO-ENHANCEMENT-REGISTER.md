@@ -131,7 +131,7 @@ After the first complete application workflow pass, review this register and rep
 After core application stability is established, introduce a platform-level localization architecture covering all Indian languages required by the product, with centralized translation keys, user language preference, English fallback, locale-aware dates/numbers/units, and an extensible language catalog. Language preference must not alter authorization or business rules.
 
 ### E-011 â€” Farmer AI Assisted Data Capture
-**Status:** NOW
+**Status:** LATER
 **Priority:** High
 **Requested:** 2026-10-02
 
@@ -139,7 +139,7 @@ Design a governed AI-assisted input workflow for farmers who may have difficulty
 
 **Architectural dependency:** E-011 uses the AI abstraction/security boundary defined in the CTO Master Blueprint and is deferred until core workflows are stable enough to provide trustworthy target schemas.
 
-### E-012 ï¿½ God Mode Authoritative Control Plane
+### E-012 — God Mode Authoritative Control Plane
 **Status:** NOW / ARCHITECTURE BASELINE
 **Priority:** Critical
 **Requested:** 2026-10-04
@@ -169,19 +169,11 @@ The first read-only God Mode AI inventory is implemented. Backend build passed, 
 
 **First AI control-plane slice: DONE.** Backend build PASS; focused AI registry tests 12/12 PASS; frontend build PASS; service restart PASS; API health HTTP 200; UI HTTP 200; protected AI route is registered and rejects unauthenticated access with HTTP 401; all eight AI God Configuration domains were verified in PostgreSQL. Next active batch: implement schema-validated file-backed configuration mutation with pre-change snapshots, dependency checks, audit and rollback; then wire provider/runtime probes.
 
-## 2026-10-14 - E-011 Governed AI Application Checkpoint
 
-**Status: IN PROGRESS - existing-record update slice implemented; full farmer data-capture lifecycle is not complete.**
+## 2026-10-14 - Application-visible local AI
 
-The central AI module contracts now own applyFields allowlists and are linked through the canonical AI registry. Existing-record proposals can be reviewed and applied for registered Farm, Crop, Livestock and MarketplaceListing fields through each module normal update service. The workflow enforces actual ownership context, field authorization before reading the prior value, central validation, explicit confirmation, stale-value detection, row locking, conditional state transition, and transactional audit.
+The canonical application now binds its text-generation token to KK-AI-LLM-OLLAMA-LOCAL for explicit development evaluation. The model is qwen3:1.7b; provider status remains EVALUATION_IN_PROGRESS and productionReady=false. Cloud fallback is disabled and direct AI database writes remain forbidden.
 
-Super Admin business-record AI writes require the canonical authorization decision to return GOD_MODE; a role label or global permission is not sufficient. Super Admin self-profile drafting remains blocked in this slice.
+Crop-list questions are mapped through the linked ai/context/data-context-intents.json manifest to KK-CROP-001. The application authorizes the conversation context before loading data, then calls CropsService.findMyCrops for owner-scoped READ authorization and sends a capped projection (crop name, variety, sowing date, harvest date, farm ID) to the model. The model receives this as data, not instructions. This does not constitute production approval.
 
-Remaining E-011 gates: multi-field creation for new records, additional central Crop field definitions, FarmAsset/FarmRecord handlers, authenticated database-backed end-to-end acceptance, and Indic-language model quality/safety/concurrency evaluation. Local model productionReady remains false. Verification on 2026-10-14: backend build PASS, backend 53 suites / 500 tests PASS, frontend build PASS, focused AI authorization/registry tests PASS.
-
-
-## 2026-10-14 - Application-visible local AI and crop context path
-
-- The canonical application provider bridge is KK-AI-LLM-OLLAMA-LOCAL in explicit development evaluation mode only; productionReady remains false and cloud fallback/direct AI database writes remain disabled.
-- The centrally linked ai/context/data-context-intents.json maps crop-list questions to KK-CROP-001. The conversation context is authorized first, then CropsService.findMyCrops performs owner-scoped READ authorization; the model receives a capped projection of crop name, variety, sowing date, harvest date, and farm ID as data, not instructions.
-- Acceptance still required: authenticated browser test for exact farmer crop records, empty-list behavior, cross-user isolation, Indic-language queries, and production quality/safety gates.
+Required acceptance: authenticated browser E2E for known crop records, empty-list behavior, cross-user isolation, Indic-language cases, full regression, and independent safety/quality evaluation before production status can change.

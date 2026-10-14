@@ -198,56 +198,54 @@ The AI module contracts now advertise only fact target model names present in `R
 
 Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. If the audit service is unavailable, the transaction fails and no candidate is saved. Confirmation and rejection each commit their status transition with the corresponding audit event in one transaction.
 
-
-## 2026-10-13 - Local Ollama provider adapter groundwork (PARTIAL)
-
-The backend now contains an Ollama-compatible text-generation adapter behind the shared TextGenerationProvider contract. It restricts the configured endpoint to loopback or host.docker.internal, applies bounded input/history/output and timeout limits, records provider/model/version/language provenance, exposes a runtime/model health probe, rejects malformed responses, and never falls back to a cloud provider.
-
-The user-space scripts scripts/kk-ai-runtime-start.sh and scripts/kk-ai-runtime-stop.sh manage the local Ollama process. It binds only to 127.0.0.1:11434. The binary install path is D:/KrishiKendram/08-AI/Tools/Ollama; model storage is configurable with KK_AI_OLLAMA_MODELS_DIR and defaults to /mnt/d/KrishiKendram/08-AI/KrishiKendram-AI/Models/Ollama. The backend example environment keeps KK_AI_ALLOW_LOCAL_EVALUATION=false by default.
-
-Evaluation-only generation is permitted only when the canonical provider inventory explicitly says EVALUATION_ONLY, the provider is LOCAL, KK_AI_ALLOW_LOCAL_EVALUATION=true, and NODE_ENV is not production. Evaluation is not production readiness. No model response may write domain data; canonical validation, confirmation, normal module services and audit remain required.
-
-Status at this checkpoint: the adapter unit tests and focused service/controller tests pass. The Docker image pull stalled and was stopped without touching application/database containers. The official user-space .tar.zst archive is downloading; the model has not yet been pulled or tested, so no real inference or production readiness is claimed. Provider/runtime inventories must not be marked EVALUATION_ONLY until the runtime and exact model digest are verified.
-
-
-### Runtime verification checkpoint - 2026-10-13 16:49 IST
-
-The official Ollama Linux archive was downloaded to D: and extracted successfully. Local archive SHA-256: CE6F8B671A699BF1EBAFB28D60DBBABF4F37B30B499145FA308A8BA72DE021D6. Runtime version 0.40.3 answers GET /api/tags with HTTP 200 on 127.0.0.1:11434. Model storage is on the D: AI root. The configured model pull is in progress; the model is not installed and no inference has been verified.
-
-The first local startup used Ollama's default cloud setting and attempted only model-recommendation/cloud-cache metadata requests; no user conversation or farm context had been sent because no model was loaded and no generation was invoked. That process was stopped and restarted with OLLAMA_NO_CLOUD=true. The current runtime log confirms OLLAMA_NO_CLOUD=true and "Ollama cloud disabled: true". The backend provider remains EVALUATION_IN_PROGRESS and cannot generate until the model and checks are verified.
-
-
-## 2026-10-13 — Local model evaluation checkpoint (not production approval)
-
-- Ollama 0.40.3 is installed under the configured D: AI tools directory and is bound to loopback at 127.0.0.1:11434 with cloud features disabled.
-- Qwen3 1.7B Q4_K_M is installed in the D: model directory. Observed Ollama model digest: 8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7. Runtime metadata and model presence are verified; a captured successful generation response and English/Telugu quality evaluation are still pending.
-- The NestJS AI module now binds the text-generation token to the Ollama provider. The provider only accepts loopback/host.docker.internal HTTP endpoints, limits request/history/output sizes, times out bounded requests, returns provider/model provenance, and never falls back to cloud.
-- Local evaluation is opt-in only: provider inventory must mark evaluationOnly and EVALUATION_IN_PROGRESS, cloud fallback must remain false, KK_AI_ALLOW_LOCAL_EVALUATION=true, and NODE_ENV must not be production. The default remains disabled. This is not a production-ready state.
-- The authenticated conversation status endpoint exposes provider/model identity, canGenerate, runtime reachability, and whether the configured model is installed. Runtime health does not imply generation authorization.
-- Verification on the development branch: 11 AI test suites / 100 tests passed; backend Nest build passed; git diff --check passed. No commit/push or A/B/C promotion has occurred.
-- Next gate: capture real inference and latency, evaluate English and Telugu output against a synthetic non-sensitive test set, then complete a governed module workflow and its authorization/audit tests before any production-readiness change.
-
-
-## 2026-10-13 — Governed fact-draft application slice
-- Confirming a fact draft is not itself a domain write. A separate authenticated apply endpoint now supports only the authenticated user's own User profile, and only the allowlisted fields `name`, `mobile`, `preferredLanguage`, and `preferredInputMethod`.
-- Application rechecks conversation ownership, user-authored evidence, exact preview hash, canonical AI module eligibility, resource/field authorization, and central validation. It compares the profile value captured at draft creation, locks the User row, and rejects stale proposals rather than overwriting later changes.
-- The application uses `UsersService.update()` inside the same Prisma transaction as the fact-candidate APPLIED transition and AI application audit. The normal user history/audit logic remains authoritative; no generic direct-Prisma domain write is permitted.
-- SUPER_ADMIN profile drafts fail closed unless a separate explicit God Mode authorization path is implemented. Ordinary SUPER_ADMIN role is not God authorization.
-- Farm, Crop, Livestock and Marketplace candidates remain confirmed-but-unapplied until their own module-owned handlers can supply complete DTO/relationship context and re-run module authorization, validation, idempotency and audit rules. A single field must never be misrepresented as a complete new entity.
-- Verification on this slice: focused tests 3 suites/43 tests passed; full AI suite 11 suites/103 tests passed; backend and frontend builds passed; `git diff --check` passed. The local Ollama provider remains `EVALUATION_IN_PROGRESS` with `productionReady=false`; a captured model response and English/Telugu quality remain unverified.
-
-
-## 2026-10-14 — Provider Inference and Provenance Checkpoint
-
-The local Ollama provider was exercised from the compiled backend adapter using synthetic prompts only. The installed Qwen3 1.7B Q4_K_M model returned an English response in 6.1 seconds warm and a Telugu response in 29.9 seconds warm. Both results carried the observed installed model digest 8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7. Runtime binds to loopback; OLLAMA_NO_CLOUD=true; no cloud fallback was attempted.
-
-A provenance defect was fixed: generation now checks runtime/model health before sending the prompt and uses the actual installed model digest instead of UNVERIFIED_LOCAL_MODEL. Missing model/runtime fails closed. AI tests: 11 suites / 105 tests PASS; backend build PASS; frontend build PASS; git diff --check PASS.
-
-The provider remains EVALUATION_IN_PROGRESS and productionReady=false. Synthetic phrases are not a native-speaker quality or safety benchmark. The fact-draft lifecycle has validated preview, exact-preview confirmation, rejection, authorization rechecks and transactional audit, but only the authenticated user's allowlisted profile fields currently have an apply handler through UsersService.update. Farm/Crop/Livestock/Marketplace drafts remain unapplied until the reusable multi-field workflow calls each normal authorized module service. Indic ASR remains a placeholder. Do not claim the AI platform or all modules COMPLETE.
-
-
 ## 2026-10-14 - Application-visible local AI and crop context path
 
-- The canonical application provider bridge is KK-AI-LLM-OLLAMA-LOCAL in explicit development evaluation mode only; productionReady remains false and cloud fallback/direct AI database writes remain disabled.
-- The centrally linked ai/context/data-context-intents.json maps crop-list questions to KK-CROP-001. The conversation context is authorized first, then CropsService.findMyCrops performs owner-scoped READ authorization; the model receives a capped projection of crop name, variety, sowing date, harvest date, and farm ID as data, not instructions.
-- Acceptance still required: authenticated browser test for exact farmer crop records, empty-list behavior, cross-user isolation, Indic-language queries, and production quality/safety gates.
+- Root cause confirmed in the canonical running application: the AI module was bound to UnavailableTextGenerationProvider, while the Qwen local runtime integration existed only in the separate development workspace. The canonical application has now been wired to KK-AI-LLM-OLLAMA-LOCAL.
+- Local inference is enabled only as an explicit development evaluation (KK_AI_ALLOW_LOCAL_EVALUATION=true). Provider inventory remains EVALUATION_IN_PROGRESS, productionReady=false, cloud fallback remains disabled, and direct AI database writes remain forbidden. This is not a production-readiness declaration.
+- Local runtime smoke check succeeded against qwen3:1.7b (Q4_K_M, recorded digest 8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7); one synthetic English response completed in approximately 2.6 seconds. This does not establish Indic-language quality, factual accuracy, concurrency, or production safety.
+- Added the canonical linked intent manifest ai/context/data-context-intents.json. The 'what are my crops' intent resolves to KK-CROP-001; the controller authorizes the AI conversation context first, then uses CropsService.findMyCrops for owner-scoped READ authorization and passes only a capped projection of crop name, variety, sowing date, harvest date, and farm ID. The model receives this authorized context as data, not as instructions.
+- The VoiceAgent disclosure now identifies local evaluation mode, disabled cloud fallback, advisory answers, and the fact that generated answers cannot directly write records.
+- Acceptance still required: authenticated browser test using a farmer with known crop rows; verify exact returned crop names match that farmer's active records and that another user's crops never appear; verify empty-list behavior; test Hindi/Telugu and remaining registered language phrases; then run full backend regression and frontend build. Do not promote this provider to production-ready without the approved evaluation gates.
+
+## Voice Agent responsiveness and interruption hardening — 14 October 2026
+
+- Speech recognition processes only results beginning at the browser event's resultIndex, submits at most once per recognition session, and suppresses an identical voice submission for five seconds. This prevents accumulated final transcripts from being replayed as duplicate turns.
+- While an answer is in progress, the agent rejects overlapping submissions. The explicit **Stop conversation** control stops microphone recognition, cancels browser speech synthesis, and aborts the active browser response request. Closing the panel also invokes Stop.
+- The conversation response request is abortable from the frontend. Cancellation prevents a late response from being spoken; server-side model execution may still finish if the runtime has already accepted the request.
+- Removed the extra provider-status network round trip before each answer; the authenticated response endpoint remains the authoritative readiness gate.
+- Local Qwen generation uses a bounded 96-token general response, a 48-token crop-list response, a 2,048-token context window, with reasoning disabled, and a 30-minute Ollama keep-alive to reduce repeated cold starts while retaining local-only inference.
+- The provider omits the just-persisted current user turn from history before appending the current question, avoiding duplicate prompt content and reducing needless generation work.
+- Browser speech rate/pitch are tuned to a slightly quicker, brighter default. Voice quality still depends on the speech voices installed by the user's browser/operating system and the selected language.
+- This is a responsiveness improvement, not a production-readiness approval. Existing authorization, local evaluation mode, no-cloud-fallback, no-direct-database-write, validation, confirmation and audit boundaries remain in force.
+- The local provider now performs a best-effort background warm-up at backend startup using a synthetic one-token prompt, with a 30-minute keep-alive. Warm-up does not include user data, persist a conversation, or enable cloud fallback; if it fails, the normal governed request path remains authoritative.
+- Follow-up response-visibility hardening: after persistence succeeds, the panel now changes its status to explicitly say the local model is generating; a failed persistence step, an empty response payload, or a generation/API error is surfaced as a visible assistant turn instead of silently returning. Error details are bounded, and no farm record is changed by this path.
+- Frontend production build passed after this change. Authenticated browser interaction still needs a live user-session check; do not treat a successful build or healthy service as proof that the model answered correctly.
+
+
+## 2026-10-14 — AI initialization and latency diagnostics
+
+- Reduced retained conversation history sent to local inference from up to 12 messages/2,000 characters per message to 4 messages/600 characters per message, and reduced the overall prompt character budget from 10,000 to 7,000. The current user question and authorized structured context remain separate; crop JSON is never cut into invalid fragments.
+- Added a short provider-health cache (15 seconds when healthy, 3 seconds when unhealthy) so normal turns do not repeatedly make a separate Ollama `/api/tags` request. This is a readiness optimization, not an authorization cache; conversation ownership and module READ authorization still run for each request.
+- Added content-free timing telemetry for the conversation pipeline stages and Ollama generation metrics (prompt character/token counts, prompt evaluation, model load, generation, and total runtime). Logs deliberately omit farmer text, crop names, IDs, and record payloads.
+- Validation: backend Nest build passed; focused AI provider/controller/conversation service tests passed (3 suites, 36 tests). `git diff --check` passed. The new timing events are exercised in controller tests, but real authenticated latency measurements and browser audio remain to be verified against the running app.
+
+- The response endpoint now requests a bounded conversation projection (latest four messages only) rather than eagerly loading every session, message, context, reference, fact candidate, and action relation. The owner filter remains in the database query; latest messages are restored to chronological order before authorized context construction.
+
+
+## AI response latency follow-up
+
+The local Ollama model is kept resident for up to four hours after use to avoid cold-load latency during an active work session. General replies are capped at 64 generated tokens, and conversation history is limited to the latest two messages (400 characters each). Crop-list responses retain their dedicated output budget. Local-only generation and authorization-before-context safeguards remain unchanged.
+
+
+## Central model link/unlink control (2026-10-14)
+
+The canonical ai/registry/ai-platform-registry.json now links modelLinkRegistry to ai/providers/model-link-registry.json. That catalogue is the single control point for local Ollama model availability and active-model selection. Linking a model makes it an approved candidate; linking alone does not activate it. Activation requires that the model is linked and installed in the local Ollama runtime. Unlinking the active model is blocked until another linked and installed model is activated. Unlinking never deletes model files or conversation history.
+
+God Mode-only endpoints are exposed at /api/v1/admin/ai/models: GET lists catalogue and local-install status; POST /:modelId/link links a catalogue entry; POST /:modelId/unlink unlinks a non-active entry; POST /:modelId/activate selects a linked, installed local model. Mutations require the canonical SYSTEM_GOD identity and emit audit events. The module contracts and per-module AI policies are not edited by these operations. Cloud fallback remains disabled; no model is downloaded by linking or activation.
+
+
+## Low-footprint orchestration and model promotion (2026-10-14)
+
+The canonical platform registry now defines deterministic-first orchestration. Registered user-owned data intents should be resolved through the authorized module service before invoking a language model. The crop-list resolver returns a direct, provenance-tagged answer and does not call the LLM. The model catalogue separately tracks the live model and an evaluation-only selection. Selecting an evaluation candidate does not change live inference; production activation is rejected unless the catalogue explicitly marks that model production-ready. The full phased architecture, research sources, evaluation gates and acceptance criteria are maintained in docs/AI-PLATFORM-OPTIMIZATION-PLAN.md.
+
+Keep Ollama as the single runtime until same-model benchmarks demonstrate that another engine such as llama.cpp materially improves latency or memory. Prefer PostgreSQL-native retrieval over a new vector service, and defer pgvector until support in the existing PostgreSQL image is verified. Voice runtimes are separately evaluated against consented Indic-language samples; they are not installed as an automatic side effect of LLM work.

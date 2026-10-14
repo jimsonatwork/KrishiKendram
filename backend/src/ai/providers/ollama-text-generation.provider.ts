@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { AiModelLinkRegistryService } from '../registry/ai-model-link-registry.service';
 import type {
   TextGenerationProvider,
   TextGenerationRequest,
@@ -9,6 +10,12 @@ interface OllamaChatPayload {
   model?: string;
   message?: { role?: string; content?: string };
   done?: boolean;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
 }
 interface OllamaTagsPayload {
   models?: Array<{ name?: string; digest?: string; modified_at?: string }>;
@@ -25,10 +32,10 @@ export interface OllamaRuntimeHealth {
 }
 
 const MAX_INPUT_CHARS = 6000;
-const MAX_HISTORY_MESSAGES = 12;
-const MAX_HISTORY_MESSAGE_CHARS = 2000;
-const MAX_CONTEXT_CHARS = 10000;
-const MAX_OUTPUT_TOKENS = 128;
+const MAX_HISTORY_MESSAGES = 2;
+const MAX_HISTORY_MESSAGE_CHARS = 400;
+const MAX_CONTEXT_CHARS = 7000;
+const MAX_OUTPUT_TOKENS = 64;
 const CROP_LIST_OUTPUT_TOKENS = 48;
 const SYSTEM_PROMPT = [
   'You are the local KrishiKendram assistant for Indian farm management.',
@@ -45,18 +52,53 @@ const SYSTEM_PROMPT = [
 
 @Injectable()
 export class OllamaTextGenerationProvider implements TextGenerationProvider {
+  private readonly logger = new Logger(OllamaTextGenerationProvider.name);
+  private cachedHealth?: { expiresAt: number; modelId: string; value: OllamaRuntimeHealth };
   readonly providerId = 'KK-AI-LLM-OLLAMA-LOCAL';
-  readonly modelId = process.env.KK_AI_OLLAMA_MODEL?.trim() || 'qwen3:1.7b';
+  private observedModelForVersion?: string;
+  private readonly configuredModelId = process.env.KK_AI_OLLAMA_MODEL?.trim() || 'qwen3:1.7b';
+  get modelId(): string { return this.modelLinks?.getActiveModelId() ?? this.configuredModelId; }
   private readonly configuredModelVersion = process.env.KK_AI_OLLAMA_MODEL_VERSION?.trim() || '';
   private observedModelVersion?: string;
   get modelVersion(): string {
-    return this.observedModelVersion || this.configuredModelVersion || 'UNVERIFIED_LOCAL_MODEL';
+    return (this.observedModelForVersion === this.modelId ? this.observedModelVersion : undefined) || (this.modelId === this.configuredModelId ? this.configuredModelVersion : '') || 'UNVERIFIED_LOCAL_MODEL';
   }
   readonly mode = 'LOCAL' as const;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
 
-  constructor() {
+  // Warm the small local model in the background after Nest starts so the
+  // first farmer question is less likely to pay the model-load penalty. This
+  // uses only a synthetic prompt, stores no conversation, and never uses cloud.
+  onModuleInit(): void {
+    void this.warmModelInBackground();
+  }
+
+  private async warmModelInBackground(): Promise<void> {
+    try {
+      const runtime = await this.checkHealth();
+      if (!runtime.reachable || !runtime.modelInstalled) return;
+      const response = await fetch(this.endpoint('/api/chat'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: this.modelId,
+          messages: [{ role: 'user', content: 'Reply with OK.' }],
+          stream: false,
+          think: false,
+          keep_alive: '4h',
+          options: { temperature: 0, num_predict: 2, num_ctx: 2048 },
+        }),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+      if (response.ok) await response.json();
+      else await response.body?.cancel();
+    } catch {
+      // Warmup is best-effort; the normal governed request path reports real failures.
+    }
+  }
+
+  constructor(@Optional() @Inject(AiModelLinkRegistryService) private readonly modelLinks?: AiModelLinkRegistryService) {
     const configuredUrl = process.env.KK_AI_OLLAMA_BASE_URL?.trim() || 'http://127.0.0.1:11434';
     let parsed: URL;
     try {
@@ -83,6 +125,9 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
     if (!runtime.reachable || !runtime.modelInstalled) {
       throw new ServiceUnavailableException('The configured local model is not healthy or installed. No cloud fallback was attempted.');
     }
+    const messages = this.buildMessages(request);
+    const promptChars = messages.reduce((sum, item) => sum + item.content.length, 0);
+    const generationStartedAt = Date.now();
     let response: Response;
     try {
       response = await fetch(this.endpoint('/api/chat'), {
@@ -93,10 +138,10 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           // Qwen3 otherwise spends much of a small response budget in hidden reasoning.
           // The local API supports think=false; only the user-facing answer is needed here.
           think: false,
-          messages: this.buildMessages(request),
+          messages,
           stream: false,
-          keep_alive: '5m',
-          options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 4096 },
+          keep_alive: '4h',
+          options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 2048 },
         }),
         signal: AbortSignal.timeout(this.timeoutMs),
       });
@@ -113,6 +158,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
       throw new ServiceUnavailableException('The local Ollama runtime returned invalid JSON.');
     }
     const content = payload?.message?.content;
+    this.logger.log(JSON.stringify({ event: 'ollama_generation_timing', elapsedMs: Date.now() - generationStartedAt, promptChars, promptEvalTokens: payload?.prompt_eval_count, promptEvalMs: payload?.prompt_eval_duration == null ? undefined : Math.round(payload.prompt_eval_duration / 1e6), generatedTokens: payload?.eval_count, generationMs: payload?.eval_duration == null ? undefined : Math.round(payload.eval_duration / 1e6), modelLoadMs: payload?.load_duration == null ? undefined : Math.round(payload.load_duration / 1e6), totalRuntimeMs: payload?.total_duration == null ? undefined : Math.round(payload.total_duration / 1e6) }));
     if (typeof content !== 'string' || !content.trim() || content.length > 24000) {
       throw new ServiceUnavailableException('The local Ollama runtime returned an empty or oversized response.');
     }
@@ -130,6 +176,13 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
   }
 
   async checkHealth(): Promise<OllamaRuntimeHealth> {
+    if (this.cachedHealth && this.cachedHealth.modelId === this.modelId && this.cachedHealth.expiresAt > Date.now()) return this.cachedHealth.value;
+    const value = await this.fetchHealth();
+    this.cachedHealth = { modelId: this.modelId, value, expiresAt: Date.now() + (value.reachable && value.modelInstalled ? 15000 : 3000) };
+    return value;
+  }
+
+  private async fetchHealth(): Promise<OllamaRuntimeHealth> {
     const checkedAt = new Date().toISOString();
     try {
       const response = await fetch(this.endpoint('/api/tags'), {
@@ -149,7 +202,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           checkedAt, error: 'INVALID_RUNTIME_RESPONSE' };
       }
       const model = payload.models.find((item) => item.name === this.modelId || item.name?.startsWith(this.modelId + ':'));
-      if (model?.digest) this.observedModelVersion = model.digest;
+      if (model?.digest) { this.observedModelVersion = model.digest; this.observedModelForVersion = this.modelId; }
       return { reachable: true, modelInstalled: Boolean(model), providerId: this.providerId,
         modelId: this.modelId, modelVersion: model?.digest || this.modelVersion,
         mode: this.mode, checkedAt, ...(!model ? { error: 'MODEL_NOT_INSTALLED' as const } : {}) };
@@ -183,6 +236,17 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
         history.push({ role, content: record.content.slice(-MAX_HISTORY_MESSAGE_CHARS) });
       }
     }
+    // The controller persists the current user turn before generation. Do not
+    // feed that same turn back as history and then append it again as the question.
+    // Besides wasting CPU on this small local model, duplicated prompts can make
+    // the assistant echo the farmer's question or repeat earlier entries.
+    if (history.length > 0) {
+      const latest = history[history.length - 1];
+      if (latest.role === 'user' && latest.content.trim() === request.content.trim()) {
+        history.pop();
+      }
+    }
+
     let totalChars = request.content.length;
     const boundedHistory = history.reverse().filter((message) => {
       if (totalChars + message.content.length > MAX_CONTEXT_CHARS) return false;

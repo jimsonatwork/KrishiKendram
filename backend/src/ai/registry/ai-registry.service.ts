@@ -155,6 +155,15 @@ export class AiRegistryService {
     return this.registry.registryId;
   }
 
+  /** Resolve a canonical file pointer from the central AI registry. */
+  getLinkedFilePath(key: string): string {
+    const relativeFile = this.registry.linkedFiles[key];
+    if (!relativeFile) throw new NotFoundException('AI registry link is not configured: ' + key + '.');
+    const linkedPath = resolve(dirname(this.registryPath), relativeFile);
+    if (!existsSync(linkedPath)) throw new NotFoundException('Linked AI registry file is unavailable: ' + key + '.');
+    return linkedPath;
+  }
+
   /** Resolve a query against the centrally linked and module-governed context-intent manifest. */
   resolveDataContextIntent(query: string): AiDataContextIntent | undefined {
     const relativeFile = this.registry.linkedFiles.dataContextIntents;
@@ -409,19 +418,11 @@ export class AiRegistryService {
       const contract = doc.contract as Record<string, unknown>;
       for (const field of ['moduleName', 'allowedCapabilities', 'contextReferences', 'allowedFields', 'restrictedFields', 'candidateFactTargets', 'applyFields', 'confirmationPolicy', 'provenancePolicy', 'auditPolicy']) if (!(field in contract)) throw new BadRequestException('Module contract is missing required field: ' + field);
       for (const field of ['allowedCapabilities', 'contextReferences', 'allowedFields', 'restrictedFields', 'candidateFactTargets']) if (!Array.isArray(contract[field]) || !(contract[field] as unknown[]).every((item) => typeof item === 'string')) throw new BadRequestException('Module contract array is invalid: ' + field);
-      {
-        const applyFields = contract.applyFields;
-        if (!applyFields || typeof applyFields !== 'object' || Array.isArray(applyFields)) {
-          throw new BadRequestException('Module applyFields must be an entity-to-field allowlist object.');
-        }
-        for (const [entityType, fields] of Object.entries(applyFields as Record<string, unknown>)) {
-          if (!(contract.candidateFactTargets as string[]).includes(entityType)) {
-            throw new BadRequestException('Module applyFields target is not in candidateFactTargets: ' + entityType);
-          }
-          if (!Array.isArray(fields) || !fields.every((item) => typeof item === 'string')) {
-            throw new BadRequestException('Module applyFields entry must be an array of field IDs: ' + entityType);
-          }
-        }
+      const applyFields = contract.applyFields;
+      if (!applyFields || typeof applyFields !== 'object' || Array.isArray(applyFields)) throw new BadRequestException('Module applyFields must be an entity-to-field allowlist object.');
+      for (const [entityType, fields] of Object.entries(applyFields as Record<string, unknown>)) {
+        if (!(contract.candidateFactTargets as string[]).includes(entityType)) throw new BadRequestException('Module applyFields target is not in candidateFactTargets: ' + entityType);
+        if (!Array.isArray(fields) || !fields.every((item) => typeof item === 'string')) throw new BadRequestException('Module applyFields entry must be an array of field IDs: ' + entityType);
       }
       return;
     }

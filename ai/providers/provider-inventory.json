@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-PROVIDERS-001",
-  "version": 2,
+  "version": 3,
   "status": "CANONICAL",
   "providers": [
     {
@@ -12,6 +12,19 @@
       "status": "PLACEHOLDER_NOT_PRODUCTION_READY",
       "executionMode": "LOCAL",
       "cloudFallbackAllowed": false,
+      "secretValuesStoredHere": false
+    },
+    {
+      "providerId": "KK-AI-INTENT-ROUTER-LOCAL",
+      "capability": "CONVERSATION",
+      "implementation": "backend/src/ai/conversation/conversation.controller.ts",
+      "contract": "backend/src/ai/contracts/text-generation-provider.ts",
+      "status": "PRODUCTION_READY",
+      "executionMode": "LOCAL",
+      "cloudFallbackAllowed": false,
+      "productionReady": true,
+      "evaluationOnly": false,
+      "purpose": "Registry-backed deterministic answers from separately authorized module services; no LLM or additional runtime.",
       "secretValuesStoredHere": false
     },
     {
@@ -56,7 +69,9 @@
       "modelVersion": "8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7",
       "license": "Apache-2.0",
       "source": "https://ollama.com/library/qwen3:1.7b",
-      "secretValuesStoredHere": false
+      "secretValuesStoredHere": false,
+      "modelSelectionSource": "../providers/model-link-registry.json",
+      "activeModelControlledByRegistry": true
     }
   ],
   "evaluationCandidates": [

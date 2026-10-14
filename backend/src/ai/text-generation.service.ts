@@ -1,4 +1,6 @@
 import {
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   ServiceUnavailableException,
@@ -13,6 +15,8 @@ import { AiRegistryService } from './registry/ai-registry.service';
 
 @Injectable()
 export class TextGenerationService {
+  private generationInFlight = false;
+
   constructor(
     @Inject(TEXT_GENERATION_PROVIDER)
     private readonly provider: TextGenerationProvider,
@@ -127,6 +131,23 @@ export class TextGenerationService {
       'CONVERSATION',
     );
 
-    return this.provider.generate(request);
+    // This host is intentionally CPU/memory constrained. A single local model
+    // generation at a time prevents concurrent requests from saturating Ollama
+    // and starving normal backend work. Deterministic intents bypass this service.
+    if (this.generationInFlight) {
+      throw new HttpException({
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        code: 'KK_AI_GENERATION_BUSY',
+        message: 'The local AI worker is busy. Please retry shortly.',
+        retryAfterSeconds: 3,
+      }, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    this.generationInFlight = true;
+    try {
+      return await this.provider.generate(request);
+    } finally {
+      this.generationInFlight = false;
+    }
   }
 }

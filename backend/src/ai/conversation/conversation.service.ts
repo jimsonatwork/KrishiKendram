@@ -109,19 +109,23 @@ export class ConversationService {
     });
   }
 
-  async getConversation(conversationId: string, userId: string) {
+  async getConversation(conversationId: string, userId: string, options?: { responseOnly?: boolean }) {
     // Filter by owner in the query so private messages/contexts are never
-    // loaded for a non-owner before the ownership decision.
+    // loaded for a non-owner before the ownership decision. A response turn
+    // needs only the most recent messages; loading every related table for each
+    // spoken question creates avoidable database and serialization work.
     const conversation = await this.prisma.conversation.findFirst({
       where: { id: conversationId, userId },
-      include: {
-        sessions: { orderBy: { createdAt: 'asc' } },
-        messages: { orderBy: { createdAt: 'asc' } },
-        contexts: { orderBy: { createdAt: 'asc' } },
-        references: { orderBy: { createdAt: 'asc' } },
-        factCandidates: { orderBy: { createdAt: 'asc' } },
-        actions: { orderBy: { proposedAt: 'asc' } },
-      },
+      include: options?.responseOnly
+        ? { messages: { orderBy: { createdAt: 'desc' }, take: 4 } }
+        : {
+            sessions: { orderBy: { createdAt: 'asc' } },
+            messages: { orderBy: { createdAt: 'asc' } },
+            contexts: { orderBy: { createdAt: 'asc' } },
+            references: { orderBy: { createdAt: 'asc' } },
+            factCandidates: { orderBy: { createdAt: 'asc' } },
+            actions: { orderBy: { proposedAt: 'asc' } },
+          },
     });
     if (conversation) return conversation;
 

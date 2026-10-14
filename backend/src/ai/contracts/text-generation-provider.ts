@@ -40,6 +40,16 @@ export interface TextGenerationProvider {
   readonly modelId: string;
   readonly modelVersion: string;
   readonly mode: AiRunMode;
+  checkHealth?(): Promise<{
+    reachable: boolean;
+    modelInstalled: boolean;
+    providerId: string;
+    modelId: string;
+    modelVersion: string;
+    mode: AiRunMode;
+    checkedAt: string;
+    error?: string;
+  }>;
   generate(request: TextGenerationRequest): Promise<TextGenerationResult>;
   checkHealth?(): Promise<TextGenerationRuntimeHealth>;
 }

@@ -3161,23 +3161,11 @@ Governance rules:
 
 Verification checkpoint: 42 AI tests passed across 4 suites; backend build and `git diff --check` passed. Full backend regression and runtime integration verification remain separate gates.
 
-## 2026-10-14 - Governed AI Existing-Record Apply Pipeline (Partial)
-
-The canonical AI module contracts now own explicit applyFields maps. The root AI registry requires the property, validates its structure and candidate-target membership, and advances the registry schema version. The module/resource cohesion gate ensures each apply field is present in the platform resource registry. This preserves one central policy source instead of duplicating field allowlists inside the conversation service.
-
-The shared fact-draft lifecycle supports existing-record single-field application for registered Farm, Crop, Livestock and MarketplaceListing fields. The current User profile allowlist remains non-privileged only. Crop writes are intentionally restricted to name until the central Crop resource registers additional fields.
-
-The application contract is: resolve minimal ownership context -> authorize resource and field -> read the previous field value -> normalize through central field validation -> present exact preview -> require explicit confirmation -> recheck authorization and evidence -> lock the target row -> reject stale previous values -> conditionally transition CONFIRMED to APPLIED -> invoke the module-owned update service -> persist domain and AI audit records in the same database transaction. Generic AI domain writes remain prohibited.
-
-Existing update services accept an optional Prisma transaction client; standard API callers keep their existing transaction behavior. Super Admin business-record AI writes require explicit GOD_MODE from the canonical authorization service. Ordinary SUPER_ADMIN role membership or global permissions do not grant God authority. Super Admin self-profile draft creation remains fail-closed in this implementation slice.
-
-Open gates: multi-field create handlers for new Farm/Crop/Livestock/Marketplace records; FarmAsset/FarmRecord apply handlers; central Crop field definitions beyond name; authenticated database-backed end-to-end tests; full God Mode UI approval path; Indic-language model quality/safety/concurrency acceptance. This slice is PARTIAL and does not change provider productionReady=false.
-
-Verification checkpoint - 2026-10-14: backend production build passed; full backend regression passed (53 suites / 500 tests); frontend production build passed; focused AI authorization and registry tests passed; API and UI health endpoints returned HTTP 200. Final diff validation follows documentation updates.
-
-
 ## 2026-10-14 - Application-visible local AI and crop context path
 
-- The canonical application provider bridge is KK-AI-LLM-OLLAMA-LOCAL in explicit development evaluation mode only; productionReady remains false and cloud fallback/direct AI database writes remain disabled.
-- The centrally linked ai/context/data-context-intents.json maps crop-list questions to KK-CROP-001. The conversation context is authorized first, then CropsService.findMyCrops performs owner-scoped READ authorization; the model receives a capped projection of crop name, variety, sowing date, harvest date, and farm ID as data, not instructions.
-- Acceptance still required: authenticated browser test for exact farmer crop records, empty-list behavior, cross-user isolation, Indic-language queries, and production quality/safety gates.
+- Root cause confirmed in the canonical running application: the AI module was bound to UnavailableTextGenerationProvider, while the Qwen local runtime integration existed only in the separate development workspace. The canonical application has now been wired to KK-AI-LLM-OLLAMA-LOCAL.
+- Local inference is enabled only as an explicit development evaluation (KK_AI_ALLOW_LOCAL_EVALUATION=true). Provider inventory remains EVALUATION_IN_PROGRESS, productionReady=false, cloud fallback remains disabled, and direct AI database writes remain forbidden. This is not a production-readiness declaration.
+- Local runtime smoke check succeeded against qwen3:1.7b (Q4_K_M, recorded digest 8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7); one synthetic English response completed in approximately 2.6 seconds. This does not establish Indic-language quality, factual accuracy, concurrency, or production safety.
+- Added the canonical linked intent manifest ai/context/data-context-intents.json. The 'what are my crops' intent resolves to KK-CROP-001; the controller authorizes the AI conversation context first, then uses CropsService.findMyCrops for owner-scoped READ authorization and passes only a capped projection of crop name, variety, sowing date, harvest date, and farm ID. The model receives this authorized context as data, not as instructions.
+- The VoiceAgent disclosure now identifies local evaluation mode, disabled cloud fallback, advisory answers, and the fact that generated answers cannot directly write records.
+- Acceptance still required: authenticated browser test using a farmer with known crop rows; verify exact returned crop names match that farmer's active records and that another user's crops never appear; verify empty-list behavior; test Hindi/Telugu and remaining registered language phrases; then run full backend regression and frontend build. Do not promote this provider to production-ready without the approved evaluation gates.

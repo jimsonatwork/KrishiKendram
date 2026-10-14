@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   Post,
   Req,
@@ -33,6 +34,8 @@ interface AuthenticatedRequest {
 @Controller('ai/conversations')
 @UseGuards(JwtAuthGuard)
 export class AiConversationController {
+  private readonly logger = new Logger(AiConversationController.name);
+
   constructor(
     private readonly conversations: ConversationService,
     private readonly registry: AiRegistryService,
@@ -59,6 +62,14 @@ export class AiConversationController {
     @Param('conversationId') conversationId: string,
     @Body() body: unknown,
   ) {
+    const requestStartedAt = Date.now();
+    const stages: Record<string, number> = {};
+    let stageStartedAt = requestStartedAt;
+    const markStage = (name: string) => {
+      const now = Date.now();
+      stages[name] = now - stageStartedAt;
+      stageStartedAt = now;
+    };
     const userId = this.requireUserId(req);
     const data = this.asRecord(body);
 
@@ -79,7 +90,9 @@ export class AiConversationController {
     const conversation = await this.conversations.getConversation(
       conversationId,
       userId,
+      { responseOnly: true },
     );
+    markStage('conversationLoadMs');
 
     const generationRequest = {
       content,
@@ -91,10 +104,14 @@ export class AiConversationController {
     // The canonical registry chooses which module-owned records are relevant.
     // Authorize the AI context envelope before loading any protected module data.
     const providerStatus = this.textGeneration.getStatus() as { ready?: boolean };
+    const dataContextIntent = this.registry.resolveDataContextIntent(content);
+    const needsCropContext = dataContextIntent?.resolver === 'USER_OWNED_CROPS';
     let aiContext: UserAiContextEnvelope | undefined;
-    if (providerStatus.ready === true) {
-      const dataContextIntent = this.registry.resolveDataContextIntent(content);
-      const needsCropContext = dataContextIntent?.resolver === 'USER_OWNED_CROPS';
+    let ownedCrops: Awaited<ReturnType<CropsService['findMyCrops']>> | undefined;
+    // Deterministic registry-backed answers remain available when the LLM is
+    // warming, unavailable, or not yet production-approved. They still require
+    // the same authorization gate and the module's owner-scoped service.
+    if (providerStatus.ready === true || needsCropContext) {
       aiContext = await this.userAiContext.buildContext({
         actor: { userId, role: this.requireUserRole(req) },
         moduleId: this.registry.getConversationModuleId(),
@@ -117,7 +134,7 @@ export class AiConversationController {
             primaryLanguage: conversation.primaryLanguage,
             status: conversation.status,
           },
-          messages: conversation.messages.slice(-20).map((message) => ({
+          messages: [...conversation.messages].reverse().map((message) => ({
             role: message.role,
             content: message.content,
             language: message.language,
@@ -126,8 +143,11 @@ export class AiConversationController {
           ...(needsCropContext ? { context: {} } : {}),
         },
       });
+      markStage('authorizedContextMs');
       if (needsCropContext && dataContextIntent) {
-        const ownedCrops = await this.crops.findMyCrops(userId, this.requireUserRole(req));
+        // CropsService performs its own READ authorization and owner scoping.
+        ownedCrops = await this.crops.findMyCrops(userId, this.requireUserRole(req));
+        markStage('ownedCropReadMs');
         aiContext.fields.context = {
           intentId: dataContextIntent.intentId,
           sourceModuleId: dataContextIntent.moduleId,
@@ -144,12 +164,44 @@ export class AiConversationController {
         };
       }
     }
-    const result = providerStatus.ready === true
-      ? await this.textGeneration.generate({
+    let result: Awaited<ReturnType<TextGenerationService['generate']>>;
+    try {
+      if (needsCropContext && dataContextIntent && ownedCrops) {
+        // This answer is derived from owner-authorized module records, not a
+        // probabilistic model. It is O(1) generation work and cannot invent rows.
+        result = {
+          content: this.formatOwnedCropsAnswer(ownedCrops),
+          providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
+          modelId: 'rule:' + dataContextIntent.intentId,
+          modelVersion: 'registry-v' + this.registry.getRegistry().version,
+          mode: 'LOCAL',
+          ...(language ? { language } : {}),
+          generatedAt: new Date().toISOString(),
+          requiresValidation: true,
+          requiresUserConfirmation: true,
+        };
+      } else if (providerStatus.ready === true) {
+        result = await this.textGeneration.generate({
           ...generationRequest,
           ...(aiContext ? { context: aiContext } : {}),
-        })
-      : await this.textGeneration.generate(generationRequest);
+        });
+      } else {
+        result = await this.textGeneration.generate(generationRequest);
+      }
+    } catch (error) {
+      markStage('generationFailedMs');
+      this.logger.warn(JSON.stringify({
+        event: 'ai_conversation_pipeline_failure',
+        totalMs: Date.now() - requestStartedAt,
+        stages,
+        failureType: error instanceof Error ? error.name : 'UnknownError',
+        contextIncluded: Boolean(aiContext),
+        cropIntent: Boolean(aiContext?.fields?.context),
+      }));
+      throw error;
+    }
+
+    markStage('generationMs');
 
     const provenance = {
       providerId: result.providerId,
@@ -157,7 +209,7 @@ export class AiConversationController {
       modelVersion: result.modelVersion,
       mode: result.mode,
       language: result.language ?? language ?? 'en',
-      source: 'TEXT',
+      source: result.providerId === 'KK-AI-INTENT-ROUTER-LOCAL' ? 'CENTRAL_REGISTRY_RULE' : 'TEXT',
       generatedAt: result.generatedAt,
     };
 
@@ -172,6 +224,9 @@ export class AiConversationController {
       provenance,
       ...(result.language === undefined ? {} : { language: result.language }),
     }, userId);
+
+    markStage('assistantPersistenceMs');
+    this.logger.log(JSON.stringify({ event: 'ai_conversation_pipeline_timing', totalMs: Date.now() - requestStartedAt, stages, contextIncluded: Boolean(aiContext), cropIntent: Boolean(aiContext?.fields?.context) }));
 
     return {
       message: savedMessage,
@@ -258,11 +313,9 @@ export class AiConversationController {
     const targetModuleId = this.requiredText(data.targetModuleId, 'targetModuleId', 100);
     const targetEntityType = this.requiredText(data.targetEntityType, 'targetEntityType', 100);
     const targetEntityId = this.optionalText(data.targetEntityId, 'targetEntityId', 200);
-    const ownUserProfileTarget = targetModuleId === 'KK-USER-001' &&
-      targetEntityType === 'User' && targetEntityId === userId;
-    if (targetEntityId !== undefined && !ownUserProfileTarget) {
-      throw new BadRequestException('Existing-record changes require the dedicated authorized update workflow; only the authenticated user may draft their own profile fields here.');
-    }
+    // Existing-record drafts are allowed only through FactDraftService's registered
+    // field allowlist, resource/field authorization, stale-value check, and normal
+    // module service application path. The client cannot bypass those controls.
     if (!Object.prototype.hasOwnProperty.call(data, 'proposedValue') || data.proposedValue === null) {
       throw new BadRequestException('proposedValue must be a non-null JSON value.');
     }
@@ -312,24 +365,6 @@ export class AiConversationController {
     );
   }
 
-  @Post(':conversationId/fact-candidates/:candidateId/apply')
-  applyFactCandidate(
-    @Req() req: AuthenticatedRequest,
-    @Param('conversationId') conversationId: string,
-    @Param('candidateId') candidateId: string,
-    @Body() body: unknown,
-  ) {
-    const userId = this.requireUserId(req);
-    const role = this.requireUserRole(req);
-    const data = this.asRecord(body);
-    return this.factDrafts.applyConfirmedDraft(
-      conversationId,
-      this.requiredText(candidateId, 'candidateId', 200),
-      this.requiredText(data.previewHash, 'previewHash', 64),
-      { userId, role },
-    );
-  }
-
   @Post(':conversationId/fact-candidates/:candidateId/reject')
   rejectFactCandidate(
     @Req() req: AuthenticatedRequest,
@@ -365,6 +400,22 @@ export class AiConversationController {
       throw new BadRequestException('A valid authenticated user role is required for AI context.');
     }
     return role as UserRole;
+  }
+
+  private formatOwnedCropsAnswer(crops: Awaited<ReturnType<CropsService['findMyCrops']>>): string {
+    if (crops.length === 0) {
+      return 'You have no crops registered in KrishiKendram yet. You can add one from the Crops module.';
+    }
+    const rows = crops.slice(0, 8).map((crop) => {
+      const details = [
+        crop.variety ? 'variety ' + crop.variety : undefined,
+        crop.sowingDate ? 'sown ' + new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.sowingDate) : undefined,
+        crop.harvestDate ? 'harvest ' + new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.harvestDate) : undefined,
+      ].filter((item): item is string => Boolean(item));
+      return '- ' + crop.name + (details.length ? ' (' + details.join('; ') + ')' : '');
+    });
+    const remaining = crops.length - rows.length;
+    return 'You have ' + crops.length + ' registered crop' + (crops.length === 1 ? '' : 's') + ':\n' + rows.join('\n') + (remaining > 0 ? '\n- Plus ' + remaining + ' more.' : '');
   }
 
   private requireUserId(req: AuthenticatedRequest): string {

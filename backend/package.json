@@ -31,7 +31,8 @@
     "analyze": "./scripts/analyze.sh",
     "doctor": "./scripts/doctor.sh",
     "clean": "./scripts/clean.sh",
-    "bootstrap:super-admin": "tsx src/recover-super-admin.ts"
+    "bootstrap:super-admin": "tsx src/recover-super-admin.ts",
+    "ai:benchmark": "node scripts/kk-ai-benchmark.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",

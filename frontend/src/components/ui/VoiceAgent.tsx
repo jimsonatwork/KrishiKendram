@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, Volume2, VolumeX, X, ChevronUp, Sparkles } from 'lucide-react'
+import { Mic, MicOff, Volume2, VolumeX, X, ChevronUp, Sparkles, Square } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api, type AiFactCandidate } from '../../lib/api'
 import { useAuthStore } from '../../stores/auth.store'
 
 type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean
-  onresult: ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null
+  onresult: ((event: { resultIndex?: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null
   onerror: ((event: { error?: string }) => void) | null; onend: (() => void) | null
   start: () => void; stop: () => void
 }
@@ -26,15 +26,8 @@ type VoiceIntent = {
 }
 type RestrictedVoiceIntent = { intentId: string; label: string; phrases: string[]; moduleId: string }
 type AiProviderStatus = {
-  enabled: boolean
-  ready: boolean
-  canGenerate: boolean
-  evaluationOnly: boolean
-  providerId: string
-  modelId: string
-  modelVersion: string
-  status: string
-  mode: string
+  enabled: boolean; ready: boolean; canGenerate: boolean; productionReady: boolean; evaluationOnly: boolean
+  providerId: string; modelId: string; modelVersion: string; status: string; mode: string
   runtime: { reachable: boolean; modelInstalled: boolean; error?: string }
 }
 
@@ -51,6 +44,9 @@ export function VoiceAgent({ role }: { role: string }) {
   const turnId = useRef(0)
   const [unsupported,setUnsupported] = useState(false)
   const rec = useRef<Recognition|null>(null)
+  const activeRequest = useRef<AbortController | null>(null)
+  const commandInFlight = useRef(false)
+  const lastVoiceSubmission = useRef<{ text: string; at: number } | null>(null)
   const conversationId = useRef<string|null>(null)
   const conversationPromise = useRef<Promise<string>|null>(null)
   const [voiceIntents, setVoiceIntents] = useState<VoiceIntent[]>([])
@@ -92,20 +88,6 @@ export function VoiceAgent({ role }: { role: string }) {
       setNavigationPrefixes([])
       setRestrictedIntents([])
       setIntentManifestReady(false)
-    })
-    return () => { active = false }
-  }, [accessToken])
-
-  useEffect(() => {
-    let active = true
-    if (!accessToken) {
-      setProviderStatus(null)
-      return () => { active = false }
-    }
-    api.getAiConversationStatus(accessToken).then(status => {
-      if (active) setProviderStatus(status)
-    }).catch(() => {
-      if (active) setProviderStatus(null)
     })
     return () => { active = false }
   }, [accessToken])
@@ -160,6 +142,20 @@ export function VoiceAgent({ role }: { role: string }) {
     }
   }
 
+  useEffect(() => {
+    let active = true
+    if (!accessToken) {
+      setProviderStatus(null)
+      return () => { active = false }
+    }
+    api.getAiConversationStatus(accessToken).then(status => {
+      if (active) setProviderStatus(status)
+    }).catch(() => {
+      if (active) setProviderStatus(null)
+    })
+    return () => { active = false }
+  }, [accessToken])
+
   const loadFactDrafts = async () => {
     const token = accessToken
     const id = conversationId.current
@@ -194,19 +190,14 @@ export function VoiceAgent({ role }: { role: string }) {
     if (!accessToken || !conversationId.current) return
     setDraftBusy(true)
     try {
-      const applied = await api.applyAiFactCandidate(
-        accessToken,
-        conversationId.current,
-        draft.id,
-        draft.previewHash,
-      )
+      const applied = await api.applyAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash)
       const refreshed = await loadFactDrafts()
       setMessage(refreshed
-        ? 'Profile field ' + applied.targetFieldId + ' updated through the authorized user service and audit-recorded.'
-        : 'Profile update succeeded and was audited, but the refreshed preview could not be loaded.')
+        ? `${applied.targetEntityType} field ${applied.targetFieldId} updated through its authorized module service and audit-recorded.`
+        : 'The record update succeeded and was audited, but the refreshed preview could not be loaded.')
     } catch {
       await loadFactDrafts()
-      setMessage('The profile update could not be applied. No success is claimed; review the draft status and retry only if it remains CONFIRMED.')
+      setMessage('The record update could not be applied. No success is claimed; review the draft status and retry only if it remains CONFIRMED.')
     } finally {
       setDraftBusy(false)
     }
@@ -216,36 +207,13 @@ export function VoiceAgent({ role }: { role: string }) {
     if (!accessToken || !conversationId.current) return
     setDraftBusy(true)
     try {
-      const confirmed = await api.confirmAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash)
-      const isOwnProfileDraft = draft.moduleId === 'KK-USER-001' &&
-        draft.targetEntityType === 'User' && Boolean(draft.targetEntityId)
-      if (isOwnProfileDraft) {
-        try {
-          const applied = await api.applyAiFactCandidate(
-            accessToken,
-            conversationId.current,
-            draft.id,
-            confirmed.previewHash,
-          )
-          const refreshed = await loadFactDrafts()
-          setMessage(refreshed
-            ? 'Profile field ' + applied.targetFieldId + ' updated through the authorized user service and audit-recorded.'
-            : 'Profile update succeeded and was audited, but the refreshed preview could not be loaded.')
-        } catch {
-          await loadFactDrafts()
-          setMessage('Draft confirmed and audit-recorded, but profile application failed. The draft remains confirmed if the transaction did not commit; review its status and use Apply confirmed to retry.')
-        }
-      } else {
-        const refreshed = await loadFactDrafts()
-        setMessage(refreshed
-          ? 'Draft confirmed and audit-recorded. This target does not yet have a registered module-owned apply handler, so no domain record was changed.'
-          : 'Draft confirmation succeeded and was audited, but the refreshed preview could not be loaded.')
-      }
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : ''
-      setMessage(detail
-        ? 'The draft could not be completed: ' + detail + '. Reload the drafts and review the current status.'
-        : 'The draft could not be completed. Confirmation may have failed; reload the drafts and review the current status.')
+      await api.confirmAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash)
+      const refreshed = await loadFactDrafts()
+      setMessage(refreshed
+        ? 'Draft confirmed and audit-recorded. No farm, crop, livestock, marketplace or profile record has been changed; applying the confirmed draft through its normal authorized module API is a separate step.'
+        : 'Draft confirmation succeeded and was audited, but the refreshed preview could not be loaded. Reopen Review saved fact drafts before taking another action.')
+    } catch {
+      setMessage('The draft could not be confirmed. Its preview may have changed, validation may have failed, or authorization may have changed. Reload the drafts and review again.')
     } finally {
       setDraftBusy(false)
     }
@@ -268,18 +236,23 @@ export function VoiceAgent({ role }: { role: string }) {
   }
 
   const say = (text:string) => {
+    commandInFlight.current = false
+    activeRequest.current = null
     setMessage(text)
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
     if (spoken && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 0.96
+      const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 1.08; u.pitch = 1.04
       window.speechSynthesis.speak(u)
     }
   }
   const command = async (raw:string, source: 'TEXT' | 'VOICE' = 'TEXT') => {
     const original = raw.trim()
     const q = original.toLocaleLowerCase()
-    if (!q) return
+    if (!q || commandInFlight.current) return
+    commandInFlight.current = true
+    const controller = new AbortController()
+    activeRequest.current = controller
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
     const persistence = persistUserMessage(original, source)
     // Weather intent is recognized explicitly, but fails closed until a
@@ -333,62 +306,99 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
 
-    setMessage('Saving your question and checking the approved AI provider…')
+    setMessage('Saving your question and preparing a local answer…')
     const id = await persistence
-    if (!id) return
-
-    try {
-      const status = await api.getAiConversationStatus(token)
-      setProviderStatus(status)
-      if (!status.canGenerate) {
-        if (!status.runtime?.reachable) {
-          say('Your question is saved in conversation history, but the local AI runtime is not reachable. No cloud fallback was attempted.')
-        } else if (!status.runtime.modelInstalled) {
-          say('Your question is saved in conversation history, but the configured local model is not installed yet. No cloud fallback was attempted.')
-        } else if (status.status === 'EVALUATION_ONLY') {
-          say('The local model is evaluation-only. Explicit local evaluation is not enabled for this non-production runtime, so no model response was generated.')
-        } else {
-          say('Your question is saved in conversation history, but no provider is approved for this operation. No cloud fallback was attempted.')
-        }
-        return
+    if (controller.signal.aborted) {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null
+        commandInFlight.current = false
       }
+      return
+    }
+    if (!id) {
+      // Persistence failures must end in a visible assistant turn, not a silent return.
+      say('I could not save your question, so I did not send it for AI generation. Check your connection and sign-in, then try again.')
+      return
+    }
 
-      const response = await api.requestAiConversationResponse(token, id, original, lang)
-      say(status.evaluationOnly
-        ? 'Local AI evaluation only (not production-approved; no record was changed). ' + response.message.content
-        : response.message.content)
-    } catch {
-      say(
-        'I could not obtain an AI answer. The approved provider may be unavailable, or the request may have failed. Your question remains in conversation history; no farm record was changed.',
+    setMessage('Your question is saved. The local assistant is generating a reply…')
+    try {
+      const response = await api.requestAiConversationResponse(
+        token,
+        id,
+        original,
+        lang,
+        controller.signal,
       )
+      if (!controller.signal.aborted) {
+        const answer = typeof response?.message?.content === 'string'
+          ? response.message.content.trim()
+          : ''
+        say(answer || 'The local AI service returned an empty answer. Your question is saved; please try once more. No farm record was changed.')
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        const detail = error instanceof Error ? error.message.trim() : ''
+        const safeDetail = detail && detail.length < 180 ? ' Details: ' + detail : ''
+        say(
+          'I could not obtain an AI answer from the local provider. Your question remains in conversation history; no farm record was changed. Please try again or check the AI provider status.' + safeDetail,
+        )
+      }
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null
+        commandInFlight.current = false
+      }
     }
   }
+  const stopConversation = () => {
+    rec.current?.stop()
+    rec.current = null
+    setListening(false)
+    activeRequest.current?.abort()
+    activeRequest.current = null
+    commandInFlight.current = false
+    window.speechSynthesis?.cancel()
+    setMessage('Stopped. I will not continue listening or speaking. You can start again when ready.')
+  }
+
   const listen = () => {
-    if (listening) { rec.current?.stop(); setListening(false); return }
+    if (listening) { stopConversation(); return }
+    if (commandInFlight.current) { setMessage('Please stop the current response before starting another question.'); return }
     const w = window as SpeechWindow, Ctor = w.SpeechRecognition || w.webkitSpeechRecognition
     if (!Ctor) { setUnsupported(true); say('Speech recognition is unavailable in this browser. You can type a command instead.'); return }
     try {
       const r = new Ctor(); r.lang = lang; r.continuous = false; r.interimResults = true
+      let submitted = false
       r.onresult = e => {
         let finalText = '', partial = ''
-        for (let i=0;i<e.results.length;i++) {
-            if (e.results[i].isFinal) {
-              finalText += e.results[i][0].transcript
-            } else {
-              partial += e.results[i][0].transcript
-            }
-          }
+        const firstNewResult = Math.max(0, e.resultIndex ?? (e.results.length - 1))
+        for (let i=firstNewResult;i<e.results.length;i++) {
+          const text = e.results[i][0].transcript
+          if (e.results[i].isFinal) finalText += text
+          else partial += text
+        }
         setTranscript(finalText || partial)
-        if (finalText.trim()) command(finalText, 'VOICE')
+        if (finalText.trim() && !submitted) {
+          submitted = true
+          const normalized = finalText.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+          const previous = lastVoiceSubmission.current
+          const now = Date.now()
+          if (previous && previous.text === normalized && now - previous.at < 5000) return
+          lastVoiceSubmission.current = { text: normalized, at: now }
+          setListening(false)
+          r.stop()
+          void command(finalText.trim(), 'VOICE')
+        }
       }
-      r.onerror = e => { setListening(false); say(e.error === 'not-allowed' ? 'Microphone access was denied. Allow it in browser settings to use voice.' : 'Voice input stopped. Please try again.') }
+      r.onerror = e => { setListening(false); if (e.error !== 'aborted') say(e.error === 'not-allowed' ? 'Microphone access was denied. Allow it in browser settings to use voice.' : 'Voice input stopped. Please try again.') }
       r.onend = () => setListening(false)
       rec.current = r; setTranscript(''); setListening(true); setMessage('Listening… speak naturally.'); r.start()
     } catch { setListening(false); say('Could not start the microphone. Check browser permissions and try again.') }
   }
   return <div className="fixed bottom-4 right-3 z-[80] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 sm:bottom-5 sm:right-5">
     {open && <section aria-label="KrishiKendram voice assistant" className="flex max-h-[calc(100dvh-6rem)] w-[min(20rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl">
-      <header className="flex shrink-0 items-center justify-between border-b px-3 py-2"><div className="flex items-center gap-2"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles size={18}/></span><div><p className="text-sm font-semibold">Krishi Voice Agent</p><p className="text-xs text-muted-foreground">{admin?'Administrator workspace':'Farm assistant'}</p></div></div><button type="button" aria-label="Close voice assistant" onClick={()=>{rec.current?.stop();setListening(false);setOpen(false)}} className="rounded-lg p-2 hover:bg-muted"><X size={16}/></button></header>
+      <header className="flex shrink-0 items-center justify-between border-b px-3 py-2"><div className="flex items-center gap-2"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles size={18}/></span><div><p className="text-sm font-semibold">Krishi Voice Agent</p><p className="text-xs text-muted-foreground">{admin?'Administrator workspace':'Farm assistant'}</p></div></div><button type="button" aria-label="Close voice assistant" onClick={()=>{stopConversation();setOpen(false)}} className="rounded-lg p-2 hover:bg-muted"><X size={16}/></button></header>
       <div className="border-b px-3 py-1.5 text-[10px] text-muted-foreground" aria-live="polite">
         <span className="font-semibold">AI provider:</span>{' '}
         {providerStatus?.runtime?.reachable && providerStatus.runtime.modelInstalled
@@ -399,15 +409,13 @@ export function VoiceAgent({ role }: { role: string }) {
       <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-sm">{turn.text}</p></div>)}</div>
         {draftReviewOpen && <section aria-label="Fact draft review" className="space-y-2 rounded-lg border bg-background p-2">
           <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">Draft review</p><button type="button" className="text-xs text-muted-foreground underline" onClick={() => setDraftReviewOpen(false)}>Hide</button></div>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">Review the exact proposal and its source. Supported own-profile fields apply through the authorized user service after confirmation; other targets remain confirmed but unapplied until their module-owned handler is registered.</p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">Confirmation approves only the exact validated proposal shown below. Applying an existing-record change is a separate step that rechecks authorization, field policy and stale-value conflicts through the normal module service.</p>
           {factDrafts.length === 0 ? <p className="text-xs text-muted-foreground">No saved fact drafts in this conversation.</p> : factDrafts.map(draft => {
             const validation = draft.validationResult && typeof draft.validationResult === 'object'
               ? draft.validationResult as { valid?: boolean; errors?: string[] }
               : {}
             const canConfirm = validation.valid === true && ['VALIDATION_PENDING','AWAITING_CONFIRMATION'].includes(draft.status)
-            const isOwnProfileDraft = draft.moduleId === 'KK-USER-001' &&
-              draft.targetEntityType === 'User' && Boolean(draft.targetEntityId)
-            const canApply = draft.status === 'CONFIRMED' && isOwnProfileDraft
+            const canApply = draft.status === 'CONFIRMED' && Boolean(draft.targetEntityId)
             const canReject = ['DETECTED','NORMALIZED','VALIDATION_PENDING','CONFLICT','AWAITING_CONFIRMATION'].includes(draft.status)
             const value = typeof draft.proposedValue === 'string' ? draft.proposedValue : JSON.stringify(draft.proposedValue)
             const evidence = draft.evidenceReference ? draftEvidence[draft.evidenceReference] : undefined
@@ -417,7 +425,7 @@ export function VoiceAgent({ role }: { role: string }) {
               <p className="text-[11px] text-muted-foreground">Source: {evidence ? `“${evidence}”` : 'Original user message unavailable'}</p>
               {validation.valid === false && <div className="rounded bg-destructive/10 p-2 text-[11px]">{(validation.errors ?? ['Central validation failed.']).join(' ')}</div>}
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={draftBusy || !canConfirm} onClick={() => void confirmFactDraft(draft)} className="h-8 min-w-0 flex-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">{isOwnProfileDraft ? 'Confirm & apply' : 'Confirm draft'}</button>
+                <button type="button" disabled={draftBusy || !canConfirm} onClick={() => void confirmFactDraft(draft)} className="h-8 min-w-0 flex-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">Confirm draft</button>
                 {canApply && <button type="button" disabled={draftBusy} onClick={() => void applyFactDraft(draft)} className="h-8 flex-1 rounded-lg border px-2 text-xs disabled:opacity-40">Apply confirmed</button>}
                 <button type="button" disabled={draftBusy || !canReject} onClick={() => void rejectFactDraft(draft)} className="h-8 rounded-lg border px-2 text-xs disabled:opacity-40">Reject</button>
               </div>
@@ -427,11 +435,11 @@ export function VoiceAgent({ role }: { role: string }) {
         <label htmlFor="kk-voice-language" className="block text-xs font-medium text-muted-foreground">Spoken language</label>
         <select id="kk-voice-language" value={lang} onChange={e=>{setLang(e.target.value);try{localStorage.setItem('kk-voice-language',e.target.value)}catch{/* Language preference is optional. */}}} className="h-9 w-full rounded-lg border bg-background px-2 text-xs">{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
         <div aria-live="polite" className="min-h-12 rounded-lg bg-muted/60 p-2 text-xs"><p>{message}</p>{transcript&&<p className="mt-2 border-t pt-2 text-muted-foreground">Heard: {transcript}</p>}</div>
-        <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'bg-destructive text-destructive-foreground':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button></div>
+        <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'bg-destructive text-destructive-foreground':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button><button type="button" onClick={stopConversation} aria-label="Stop conversation" title="Stop listening, generation and speech" className="flex size-9 items-center justify-center rounded-lg border text-destructive"><Square size={15}/></button></div>
         <button type="button" disabled={draftBusy} onClick={() => void loadFactDrafts()} className="h-8 w-full rounded-lg border text-xs disabled:opacity-40">{draftBusy ? 'Loading drafts…' : 'Review saved fact drafts'}</button>
         <form onSubmit={e=>{e.preventDefault();command(transcript, 'TEXT')}} className="flex gap-2"><input aria-label="Type a voice command" value={transcript} onChange={e=>setTranscript(e.target.value)} placeholder="Or type: show my farms" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-xs"/><button type="submit" className="rounded-lg border px-2 text-xs">Go</button></form>
         {unsupported&&<p className="text-xs text-muted-foreground">Speech recognition is not available in this browser; typed commands still work.</p>}
-        <p className="text-[11px] leading-relaxed text-muted-foreground">Microphone stays off until you press Speak. Browser speech recognition may use the browser provider. Local evaluation responses are not production-approved and never write records. Saved proposals can be reviewed and confirmed, but applying them through each module's normal authorized API is still pending.</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">Microphone stays off until you press Speak. Browser speech recognition may use the browser provider. Local evaluation responses are not production-approved and never write records. Saved proposals require review, explicit confirmation and a second authorized application step; unsupported targets remain unapplied.</p>
       </div></section>}
     <button type="button" onClick={()=>setOpen(v=>!v)} aria-label={open?'Minimize voice assistant':'Open voice assistant'} title="Voice assistant" className="flex h-10 items-center gap-2 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-lg"><Mic size={19}/><span>Voice Agent</span><ChevronUp size={16} className={open?'rotate-180 transition-transform':'transition-transform'}/></button>
   </div>

@@ -1,0 +1,54 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-MODEL-LINKS-001",
+  "version": 2,
+  "status": "CANONICAL",
+  "purpose": "Central model link catalogue. Linking makes a model available; activation is separate. Model links never alter module contracts.",
+  "activeModelId": "qwen3:1.7b",
+  "runtime": "OLLAMA_LOCAL",
+  "cloudFallbackAllowed": false,
+  "models": [
+    {
+      "modelId": "qwen3:1.7b",
+      "displayName": "Qwen3 1.7B",
+      "providerId": "KK-AI-LLM-OLLAMA-LOCAL",
+      "runtime": "OLLAMA_LOCAL",
+      "linked": true,
+      "role": "ACTIVE_BASELINE",
+      "source": "https://ollama.com/library/qwen3:1.7b",
+      "productionReady": false
+    },
+    {
+      "modelId": "qwen3.5:0.8b",
+      "displayName": "Qwen3.5 0.8B",
+      "providerId": "KK-AI-LLM-OLLAMA-LOCAL",
+      "runtime": "OLLAMA_LOCAL",
+      "linked": false,
+      "role": "EVALUATION_CANDIDATE",
+      "source": "https://ollama.com/library/qwen3.5:0.8b",
+      "productionReady": false
+    },
+    {
+      "modelId": "qwen3.5:2b",
+      "displayName": "Qwen3.5 2B",
+      "providerId": "KK-AI-LLM-OLLAMA-LOCAL",
+      "runtime": "OLLAMA_LOCAL",
+      "linked": false,
+      "role": "EVALUATION_CANDIDATE",
+      "source": "https://ollama.com/library/qwen3.5:2b",
+      "productionReady": false
+    }
+  ],
+  "rules": {
+    "moduleContractsMutableByModelLink": false,
+    "activateOnlyLinkedModels": true,
+    "activateOnlyInstalledModels": true,
+    "unlinkActiveModelAllowed": false,
+    "deleteModelArtifactsOnUnlink": false,
+    "cloudFallback": false,
+    "auditRequired": true,
+    "evaluationSelectionChangesActiveModel": false,
+    "activateOnlyProductionApprovedModels": true
+  },
+  "evaluationModelId": null
+}
