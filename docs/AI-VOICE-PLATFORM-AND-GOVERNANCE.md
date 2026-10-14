@@ -244,3 +244,10 @@ The local Ollama provider was exercised from the compiled backend adapter using 
 A provenance defect was fixed: generation now checks runtime/model health before sending the prompt and uses the actual installed model digest instead of UNVERIFIED_LOCAL_MODEL. Missing model/runtime fails closed. AI tests: 11 suites / 105 tests PASS; backend build PASS; frontend build PASS; git diff --check PASS.
 
 The provider remains EVALUATION_IN_PROGRESS and productionReady=false. Synthetic phrases are not a native-speaker quality or safety benchmark. The fact-draft lifecycle has validated preview, exact-preview confirmation, rejection, authorization rechecks and transactional audit, but only the authenticated user's allowlisted profile fields currently have an apply handler through UsersService.update. Farm/Crop/Livestock/Marketplace drafts remain unapplied until the reusable multi-field workflow calls each normal authorized module service. Indic ASR remains a placeholder. Do not claim the AI platform or all modules COMPLETE.
+
+
+## 2026-10-14 - Application-visible local AI and crop context path
+
+- The canonical application provider bridge is KK-AI-LLM-OLLAMA-LOCAL in explicit development evaluation mode only; productionReady remains false and cloud fallback/direct AI database writes remain disabled.
+- The centrally linked ai/context/data-context-intents.json maps crop-list questions to KK-CROP-001. The conversation context is authorized first, then CropsService.findMyCrops performs owner-scoped READ authorization; the model receives a capped projection of crop name, variety, sowing date, harvest date, and farm ID as data, not instructions.
+- Acceptance still required: authenticated browser test for exact farmer crop records, empty-list behavior, cross-user isolation, Indic-language queries, and production quality/safety gates.

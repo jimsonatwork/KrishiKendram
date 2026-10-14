@@ -30,6 +30,16 @@ export interface AiContextRequest {
   fields?: string[];
 }
 
+export interface AiDataContextIntent {
+  intentId: string;
+  moduleId: string;
+  capability: string;
+  resolver: string;
+  phrases: string[];
+  fields: string[];
+  references: string[];
+}
+
 /** Effective safety policy validated against the canonical AI registry. */
 export interface AiEffectivePolicy {
   registryId: string;
@@ -143,6 +153,41 @@ export class AiRegistryService {
 
   getRegistryId(): string {
     return this.registry.registryId;
+  }
+
+  /** Resolve a query against the centrally linked and module-governed context-intent manifest. */
+  resolveDataContextIntent(query: string): AiDataContextIntent | undefined {
+    const relativeFile = this.registry.linkedFiles.dataContextIntents;
+    if (!relativeFile) throw new Error('Canonical AI data-context intent manifest is not linked.');
+    const manifestPath = resolve(dirname(this.registryPath), relativeFile);
+    let raw: unknown;
+    try { raw = JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown; }
+    catch { throw new Error('Canonical AI data-context intent manifest is missing or invalid JSON.'); }
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Canonical AI data-context intent manifest must be an object.');
+    const document = raw as Record<string, unknown>;
+    if (document.registryId !== this.registry.registryId || document.inventoryId !== 'KK-AI-CONTEXT-INTENTS-001' || document.status !== 'CANONICAL' || !Number.isInteger(document.version) || !Array.isArray(document.intents)) {
+      throw new Error('Canonical AI data-context intent manifest identity or schema is invalid.');
+    }
+    const normalize = (value: string) => value.normalize('NFKC').toLocaleLowerCase().replace(/[.,!?;:]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalizedQuery = normalize(query);
+    for (const item of document.intents) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Canonical AI data-context intent entry is invalid.');
+      const intent = item as Record<string, unknown>;
+      if (typeof intent.intentId !== 'string' || typeof intent.moduleId !== 'string' || typeof intent.capability !== 'string' || typeof intent.resolver !== 'string' || !Array.isArray(intent.phrases) || !intent.phrases.every((v) => typeof v === 'string' && v.trim().length > 0) || !Array.isArray(intent.fields) || !intent.fields.every((v) => typeof v === 'string') || !Array.isArray(intent.references) || !intent.references.every((v) => typeof v === 'string')) {
+        throw new Error('Canonical AI data-context intent entry has invalid fields.');
+      }
+      this.assertModuleRegistered(intent.moduleId);
+      this.assertCapabilityAllowed(intent.moduleId, intent.capability);
+      const contract = this.getModule(intent.moduleId);
+      if (!intent.fields.every((field) => contract.allowedFields.includes(field) && !contract.restrictedFields?.includes(field)) || !intent.references.every((reference) => contract.contextReferences.includes(reference))) {
+        throw new Error('Canonical AI data-context intent exceeds its module contract: ' + intent.intentId + '.');
+      }
+      const phrases = intent.phrases as string[];
+      if (normalizedQuery && phrases.some((phrase) => normalizedQuery.includes(normalize(phrase)))) {
+        return { intentId: intent.intentId, moduleId: intent.moduleId, capability: intent.capability, resolver: intent.resolver, phrases, fields: intent.fields as string[], references: intent.references as string[] };
+      }
+    }
+    return undefined;
   }
 
   /**

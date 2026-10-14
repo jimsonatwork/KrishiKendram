@@ -178,3 +178,10 @@ The central AI module contracts now own applyFields allowlists and are linked th
 Super Admin business-record AI writes require the canonical authorization decision to return GOD_MODE; a role label or global permission is not sufficient. Super Admin self-profile drafting remains blocked in this slice.
 
 Remaining E-011 gates: multi-field creation for new records, additional central Crop field definitions, FarmAsset/FarmRecord handlers, authenticated database-backed end-to-end acceptance, and Indic-language model quality/safety/concurrency evaluation. Local model productionReady remains false. Verification on 2026-10-14: backend build PASS, backend 53 suites / 500 tests PASS, frontend build PASS, focused AI authorization/registry tests PASS.
+
+
+## 2026-10-14 - Application-visible local AI and crop context path
+
+- The canonical application provider bridge is KK-AI-LLM-OLLAMA-LOCAL in explicit development evaluation mode only; productionReady remains false and cloud fallback/direct AI database writes remain disabled.
+- The centrally linked ai/context/data-context-intents.json maps crop-list questions to KK-CROP-001. The conversation context is authorized first, then CropsService.findMyCrops performs owner-scoped READ authorization; the model receives a capped projection of crop name, variety, sowing date, harvest date, and farm ID as data, not instructions.
+- Acceptance still required: authenticated browser test for exact farmer crop records, empty-list behavior, cross-user isolation, Indic-language queries, and production quality/safety gates.

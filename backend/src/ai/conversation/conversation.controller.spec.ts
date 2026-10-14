@@ -18,11 +18,12 @@ describe('AiConversationController', () => {
     appendMessage: jest.Mock;
     listHistory: jest.Mock;
   };
-  let registry: { getConversationModuleId: jest.Mock };
+  let registry: { getConversationModuleId: jest.Mock; resolveDataContextIntent: jest.Mock };
   let textGeneration: { getStatus: jest.Mock; getDetailedStatus: jest.Mock; generate: jest.Mock };
   let userAiContext: { buildContext: jest.Mock };
   let voiceCapabilities: { getIntentsForUser: jest.Mock };
   let factDrafts: { createDraft: jest.Mock; listDrafts: jest.Mock; confirmDraft: jest.Mock; rejectDraft: jest.Mock };
+  let crops: { findMyCrops: jest.Mock };
 
   const req = { user: { userId: 'jwt-user-1', role: 'FARMER' } };
   const contextEnvelope = {
@@ -45,6 +46,7 @@ describe('AiConversationController', () => {
     };
     registry = {
       getConversationModuleId: jest.fn().mockReturnValue('KK-AI-CONVERSATION-001'),
+      resolveDataContextIntent: jest.fn().mockReturnValue(undefined),
     };
     textGeneration = {
       getDetailedStatus: jest.fn().mockResolvedValue({ enabled: false, ready: false, canGenerate: false, cloudFallback: false, runtime: { reachable: true, modelInstalled: true } }),
@@ -55,8 +57,9 @@ describe('AiConversationController', () => {
       }),
       generate: jest.fn(),
     };
-    userAiContext = { buildContext: jest.fn().mockResolvedValue(contextEnvelope) };
+    userAiContext = { buildContext: jest.fn().mockImplementation(async () => ({ ...contextEnvelope, fields: { conversation: contextEnvelope.fields.conversation, messages: [] } })) };
     voiceCapabilities = { getIntentsForUser: jest.fn().mockResolvedValue({ intents: [] }) };
+    crops = { findMyCrops: jest.fn().mockResolvedValue([]) };
     factDrafts = {
       createDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1' }, validation: { valid: true, applied: false } }),
       listDrafts: jest.fn().mockResolvedValue([]),
@@ -71,6 +74,7 @@ describe('AiConversationController', () => {
       userAiContext as unknown as UserAiContextService,
       voiceCapabilities as never,
       factDrafts as unknown as FactDraftService,
+      crops as never,
     );
   });
 
@@ -150,6 +154,35 @@ describe('AiConversationController', () => {
       }),
       'jwt-user-1',
     );
+  });
+
+  it('supplies only owner-authorized crop fields for a registered crop-list intent', async () => {
+    registry.resolveDataContextIntent.mockReturnValue({
+      intentId: 'KK-AI-CONTEXT-CROPS-001', moduleId: 'KK-CROP-001', capability: 'CONVERSATION',
+      resolver: 'USER_OWNED_CROPS', phrases: ['what are my crops'],
+      fields: ['crop', 'variety', 'sowing', 'harvest'], references: ['userId', 'farmId'],
+    });
+    crops.findMyCrops.mockResolvedValue([{
+      id: 'crop-1', farmId: 'farm-1', name: 'Wheat', variety: 'HD-2967',
+      sowingDate: new Date('2026-10-01T00:00:00.000Z'), harvestDate: null,
+    }]);
+    textGeneration.generate.mockResolvedValue({
+      content: 'Your registered crop is Wheat.', providerId: 'KK-AI-LLM-OLLAMA-LOCAL',
+      modelId: 'qwen3:1.7b', modelVersion: 'test-digest', mode: 'LOCAL',
+      generatedAt: '2026-10-14T00:00:00.000Z', requiresValidation: true, requiresUserConfirmation: true,
+    });
+    await controller.respond(req, 'conversation-1', { content: 'What are my crops?' });
+    expect(userAiContext.buildContext).toHaveBeenCalledWith(expect.objectContaining({
+      fields: ['conversation', 'messages', 'context'], values: expect.objectContaining({ context: {} }),
+    }));
+    expect(crops.findMyCrops).toHaveBeenCalledWith('jwt-user-1', 'FARMER');
+    expect(userAiContext.buildContext.mock.invocationCallOrder[0]).toBeLessThan(crops.findMyCrops.mock.invocationCallOrder[0]);
+    expect(textGeneration.generate).toHaveBeenCalledWith(expect.objectContaining({
+      context: expect.objectContaining({ fields: expect.objectContaining({ context: expect.objectContaining({
+        intentId: 'KK-AI-CONTEXT-CROPS-001', totalCount: 1,
+        crops: [{ crop: 'Wheat', variety: 'HD-2967', sowing: '2026-10-01T00:00:00.000Z', harvest: null, farmId: 'farm-1' }],
+      }) }) }),
+    }));
   });
 
   it('does not assemble context when the provider is unavailable', async () => {

@@ -1,0 +1,50 @@
+{
+  "registryId": "KK-AI-REGISTRY-001",
+  "inventoryId": "KK-AI-CONTEXT-INTENTS-001",
+  "version": 1,
+  "status": "CANONICAL",
+  "intents": [
+    {
+      "intentId": "KK-AI-CONTEXT-CROPS-001",
+      "moduleId": "KK-CROP-001",
+      "capability": "CONVERSATION",
+      "resolver": "USER_OWNED_CROPS",
+      "phrases": [
+        "what are my crops",
+        "what crops do i have",
+        "which crops do i have",
+        "show my crops",
+        "list my crops",
+        "my crop list",
+        "my crops",
+        "what crops have i registered",
+        "show crops on my farms",
+        "मेरी फसलें कौन सी हैं",
+        "मेरी फसलें",
+        "मेरी फसलें दिखाओ",
+        "నా పంటలు ఏమిటి",
+        "నా పంటలు",
+        "నా పంటలను చూపించు",
+        "எனது பயிர்கள் என்ன",
+        "என் பயிர்கள்",
+        "ನನ್ನ ಬೆಳೆಗಳು ಯಾವುವು",
+        "ನನ್ನ ಬೆಳೆಗಳು",
+        "എന്റെ വിളകള് എന്തൊക്കെയാണ്",
+        "আমার ফসল কী কী",
+        "माझी पिके कोणती",
+        "મારા પાક કયા છે",
+        "ਮੇਰੀਆਂ ਫਸਲਾਂ ਕਿਹੜੀਆਂ ਹਨ"
+      ],
+      "fields": [
+        "crop",
+        "variety",
+        "sowing",
+        "harvest"
+      ],
+      "references": [
+        "userId",
+        "farmId"
+      ]
+    }
+  ]
+}

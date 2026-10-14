@@ -1563,3 +1563,10 @@ C is 91 commits ahead and 7 commits behind origin/main because its active branch
 - This is not production approval for the local model. Indic-language quality, safety, concurrency, and authenticated database-backed end-to-end behavior remain separate acceptance gates. AI provider productionReady remains false.
 
 C remains the implementation workspace and promotion remains C -> B -> A. No direct push to main, no force-push/rebase/reset, and no mutation of B existing staged integration set. This checkpoint is not a production-readiness declaration.
+
+
+## 2026-10-14 - Application-visible local AI and crop context path
+
+- The canonical application provider bridge is KK-AI-LLM-OLLAMA-LOCAL in explicit development evaluation mode only; productionReady remains false and cloud fallback/direct AI database writes remain disabled.
+- The centrally linked ai/context/data-context-intents.json maps crop-list questions to KK-CROP-001. The conversation context is authorized first, then CropsService.findMyCrops performs owner-scoped READ authorization; the model receives a capped projection of crop name, variety, sowing date, harvest date, and farm ID as data, not instructions.
+- Acceptance still required: authenticated browser test for exact farmer crop records, empty-list behavior, cross-user isolation, Indic-language queries, and production quality/safety gates.

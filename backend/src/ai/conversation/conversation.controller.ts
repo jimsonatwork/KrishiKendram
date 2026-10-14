@@ -20,6 +20,8 @@ import { TextGenerationService } from '../text-generation.service';
 import { UserAiContextService } from '../context/user-ai-context.service';
 import { AiVoiceCapabilityService } from '../voice/ai-voice-capability.service';
 import { FactDraftService } from './fact-draft.service';
+import { CropsService } from '../../crops/crops.service';
+import type { UserAiContextEnvelope } from '../contracts/ai-context';
 
 interface AuthenticatedRequest {
   user?: {
@@ -38,6 +40,7 @@ export class AiConversationController {
     private readonly userAiContext: UserAiContextService,
     private readonly voiceCapabilities: AiVoiceCapabilityService,
     private readonly factDrafts: FactDraftService,
+    private readonly crops: CropsService,
   ) {}
 
   @Get('voice-intents')
@@ -85,42 +88,66 @@ export class AiConversationController {
       ...(language === undefined ? {} : { language }),
     };
 
-    // Keep the unavailable-provider path deterministic and avoid assembling
-    // private context when no registry-approved provider can consume it.
+    // The canonical registry chooses which module-owned records are relevant.
+    // Authorize the AI context envelope before loading any protected module data.
     const providerStatus = this.textGeneration.getStatus() as { ready?: boolean };
+    let aiContext: UserAiContextEnvelope | undefined;
+    if (providerStatus.ready === true) {
+      const dataContextIntent = this.registry.resolveDataContextIntent(content);
+      const needsCropContext = dataContextIntent?.resolver === 'USER_OWNED_CROPS';
+      aiContext = await this.userAiContext.buildContext({
+        actor: { userId, role: this.requireUserRole(req) },
+        moduleId: this.registry.getConversationModuleId(),
+        capability: 'CONVERSATION',
+        authorizationModule: 'platform',
+        references: ['userId', 'moduleId'],
+        fields: needsCropContext ? ['conversation', 'messages', 'context'] : ['conversation', 'messages'],
+        authorization: {
+          resource: 'conversation',
+          resourceId: conversation.id,
+          ownerId: userId,
+        },
+        values: {
+          userId,
+          moduleId: this.registry.getConversationModuleId(),
+          conversation: {
+            id: conversation.id,
+            moduleId: conversation.moduleId,
+            title: conversation.title,
+            primaryLanguage: conversation.primaryLanguage,
+            status: conversation.status,
+          },
+          messages: conversation.messages.slice(-20).map((message) => ({
+            role: message.role,
+            content: message.content,
+            language: message.language,
+            createdAt: message.createdAt,
+          })),
+          ...(needsCropContext ? { context: {} } : {}),
+        },
+      });
+      if (needsCropContext && dataContextIntent) {
+        const ownedCrops = await this.crops.findMyCrops(userId, this.requireUserRole(req));
+        aiContext.fields.context = {
+          intentId: dataContextIntent.intentId,
+          sourceModuleId: dataContextIntent.moduleId,
+          sourceFields: dataContextIntent.fields,
+          totalCount: ownedCrops.length,
+          truncated: ownedCrops.length > 100,
+          crops: ownedCrops.slice(0, 100).map((crop) => ({
+            crop: crop.name,
+            variety: crop.variety ?? null,
+            sowing: crop.sowingDate?.toISOString() ?? null,
+            harvest: crop.harvestDate?.toISOString() ?? null,
+            farmId: crop.farmId,
+          })),
+        };
+      }
+    }
     const result = providerStatus.ready === true
       ? await this.textGeneration.generate({
           ...generationRequest,
-          context: await this.userAiContext.buildContext({
-            actor: { userId, role: this.requireUserRole(req) },
-            moduleId: this.registry.getConversationModuleId(),
-            capability: 'CONVERSATION',
-            authorizationModule: 'platform',
-            references: ['userId', 'moduleId'],
-            fields: ['conversation', 'messages'],
-            authorization: {
-              resource: 'conversation',
-              resourceId: conversation.id,
-              ownerId: userId,
-            },
-            values: {
-              userId,
-              moduleId: this.registry.getConversationModuleId(),
-              conversation: {
-                id: conversation.id,
-                moduleId: conversation.moduleId,
-                title: conversation.title,
-                primaryLanguage: conversation.primaryLanguage,
-                status: conversation.status,
-              },
-              messages: conversation.messages.slice(-20).map((message) => ({
-                role: message.role,
-                content: message.content,
-                language: message.language,
-                createdAt: message.createdAt,
-              })),
-            },
-          }),
+          ...(aiContext ? { context: aiContext } : {}),
         })
       : await this.textGeneration.generate(generationRequest);
 

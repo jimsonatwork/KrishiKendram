@@ -3174,3 +3174,10 @@ Existing update services accept an optional Prisma transaction client; standard 
 Open gates: multi-field create handlers for new Farm/Crop/Livestock/Marketplace records; FarmAsset/FarmRecord apply handlers; central Crop field definitions beyond name; authenticated database-backed end-to-end tests; full God Mode UI approval path; Indic-language model quality/safety/concurrency acceptance. This slice is PARTIAL and does not change provider productionReady=false.
 
 Verification checkpoint - 2026-10-14: backend production build passed; full backend regression passed (53 suites / 500 tests); frontend production build passed; focused AI authorization and registry tests passed; API and UI health endpoints returned HTTP 200. Final diff validation follows documentation updates.
+
+
+## 2026-10-14 - Application-visible local AI and crop context path
+
+- The canonical application provider bridge is KK-AI-LLM-OLLAMA-LOCAL in explicit development evaluation mode only; productionReady remains false and cloud fallback/direct AI database writes remain disabled.
+- The centrally linked ai/context/data-context-intents.json maps crop-list questions to KK-CROP-001. The conversation context is authorized first, then CropsService.findMyCrops performs owner-scoped READ authorization; the model receives a capped projection of crop name, variety, sowing date, harvest date, and farm ID as data, not instructions.
+- Acceptance still required: authenticated browser test for exact farmer crop records, empty-list behavior, cross-user isolation, Indic-language queries, and production quality/safety gates.
