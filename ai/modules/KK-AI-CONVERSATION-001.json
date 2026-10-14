@@ -1,7 +1,7 @@
 {
   "moduleId": "KK-AI-CONVERSATION-001",
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "contract": {
     "moduleName": "Canonical AI Conversation Foundation",
@@ -42,9 +42,7 @@
       "tokens",
       "authorizationHeaders"
     ],
-    "candidateFactTargets": [
-      "ConversationFactCandidate"
-    ],
+    "candidateFactTargets": [],
     "confirmationPolicy": "REQUIRED_BEFORE_APPLYING_FACTS_OR_ACTIONS",
     "provenancePolicy": "REQUIRED",
     "auditPolicy": "REQUIRED"

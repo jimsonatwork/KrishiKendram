@@ -1224,3 +1224,10 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Added the canonical voice-intent manifest and authenticated server endpoint; removed the duplicate frontend route/phrase tables.
 - Added persisted account-status and canonical God Mode authority filtering for privileged voice intents, with explicit restricted-intent explanations.
 - Added a centrally linked, disabled cloud-connection policy and an unimplemented provider candidate; cloud activation and fallback remain blocked pending the full approval/consent/provider/secret-store/evaluation/audit/rollback workflow.
+
+- 2026-10-13: Added the JWT-protected cross-module conversation fact-draft API. Drafts use canonical AI module/entity eligibility, platform resource-field normalization/validation, server-side resource CREATE/UPDATE plus field WRITE authorization, user-message evidence, explicit provenance, and mandatory confirmation; no direct domain writes are performed.
+- 2026-10-13: Corrected cross-registry target mismatches by versioning AI module contracts to v2 and restricting `candidateFactTargets` to entities actually registered in the platform resource registry. Internal conversation persistence is no longer exposed as a farmer fact target. Own-profile drafts require matching authenticated user ID and UPDATE authorization.
+
+- 2026-10-13: Added preview-hash-bound fact draft confirmation/rejection with reauthorization and atomic audit/status transitions. Voice Agent can list and review drafts with original evidence and validation errors; confirmation is explicitly not application to domain records.
+
+- 2026-10-13: Made fact-draft creation atomic with `AI_FACT_DRAFT_CREATED` audit logging; a missing audit service now fails closed instead of saving an unlogged candidate.

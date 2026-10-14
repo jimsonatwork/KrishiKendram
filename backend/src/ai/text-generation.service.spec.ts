@@ -63,12 +63,45 @@ describe('TextGenerationService', () => {
     expect(registry.assertCapabilityAllowed).not.toHaveBeenCalled();
   });
 
+  it('allows explicitly opted-in local evaluation without claiming production readiness', () => {
+    const originalOptIn = process.env.KK_AI_ALLOW_LOCAL_EVALUATION;
+    const originalProviderId = provider.providerId;
+    try {
+      process.env.KK_AI_ALLOW_LOCAL_EVALUATION = 'true';
+      provider.providerId = 'KK-AI-LLM-OLLAMA-LOCAL';
+      provider.mode = 'LOCAL';
+      registry.getControlPlaneOverview.mockReturnValue({
+        inventories: { providers: { providers: [{
+          providerId: provider.providerId,
+          capability: 'CONVERSATION',
+          status: 'EVALUATION_IN_PROGRESS',
+          productionReady: false,
+          evaluationOnly: true,
+          cloudFallbackAllowed: false,
+        }] } },
+        providerRules: { cloudFallback: false },
+      });
+      expect(service.getStatus()).toMatchObject({
+        enabled: true,
+        ready: true,
+        productionReady: false,
+        evaluationOnly: true,
+        cloudFallback: false,
+        databaseWriteAllowed: false,
+      });
+    } finally {
+      if (originalOptIn === undefined) delete process.env.KK_AI_ALLOW_LOCAL_EVALUATION;
+      else process.env.KK_AI_ALLOW_LOCAL_EVALUATION = originalOptIn;
+      provider.providerId = originalProviderId;
+    }
+  });
+
   it('passes the authorized context envelope unchanged to an approved provider', async () => {
     provider.mode = 'LOCAL';
     registry.getControlPlaneOverview.mockReturnValue({
       inventories: { providers: { providers: [{
         providerId: provider.providerId, capability: 'CONVERSATION',
-        status: 'PRODUCTION_READY', cloudFallbackAllowed: false,
+        status: 'PRODUCTION_READY', productionReady: true, cloudFallbackAllowed: false,
       }] } },
       providerRules: { cloudFallback: false },
     });

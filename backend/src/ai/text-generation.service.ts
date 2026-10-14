@@ -26,6 +26,8 @@ export class TextGenerationService {
         capability?: string;
         status?: string;
         cloudFallbackAllowed?: boolean;
+        productionReady?: boolean;
+        evaluationOnly?: boolean;
       }> } };
       providerRules?: { cloudFallback?: boolean };
     };
@@ -36,21 +38,74 @@ export class TextGenerationService {
         item.capability === 'CONVERSATION',
     );
 
-    const ready =
+    const productionReady =
       registered?.status === 'PRODUCTION_READY' &&
+      registered.productionReady === true &&
       registered.cloudFallbackAllowed === false &&
       overview.providerRules?.cloudFallback === false &&
       this.provider.mode !== 'DISABLED';
+    const localEvaluationAllowed =
+      registered?.evaluationOnly === true &&
+      registered.status === 'EVALUATION_IN_PROGRESS' &&
+      registered.cloudFallbackAllowed === false &&
+      overview.providerRules?.cloudFallback === false &&
+      this.provider.mode === 'LOCAL' &&
+      process.env.KK_AI_ALLOW_LOCAL_EVALUATION === 'true' &&
+      process.env.NODE_ENV !== 'production';
+    const ready = productionReady || localEvaluationAllowed;
 
     return {
       enabled: ready,
       ready,
+      productionReady,
+      evaluationOnly: localEvaluationAllowed,
       providerId: this.provider.providerId,
+      modelId: this.provider.modelId,
+      modelVersion: this.provider.modelVersion,
       status: registered?.status ?? 'NOT_REGISTERED',
       mode: this.provider.mode,
       cloudFallback: false,
       databaseWriteAllowed: false,
       provenanceRequired: this.registry.getProvenanceRequirements(),
+    };
+  }
+
+  async getDetailedStatus() {
+    const status = this.getStatus();
+    const checkedAt = new Date().toISOString();
+    let runtime;
+    if (this.provider.checkHealth) {
+      try {
+        runtime = await this.provider.checkHealth();
+      } catch {
+        runtime = {
+          reachable: false,
+          modelInstalled: false,
+          providerId: this.provider.providerId,
+          modelId: this.provider.modelId,
+          modelVersion: this.provider.modelVersion,
+          mode: this.provider.mode,
+          checkedAt,
+          error: 'HEALTH_CHECK_FAILED',
+        };
+      }
+    } else {
+      runtime = {
+        reachable: false,
+        modelInstalled: false,
+        providerId: this.provider.providerId,
+        modelId: this.provider.modelId,
+        modelVersion: this.provider.modelVersion,
+        mode: this.provider.mode,
+        checkedAt,
+        error: 'HEALTH_CHECK_UNAVAILABLE',
+      };
+    }
+    return {
+      ...status,
+      modelVersion: runtime.modelVersion || status.modelVersion,
+      canGenerate: status.ready,
+      runtime,
     };
   }
 

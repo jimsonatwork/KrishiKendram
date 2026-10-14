@@ -1,7 +1,7 @@
 {
   "moduleId": "KK-MARKETPLACE-001",
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "contract": {
     "moduleName": "Marketplace Foundation",
@@ -43,9 +43,7 @@
       "tokens"
     ],
     "candidateFactTargets": [
-      "MarketplaceListing",
-      "MarketplaceOffer",
-      "MarketplaceOrder"
+      "MarketplaceListing"
     ],
     "confirmationPolicy": "REQUIRED_FOR_CANONICAL_MARKETPLACE_FACTS",
     "provenancePolicy": "REQUIRED",

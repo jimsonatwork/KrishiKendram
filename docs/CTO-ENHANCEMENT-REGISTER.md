@@ -168,3 +168,12 @@ The first read-only God Mode AI inventory is implemented. Backend build passed, 
 ### Final seed and runtime verification — 2026-10-11
 
 **First AI control-plane slice: DONE.** Backend build PASS; focused AI registry tests 12/12 PASS; frontend build PASS; service restart PASS; API health HTTP 200; UI HTTP 200; protected AI route is registered and rejects unauthenticated access with HTTP 401; all eight AI God Configuration domains were verified in PostgreSQL. Next active batch: implement schema-validated file-backed configuration mutation with pre-change snapshots, dependency checks, audit and rollback; then wire provider/runtime probes.
+
+
+## 2026-10-14 - Application-visible local AI
+
+The canonical application now binds its text-generation token to KK-AI-LLM-OLLAMA-LOCAL for explicit development evaluation. The model is qwen3:1.7b; provider status remains EVALUATION_IN_PROGRESS and productionReady=false. Cloud fallback is disabled and direct AI database writes remain forbidden.
+
+Crop-list questions are mapped through the linked ai/context/data-context-intents.json manifest to KK-CROP-001. The application authorizes the conversation context before loading data, then calls CropsService.findMyCrops for owner-scoped READ authorization and sends a capped projection (crop name, variety, sowing date, harvest date, farm ID) to the model. The model receives this as data, not instructions. This does not constitute production approval.
+
+Required acceptance: authenticated browser E2E for known crop records, empty-list behavior, cross-user isolation, Indic-language cases, full regression, and independent safety/quality evaluation before production status can change.

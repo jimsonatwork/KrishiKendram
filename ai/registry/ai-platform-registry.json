@@ -139,7 +139,8 @@
     "conversationContextDocument": "../../docs/KK-AI-CONVERSATION-AND-CONTEXT.md",
     "supportingComponents": "../supporting-components.json",
     "voiceIntents": "../voice/voice-intents.json",
-    "cloudConnectionPolicy": "../connections/cloud-connection-policy.json"
+    "cloudConnectionPolicy": "../connections/cloud-connection-policy.json",
+    "dataContextIntents": "../context/data-context-intents.json"
   },
   "moduleFiles": {
     "KK-USER-001": "../modules/KK-USER-001.json",

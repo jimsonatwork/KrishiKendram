@@ -7,11 +7,13 @@ import {
 import { ConversationService } from './conversation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiRegistryService } from '../registry/ai-registry.service';
+import { AuditService } from '../../platform/audit/audit.service';
 
 describe('ConversationService AI governance', () => {
   let service: ConversationService;
   let prisma: any;
   let registry: any;
+  let audit: { createInTransaction: jest.Mock };
 
   const provenance = {
     providerId: 'local-provider',
@@ -24,6 +26,7 @@ describe('ConversationService AI governance', () => {
   };
 
   beforeEach(async () => {
+    audit = { createInTransaction: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
     prisma = {
       conversation: {
         findUnique: jest.fn().mockResolvedValue({
@@ -40,11 +43,15 @@ describe('ConversationService AI governance', () => {
         create: jest.fn().mockImplementation(({ data }) => data),
       },
       conversationFactCandidate: {
-        create: jest.fn().mockImplementation(({ data }) => data),
+        create: jest.fn().mockImplementation(({ data }) => ({ id: 'candidate-1', ...data })),
+        findMany: jest.fn().mockResolvedValue([]),
       },
     };
+    const transaction = { conversationFactCandidate: prisma.conversationFactCandidate };
+    prisma.$transaction = jest.fn().mockImplementation((callback: any) => callback(transaction));
 
     registry = {
+      assertModuleRegistered: jest.fn(),
       getProvenanceRequirements: jest.fn().mockReturnValue([
         'providerId',
         'modelId',
@@ -58,6 +65,7 @@ describe('ConversationService AI governance', () => {
       getModule: jest.fn().mockReturnValue({
         allowedFields: [],
         restrictedFields: [],
+        candidateFactTargets: ['User'],
       }),
     };
 
@@ -67,6 +75,7 @@ describe('ConversationService AI governance', () => {
         ConversationService,
         { provide: PrismaService, useValue: prisma },
         { provide: AiRegistryService, useValue: registry },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
@@ -173,21 +182,46 @@ describe('ConversationService AI governance', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('rejects a fact target that is not allowed by the module contract before opening a transaction', async () => {
+    await expect(service.createFactCandidate({
+      conversationId: 'conversation-1',
+      userId: 'user-1',
+      moduleId: 'KK-USER-001',
+      targetEntityType: 'Land',
+      proposedValue: { value: 'example' },
+      source: 'AI',
+      provenance,
+    }, 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.conversationFactCandidate.create).not.toHaveBeenCalled();
+  });
+
   it('creates a valid candidate with confirmation required', async () => {
     await service.createFactCandidate({
       conversationId: 'conversation-1',
       userId: 'user-1',
       moduleId: 'KK-USER-001',
+      targetEntityType: 'User',
       proposedValue: { value: 'example' },
       source: 'AI',
       provenance,
     }, 'user-1');
 
+    expect(prisma.$transaction).toHaveBeenCalled();
     expect(prisma.conversationFactCandidate.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           requiresConfirmation: true,
         }),
+      }),
+    );
+    expect(audit.createInTransaction).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'AI_FACT_DRAFT_CREATED',
+        resourceType: 'ConversationFactCandidate',
+        metadata: expect.objectContaining({ applied: false, requiresConfirmation: true }),
       }),
     );
   });

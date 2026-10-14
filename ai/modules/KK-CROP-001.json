@@ -1,7 +1,7 @@
 {
   "moduleId": "KK-CROP-001",
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "contract": {
     "moduleName": "Crop Foundation",
@@ -43,9 +43,7 @@
       "tokens"
     ],
     "candidateFactTargets": [
-      "Crop",
-      "CropCycle",
-      "CropActivity"
+      "Crop"
     ],
     "confirmationPolicy": "REQUIRED_FOR_CANONICAL_CROP_FACTS",
     "provenancePolicy": "REQUIRED",

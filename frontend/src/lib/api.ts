@@ -46,6 +46,40 @@ type RecordData = {
   data?: Record<string, unknown>
 }
 
+export type AiFactCandidate = {
+  id: string
+  conversationId: string
+  userId: string
+  moduleId: string
+  targetEntityType: string | null
+  targetEntityId: string | null
+  targetFieldId: string | null
+  proposedValue: unknown
+  previousValue: unknown
+  confidence: number | string | null
+  source: string
+  status: string
+  requiresConfirmation: boolean
+  validationResult: unknown
+  evidenceReference: string | null
+  provenance: unknown
+  createdAt: string
+  updatedAt: string
+  previewHash: string
+  applied?: boolean
+}
+
+export type CreateAiFactCandidateInput = {
+  targetModuleId: string
+  targetEntityType: string
+  targetEntityId?: string
+  targetFieldId: string
+  evidenceMessageId: string
+  proposedValue: unknown
+  confidence?: number
+  sessionId?: string
+}
+
 export type AdminUser = {
   id: string
   name: string
@@ -487,7 +521,7 @@ export const api = {
     source: 'TEXT' | 'VOICE',
     language?: string,
   ) =>
-    request<unknown>(
+    request<{ id: string }>(
       `/ai/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: 'POST',
@@ -497,6 +531,48 @@ export const api = {
           source,
           ...(language ? { language } : {}),
         }),
+      },
+    ),
+
+  getAiConversationHistory: (token: string, conversationId: string) =>
+    request<Array<{ id: string; role: string; content: string; language: string | null; createdAt: string }>>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/history`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
+
+  getAiFactCandidates: (token: string, conversationId: string) =>
+    request<AiFactCandidate[]>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/fact-candidates`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
+
+  createAiFactCandidate: (token: string, conversationId: string, input: CreateAiFactCandidateInput) =>
+    request<{ candidate: AiFactCandidate; previewHash: string; validation: { valid: boolean; errors: string[]; normalizedValue: unknown; requiresUserConfirmation: true; applied: false } }>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/fact-candidates`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      },
+    ),
+
+  confirmAiFactCandidate: (token: string, conversationId: string, candidateId: string, previewHash: string) =>
+    request<{ candidate: AiFactCandidate; previewHash: string; applied: false }>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/fact-candidates/${encodeURIComponent(candidateId)}/confirm`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ previewHash }),
+      },
+    ),
+
+  rejectAiFactCandidate: (token: string, conversationId: string, candidateId: string, previewHash: string, reason?: string) =>
+    request<{ candidate: AiFactCandidate; applied: false }>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/fact-candidates/${encodeURIComponent(candidateId)}/reject`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ previewHash, ...(reason ? { reason } : {}) }),
       },
     ),
 

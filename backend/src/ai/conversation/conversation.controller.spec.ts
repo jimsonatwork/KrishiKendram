@@ -8,6 +8,7 @@ import { ConversationService } from './conversation.service';
 import { AiRegistryService } from '../registry/ai-registry.service';
 import { TextGenerationService } from '../text-generation.service';
 import { UserAiContextService } from '../context/user-ai-context.service';
+import { FactDraftService } from './fact-draft.service';
 
 describe('AiConversationController', () => {
   let controller: AiConversationController;
@@ -17,10 +18,12 @@ describe('AiConversationController', () => {
     appendMessage: jest.Mock;
     listHistory: jest.Mock;
   };
-  let registry: { getConversationModuleId: jest.Mock };
+  let registry: { getConversationModuleId: jest.Mock; resolveDataContextIntent: jest.Mock };
   let textGeneration: { getStatus: jest.Mock; generate: jest.Mock };
   let userAiContext: { buildContext: jest.Mock };
   let voiceCapabilities: { getIntentsForUser: jest.Mock };
+  let factDrafts: { createDraft: jest.Mock; listDrafts: jest.Mock; confirmDraft: jest.Mock; rejectDraft: jest.Mock };
+  let crops: { findMyCrops: jest.Mock };
 
   const req = { user: { userId: 'jwt-user-1', role: 'FARMER' } };
   const contextEnvelope = {
@@ -43,6 +46,7 @@ describe('AiConversationController', () => {
     };
     registry = {
       getConversationModuleId: jest.fn().mockReturnValue('KK-AI-CONVERSATION-001'),
+      resolveDataContextIntent: jest.fn().mockReturnValue(undefined),
     };
     textGeneration = {
       getStatus: jest.fn().mockReturnValue({
@@ -52,8 +56,18 @@ describe('AiConversationController', () => {
       }),
       generate: jest.fn(),
     };
-    userAiContext = { buildContext: jest.fn().mockResolvedValue(contextEnvelope) };
+    userAiContext = { buildContext: jest.fn().mockImplementation(async () => ({
+      ...contextEnvelope,
+      fields: { conversation: contextEnvelope.fields.conversation, messages: [] },
+    })) };
     voiceCapabilities = { getIntentsForUser: jest.fn().mockResolvedValue({ intents: [] }) };
+    crops = { findMyCrops: jest.fn().mockResolvedValue([]) };
+    factDrafts = {
+      createDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1' }, validation: { valid: true, applied: false } }),
+      listDrafts: jest.fn().mockResolvedValue([]),
+      confirmDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1', status: 'CONFIRMED' }, applied: false }),
+      rejectDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1', status: 'REJECTED' }, applied: false }),
+    };
 
     controller = new AiConversationController(
       conversations as unknown as ConversationService,
@@ -61,6 +75,8 @@ describe('AiConversationController', () => {
       textGeneration as unknown as TextGenerationService,
       userAiContext as unknown as UserAiContextService,
       voiceCapabilities as never,
+      factDrafts as unknown as FactDraftService,
+      crops as never,
     );
   });
 
@@ -135,6 +151,63 @@ describe('AiConversationController', () => {
       }),
       'jwt-user-1',
     );
+  });
+
+  it('supplies only owner-authorized crop fields for a registered crop-list intent', async () => {
+    registry.resolveDataContextIntent.mockReturnValue({
+      intentId: 'KK-AI-CONTEXT-CROPS-001',
+      moduleId: 'KK-CROP-001',
+      capability: 'CONVERSATION',
+      resolver: 'USER_OWNED_CROPS',
+      phrases: ['what are my crops'],
+      fields: ['crop', 'variety', 'sowing', 'harvest'],
+      references: ['userId', 'farmId'],
+    });
+    crops.findMyCrops.mockResolvedValue([{
+      id: 'crop-1',
+      farmId: 'farm-1',
+      name: 'Wheat',
+      variety: 'HD-2967',
+      sowingDate: new Date('2026-10-01T00:00:00.000Z'),
+      harvestDate: null,
+    }]);
+    textGeneration.generate.mockResolvedValue({
+      content: 'Your registered crop is Wheat.',
+      providerId: 'KK-AI-LLM-OLLAMA-LOCAL',
+      modelId: 'qwen3:1.7b',
+      modelVersion: 'test-digest',
+      mode: 'LOCAL',
+      generatedAt: '2026-10-14T00:00:00.000Z',
+      requiresValidation: true,
+      requiresUserConfirmation: true,
+    });
+
+    await controller.respond(req, 'conversation-1', { content: 'What are my crops?' });
+
+    expect(userAiContext.buildContext).toHaveBeenCalledWith(expect.objectContaining({
+      fields: ['conversation', 'messages', 'context'],
+      values: expect.objectContaining({ context: {} }),
+    }));
+    expect(crops.findMyCrops).toHaveBeenCalledWith('jwt-user-1', 'FARMER');
+    expect(userAiContext.buildContext.mock.invocationCallOrder[0])
+      .toBeLessThan(crops.findMyCrops.mock.invocationCallOrder[0]);
+    expect(textGeneration.generate).toHaveBeenCalledWith(expect.objectContaining({
+      context: expect.objectContaining({
+        fields: expect.objectContaining({
+          context: expect.objectContaining({
+            intentId: 'KK-AI-CONTEXT-CROPS-001',
+            totalCount: 1,
+            crops: [{
+              crop: 'Wheat',
+              variety: 'HD-2967',
+              sowing: '2026-10-01T00:00:00.000Z',
+              harvest: null,
+              farmId: 'farm-1',
+            }],
+          }),
+        }),
+      }),
+    }));
   });
 
   it('does not assemble context when the provider is unavailable', async () => {
@@ -231,6 +304,80 @@ describe('AiConversationController', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(conversations.appendMessage).not.toHaveBeenCalled();
+  });
+
+  it('creates a centrally validated fact draft using the authenticated actor and explicit evidence', async () => {
+    const body = {
+      targetModuleId: 'KK-FARM-001',
+      targetEntityType: 'Farm',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'Green Valley',
+      confidence: 0.95,
+      sessionId: 'session-1',
+    };
+    await controller.createFactCandidate(req, 'conversation-1', body);
+    expect(factDrafts.createDraft).toHaveBeenCalledWith({
+      ...body,
+    }, { userId: 'jwt-user-1', role: 'FARMER' }, 'conversation-1');
+  });
+
+  it('rejects a client request to mutate an existing record through the draft endpoint', async () => {
+    expect(() => controller.createFactCandidate(req, 'conversation-1', {
+      targetModuleId: 'KK-FARM-001',
+      targetEntityType: 'Farm',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'Tampered',
+      targetEntityId: 'farm-123',
+    })).toThrow(BadRequestException);
+    expect(factDrafts.createDraft).not.toHaveBeenCalled();
+  });
+
+  it('permits a profile draft only for the authenticated user identity', async () => {
+    await controller.createFactCandidate(req, 'conversation-1', {
+      targetModuleId: 'KK-USER-001',
+      targetEntityType: 'User',
+      targetEntityId: 'jwt-user-1',
+      targetFieldId: 'name',
+      evidenceMessageId: 'user-message-1',
+      proposedValue: 'Jimson',
+    });
+    expect(factDrafts.createDraft).toHaveBeenCalledWith(expect.objectContaining({
+      targetModuleId: 'KK-USER-001',
+      targetEntityId: 'jwt-user-1',
+    }), { userId: 'jwt-user-1', role: 'FARMER' }, 'conversation-1');
+  });
+
+  it('lists fact drafts through the ownership-aware service', async () => {
+    await controller.listFactCandidates(req, 'conversation-1');
+    expect(factDrafts.listDrafts).toHaveBeenCalledWith('conversation-1', 'jwt-user-1');
+  });
+
+  it('confirms a fact candidate against a preview hash and authenticated role', async () => {
+    await controller.confirmFactCandidate(req, 'conversation-1', 'candidate-1', {
+      previewHash: 'a'.repeat(64),
+    });
+    expect(factDrafts.confirmDraft).toHaveBeenCalledWith(
+      'conversation-1',
+      'candidate-1',
+      'a'.repeat(64),
+      { userId: 'jwt-user-1', role: 'FARMER' },
+    );
+  });
+
+  it('rejects a fact candidate using the exact preview hash', async () => {
+    await controller.rejectFactCandidate(req, 'conversation-1', 'candidate-1', {
+      previewHash: 'b'.repeat(64),
+      reason: 'That is not what I said.',
+    });
+    expect(factDrafts.rejectDraft).toHaveBeenCalledWith(
+      'conversation-1',
+      'candidate-1',
+      'b'.repeat(64),
+      'jwt-user-1',
+      'That is not what I said.',
+    );
   });
 
   it('retrieves history using the authenticated user identity', async () => {

@@ -1,7 +1,7 @@
 {
   "moduleId": "KK-FARM-001",
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "contract": {
     "moduleName": "Farm Foundation",
@@ -43,9 +43,8 @@
     ],
     "candidateFactTargets": [
       "Farm",
-      "Land",
-      "FarmActivity",
-      "FarmAsset"
+      "FarmAsset",
+      "FarmRecord"
     ],
     "confirmationPolicy": "REQUIRED_FOR_CANONICAL_FARM_FACTS",
     "provenancePolicy": "REQUIRED",

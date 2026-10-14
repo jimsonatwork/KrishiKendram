@@ -130,9 +130,8 @@ describe('AiRegistryService', () => {
     expect(diagnostics.executedProviderCode).toBe(false);
     expect(diagnostics.networkChecksPerformed).toBe(false);
     expect(diagnostics.secretValuesExposed).toBe(false);
-    // Diagnostics include ASR, unavailable local generation, and the disabled
-    // cloud candidate; none may be reported ready from file presence alone.
-    expect(diagnostics.providers).toHaveLength(3);
+    // Diagnostics include ASR, unavailable generation, evaluation-only local generation, and the disabled cloud candidate; none may be reported ready from file presence alone.
+    expect(diagnostics.providers).toHaveLength(4);
     expect(diagnostics.providers.find((provider) => provider.providerId === 'KK-AI-CLOUD-TEXT-CONNECTION-CANDIDATE')?.ready).toBe(false);
     expect(diagnostics.runtimes).toHaveLength(2);
     expect(diagnostics.providers.every((provider) => provider.ready === false)).toBe(true);
