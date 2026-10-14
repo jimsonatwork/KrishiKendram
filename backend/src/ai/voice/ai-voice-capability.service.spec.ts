@@ -35,6 +35,11 @@ describe('AiVoiceCapabilityService', () => {
     const result = await service.getIntentsForUser('user-1');
     expect(result.intents.map((intent) => intent.intentId)).toEqual(['NAV-FARMS']);
     expect(result.restrictedIntents.map((intent) => intent.intentId)).toEqual(['NAV-GOD']);
+    expect(result.cropTerminology).toMatchObject({
+      resourceId: 'KK-AI-CROP-TERMINOLOGY-001',
+      crops: expect.arrayContaining([expect.objectContaining({ name: 'Mango' })]),
+      numberWords: expect.objectContaining({ one: 1 }),
+    });
     expect(result.privilegedIntentsAvailable).toBe(false);
   });
 

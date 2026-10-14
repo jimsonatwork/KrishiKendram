@@ -12,6 +12,74 @@ type Recognition = {
 }
 type SpeechWindow = Window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }
 type VoiceTurn = { id: number; speaker: 'You' | 'Krishi'; text: string; at: string }
+type VoiceFarm = { id: string; name: string; location?: string }
+type VoiceCropIntakeDraft = {
+  content: string
+  cropName?: string
+  area?: number
+  unit?: string
+  phase: 'NEEDS_CROP' | 'NEEDS_FARM' | 'PREVIEW'
+  farms: VoiceFarm[]
+  farmId?: string
+  farmName?: string
+}
+type VoiceCropTerminology = {
+  resourceId: string
+  version: number
+  ownerModule: string
+  plantingVerbs: string[]
+  imperativeCropAction: string
+  crops: Array<{ name: string; aliases: string[] }>
+  areaUnits: string[]
+  numberWords: Record<string, number>
+}
+const findKnownCrop = (text: string, vocabulary: VoiceCropTerminology | null) => {
+  if (!vocabulary) return undefined
+  const normalized = text.normalize('NFKC').toLocaleLowerCase()
+  return vocabulary.crops.find(crop => crop.aliases.some(alias =>
+    new RegExp('\\b' + alias.replace(/ /g, '\\s+') + '\\b', 'i').test(normalized),
+  ))?.name
+}
+const isPlantingRequest = (text: string, vocabulary: VoiceCropTerminology | null) => {
+  if (!vocabulary) return false
+  const plantingVerb = new RegExp('\\b(' + vocabulary.plantingVerbs.join('|') + ')\\b', 'i')
+  const imperative = new RegExp('^\\s*' + vocabulary.imperativeCropAction + '\\s+', 'i')
+  return plantingVerb.test(text) || (imperative.test(text) && Boolean(findKnownCrop(text, vocabulary)))
+}
+const parseSpokenArea = (text: string, vocabulary: VoiceCropTerminology | null): { area?: number; unit?: string } => {
+  if (!vocabulary) return {}
+  const numberWords = Object.keys(vocabulary.numberWords).join('|')
+  const areaUnits = vocabulary.areaUnits.join('|')
+  const match = text.normalize('NFKC').toLocaleLowerCase().match(
+    new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i'),
+  )
+  if (!match) return {}
+  const amount = match[1].toLowerCase()
+  return { area: vocabulary.numberWords[amount] ?? Number(amount), unit: match[2] }
+}
+const replaceCropInText = (content: string, oldCrop: string | undefined, nextCrop: string) => {
+  if (oldCrop) {
+    const pattern = new RegExp('\\b' + oldCrop.replace(/ /g, '\\s+') + '\\b', 'i')
+    if (pattern.test(content)) return content.replace(pattern, nextCrop)
+  }
+  return content + '. Crop: ' + nextCrop
+}
+const replaceAreaInText = (content: string, area: number, unit: string, vocabulary: VoiceCropTerminology | null) => {
+  if (!vocabulary) return content
+  const numberWords = Object.keys(vocabulary.numberWords).join('|')
+  const areaUnits = vocabulary.areaUnits.join('|')
+  const pattern = new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i')
+  const replacement = String(area) + ' ' + unit
+  return pattern.test(content) ? content.replace(pattern, replacement) : content + '. Area ' + replacement
+}
+const cropPreviewText = (draft: VoiceCropIntakeDraft) => [
+  'Planting draft — nothing has been saved yet.',
+  'Farm: ' + (draft.farmName ?? 'not selected'),
+  'Crop: ' + (draft.cropName ?? 'not identified'),
+  draft.area === undefined ? 'Area: not provided' : 'Area: ' + draft.area + ' ' + (draft.unit ?? 'unit not specified'),
+  'Season: Unknown because it was not specified. Status: Sown. Planting date: today.',
+  'Say “confirm” to save through the authorized intake workflow, or “cancel” to discard this draft.',
+].join(' ')
 const LANGUAGES = [
   ['en-IN','English'],['hi-IN','हिन्दी'],['te-IN','తెలుగు'],['ta-IN','தமிழ்'],['kn-IN','ಕನ್ನಡ'],
   ['ml-IN','മലയാളം'],['bn-IN','বাংলা'],['mr-IN','मराठी'],['gu-IN','ગુજરાતી'],['pa-IN','ਪੰਜਾਬੀ'],
@@ -61,6 +129,9 @@ export function VoiceAgent({ role }: { role: string }) {
   const [draftEvidence, setDraftEvidence] = useState<Record<string, string>>({})
   const [draftReviewOpen, setDraftReviewOpen] = useState(false)
   const [draftBusy, setDraftBusy] = useState(false)
+  const [intakeDraft, setIntakeDraft] = useState<VoiceCropIntakeDraft | null>(null)
+  const [cropTerminology, setCropTerminology] = useState<VoiceCropTerminology | null>(null)
+  const intakeCommitInFlight = useRef(false)
   const lastEvidenceMessageId = useRef<string | null>(null)
   const admin = role === 'SUPER_ADMIN' && voiceIntents.some(intent => intent.access === 'SYSTEM_GOD')
 
@@ -72,6 +143,9 @@ export function VoiceAgent({ role }: { role: string }) {
 
   useEffect(() => {
     let active = true
+    // Never carry a pending farm/crop draft or stale vocabulary across account changes.
+    setIntakeDraft(null)
+    setCropTerminology(null)
     if (!accessToken) {
       setVoiceIntents([])
       setNavigationPrefixes([])
@@ -82,6 +156,7 @@ export function VoiceAgent({ role }: { role: string }) {
     api.getAiVoiceIntents(accessToken).then(result => {
       if (!active) return
       setVoiceIntents(result.intents)
+      setCropTerminology(result.cropTerminology ?? null)
       setNavigationPrefixes(result.navigationPrefixes ?? [])
       setRestrictedIntents(result.restrictedIntents ?? [])
       setIntentManifestReady(true)
@@ -249,6 +324,147 @@ export function VoiceAgent({ role }: { role: string }) {
       window.speechSynthesis.speak(u)
     }
   }
+
+  const beginCropIntakeDraft = async (content: string, cropName: string | undefined, epoch: number) => {
+    if (!cropName) {
+      setIntakeDraft({ content, ...parseSpokenArea(content, cropTerminology), phase: 'NEEDS_CROP', farms: [] })
+      say('I understood that you planted something, but I could not identify the crop confidently. Please say the crop name, for example mango, rice, maize or cotton. Nothing has been saved.')
+      return
+    }
+    if (!accessToken) {
+      setIntakeDraft(null)
+      say('Please sign in again before preparing a planting record. Nothing has been saved.')
+      return
+    }
+    let farms: VoiceFarm[]
+    try {
+      const loaded = await api.farms(accessToken)
+      if (epoch !== turnEpoch.current) return
+      farms = (Array.isArray(loaded) ? loaded : []).filter(
+        (farm: VoiceFarm) => typeof farm?.id === 'string' && typeof farm?.name === 'string',
+      )
+    } catch {
+      if (epoch === turnEpoch.current) {
+        setIntakeDraft(null)
+        say('I could not load your authorized farms, so I did not prepare or save a planting record. Please try again.')
+      }
+      return
+    }
+    if (epoch !== turnEpoch.current) return
+    if (farms.length === 0) {
+      setIntakeDraft(null)
+      say('You do not have an accessible farm to attach this planting to. Create or activate your farm first; nothing was saved.')
+      return
+    }
+    const area = parseSpokenArea(content, cropTerminology)
+    if (farms.length === 1) {
+      const draft: VoiceCropIntakeDraft = {
+        content, cropName, ...area, phase: 'PREVIEW', farms,
+        farmId: farms[0].id, farmName: farms[0].name,
+      }
+      setIntakeDraft(draft)
+      say(cropPreviewText(draft))
+      return
+    }
+    const draft: VoiceCropIntakeDraft = { content, cropName, ...area, phase: 'NEEDS_FARM', farms }
+    setIntakeDraft(draft)
+    say('Which farm should I use for the ' + cropName + ' planting? Say one farm name: ' + farms.map(farm => farm.name).join(', ') + '. Nothing has been saved.')
+  }
+
+  const confirmCropIntake = async (draft: VoiceCropIntakeDraft) => {
+    if (!accessToken || !draft.farmId || !draft.cropName) {
+      setIntakeDraft(null)
+      say('The planting draft is missing its farm or crop. Nothing was saved; please start again.')
+      return
+    }
+    intakeCommitInFlight.current = true
+    setMessage('Saving the confirmed planting through the authorized farm intake service…')
+    try {
+      const result = await api.createIntake({
+        farmId: draft.farmId,
+        inputMethod: 'VOICE',
+        content: draft.content,
+      }, accessToken) as {
+        createdCrop?: { id?: string; name?: string }
+        category?: string
+      }
+      setIntakeDraft(null)
+      if (result?.category === 'PLANTING' && result.createdCrop?.id && result.createdCrop.name) {
+        say('Saved. The ' + result.createdCrop.name + ' crop record was created for ' + (draft.farmName ?? 'your selected farm') + ', and its farm activity history was saved.')
+      } else {
+        say('The server returned an intake response but did not confirm a created crop record ID. Please check the Crops and farm History pages before assuming the crop was saved.')
+      }
+    } catch {
+      // A network failure can occur after a server commit. Avoid an automatic
+      // retry that might create a duplicate; ask the farmer to verify history.
+      setIntakeDraft(null)
+      say('I could not verify the save result. Please check the selected farm’s Crops and History pages before retrying, to avoid creating a duplicate.')
+    } finally {
+      intakeCommitInFlight.current = false
+    }
+  }
+
+  const handleCropDraftTurn = async (original: string, q: string, draft: VoiceCropIntakeDraft, epoch: number) => {
+    if (/^(cancel|cancel draft|discard|no|do not save|don't save|stop)$/i.test(q)) {
+      setIntakeDraft(null)
+      say('Planting draft discarded. No crop or farm record was changed.')
+      return
+    }
+    if (draft.phase === 'NEEDS_CROP') {
+      const cropName = findKnownCrop(original, cropTerminology)
+      if (!cropName) {
+        say('Please name a crop I can identify, such as mango, rice, maize or cotton. Nothing has been saved.')
+        return
+      }
+      await beginCropIntakeDraft(replaceCropInText(draft.content, undefined, cropName), cropName, epoch)
+      return
+    }
+    if (draft.phase === 'NEEDS_FARM') {
+      const farm = draft.farms.find(item => q.includes(item.name.toLocaleLowerCase()))
+      if (!farm) {
+        say('I could not match that to a farm you can access. Please say one of these names: ' + draft.farms.map(item => item.name).join(', ') + '. Nothing has been saved.')
+        return
+      }
+      const next: VoiceCropIntakeDraft = { ...draft, phase: 'PREVIEW', farmId: farm.id, farmName: farm.name }
+      setIntakeDraft(next)
+      say(cropPreviewText(next))
+      return
+    }
+    if (/^(confirm|confirm save|save|yes|yes save|okay|ok)$/i.test(q)) {
+      await confirmCropIntake(draft)
+      return
+    }
+
+    let next = { ...draft }
+    let changed = false
+    const cropCorrection = findKnownCrop(original, cropTerminology)
+    if (cropCorrection && /(change|correct|actually|instead|crop|make it|not)/i.test(q)) {
+      next.content = replaceCropInText(next.content, next.cropName, cropCorrection)
+      next.cropName = cropCorrection
+      changed = true
+    }
+    const areaCorrection = parseSpokenArea(original, cropTerminology)
+    if (areaCorrection.area !== undefined && /(area|acre|hectare|land|change|correct|actually)/i.test(q)) {
+      next.content = replaceAreaInText(next.content, areaCorrection.area, areaCorrection.unit ?? 'acre', cropTerminology)
+      next.area = areaCorrection.area
+      next.unit = areaCorrection.unit
+      changed = true
+    }
+    const farmCorrection = draft.farms.find(item =>
+      q.includes(item.name.toLocaleLowerCase()) && /(farm|change|use|select|switch|actually)/i.test(q),
+    )
+    if (farmCorrection) {
+      next.farmId = farmCorrection.id
+      next.farmName = farmCorrection.name
+      changed = true
+    }
+    if (changed) {
+      setIntakeDraft(next)
+      say(cropPreviewText(next))
+      return
+    }
+    say('The planting draft is still unsaved. Say “confirm” to save, “cancel” to discard, or say a correction such as “change crop to rice” or “change area to two acres”.')
+  }
   const command = async (raw:string, source: 'TEXT' | 'VOICE' = 'TEXT') => {
     const original = raw.trim()
     const q = original.toLocaleLowerCase()
@@ -314,6 +530,28 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
 
+    if (intakeDraft) {
+      const savedId = await persistence
+      if (controller.signal.aborted || epoch !== turnEpoch.current) return
+      if (!savedId) {
+        say('I could not save this turn, so the planting draft was not changed or submitted. Please try again.')
+        return
+      }
+      await handleCropDraftTurn(original, q, intakeDraft, epoch)
+      return
+    }
+
+    if (isPlantingRequest(original, cropTerminology)) {
+      const savedId = await persistence
+      if (controller.signal.aborted || epoch !== turnEpoch.current) return
+      if (!savedId) {
+        say('I could not save your planting request, so I did not prepare or submit a crop record. Please try again.')
+        return
+      }
+      await beginCropIntakeDraft(original, findKnownCrop(original, cropTerminology), epoch)
+      return
+    }
+
     setMessage('Saving your question and preparing a local answer…')
     const id = await persistence
     if (controller.signal.aborted || epoch !== turnEpoch.current) {
@@ -360,6 +598,16 @@ export function VoiceAgent({ role }: { role: string }) {
     }
   }
   const stopConversation = () => {
+    if (intakeCommitInFlight.current) {
+      // A confirmed write cannot be safely canceled once the request is sent.
+      speechSuppressed.current = true
+      rec.current?.stop()
+      rec.current = null
+      setListening(false)
+      window.speechSynthesis?.cancel()
+      setMessage('A confirmed planting save is already processing. It cannot be safely canceled; wait for the verified result.')
+      return
+    }
     // Invalidate before aborting: a provider may resolve concurrently with abort.
     turnEpoch.current += 1
     speechSuppressed.current = true
@@ -374,6 +622,10 @@ export function VoiceAgent({ role }: { role: string }) {
   }
 
   const listen = () => {
+    if (intakeCommitInFlight.current) {
+      setMessage('A confirmed planting save is processing. Wait for its result before starting another voice command.')
+      return
+    }
     if (listening) { stopConversation(); return }
     // Pressing Speak during a reply is an interrupt-and-correct action.
     // Cancel speech and the in-flight request, then immediately reopen listening.

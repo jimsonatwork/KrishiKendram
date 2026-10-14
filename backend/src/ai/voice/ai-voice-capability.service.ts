@@ -3,6 +3,7 @@ import { AuthorityTier, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GodModeService } from '../../platform/god-mode/god-mode.service';
 import { AiRegistryService } from '../registry/ai-registry.service';
+import { CROP_TERMINOLOGY } from '../registry/crop-terminology';
 
 @Injectable()
 export class AiVoiceCapabilityService {
@@ -50,6 +51,7 @@ export class AiVoiceCapabilityService {
       authorizationSource: 'PERSISTED_ACCOUNT_AND_CANONICAL_GOD_AUTHORITY',
       intents,
       restrictedIntents,
+      cropTerminology: CROP_TERMINOLOGY,
       privilegedIntentsAvailable: isCanonicalGod,
       note: 'Intent discovery does not grant data access or permission to mutate records.',
     };

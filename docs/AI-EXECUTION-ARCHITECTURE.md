@@ -129,15 +129,17 @@ KrishiKendram uses one governed AI gateway with task-aware, interchangeable prov
 - Added a monotonically increasing VoiceAgent turn epoch so interrupted requests cannot publish stale late answers.
 
 ### Acceptance status and limits
-- Verification: full AI regression gate passed 13 suites / 125 tests; the focused gate covers 6 suites / 67 tests. Backend build and frontend TypeScript/Vite production build passed on 2026-10-14.
+- Verification after the voice-intake and shared-vocabulary changes: AI + intake regression gate passed 15 suites / 140 tests; backend build and frontend TypeScript/Vite production build passed on 2026-10-14.
 - Multiple production-approved inference models are not yet verified. The current inventory contains an evaluation-only local Ollama adapter and a disabled provider; do not claim a production multi-model fleet until additional adapters are installed, registered, approved and benchmarked.
 - A short local Ollama health probe timed out; runtime reachability is not confirmed by this probe.
-- Backend build and frontend build must pass before this batch is considered verified.
-- Farm listing remains deterministic and owner-scoped. A complete voice-to-crop-creation workflow, with required-field collection, preview, confirmation and module-service persistence, remains a separate acceptance gate.
+- Backend build and frontend build both passed after the shared-vocabulary and voice-intake changes; rerun both after subsequent source changes.
+- Farm listing remains deterministic and owner-scoped. Guided voice-to-crop intake now creates an ephemeral draft, resolves an authorized farm, previews crop/area/defaults, accepts crop/area/farm corrections, and only calls the authorized intake service after explicit confirmation. The backend returns the created crop ID from the same transaction as the farm history record.
+- Crop aliases, planting verbs, area units and spoken number words now have one canonical source in backend/src/ai/registry/crop-terminology.ts, linked from the platform registry and served through the authenticated voice-intent manifest. The browser no longer maintains a second crop catalogue.
+- Remaining acceptance: test the complete voice flow in an authenticated browser with one farm and multiple farms, confirm cancel/correction behavior, and verify the created crop and history record against the database.
 
 ### Next gates
-1. Complete backend build and frontend build without disrupting active application services.
+1. Run the authenticated browser acceptance test for the voice-to-crop workflow without disrupting active application services.
 2. Add provider contract tests for each new adapter and ensure task priority never bypasses registry authorization.
 3. Benchmark installed local model candidates under the host's resource limits before approving concurrent inference.
-4. Complete a module-owned multi-field create workflow and test actual persisted results.
+4. Extend the guided workflow to other module-owned create/update actions only after the crop vertical slice passes browser verification.
 5. Add governed outcome/correction capture and regression publication; no raw-conversation training or automatic permission changes.

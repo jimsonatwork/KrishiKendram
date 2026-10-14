@@ -1511,6 +1511,15 @@ Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. I
 - Decision: build one centralized, governed AI gateway with interchangeable task-aware adapters, deterministic-first execution, authorized context projection and module-owned persistence.
 - Implemented: task contracts (CONVERSATION, STRUCTURED_EXTRACTION, ADVANCED_REASONING), provider-pool injection, canonical-inventory authorization before routing priority, deterministic task classifier, and VoiceAgent turn-epoch invalidation for stale responses.
 - Safety: unregistered providers cannot be selected; this path only admits approved local providers; cloud fallback remains disabled; provider priority never grants permissions; model output cannot write directly to the database.
-- Verification evidence: targeted AI gate passed 6 suites / 65 tests on 2026-10-14. Backend and frontend builds are pending verification in this execution batch.
+- Verification evidence after voice-intake/shared-vocabulary changes: AI + intake gate passed 15 suites / 140 tests; backend and frontend production builds both passed on 2026-10-14.
 - Explicit limitation: routing foundation does not prove multiple production-approved models are installed or live. Existing local Ollama is evaluation-only in the registry; a short runtime probe timed out. Do not represent the platform as production-ready multi-model AI yet.
-- Remaining high-value acceptance gate: voice-driven crop creation must collect required fields, resolve the user's farm, preview and confirm, then persist through the authorized crop module service. Farm listing and other deterministic actions must remain usable without an LLM.
+- Implemented vertical slice: voice-driven planting requests collect the crop, resolve an authorized farm, preview area and defaulted fields, support corrections/cancellation, and require an explicit spoken confirmation before calling the authorized intake service. The backend returns the created crop ID from the same transaction as the farm history record. Remaining acceptance: authenticated browser verification for one/multiple farms and checking actual persisted crop/history rows.
+
+
+## 2026-10-14 — Central crop vocabulary and confirmed voice intake
+
+- One canonical vocabulary is maintained at backend/src/ai/registry/crop-terminology.ts and referenced by ai/registry/ai-platform-registry.json. The authenticated voice-intent manifest delivers this same vocabulary to the frontend; no duplicate crop catalogue is maintained in VoiceAgent.
+- Supported initial voice flow: detect an explicit planting request, capture a recognized crop and spoken area (number words one through ten), resolve the user's accessible farm, preview the draft and default values, accept crop/area/farm corrections, then save only after explicit confirmation.
+- Writes use the existing authorized AI Intake -> CropsService/FarmsService transaction. The service returns a compact createdCrop {id,name} confirmation only when the crop record was actually created. No direct AI database write was added.
+- Safety: cancel before confirmation creates no record; a failed/ambiguous response does not auto-retry a mutation, to avoid duplicates; draft state is cleared on account/token changes; pressing Speak is blocked while a confirmed write is processing.
+- Verification: AI + intake tests passed 15 suites / 140 tests; backend build and frontend TypeScript/Vite production build passed. Browser end-to-end and database-result verification remain outstanding.

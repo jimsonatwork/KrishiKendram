@@ -145,7 +145,7 @@ describe('IntakeService', () => {
       id: 'record-1',
     });
 
-    await service.create(
+    const result = await service.create(
       'user-1',
       UserRole.FARMER,
       {
@@ -154,6 +154,7 @@ describe('IntakeService', () => {
         content: 'planted rice',
       },
     );
+    expect(result).toMatchObject({ id: 'record-1', createdCrop: { id: 'crop-1', name: 'Rice' } });
 
     expect(cropsService.createFromIntakeInTransaction).toHaveBeenCalledWith(
       transaction,

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CROP_TERMINOLOGY } from '../../ai/registry/crop-terminology';
 
 export interface IntakeExtraction {
   raw: string;
@@ -39,14 +40,25 @@ export class IntakeExtractorService {
     };
 
     /*
-     * Crop / planting detection
+     * Crop / planting detection.
+     * Every recognized crop requires a planting verb or explicit imperative
+     * crop action so ordinary crop questions do not become farm records.
      */
-    if (text.includes('rice') || text.includes('paddy')) {
+    const cropCatalogue = CROP_TERMINOLOGY.crops;
+    const plantingVerbPattern = new RegExp(
+      '\\b(' + CROP_TERMINOLOGY.plantingVerbs.join('|') + ')\\b',
+      'i',
+    );
+    const plantingVerb = plantingVerbPattern.test(text) ||
+      new RegExp('^\\s*' + CROP_TERMINOLOGY.imperativeCropAction + '\\s+').test(text);
+    const matchedCrop = cropCatalogue.find((crop) =>
+      crop.aliases.some((alias) =>
+        new RegExp('\\b' + alias.replace(/ /g, '\\s+') + '\\b', 'i').test(text),
+      ),
+    );
+    if (matchedCrop && plantingVerb) {
       result.category = 'PLANTING';
-
-      result.crop = {
-        name: text.includes('rice') ? 'Rice' : 'Paddy',
-      };
+      result.crop = { name: matchedCrop.name };
     }
 
     /*
@@ -88,13 +100,18 @@ export class IntakeExtractorService {
         type: 'PLANTING',
       };
 
+      const numberWords = Object.keys(CROP_TERMINOLOGY.numberWords).join('|');
+      const areaUnits = CROP_TERMINOLOGY.areaUnits.join('|');
       const areaMatch = text.match(
-        /(\d+(?:\.\d+)?)\s*(acre|acres|hectare|hectares)/,
+        new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i'),
       );
 
       if (areaMatch) {
-        result.activity.area = Number(areaMatch[1]);
-        result.activity.unit = areaMatch[2];
+        const amount = areaMatch[1].toLowerCase();
+        result.activity.area = CROP_TERMINOLOGY.numberWords[
+          amount as keyof typeof CROP_TERMINOLOGY.numberWords
+        ] ?? Number(amount);
+        result.activity.unit = areaMatch[2].toLowerCase();
       }
     }
 

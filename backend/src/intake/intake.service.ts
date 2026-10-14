@@ -85,11 +85,12 @@ export class IntakeService {
      * Intake write-set, including their audit/relationship writes.
      */
     return this.prisma.$transaction(async (tx) => {
+      let createdCrop: Awaited<ReturnType<CropsService['createFromIntakeInTransaction']>> | undefined;
       if (
         extracted.category === 'PLANTING' &&
         extracted.crop
       ) {
-        await this.cropsService.createFromIntakeInTransaction(
+        createdCrop = await this.cropsService.createFromIntakeInTransaction(
           tx,
           dto.farmId,
           {
@@ -103,7 +104,7 @@ export class IntakeService {
         );
       }
 
-      return this.farmsService.addRecordInTransaction(
+      const farmRecord = await this.farmsService.addRecordInTransaction(
         tx,
         dto.farmId,
         {
@@ -115,6 +116,11 @@ export class IntakeService {
         userId,
         role,
       );
+      // Return confirmation of the domain record created in the same transaction.
+      // Non-planting intake keeps its historical response shape.
+      return createdCrop
+        ? { ...farmRecord, createdCrop: { id: createdCrop.id, name: createdCrop.name } }
+        : farmRecord;
     });
   }
 }

@@ -456,6 +456,16 @@ export const api = {
       manifestVersion: number
       navigationPrefixes: string[]
       authorizationSource: string
+      cropTerminology: {
+        resourceId: string
+        version: number
+        ownerModule: string
+        plantingVerbs: string[]
+        imperativeCropAction: string
+        crops: Array<{ name: string; aliases: string[] }>
+        areaUnits: string[]
+        numberWords: Record<string, number>
+      }
       privilegedIntentsAvailable: boolean
       restrictedIntents: Array<{ intentId: string; label: string; phrases: string[]; moduleId: string }>
       intents: Array<{

@@ -164,5 +164,19 @@
     "modelEvaluationChangesLiveSelection": false,
     "productionSwitchRequiresApprovedModel": true,
     "cloudFallback": false
+  },
+  "sharedResources": {
+    "cropTerminology": {
+      "resourceId": "KK-AI-CROP-TERMINOLOGY-001",
+      "version": 1,
+      "ownerModule": "KK-CROP-001",
+      "implementation": "backend/src/ai/registry/crop-terminology.ts",
+      "exposedBy": "GET /ai/conversations/voice-intents",
+      "consumers": [
+        "VoiceAgent",
+        "IntakeExtractorService"
+      ],
+      "purpose": "Single source for crop aliases, planting verbs, spoken quantities and area units."
+    }
   }
 }
