@@ -3180,3 +3180,7 @@ KrishiKendram AI is being implemented as one centrally governed gateway with int
 The AI platform registry now links one canonical crop terminology source at backend/src/ai/registry/crop-terminology.ts. The backend intake extractor and frontend VoiceAgent consume the same crop aliases, planting verbs, area units and spoken number words; the authenticated voice-intent manifest supplies the vocabulary to the browser.
 
 The first voice-to-data vertical slice recognizes explicit planting requests, asks for a missing crop or farm when needed, previews crop/area/defaults, supports corrections and cancellation, and writes only after explicit confirmation. Confirmation calls the existing authorized intake service, which creates the crop and farm-history record in one transaction and returns the created crop ID. Ambiguous network outcomes do not trigger automatic mutation retries. AI + intake tests passed 15 suites / 140 tests and both backend/frontend builds passed. Authenticated browser testing and direct verification of persisted rows remain required; additional model adapters are still subject to registry approval and benchmarking.
+
+## 2026-10-14 — AI/web toolchain decisions
+
+The external toolchain review is documented in docs/AI-TOOLCHAIN-ADOPTION-REVIEW.md. Third-party agent runtimes remain outside the farmer-facing application; Playwright and axe-core are development-only verification tools. The local Qwen3.5 0.8B model remains an evaluation candidate and must not be promoted without a measured benchmark, manual review, and God Mode approval.

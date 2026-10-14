@@ -143,3 +143,11 @@ KrishiKendram uses one governed AI gateway with task-aware, interchangeable prov
 3. Benchmark installed local model candidates under the host's resource limits before approving concurrent inference.
 4. Extend the guided workflow to other module-owned create/update actions only after the crop vertical slice passes browser verification.
 5. Add governed outcome/correction capture and regression publication; no raw-conversation training or automatic permission changes.
+
+## 2026-10-14 — External agent and web toolchain review
+
+- Added docs/AI-TOOLCHAIN-ADOPTION-REVIEW.md to record the decision and security boundaries; the canonical AI platform registry now links this review as toolchainAdoptionReview (registry version 4) for Hermes Agent, OpenMuse, OpenChamber, OpenCharm, OpenHands, Snyk DeepCode AI, Playwright and axe-core.
+- Decision: keep the farmer-facing runtime on the existing governed AI registry and module services. Adopt Hermes-style approved skill evolution, OpenMuse-style visible task outcomes as a future supervised workspace pattern, OpenChamber-style isolated multi-model development runs, and Playwright/axe-core as release tooling. Do not embed a second agent runtime or grant external agents direct DB authority.
+- The installed local Ollama runtime reports Qwen3 1.7B and Qwen3.5 0.8B. Qwen3.5 remains an unlinked evaluation candidate. Benchmarking must run only in a maintenance window because the benchmark intentionally unloads and reloads the live local model; it must not be run against an active farmer workload.
+- Snyk DeepCode AI remains an optional security-review integration pending data-disclosure, licensing, cost and CI integration review. The public deepcode_ai_fix repository is archived and is not treated as the complete maintained product.
+- Playwright + axe-core are being added as development-only dependencies for mock-backed browser acceptance tests. These tests do not replace an authenticated test-environment run or DB persistence verification.

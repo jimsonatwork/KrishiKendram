@@ -1523,3 +1523,7 @@ Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. I
 - Writes use the existing authorized AI Intake -> CropsService/FarmsService transaction. The service returns a compact createdCrop {id,name} confirmation only when the crop record was actually created. No direct AI database write was added.
 - Safety: cancel before confirmation creates no record; a failed/ambiguous response does not auto-retry a mutation, to avoid duplicates; draft state is cleared on account/token changes; pressing Speak is blocked while a confirmed write is processing.
 - Verification: AI + intake tests passed 15 suites / 140 tests; backend build and frontend TypeScript/Vite production build passed. Browser end-to-end and database-result verification remain outstanding.
+
+## 2026-10-14 — AI/web toolchain decisions
+
+See docs/AI-TOOLCHAIN-ADOPTION-REVIEW.md for the full candidate matrix and security boundaries. Adopt Playwright + axe-core for development-only browser tests; OpenChamber is the preferred optional multi-model coding workspace, with OpenHands as an alternative. Hermes Agent and OpenMuse are reference patterns for controlled learning and visible long-running work, not trusted policy authorities. OpenCharm is deferred unless a dedicated agent companion becomes a product requirement. DeepCode AI is an optional security integration pending data/privacy/license review. Local model evaluation must not compete with an active farmer workload; no candidate is promoted automatically.
