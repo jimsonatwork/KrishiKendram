@@ -23,4 +23,4 @@ The backend production dependency audit identified critical GHSA-jqcg-44mw-7w3h 
 
 - The full backend audit still reports 22 findings (20 moderate, 1 high, 1 critical) when development dependencies are included; the production-only audit is clean. Review the development toolchain separately and avoid forced upgrades/downgrades without compatibility evidence.
 - B has 221 staged paths, including its own dependency-manifest changes. Preserve that work and reconcile it before integrating this patch through the required C -> B -> A flow. Do not merge into or commit B's entire staged tree as part of this fix.
-- No commit or promotion is claimed by this report; those steps remain pending final diff review and controlled integration.
+- C checkpoint commit 98b7d73 was committed and pushed to origin/cto/ai-governed-flow-20261013-canonical-base. This is not promotion to B or A; promotion remains pending safe reconciliation of B's 221 staged paths.
