@@ -56,6 +56,37 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
 
+  // Warm the small local model in the background after Nest starts so the
+  // first farmer question is less likely to pay the model-load penalty. This
+  // uses only a synthetic prompt, stores no conversation, and never uses cloud.
+  onModuleInit(): void {
+    void this.warmModelInBackground();
+  }
+
+  private async warmModelInBackground(): Promise<void> {
+    try {
+      const runtime = await this.checkHealth();
+      if (!runtime.reachable || !runtime.modelInstalled) return;
+      const response = await fetch(this.endpoint('/api/chat'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: this.modelId,
+          messages: [{ role: 'user', content: 'Reply with OK.' }],
+          stream: false,
+          think: false,
+          keep_alive: '30m',
+          options: { temperature: 0, num_predict: 2, num_ctx: 2048 },
+        }),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+      if (response.ok) await response.json();
+      else await response.body?.cancel();
+    } catch {
+      // Warmup is best-effort; the normal governed request path reports real failures.
+    }
+  }
+
   constructor() {
     const configuredUrl = process.env.KK_AI_OLLAMA_BASE_URL?.trim() || 'http://127.0.0.1:11434';
     let parsed: URL;

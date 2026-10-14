@@ -1236,3 +1236,4 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Added Stop conversation control to stop recognition, browser speech and the active response request; closing the panel also stops activity.
 - Removed the per-turn provider-status round trip, shortened local generation budgets, extended local model keep-alive, and removed the duplicated current question from prompt history.
 - Adjusted default spoken reply rate and pitch.
+- Added best-effort synthetic local-model warm-up at backend startup to reduce first-question cold-start delay without using or storing farmer data.
