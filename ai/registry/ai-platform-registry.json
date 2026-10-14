@@ -1,6 +1,6 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "modes": [
     "LOCAL",
@@ -140,7 +140,8 @@
     "supportingComponents": "../supporting-components.json",
     "voiceIntents": "../voice/voice-intents.json",
     "cloudConnectionPolicy": "../connections/cloud-connection-policy.json",
-    "dataContextIntents": "../context/data-context-intents.json"
+    "dataContextIntents": "../context/data-context-intents.json",
+    "modelLinkRegistry": "../providers/model-link-registry.json"
   },
   "moduleFiles": {
     "KK-USER-001": "../modules/KK-USER-001.json",

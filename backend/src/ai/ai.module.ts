@@ -7,6 +7,8 @@ import { ASR_PROVIDER } from './contracts/asr-provider';
 import { AiService } from './ai.service';
 import { IndicConformerProvider } from './providers/indic-conformer.provider';
 import { AiRegistryService } from './registry/ai-registry.service';
+import { AiModelLinkRegistryService } from './registry/ai-model-link-registry.service';
+import { AiModelLinkController } from './registry/ai-model-link.controller';
 import { ConversationService } from './conversation/conversation.service';
 import { UserAiContextService } from './context/user-ai-context.service';
 import { TEXT_GENERATION_PROVIDER } from './contracts/text-generation-provider';
@@ -16,8 +18,8 @@ import { AiVoiceCapabilityService } from './voice/ai-voice-capability.service';
 
 @Module({
   imports: [AuditModule, CropsModule],
-  controllers: [AiConversationController],
-  providers: [AiRegistryService, IndicConformerProvider, OllamaTextGenerationProvider, ConversationService, FactDraftService, UserAiContextService, TextGenerationService, AiVoiceCapabilityService, { provide: ASR_PROVIDER, useExisting: IndicConformerProvider }, { provide: TEXT_GENERATION_PROVIDER, useExisting: OllamaTextGenerationProvider }, AiService],
-  exports: [AiRegistryService, ConversationService, UserAiContextService, AiService, TextGenerationService],
+  controllers: [AiConversationController, AiModelLinkController],
+  providers: [AiRegistryService, AiModelLinkRegistryService, IndicConformerProvider, OllamaTextGenerationProvider, ConversationService, FactDraftService, UserAiContextService, TextGenerationService, AiVoiceCapabilityService, { provide: ASR_PROVIDER, useExisting: IndicConformerProvider }, { provide: TEXT_GENERATION_PROVIDER, useExisting: OllamaTextGenerationProvider }, AiService],
+  exports: [AiRegistryService, AiModelLinkRegistryService, ConversationService, UserAiContextService, AiService, TextGenerationService],
 })
 export class AiModule {}

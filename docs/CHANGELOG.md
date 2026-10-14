@@ -1245,3 +1245,9 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - Keep the local Ollama model resident for up to four hours to avoid repeated cold model loads during a work session.
 - Reduce general response output to 64 tokens and prompt history to two messages of up to 400 characters each. Crop-list responses retain their dedicated output limit.
 - Preserve local-only inference, authorized context boundaries, and existing record-write governance.
+
+
+## 2026-10-14 - Central AI model linking
+- Added the central model-link registry pointer and local model catalogue, separating model availability from active model selection.
+- Added God Mode-only link, unlink, status, and activation endpoints with audit events. Activation requires an installed local Ollama model; the active model cannot be unlinked first.
+- Wired the local text-generation provider to read the active model from the registry so module contracts remain unchanged. Cloud fallback remains disabled and model artifacts are never deleted by unlinking.

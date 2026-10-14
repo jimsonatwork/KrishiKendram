@@ -154,6 +154,15 @@ export class AiRegistryService {
     return this.registry.registryId;
   }
 
+  /** Resolve a canonical file pointer from the central AI registry. */
+  getLinkedFilePath(key: string): string {
+    const relativeFile = this.registry.linkedFiles[key];
+    if (!relativeFile) throw new NotFoundException('AI registry link is not configured: ' + key + '.');
+    const linkedPath = resolve(dirname(this.registryPath), relativeFile);
+    if (!existsSync(linkedPath)) throw new NotFoundException('Linked AI registry file is unavailable: ' + key + '.');
+    return linkedPath;
+  }
+
   /** Resolve a query against the centrally linked and module-governed context-intent manifest. */
   resolveDataContextIntent(query: string): AiDataContextIntent | undefined {
     const relativeFile = this.registry.linkedFiles.dataContextIntents;

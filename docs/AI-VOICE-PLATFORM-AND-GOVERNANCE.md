@@ -235,3 +235,10 @@ Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. I
 ## AI response latency follow-up
 
 The local Ollama model is kept resident for up to four hours after use to avoid cold-load latency during an active work session. General replies are capped at 64 generated tokens, and conversation history is limited to the latest two messages (400 characters each). Crop-list responses retain their dedicated output budget. Local-only generation and authorization-before-context safeguards remain unchanged.
+
+
+## Central model link/unlink control (2026-10-14)
+
+The canonical ai/registry/ai-platform-registry.json now links modelLinkRegistry to ai/providers/model-link-registry.json. That catalogue is the single control point for local Ollama model availability and active-model selection. Linking a model makes it an approved candidate; linking alone does not activate it. Activation requires that the model is linked and installed in the local Ollama runtime. Unlinking the active model is blocked until another linked and installed model is activated. Unlinking never deletes model files or conversation history.
+
+God Mode-only endpoints are exposed at /api/v1/admin/ai/models: GET lists catalogue and local-install status; POST /:modelId/link links a catalogue entry; POST /:modelId/unlink unlinks a non-active entry; POST /:modelId/activate selects a linked, installed local model. Mutations require the canonical SYSTEM_GOD identity and emit audit events. The module contracts and per-module AI policies are not edited by these operations. Cloud fallback remains disabled; no model is downloaded by linking or activation.

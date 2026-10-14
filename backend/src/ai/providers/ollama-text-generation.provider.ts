@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { AiModelLinkRegistryService } from '../registry/ai-model-link-registry.service';
 import type {
   TextGenerationProvider,
   TextGenerationRequest,
@@ -52,13 +53,15 @@ const SYSTEM_PROMPT = [
 @Injectable()
 export class OllamaTextGenerationProvider implements TextGenerationProvider {
   private readonly logger = new Logger(OllamaTextGenerationProvider.name);
-  private cachedHealth?: { expiresAt: number; value: OllamaRuntimeHealth };
+  private cachedHealth?: { expiresAt: number; modelId: string; value: OllamaRuntimeHealth };
   readonly providerId = 'KK-AI-LLM-OLLAMA-LOCAL';
-  readonly modelId = process.env.KK_AI_OLLAMA_MODEL?.trim() || 'qwen3:1.7b';
+  private observedModelForVersion?: string;
+  private readonly configuredModelId = process.env.KK_AI_OLLAMA_MODEL?.trim() || 'qwen3:1.7b';
+  get modelId(): string { return this.modelLinks?.getActiveModelId() ?? this.configuredModelId; }
   private readonly configuredModelVersion = process.env.KK_AI_OLLAMA_MODEL_VERSION?.trim() || '';
   private observedModelVersion?: string;
   get modelVersion(): string {
-    return this.observedModelVersion || this.configuredModelVersion || 'UNVERIFIED_LOCAL_MODEL';
+    return (this.observedModelForVersion === this.modelId ? this.observedModelVersion : undefined) || (this.modelId === this.configuredModelId ? this.configuredModelVersion : '') || 'UNVERIFIED_LOCAL_MODEL';
   }
   readonly mode = 'LOCAL' as const;
   private readonly baseUrl: string;
@@ -95,7 +98,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
     }
   }
 
-  constructor() {
+  constructor(@Optional() @Inject(AiModelLinkRegistryService) private readonly modelLinks?: AiModelLinkRegistryService) {
     const configuredUrl = process.env.KK_AI_OLLAMA_BASE_URL?.trim() || 'http://127.0.0.1:11434';
     let parsed: URL;
     try {
@@ -173,9 +176,9 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
   }
 
   async checkHealth(): Promise<OllamaRuntimeHealth> {
-    if (this.cachedHealth && this.cachedHealth.expiresAt > Date.now()) return this.cachedHealth.value;
+    if (this.cachedHealth && this.cachedHealth.modelId === this.modelId && this.cachedHealth.expiresAt > Date.now()) return this.cachedHealth.value;
     const value = await this.fetchHealth();
-    this.cachedHealth = { value, expiresAt: Date.now() + (value.reachable && value.modelInstalled ? 15000 : 3000) };
+    this.cachedHealth = { modelId: this.modelId, value, expiresAt: Date.now() + (value.reachable && value.modelInstalled ? 15000 : 3000) };
     return value;
   }
 
@@ -199,7 +202,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           checkedAt, error: 'INVALID_RUNTIME_RESPONSE' };
       }
       const model = payload.models.find((item) => item.name === this.modelId || item.name?.startsWith(this.modelId + ':'));
-      if (model?.digest) this.observedModelVersion = model.digest;
+      if (model?.digest) { this.observedModelVersion = model.digest; this.observedModelForVersion = this.modelId; }
       return { reachable: true, modelInstalled: Boolean(model), providerId: this.providerId,
         modelId: this.modelId, modelVersion: model?.digest || this.modelVersion,
         mode: this.mode, checkedAt, ...(!model ? { error: 'MODEL_NOT_INSTALLED' as const } : {}) };
