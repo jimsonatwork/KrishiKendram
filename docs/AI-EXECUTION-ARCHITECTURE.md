@@ -114,3 +114,40 @@ Phase 5: module opt-in integration one capability at a time; test disabled-provi
 Phase 6: evaluate candidate runtimes, smaller models, retrieval and offline speech; promote only with benchmark and security evidence.
 
 Do not declare a phase complete until backend tests, frontend build, health checks, authorized/unauthorized tests, module regression tests, and rollback verification pass. No destructive DB changes are included in this plan.
+
+## 2026-10-14 — Task-aware multi-model routing foundation
+
+### Decision
+KrishiKendram uses one governed AI gateway with task-aware, interchangeable provider adapters. Routing hints classify computational shape only; they never grant data access or tool permissions. The deterministic application path remains first for known operations.
+
+### Implemented in this batch
+- Added TextGenerationTask values for general conversation, structured extraction and advanced reasoning.
+- Added an injectable provider pool and optional adapter task capability/priority contracts.
+- Provider candidates are filtered against the canonical provider inventory before task priority is considered. Unregistered candidates and non-local providers are rejected by this execution path.
+- Cloud fallback remains disabled. Provider/model priority is not an authorization decision.
+- Added deterministic task classification and regression tests.
+- Added a monotonically increasing VoiceAgent turn epoch so interrupted requests cannot publish stale late answers.
+
+### Acceptance status and limits
+- Verification after the voice-intake and shared-vocabulary changes: AI + intake regression gate passed 15 suites / 140 tests; backend build and frontend TypeScript/Vite production build passed on 2026-10-14.
+- Multiple production-approved inference models are not yet verified. The current inventory contains an evaluation-only local Ollama adapter and a disabled provider; do not claim a production multi-model fleet until additional adapters are installed, registered, approved and benchmarked.
+- A short local Ollama health probe timed out; runtime reachability is not confirmed by this probe.
+- Backend build and frontend build both passed after the shared-vocabulary and voice-intake changes; rerun both after subsequent source changes.
+- Farm listing remains deterministic and owner-scoped. Guided voice-to-crop intake now creates an ephemeral draft, resolves an authorized farm, previews crop/area/defaults, accepts crop/area/farm corrections, and only calls the authorized intake service after explicit confirmation. The backend returns the created crop ID from the same transaction as the farm history record.
+- Crop aliases, planting verbs, area units and spoken number words now have one canonical source in backend/src/ai/registry/crop-terminology.ts, linked from the platform registry and served through the authenticated voice-intent manifest. The browser no longer maintains a second crop catalogue.
+- Remaining acceptance: test the complete voice flow in an authenticated browser with one farm and multiple farms, confirm cancel/correction behavior, and verify the created crop and history record against the database.
+
+### Next gates
+1. Run the authenticated browser acceptance test for the voice-to-crop workflow without disrupting active application services.
+2. Add provider contract tests for each new adapter and ensure task priority never bypasses registry authorization.
+3. Benchmark installed local model candidates under the host's resource limits before approving concurrent inference.
+4. Extend the guided workflow to other module-owned create/update actions only after the crop vertical slice passes browser verification.
+5. Add governed outcome/correction capture and regression publication; no raw-conversation training or automatic permission changes.
+
+## 2026-10-14 — External agent and web toolchain review
+
+- Added docs/AI-TOOLCHAIN-ADOPTION-REVIEW.md to record the decision and security boundaries; the canonical AI platform registry now links this review as toolchainAdoptionReview (registry version 4) for Hermes Agent, OpenMuse, OpenChamber, OpenCharm, OpenHands, Snyk DeepCode AI, Playwright and axe-core.
+- Decision: keep the farmer-facing runtime on the existing governed AI registry and module services. Adopt Hermes-style approved skill evolution, OpenMuse-style visible task outcomes as a future supervised workspace pattern, OpenChamber-style isolated multi-model development runs, and Playwright/axe-core as release tooling. Do not embed a second agent runtime or grant external agents direct DB authority.
+- The installed local Ollama runtime reports Qwen3 1.7B and Qwen3.5 0.8B. Qwen3.5 remains an unlinked evaluation candidate. Benchmarking must run only in a maintenance window because the benchmark intentionally unloads and reloads the live local model; it must not be run against an active farmer workload.
+- Snyk DeepCode AI remains an optional security-review integration pending data-disclosure, licensing, cost and CI integration review. The public deepcode_ai_fix repository is archived and is not treated as the complete maintained product.
+- Playwright + axe-core are being added as development-only dependencies for mock-backed browser acceptance tests. These tests do not replace an authenticated test-environment run or DB persistence verification.

@@ -12,6 +12,74 @@ type Recognition = {
 }
 type SpeechWindow = Window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }
 type VoiceTurn = { id: number; speaker: 'You' | 'Krishi'; text: string; at: string }
+type VoiceFarm = { id: string; name: string; location?: string }
+type VoiceCropIntakeDraft = {
+  content: string
+  cropName?: string
+  area?: number
+  unit?: string
+  phase: 'NEEDS_CROP' | 'NEEDS_FARM' | 'PREVIEW'
+  farms: VoiceFarm[]
+  farmId?: string
+  farmName?: string
+}
+type VoiceCropTerminology = {
+  resourceId: string
+  version: number
+  ownerModule: string
+  plantingVerbs: string[]
+  imperativeCropAction: string
+  crops: Array<{ name: string; aliases: string[] }>
+  areaUnits: string[]
+  numberWords: Record<string, number>
+}
+const findKnownCrop = (text: string, vocabulary: VoiceCropTerminology | null) => {
+  if (!vocabulary) return undefined
+  const normalized = text.normalize('NFKC').toLocaleLowerCase()
+  return vocabulary.crops.find(crop => crop.aliases.some(alias =>
+    new RegExp('\\b' + alias.replace(/ /g, '\\s+') + '\\b', 'i').test(normalized),
+  ))?.name
+}
+const isPlantingRequest = (text: string, vocabulary: VoiceCropTerminology | null) => {
+  if (!vocabulary) return false
+  const plantingVerb = new RegExp('\\b(' + vocabulary.plantingVerbs.join('|') + ')\\b', 'i')
+  const imperative = new RegExp('^\\s*' + vocabulary.imperativeCropAction + '\\s+', 'i')
+  return plantingVerb.test(text) || (imperative.test(text) && Boolean(findKnownCrop(text, vocabulary)))
+}
+const parseSpokenArea = (text: string, vocabulary: VoiceCropTerminology | null): { area?: number; unit?: string } => {
+  if (!vocabulary) return {}
+  const numberWords = Object.keys(vocabulary.numberWords).join('|')
+  const areaUnits = vocabulary.areaUnits.join('|')
+  const match = text.normalize('NFKC').toLocaleLowerCase().match(
+    new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i'),
+  )
+  if (!match) return {}
+  const amount = match[1].toLowerCase()
+  return { area: vocabulary.numberWords[amount] ?? Number(amount), unit: match[2] }
+}
+const replaceCropInText = (content: string, oldCrop: string | undefined, nextCrop: string) => {
+  if (oldCrop) {
+    const pattern = new RegExp('\\b' + oldCrop.replace(/ /g, '\\s+') + '\\b', 'i')
+    if (pattern.test(content)) return content.replace(pattern, nextCrop)
+  }
+  return content + '. Crop: ' + nextCrop
+}
+const replaceAreaInText = (content: string, area: number, unit: string, vocabulary: VoiceCropTerminology | null) => {
+  if (!vocabulary) return content
+  const numberWords = Object.keys(vocabulary.numberWords).join('|')
+  const areaUnits = vocabulary.areaUnits.join('|')
+  const pattern = new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i')
+  const replacement = String(area) + ' ' + unit
+  return pattern.test(content) ? content.replace(pattern, replacement) : content + '. Area ' + replacement
+}
+const cropPreviewText = (draft: VoiceCropIntakeDraft) => [
+  'Planting draft — nothing has been saved yet.',
+  'Farm: ' + (draft.farmName ?? 'not selected'),
+  'Crop: ' + (draft.cropName ?? 'not identified'),
+  draft.area === undefined ? 'Area: not provided' : 'Area: ' + draft.area + ' ' + (draft.unit ?? 'unit not specified'),
+  'Season: Unknown because it was not specified. Status: Sown. Planting date: today.',
+  'Say “confirm” to save through the authorized intake workflow, or “cancel” to discard this draft.',
+].join(' ')
 const LANGUAGES = [
   ['en-IN','English'],['hi-IN','हिन्दी'],['te-IN','తెలుగు'],['ta-IN','தமிழ்'],['kn-IN','ಕನ್ನಡ'],
   ['ml-IN','മലയാളം'],['bn-IN','বাংলা'],['mr-IN','मराठी'],['gu-IN','ગુજરાતી'],['pa-IN','ਪੰਜਾਬੀ'],
@@ -25,6 +93,11 @@ type VoiceIntent = {
   moduleId: string
 }
 type RestrictedVoiceIntent = { intentId: string; label: string; phrases: string[]; moduleId: string }
+type AiProviderStatus = {
+  enabled: boolean; ready: boolean; canGenerate: boolean; productionReady: boolean; evaluationOnly: boolean
+  providerId: string; modelId: string; modelVersion: string; status: string; mode: string
+  runtime: { reachable: boolean; modelInstalled: boolean; error?: string }
+}
 
 export function VoiceAgent({ role }: { role: string }) {
   const navigate = useNavigate()
@@ -37,10 +110,13 @@ export function VoiceAgent({ role }: { role: string }) {
   const [message,setMessage] = useState('Your voice assistant is ready. Press Speak when you want to use it.')
   const [turns,setTurns] = useState<VoiceTurn[]>([])
   const turnId = useRef(0)
+  // Monotonic epoch invalidates any response that outlives an interruption.
+  const turnEpoch = useRef(0)
   const [unsupported,setUnsupported] = useState(false)
   const rec = useRef<Recognition|null>(null)
   const activeRequest = useRef<AbortController | null>(null)
   const commandInFlight = useRef(false)
+  const speechSuppressed = useRef(false)
   const lastVoiceSubmission = useRef<{ text: string; at: number } | null>(null)
   const conversationId = useRef<string|null>(null)
   const conversationPromise = useRef<Promise<string>|null>(null)
@@ -48,10 +124,14 @@ export function VoiceAgent({ role }: { role: string }) {
   const [navigationPrefixes, setNavigationPrefixes] = useState<string[]>([])
   const [restrictedIntents, setRestrictedIntents] = useState<RestrictedVoiceIntent[]>([])
   const [intentManifestReady, setIntentManifestReady] = useState(false)
+  const [providerStatus, setProviderStatus] = useState<AiProviderStatus | null>(null)
   const [factDrafts, setFactDrafts] = useState<AiFactCandidate[]>([])
   const [draftEvidence, setDraftEvidence] = useState<Record<string, string>>({})
   const [draftReviewOpen, setDraftReviewOpen] = useState(false)
   const [draftBusy, setDraftBusy] = useState(false)
+  const [intakeDraft, setIntakeDraft] = useState<VoiceCropIntakeDraft | null>(null)
+  const [cropTerminology, setCropTerminology] = useState<VoiceCropTerminology | null>(null)
+  const intakeCommitInFlight = useRef(false)
   const lastEvidenceMessageId = useRef<string | null>(null)
   const admin = role === 'SUPER_ADMIN' && voiceIntents.some(intent => intent.access === 'SYSTEM_GOD')
 
@@ -63,6 +143,9 @@ export function VoiceAgent({ role }: { role: string }) {
 
   useEffect(() => {
     let active = true
+    // Never carry a pending farm/crop draft or stale vocabulary across account changes.
+    setIntakeDraft(null)
+    setCropTerminology(null)
     if (!accessToken) {
       setVoiceIntents([])
       setNavigationPrefixes([])
@@ -73,6 +156,7 @@ export function VoiceAgent({ role }: { role: string }) {
     api.getAiVoiceIntents(accessToken).then(result => {
       if (!active) return
       setVoiceIntents(result.intents)
+      setCropTerminology(result.cropTerminology ?? null)
       setNavigationPrefixes(result.navigationPrefixes ?? [])
       setRestrictedIntents(result.restrictedIntents ?? [])
       setIntentManifestReady(true)
@@ -136,6 +220,20 @@ export function VoiceAgent({ role }: { role: string }) {
     }
   }
 
+  useEffect(() => {
+    let active = true
+    if (!accessToken) {
+      setProviderStatus(null)
+      return () => { active = false }
+    }
+    api.getAiConversationStatus(accessToken).then(status => {
+      if (active) setProviderStatus(status)
+    }).catch(() => {
+      if (active) setProviderStatus(null)
+    })
+    return () => { active = false }
+  }, [accessToken])
+
   const loadFactDrafts = async () => {
     const token = accessToken
     const id = conversationId.current
@@ -161,6 +259,23 @@ export function VoiceAgent({ role }: { role: string }) {
     } catch {
       setMessage('I could not load fact drafts. Check your sign-in and connection, then try again.')
       return false
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
+  const applyFactDraft = async (draft: AiFactCandidate) => {
+    if (!accessToken || !conversationId.current) return
+    setDraftBusy(true)
+    try {
+      const applied = await api.applyAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash)
+      const refreshed = await loadFactDrafts()
+      setMessage(refreshed
+        ? `${applied.targetEntityType} field ${applied.targetFieldId} updated through its authorized module service and audit-recorded.`
+        : 'The record update succeeded and was audited, but the refreshed preview could not be loaded.')
+    } catch {
+      await loadFactDrafts()
+      setMessage('The record update could not be applied. No success is claimed; review the draft status and retry only if it remains CONFIRMED.')
     } finally {
       setDraftBusy(false)
     }
@@ -203,17 +318,160 @@ export function VoiceAgent({ role }: { role: string }) {
     activeRequest.current = null
     setMessage(text)
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
-    if (spoken && 'speechSynthesis' in window) {
+    if (spoken && !speechSuppressed.current && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
       const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 1.08; u.pitch = 1.04
       window.speechSynthesis.speak(u)
     }
   }
+
+  const beginCropIntakeDraft = async (content: string, cropName: string | undefined, epoch: number) => {
+    if (!cropName) {
+      setIntakeDraft({ content, ...parseSpokenArea(content, cropTerminology), phase: 'NEEDS_CROP', farms: [] })
+      say('I understood that you planted something, but I could not identify the crop confidently. Please say the crop name, for example mango, rice, maize or cotton. Nothing has been saved.')
+      return
+    }
+    if (!accessToken) {
+      setIntakeDraft(null)
+      say('Please sign in again before preparing a planting record. Nothing has been saved.')
+      return
+    }
+    let farms: VoiceFarm[]
+    try {
+      const loaded = await api.farms(accessToken)
+      if (epoch !== turnEpoch.current) return
+      farms = (Array.isArray(loaded) ? loaded : []).filter(
+        (farm: VoiceFarm) => typeof farm?.id === 'string' && typeof farm?.name === 'string',
+      )
+    } catch {
+      if (epoch === turnEpoch.current) {
+        setIntakeDraft(null)
+        say('I could not load your authorized farms, so I did not prepare or save a planting record. Please try again.')
+      }
+      return
+    }
+    if (epoch !== turnEpoch.current) return
+    if (farms.length === 0) {
+      setIntakeDraft(null)
+      say('You do not have an accessible farm to attach this planting to. Create or activate your farm first; nothing was saved.')
+      return
+    }
+    const area = parseSpokenArea(content, cropTerminology)
+    if (farms.length === 1) {
+      const draft: VoiceCropIntakeDraft = {
+        content, cropName, ...area, phase: 'PREVIEW', farms,
+        farmId: farms[0].id, farmName: farms[0].name,
+      }
+      setIntakeDraft(draft)
+      say(cropPreviewText(draft))
+      return
+    }
+    const draft: VoiceCropIntakeDraft = { content, cropName, ...area, phase: 'NEEDS_FARM', farms }
+    setIntakeDraft(draft)
+    say('Which farm should I use for the ' + cropName + ' planting? Say one farm name: ' + farms.map(farm => farm.name).join(', ') + '. Nothing has been saved.')
+  }
+
+  const confirmCropIntake = async (draft: VoiceCropIntakeDraft) => {
+    if (!accessToken || !draft.farmId || !draft.cropName) {
+      setIntakeDraft(null)
+      say('The planting draft is missing its farm or crop. Nothing was saved; please start again.')
+      return
+    }
+    intakeCommitInFlight.current = true
+    setMessage('Saving the confirmed planting through the authorized farm intake service…')
+    try {
+      const result = await api.createIntake({
+        farmId: draft.farmId,
+        inputMethod: 'VOICE',
+        content: draft.content,
+      }, accessToken) as {
+        createdCrop?: { id?: string; name?: string }
+        category?: string
+      }
+      setIntakeDraft(null)
+      if (result?.category === 'PLANTING' && result.createdCrop?.id && result.createdCrop.name) {
+        say('Saved. The ' + result.createdCrop.name + ' crop record was created for ' + (draft.farmName ?? 'your selected farm') + ', and its farm activity history was saved.')
+      } else {
+        say('The server returned an intake response but did not confirm a created crop record ID. Please check the Crops and farm History pages before assuming the crop was saved.')
+      }
+    } catch {
+      // A network failure can occur after a server commit. Avoid an automatic
+      // retry that might create a duplicate; ask the farmer to verify history.
+      setIntakeDraft(null)
+      say('I could not verify the save result. Please check the selected farm’s Crops and History pages before retrying, to avoid creating a duplicate.')
+    } finally {
+      intakeCommitInFlight.current = false
+    }
+  }
+
+  const handleCropDraftTurn = async (original: string, q: string, draft: VoiceCropIntakeDraft, epoch: number) => {
+    if (/^(cancel|cancel draft|discard|no|do not save|don't save|stop)$/i.test(q)) {
+      setIntakeDraft(null)
+      say('Planting draft discarded. No crop or farm record was changed.')
+      return
+    }
+    if (draft.phase === 'NEEDS_CROP') {
+      const cropName = findKnownCrop(original, cropTerminology)
+      if (!cropName) {
+        say('Please name a crop I can identify, such as mango, rice, maize or cotton. Nothing has been saved.')
+        return
+      }
+      await beginCropIntakeDraft(replaceCropInText(draft.content, undefined, cropName), cropName, epoch)
+      return
+    }
+    if (draft.phase === 'NEEDS_FARM') {
+      const farm = draft.farms.find(item => q.includes(item.name.toLocaleLowerCase()))
+      if (!farm) {
+        say('I could not match that to a farm you can access. Please say one of these names: ' + draft.farms.map(item => item.name).join(', ') + '. Nothing has been saved.')
+        return
+      }
+      const next: VoiceCropIntakeDraft = { ...draft, phase: 'PREVIEW', farmId: farm.id, farmName: farm.name }
+      setIntakeDraft(next)
+      say(cropPreviewText(next))
+      return
+    }
+    if (/^(confirm|confirm save|save|yes|yes save|okay|ok)$/i.test(q)) {
+      await confirmCropIntake(draft)
+      return
+    }
+
+    let next = { ...draft }
+    let changed = false
+    const cropCorrection = findKnownCrop(original, cropTerminology)
+    if (cropCorrection && /(change|correct|actually|instead|crop|make it|not)/i.test(q)) {
+      next.content = replaceCropInText(next.content, next.cropName, cropCorrection)
+      next.cropName = cropCorrection
+      changed = true
+    }
+    const areaCorrection = parseSpokenArea(original, cropTerminology)
+    if (areaCorrection.area !== undefined && /(area|acre|hectare|land|change|correct|actually)/i.test(q)) {
+      next.content = replaceAreaInText(next.content, areaCorrection.area, areaCorrection.unit ?? 'acre', cropTerminology)
+      next.area = areaCorrection.area
+      next.unit = areaCorrection.unit
+      changed = true
+    }
+    const farmCorrection = draft.farms.find(item =>
+      q.includes(item.name.toLocaleLowerCase()) && /(farm|change|use|select|switch|actually)/i.test(q),
+    )
+    if (farmCorrection) {
+      next.farmId = farmCorrection.id
+      next.farmName = farmCorrection.name
+      changed = true
+    }
+    if (changed) {
+      setIntakeDraft(next)
+      say(cropPreviewText(next))
+      return
+    }
+    say('The planting draft is still unsaved. Say “confirm” to save, “cancel” to discard, or say a correction such as “change crop to rice” or “change area to two acres”.')
+  }
   const command = async (raw:string, source: 'TEXT' | 'VOICE' = 'TEXT') => {
     const original = raw.trim()
     const q = original.toLocaleLowerCase()
     if (!q || commandInFlight.current) return
+    speechSuppressed.current = false
     commandInFlight.current = true
+    const epoch = ++turnEpoch.current
     const controller = new AbortController()
     activeRequest.current = controller
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
@@ -260,7 +518,10 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
     if (['stop speaking','silence','ఆపు','रुको'].some(w => q.includes(w))) {
-      window.speechSynthesis?.cancel(); say('Okay, I stopped speaking.'); return
+      speechSuppressed.current = true
+      window.speechSynthesis?.cancel()
+      setMessage('Speech stopped. You can press Speak and ask a corrected question.')
+      return
     }
     const token = accessToken
     if (!token) {
@@ -269,9 +530,31 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
 
+    if (intakeDraft) {
+      const savedId = await persistence
+      if (controller.signal.aborted || epoch !== turnEpoch.current) return
+      if (!savedId) {
+        say('I could not save this turn, so the planting draft was not changed or submitted. Please try again.')
+        return
+      }
+      await handleCropDraftTurn(original, q, intakeDraft, epoch)
+      return
+    }
+
+    if (isPlantingRequest(original, cropTerminology)) {
+      const savedId = await persistence
+      if (controller.signal.aborted || epoch !== turnEpoch.current) return
+      if (!savedId) {
+        say('I could not save your planting request, so I did not prepare or submit a crop record. Please try again.')
+        return
+      }
+      await beginCropIntakeDraft(original, findKnownCrop(original, cropTerminology), epoch)
+      return
+    }
+
     setMessage('Saving your question and preparing a local answer…')
     const id = await persistence
-    if (controller.signal.aborted) {
+    if (controller.signal.aborted || epoch !== turnEpoch.current) {
       if (activeRequest.current === controller) {
         activeRequest.current = null
         commandInFlight.current = false
@@ -293,14 +576,14 @@ export function VoiceAgent({ role }: { role: string }) {
         lang,
         controller.signal,
       )
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && epoch === turnEpoch.current) {
         const answer = typeof response?.message?.content === 'string'
           ? response.message.content.trim()
           : ''
         say(answer || 'The local AI service returned an empty answer. Your question is saved; please try once more. No farm record was changed.')
       }
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && epoch === turnEpoch.current) {
         const detail = error instanceof Error ? error.message.trim() : ''
         const safeDetail = detail && detail.length < 180 ? ' Details: ' + detail : ''
         say(
@@ -315,6 +598,19 @@ export function VoiceAgent({ role }: { role: string }) {
     }
   }
   const stopConversation = () => {
+    if (intakeCommitInFlight.current) {
+      // A confirmed write cannot be safely canceled once the request is sent.
+      speechSuppressed.current = true
+      rec.current?.stop()
+      rec.current = null
+      setListening(false)
+      window.speechSynthesis?.cancel()
+      setMessage('A confirmed planting save is already processing. It cannot be safely canceled; wait for the verified result.')
+      return
+    }
+    // Invalidate before aborting: a provider may resolve concurrently with abort.
+    turnEpoch.current += 1
+    speechSuppressed.current = true
     rec.current?.stop()
     rec.current = null
     setListening(false)
@@ -326,8 +622,14 @@ export function VoiceAgent({ role }: { role: string }) {
   }
 
   const listen = () => {
+    if (intakeCommitInFlight.current) {
+      setMessage('A confirmed planting save is processing. Wait for its result before starting another voice command.')
+      return
+    }
     if (listening) { stopConversation(); return }
-    if (commandInFlight.current) { setMessage('Please stop the current response before starting another question.'); return }
+    // Pressing Speak during a reply is an interrupt-and-correct action.
+    // Cancel speech and the in-flight request, then immediately reopen listening.
+    if (commandInFlight.current || Boolean(window.speechSynthesis?.speaking)) stopConversation()
     const w = window as SpeechWindow, Ctor = w.SpeechRecognition || w.webkitSpeechRecognition
     if (!Ctor) { setUnsupported(true); say('Speech recognition is unavailable in this browser. You can type a command instead.'); return }
     try {
@@ -362,15 +664,23 @@ export function VoiceAgent({ role }: { role: string }) {
   return <div className="fixed bottom-4 right-3 z-[80] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 sm:bottom-5 sm:right-5">
     {open && <section aria-label="KrishiKendram voice assistant" className="flex max-h-[calc(100dvh-6rem)] w-[min(20rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl">
       <header className="flex shrink-0 items-center justify-between border-b px-3 py-2"><div className="flex items-center gap-2"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles size={18}/></span><div><p className="text-sm font-semibold">Krishi Voice Agent</p><p className="text-xs text-muted-foreground">{admin?'Administrator workspace':'Farm assistant'}</p></div></div><button type="button" aria-label="Close voice assistant" onClick={()=>{stopConversation();setOpen(false)}} className="rounded-lg p-2 hover:bg-muted"><X size={16}/></button></header>
-      <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-sm">{turn.text}</p></div>)}</div>
+      <div className="border-b px-3 py-1.5 text-[10px] text-muted-foreground" aria-live="polite">
+        <span className="font-semibold">AI provider:</span>{' '}
+        {providerStatus?.runtime?.reachable && providerStatus.runtime.modelInstalled
+          ? providerStatus.evaluationOnly ? 'Local evaluation only - not production approved' : providerStatus.ready ? 'Production approved' : 'Model reachable but not authorized'
+          : providerStatus?.runtime?.reachable ? 'Runtime online; configured model missing' : 'Local runtime unavailable'}
+        {providerStatus?.modelId ? ' (' + providerStatus.modelId + ')' : ''}
+      </div>
+      <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-xs leading-relaxed">{turn.text}</p></div>)}</div>
         {draftReviewOpen && <section aria-label="Fact draft review" className="space-y-2 rounded-lg border bg-background p-2">
           <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">Draft review</p><button type="button" className="text-xs text-muted-foreground underline" onClick={() => setDraftReviewOpen(false)}>Hide</button></div>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">Confirmation approves only the exact proposal shown below. It does not write to the farm or other module. Applying a confirmed draft is a separate authorized workflow.</p>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">Confirmation approves only the exact validated proposal shown below. Applying an existing-record change is a separate step that rechecks authorization, field policy and stale-value conflicts through the normal module service.</p>
           {factDrafts.length === 0 ? <p className="text-xs text-muted-foreground">No saved fact drafts in this conversation.</p> : factDrafts.map(draft => {
             const validation = draft.validationResult && typeof draft.validationResult === 'object'
               ? draft.validationResult as { valid?: boolean; errors?: string[] }
               : {}
             const canConfirm = validation.valid === true && ['VALIDATION_PENDING','AWAITING_CONFIRMATION'].includes(draft.status)
+            const canApply = draft.status === 'CONFIRMED' && Boolean(draft.targetEntityId)
             const canReject = ['DETECTED','NORMALIZED','VALIDATION_PENDING','CONFLICT','AWAITING_CONFIRMATION'].includes(draft.status)
             const value = typeof draft.proposedValue === 'string' ? draft.proposedValue : JSON.stringify(draft.proposedValue)
             const evidence = draft.evidenceReference ? draftEvidence[draft.evidenceReference] : undefined
@@ -379,8 +689,9 @@ export function VoiceAgent({ role }: { role: string }) {
               <p className="break-words text-sm">{value}</p>
               <p className="text-[11px] text-muted-foreground">Source: {evidence ? `“${evidence}”` : 'Original user message unavailable'}</p>
               {validation.valid === false && <div className="rounded bg-destructive/10 p-2 text-[11px]">{(validation.errors ?? ['Central validation failed.']).join(' ')}</div>}
-              <div className="flex gap-2">
-                <button type="button" disabled={draftBusy || !canConfirm} onClick={() => void confirmFactDraft(draft)} className="h-8 flex-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">Confirm draft</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={draftBusy || !canConfirm} onClick={() => void confirmFactDraft(draft)} className="h-8 min-w-0 flex-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">Confirm draft</button>
+                {canApply && <button type="button" disabled={draftBusy} onClick={() => void applyFactDraft(draft)} className="h-8 flex-1 rounded-lg border px-2 text-xs disabled:opacity-40">Apply confirmed</button>}
                 <button type="button" disabled={draftBusy || !canReject} onClick={() => void rejectFactDraft(draft)} className="h-8 rounded-lg border px-2 text-xs disabled:opacity-40">Reject</button>
               </div>
             </article>
@@ -393,7 +704,7 @@ export function VoiceAgent({ role }: { role: string }) {
         <button type="button" disabled={draftBusy} onClick={() => void loadFactDrafts()} className="h-8 w-full rounded-lg border text-xs disabled:opacity-40">{draftBusy ? 'Loading drafts…' : 'Review saved fact drafts'}</button>
         <form onSubmit={e=>{e.preventDefault();command(transcript, 'TEXT')}} className="flex gap-2"><input aria-label="Type a voice command" value={transcript} onChange={e=>setTranscript(e.target.value)} placeholder="Or type: show my farms" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-xs"/><button type="submit" className="rounded-lg border px-2 text-xs">Go</button></form>
         {unsupported&&<p className="text-xs text-muted-foreground">Speech recognition is not available in this browser; typed commands still work.</p>}
-        <p className="text-[11px] leading-relaxed text-muted-foreground">Microphone stays off until you press Speak. Browser speech recognition may use the browser provider. The local model is enabled in evaluation mode, not production-ready; cloud fallback is disabled. Answers are advisory and cannot write records directly. Crop-list questions can use your authorized crop records. Saved proposals can be reviewed and confirmed, but applying changes still requires each module's normal authorized workflow.</p>
+        <p className="text-[9px] leading-snug text-muted-foreground">Mic is off until Speak. Browser speech recognition may use its provider. Local AI is evaluation-only; cloud fallback is off. Answers are advisory. Farm and crop changes need review, confirmation and module authorization.</p>
       </div></section>}
     <button type="button" onClick={()=>setOpen(v=>!v)} aria-label={open?'Minimize voice assistant':'Open voice assistant'} title="Voice assistant" className="flex h-10 items-center gap-2 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-lg"><Mic size={19}/><span>Voice Agent</span><ChevronUp size={16} className={open?'rotate-180 transition-transform':'transition-transform'}/></button>
   </div>

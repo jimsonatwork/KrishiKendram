@@ -45,6 +45,34 @@
         "userId",
         "farmId"
       ]
+    },
+    {
+      "intentId": "KK-AI-CONTEXT-FARMS-001",
+      "moduleId": "KK-FARM-001",
+      "capability": "CONVERSATION",
+      "resolver": "USER_OWNED_FARMS",
+      "phrases": [
+        "list my farms",
+        "show my farms",
+        "what are my farms",
+        "which farms do i have",
+        "my farm list",
+        "farms registered to me",
+        "how many farms do i have",
+        "मेरे खेत दिखाओ",
+        "मेरे खेत",
+        "నా పొలాలు చూపించు",
+        "எனது பண்ணைகளைக் காட்டு"
+      ],
+      "fields": [
+        "farm",
+        "location",
+        "land"
+      ],
+      "references": [
+        "userId",
+        "farmId"
+      ]
     }
   ]
 }

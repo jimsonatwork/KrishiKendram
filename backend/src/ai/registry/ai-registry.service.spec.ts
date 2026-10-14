@@ -136,7 +136,7 @@ describe('AiRegistryService', () => {
     expect(diagnostics.providers).toHaveLength(5);
     expect(diagnostics.providers.find((provider) => provider.providerId === 'KK-AI-INTENT-ROUTER-LOCAL')?.ready).toBe(true);
     expect(diagnostics.providers.find((provider) => provider.providerId === 'KK-AI-CLOUD-TEXT-CONNECTION-CANDIDATE')?.ready).toBe(false);
-    expect(diagnostics.runtimes).toHaveLength(2);
+    expect(diagnostics.runtimes).toHaveLength(3);
     expect(diagnostics.providers.filter((provider) => provider.providerId !== 'KK-AI-INTENT-ROUTER-LOCAL').every((provider) => provider.ready === false)).toBe(true);
     expect(diagnostics.runtimes.every((runtime) => runtime.ready === false)).toBe(true);
   });

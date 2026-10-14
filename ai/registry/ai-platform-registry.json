@@ -1,6 +1,6 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 3,
+  "version": 4,
   "status": "CANONICAL",
   "modes": [
     "LOCAL",
@@ -78,6 +78,7 @@
       "allowedFields",
       "restrictedFields",
       "candidateFactTargets",
+      "applyFields",
       "confirmationPolicy",
       "provenancePolicy",
       "auditPolicy"
@@ -145,7 +146,8 @@
     "optimizationPlanDocument": "../../docs/AI-PLATFORM-OPTIMIZATION-PLAN.md",
     "modelBenchmarkSuite": "../evaluations/KK-EVAL-LLM-001.json",
     "benchmarkRunner": "../../backend/scripts/kk-ai-benchmark.mjs",
-    "executionArchitecture": "../../docs/AI-EXECUTION-ARCHITECTURE.md"
+    "executionArchitecture": "../../docs/AI-EXECUTION-ARCHITECTURE.md",
+    "toolchainAdoptionReview": "../../docs/AI-TOOLCHAIN-ADOPTION-REVIEW.md"
   },
   "moduleFiles": {
     "KK-USER-001": "../modules/KK-USER-001.json",
@@ -163,5 +165,19 @@
     "modelEvaluationChangesLiveSelection": false,
     "productionSwitchRequiresApprovedModel": true,
     "cloudFallback": false
+  },
+  "sharedResources": {
+    "cropTerminology": {
+      "resourceId": "KK-AI-CROP-TERMINOLOGY-001",
+      "version": 1,
+      "ownerModule": "KK-CROP-001",
+      "implementation": "backend/src/ai/registry/crop-terminology.ts",
+      "exposedBy": "GET /ai/conversations/voice-intents",
+      "consumers": [
+        "VoiceAgent",
+        "IntakeExtractorService"
+      ],
+      "purpose": "Single source for crop aliases, planting verbs, spoken quantities and area units."
+    }
   }
 }

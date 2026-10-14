@@ -6,8 +6,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-krishikendram}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +19,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        SOURCE_VERSION: 2026-10-01T11:29:13.950Z
+        SOURCE_VERSION: ${SOURCE_VERSION:-local}
     restart: unless-stopped
     environment:
       NODE_ENV: production

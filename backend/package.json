@@ -116,5 +116,8 @@
   "overrides": {
     "deepmerge-ts": "8.0.2",
     "proxy-addr": "2.0.8"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

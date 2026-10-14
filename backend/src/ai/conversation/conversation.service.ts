@@ -73,7 +73,7 @@ export interface CreateFactCandidateInput {
   targetEntityId?: string;
   targetFieldId?: string;
   proposedValue: Prisma.InputJsonValue;
-  previousValue?: Prisma.InputJsonValue;
+  previousValue?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
   confidence?: Prisma.Decimal | number | string;
   source: string;
   status?: ConversationFactCandidateStatus;

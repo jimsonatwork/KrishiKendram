@@ -1,7 +1,7 @@
 {
   "moduleId": "KK-LIVESTOCK-001",
   "registryId": "KK-AI-REGISTRY-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "contract": {
     "moduleName": "Livestock Foundation",
@@ -47,6 +47,19 @@
     ],
     "confirmationPolicy": "REQUIRED_FOR_CANONICAL_LIVESTOCK_FACTS",
     "provenancePolicy": "REQUIRED",
-    "auditPolicy": "REQUIRED"
+    "auditPolicy": "REQUIRED",
+    "applyFields": {
+      "Livestock": [
+        "species",
+        "name",
+        "tag",
+        "breed",
+        "sex",
+        "count",
+        "status",
+        "acquiredAt",
+        "notes"
+      ]
+    }
   }
 }

@@ -456,6 +456,16 @@ export const api = {
       manifestVersion: number
       navigationPrefixes: string[]
       authorizationSource: string
+      cropTerminology: {
+        resourceId: string
+        version: number
+        ownerModule: string
+        plantingVerbs: string[]
+        imperativeCropAction: string
+        crops: Array<{ name: string; aliases: string[] }>
+        areaUnits: string[]
+        numberWords: Record<string, number>
+      }
       privilegedIntentsAvailable: boolean
       restrictedIntents: Array<{ intentId: string; label: string; phrases: string[]; moduleId: string }>
       intents: Array<{
@@ -474,11 +484,17 @@ export const api = {
     request<{
       enabled: boolean
       ready: boolean
+      canGenerate: boolean
+      productionReady: boolean
+      evaluationOnly: boolean
       providerId: string
+      modelId: string
+      modelVersion: string
       status: string
       mode: string
       cloudFallback: false
       databaseWriteAllowed: false
+      runtime: { reachable: boolean; modelInstalled: boolean; error?: string }
     }>('/ai/conversations/status', {
       headers: { Authorization: `Bearer ${token}` },
     }),
@@ -561,6 +577,16 @@ export const api = {
   confirmAiFactCandidate: (token: string, conversationId: string, candidateId: string, previewHash: string) =>
     request<{ candidate: AiFactCandidate; previewHash: string; applied: false }>(
       `/ai/conversations/${encodeURIComponent(conversationId)}/fact-candidates/${encodeURIComponent(candidateId)}/confirm`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ previewHash }),
+      },
+    ),
+
+  applyAiFactCandidate: (token: string, conversationId: string, candidateId: string, previewHash: string) =>
+    request<{ candidate: AiFactCandidate; applied: true; targetEntityType: string; targetEntityId: string; targetFieldId: string }>(
+      `/ai/conversations/${encodeURIComponent(conversationId)}/fact-candidates/${encodeURIComponent(candidateId)}/apply`,
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

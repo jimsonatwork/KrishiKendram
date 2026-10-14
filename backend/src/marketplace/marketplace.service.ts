@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { AuditService } from '../platform/audit/audit.service';
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
@@ -112,7 +112,7 @@ export class MarketplaceService {
     return this.prisma.marketplaceListing.findMany({ where: { sellerId: userId, deletedAt: null }, orderBy: { createdAt: 'desc' } });
   }
 
-  async update(userId: string, role: UserRole, id: string, dto: UpdateListingDto) {
+  async update(userId: string, role: UserRole, id: string, dto: UpdateListingDto, transaction?: Prisma.TransactionClient) {
     await this.assertListing(userId, role, id, AuthorizationAction.UPDATE);
     const validated = this.validateFields({
       title: dto.title,
@@ -122,11 +122,12 @@ export class MarketplaceService {
       price: dto.price,
       currency: dto.currency,
     });
-    return this.prisma.$transaction(async (tx) => {
+    const performUpdate = async (tx: Prisma.TransactionClient) => {
       const listing = await tx.marketplaceListing.update({ where: { id }, data: { title: validated.title!, description: validated.description, quantity: validated.quantity, unit: validated.unit, price: validated.price, currency: validated.currency } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'UPDATE', resourceType: 'marketplaceListing', resourceId: id, description: 'Marketplace listing updated' });
       return listing;
-    });
+    };
+    return transaction ? performUpdate(transaction) : this.prisma.$transaction(performUpdate);
   }
 
   async publish(userId: string, role: UserRole, id: string) {

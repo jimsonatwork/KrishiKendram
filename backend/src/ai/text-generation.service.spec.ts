@@ -139,6 +139,143 @@ describe('TextGenerationService', () => {
     expect(provider.generate).toHaveBeenCalledTimes(1);
   });
 
+  it('routes to a task-specialized provider only when the canonical inventory authorizes it', async () => {
+    const originalOptIn = process.env.KK_AI_ALLOW_LOCAL_EVALUATION;
+    const specialist = {
+      providerId: 'KK-AI-LOCAL-REASONER',
+      modelId: 'reasoner-small',
+      modelVersion: '1',
+      mode: 'LOCAL',
+      supportsTask: (task: string) => task === 'ADVANCED_REASONING',
+      taskPriority: () => 10,
+      generate: jest.fn().mockResolvedValue({
+        content: 'Specialized answer',
+        providerId: 'KK-AI-LOCAL-REASONER',
+        modelId: 'reasoner-small',
+        modelVersion: '1',
+        mode: 'LOCAL',
+        generatedAt: '2026-10-14T00:00:00.000Z',
+        requiresValidation: true,
+        requiresUserConfirmation: true,
+      }),
+    };
+    try {
+      process.env.KK_AI_ALLOW_LOCAL_EVALUATION = 'false';
+      provider.mode = 'LOCAL';
+      registry.getControlPlaneOverview.mockReturnValue({
+        inventories: { providers: { providers: [
+          { providerId: provider.providerId, capability: 'CONVERSATION', status: 'PRODUCTION_READY', productionReady: true, cloudFallbackAllowed: false },
+          { providerId: specialist.providerId, capability: 'CONVERSATION', status: 'PRODUCTION_READY', productionReady: true, cloudFallbackAllowed: false },
+        ] } },
+        providerRules: { cloudFallback: false },
+      });
+      service = new TextGenerationService(provider as never, registry as never, [provider as never, specialist as never]);
+      await expect(service.generate({
+        content: 'Compare two possible approaches',
+        conversationId: 'conversation-1',
+        requestedBy: 'user-1',
+        task: 'ADVANCED_REASONING',
+      })).resolves.toMatchObject({ content: 'Specialized answer', providerId: specialist.providerId });
+      expect(specialist.generate).toHaveBeenCalledTimes(1);
+      expect(provider.generate).not.toHaveBeenCalled();
+    } finally {
+      if (originalOptIn === undefined) delete process.env.KK_AI_ALLOW_LOCAL_EVALUATION;
+      else process.env.KK_AI_ALLOW_LOCAL_EVALUATION = originalOptIn;
+    }
+  });
+
+  it('does not treat provider-level approval as approval for a different model ID', async () => {
+    const originalModelId = provider.modelId;
+    try {
+      provider.mode = 'LOCAL';
+      provider.modelId = 'unapproved-model';
+      registry.getControlPlaneOverview.mockReturnValue({
+        inventories: { providers: { providers: [{
+          providerId: provider.providerId,
+          modelId: 'approved-model',
+          capability: 'CONVERSATION',
+          status: 'PRODUCTION_READY',
+          productionReady: true,
+          cloudFallbackAllowed: false,
+        }] } },
+        providerRules: { cloudFallback: false },
+      });
+      service = new TextGenerationService(provider as never, registry as never, [provider as never]);
+      await expect(service.generate({
+        content: 'Analyze this request',
+        conversationId: 'conversation-1',
+        requestedBy: 'user-1',
+        task: 'ADVANCED_REASONING',
+      })).rejects.toBeInstanceOf(ServiceUnavailableException);
+      expect(provider.generate).not.toHaveBeenCalled();
+    } finally {
+      provider.modelId = originalModelId;
+    }
+  });
+
+  it('fails over only to another canonically approved local provider', async () => {
+    const specialist = {
+      providerId: 'KK-AI-LOCAL-REASONER',
+      modelId: 'reasoner-small',
+      modelVersion: '1',
+      mode: 'LOCAL',
+      supportsTask: () => true,
+      taskPriority: () => 10,
+      generate: jest.fn().mockRejectedValue(new ServiceUnavailableException('local runtime unavailable')),
+    };
+    provider.mode = 'LOCAL';
+    provider.generate.mockResolvedValue({
+      content: 'Approved backup answer', providerId: provider.providerId, modelId: provider.modelId,
+      modelVersion: provider.modelVersion, mode: 'LOCAL', generatedAt: '2026-10-14T00:00:00.000Z',
+      requiresValidation: true, requiresUserConfirmation: true,
+    });
+    registry.getControlPlaneOverview.mockReturnValue({
+      inventories: { providers: { providers: [
+        { providerId: provider.providerId, capability: 'CONVERSATION', status: 'PRODUCTION_READY', productionReady: true, cloudFallbackAllowed: false },
+        { providerId: specialist.providerId, capability: 'CONVERSATION', status: 'PRODUCTION_READY', productionReady: true, cloudFallbackAllowed: false },
+      ] } },
+      providerRules: { cloudFallback: false },
+    });
+    service = new TextGenerationService(provider as never, registry as never, [specialist as never, provider as never]);
+    await expect(service.generate({
+      content: 'Compare two crop plans', conversationId: 'conversation-1',
+      requestedBy: 'user-1', task: 'ADVANCED_REASONING',
+    })).resolves.toMatchObject({ content: 'Approved backup answer', providerId: provider.providerId });
+    expect(specialist.generate).toHaveBeenCalledTimes(1);
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not route to a higher-priority provider that is absent from the canonical inventory', async () => {
+    const specialist = {
+      providerId: 'KK-AI-UNREGISTERED-REASONER',
+      modelId: 'unregistered',
+      modelVersion: '1',
+      mode: 'LOCAL',
+      supportsTask: () => true,
+      taskPriority: () => 999,
+      generate: jest.fn(),
+    };
+    provider.mode = 'LOCAL';
+    registry.getControlPlaneOverview.mockReturnValue({
+      inventories: { providers: { providers: [
+        { providerId: provider.providerId, capability: 'CONVERSATION', status: 'PRODUCTION_READY', productionReady: true, cloudFallbackAllowed: false },
+      ] } },
+      providerRules: { cloudFallback: false },
+    });
+    provider.generate.mockResolvedValue({
+      content: 'Approved answer', providerId: provider.providerId, modelId: provider.modelId,
+      modelVersion: provider.modelVersion, mode: 'LOCAL', generatedAt: '2026-10-14T00:00:00.000Z',
+      requiresValidation: true, requiresUserConfirmation: true,
+    });
+    service = new TextGenerationService(provider as never, registry as never, [specialist as never, provider as never]);
+    await expect(service.generate({
+      content: 'Explain a farm workflow', conversationId: 'conversation-1',
+      requestedBy: 'user-1', task: 'ADVANCED_REASONING',
+    })).resolves.toMatchObject({ content: 'Approved answer', providerId: provider.providerId });
+    expect(specialist.generate).not.toHaveBeenCalled();
+    expect(provider.generate).toHaveBeenCalledTimes(1);
+  });
+
   it('fails closed if the provider is absent from the canonical inventory', async () => {
     registry.getControlPlaneOverview.mockReturnValue({
       inventories: { providers: { providers: [] } },
