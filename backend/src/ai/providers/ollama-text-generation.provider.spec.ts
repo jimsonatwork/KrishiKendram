@@ -28,6 +28,20 @@ describe('OllamaTextGenerationProvider authorized context projection', () => {
     });
   });
 
+  it('does not replay the already-persisted current user turn as conversation history', () => {
+    const messages = (provider as any).buildMessages({
+      content: 'What are my crops?',
+      conversationId: 'conversation-1',
+      requestedBy: 'user-1',
+      context: { fields: { messages: [
+        { role: 'USER', content: 'What are my crops?' },
+      ] } },
+    }) as Array<{ role: string; content: string }>;
+    const userMessages = messages.filter((message) => message.role === 'user');
+    expect(userMessages).toHaveLength(1);
+    expect(userMessages[0].content).toBe('What are my crops?');
+  });
+
   it('reduces oversized crop lists without truncating JSON into invalid data', () => {
     const messages = buildMessages({
       intentId: 'KK-AI-CONTEXT-CROPS-001',

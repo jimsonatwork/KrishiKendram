@@ -28,7 +28,7 @@ const MAX_INPUT_CHARS = 6000;
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_HISTORY_MESSAGE_CHARS = 2000;
 const MAX_CONTEXT_CHARS = 10000;
-const MAX_OUTPUT_TOKENS = 128;
+const MAX_OUTPUT_TOKENS = 96;
 const CROP_LIST_OUTPUT_TOKENS = 48;
 const SYSTEM_PROMPT = [
   'You are the local KrishiKendram assistant for Indian farm management.',
@@ -95,8 +95,8 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           think: false,
           messages: this.buildMessages(request),
           stream: false,
-          keep_alive: '5m',
-          options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 4096 },
+          keep_alive: '30m',
+          options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 2048 },
         }),
         signal: AbortSignal.timeout(this.timeoutMs),
       });
@@ -183,6 +183,17 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
         history.push({ role, content: record.content.slice(-MAX_HISTORY_MESSAGE_CHARS) });
       }
     }
+    // The controller persists the current user turn before generation. Do not
+    // feed that same turn back as history and then append it again as the question.
+    // Besides wasting CPU on this small local model, duplicated prompts can make
+    // the assistant echo the farmer's question or repeat earlier entries.
+    if (history.length > 0) {
+      const latest = history[history.length - 1];
+      if (latest.role === 'user' && latest.content.trim() === request.content.trim()) {
+        history.pop();
+      }
+    }
+
     let totalChars = request.content.length;
     const boundedHistory = history.reverse().filter((message) => {
       if (totalChars + message.content.length > MAX_CONTEXT_CHARS) return false;

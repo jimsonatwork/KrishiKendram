@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, Volume2, VolumeX, X, ChevronUp, Sparkles } from 'lucide-react'
+import { Mic, MicOff, Volume2, VolumeX, X, ChevronUp, Sparkles, Square } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api, type AiFactCandidate } from '../../lib/api'
 import { useAuthStore } from '../../stores/auth.store'
 
 type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean
-  onresult: ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null
+  onresult: ((event: { resultIndex?: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null
   onerror: ((event: { error?: string }) => void) | null; onend: (() => void) | null
   start: () => void; stop: () => void
 }
@@ -39,6 +39,9 @@ export function VoiceAgent({ role }: { role: string }) {
   const turnId = useRef(0)
   const [unsupported,setUnsupported] = useState(false)
   const rec = useRef<Recognition|null>(null)
+  const activeRequest = useRef<AbortController | null>(null)
+  const commandInFlight = useRef(false)
+  const lastVoiceSubmission = useRef<{ text: string; at: number } | null>(null)
   const conversationId = useRef<string|null>(null)
   const conversationPromise = useRef<Promise<string>|null>(null)
   const [voiceIntents, setVoiceIntents] = useState<VoiceIntent[]>([])
@@ -196,18 +199,23 @@ export function VoiceAgent({ role }: { role: string }) {
   }
 
   const say = (text:string) => {
+    commandInFlight.current = false
+    activeRequest.current = null
     setMessage(text)
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
     if (spoken && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 0.96
+      const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 1.08; u.pitch = 1.04
       window.speechSynthesis.speak(u)
     }
   }
   const command = async (raw:string, source: 'TEXT' | 'VOICE' = 'TEXT') => {
     const original = raw.trim()
     const q = original.toLocaleLowerCase()
-    if (!q) return
+    if (!q || commandInFlight.current) return
+    commandInFlight.current = true
+    const controller = new AbortController()
+    activeRequest.current = controller
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
     const persistence = persistUserMessage(original, source)
     // Weather intent is recognized explicitly, but fails closed until a
@@ -261,58 +269,86 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
 
-    setMessage('Saving your question and checking the approved AI provider…')
+    setMessage('Saving your question and preparing a local answer…')
     const id = await persistence
-    if (!id) return
+    if (!id || controller.signal.aborted) {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null
+        commandInFlight.current = false
+      }
+      return
+    }
 
     try {
-      const status = await api.getAiConversationStatus(token)
-      if (!status.ready) {
-        say(
-          'Your question is saved in conversation history, but AI answers are currently unavailable because no approved, production-ready text-generation provider is installed. No cloud fallback was used.',
-        )
-        return
-      }
-
       const response = await api.requestAiConversationResponse(
         token,
         id,
         original,
         lang,
+        controller.signal,
       )
-      say(response.message.content)
+      if (!controller.signal.aborted) say(response.message.content)
     } catch {
-      say(
-        'I could not obtain an AI answer. The approved provider may be unavailable, or the request may have failed. Your question remains in conversation history; no farm record was changed.',
-      )
+      if (!controller.signal.aborted) {
+        say(
+          'I could not obtain an AI answer. The local provider may be unavailable, or the request may have failed. Your question remains in conversation history; no farm record was changed.',
+        )
+      }
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null
+        commandInFlight.current = false
+      }
     }
   }
+  const stopConversation = () => {
+    rec.current?.stop()
+    rec.current = null
+    setListening(false)
+    activeRequest.current?.abort()
+    activeRequest.current = null
+    commandInFlight.current = false
+    window.speechSynthesis?.cancel()
+    setMessage('Stopped. I will not continue listening or speaking. You can start again when ready.')
+  }
+
   const listen = () => {
-    if (listening) { rec.current?.stop(); setListening(false); return }
+    if (listening) { stopConversation(); return }
+    if (commandInFlight.current) { setMessage('Please stop the current response before starting another question.'); return }
     const w = window as SpeechWindow, Ctor = w.SpeechRecognition || w.webkitSpeechRecognition
     if (!Ctor) { setUnsupported(true); say('Speech recognition is unavailable in this browser. You can type a command instead.'); return }
     try {
       const r = new Ctor(); r.lang = lang; r.continuous = false; r.interimResults = true
+      let submitted = false
       r.onresult = e => {
         let finalText = '', partial = ''
-        for (let i=0;i<e.results.length;i++) {
-            if (e.results[i].isFinal) {
-              finalText += e.results[i][0].transcript
-            } else {
-              partial += e.results[i][0].transcript
-            }
-          }
+        const firstNewResult = Math.max(0, e.resultIndex ?? (e.results.length - 1))
+        for (let i=firstNewResult;i<e.results.length;i++) {
+          const text = e.results[i][0].transcript
+          if (e.results[i].isFinal) finalText += text
+          else partial += text
+        }
         setTranscript(finalText || partial)
-        if (finalText.trim()) command(finalText, 'VOICE')
+        if (finalText.trim() && !submitted) {
+          submitted = true
+          const normalized = finalText.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+          const previous = lastVoiceSubmission.current
+          const now = Date.now()
+          if (previous && previous.text === normalized && now - previous.at < 5000) return
+          lastVoiceSubmission.current = { text: normalized, at: now }
+          setListening(false)
+          r.stop()
+          void command(finalText.trim(), 'VOICE')
+        }
       }
-      r.onerror = e => { setListening(false); say(e.error === 'not-allowed' ? 'Microphone access was denied. Allow it in browser settings to use voice.' : 'Voice input stopped. Please try again.') }
+      r.onerror = e => { setListening(false); if (e.error !== 'aborted') say(e.error === 'not-allowed' ? 'Microphone access was denied. Allow it in browser settings to use voice.' : 'Voice input stopped. Please try again.') }
       r.onend = () => setListening(false)
       rec.current = r; setTranscript(''); setListening(true); setMessage('Listening… speak naturally.'); r.start()
     } catch { setListening(false); say('Could not start the microphone. Check browser permissions and try again.') }
   }
   return <div className="fixed bottom-4 right-3 z-[80] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 sm:bottom-5 sm:right-5">
     {open && <section aria-label="KrishiKendram voice assistant" className="flex max-h-[calc(100dvh-6rem)] w-[min(20rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl">
-      <header className="flex shrink-0 items-center justify-between border-b px-3 py-2"><div className="flex items-center gap-2"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles size={18}/></span><div><p className="text-sm font-semibold">Krishi Voice Agent</p><p className="text-xs text-muted-foreground">{admin?'Administrator workspace':'Farm assistant'}</p></div></div><button type="button" aria-label="Close voice assistant" onClick={()=>{rec.current?.stop();setListening(false);setOpen(false)}} className="rounded-lg p-2 hover:bg-muted"><X size={16}/></button></header>
+      <header className="flex shrink-0 items-center justify-between border-b px-3 py-2"><div className="flex items-center gap-2"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles size={18}/></span><div><p className="text-sm font-semibold">Krishi Voice Agent</p><p className="text-xs text-muted-foreground">{admin?'Administrator workspace':'Farm assistant'}</p></div></div><button type="button" aria-label="Close voice assistant" onClick={()=>{stopConversation();setOpen(false)}} className="rounded-lg p-2 hover:bg-muted"><X size={16}/></button></header>
       <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-sm">{turn.text}</p></div>)}</div>
         {draftReviewOpen && <section aria-label="Fact draft review" className="space-y-2 rounded-lg border bg-background p-2">
           <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">Draft review</p><button type="button" className="text-xs text-muted-foreground underline" onClick={() => setDraftReviewOpen(false)}>Hide</button></div>
@@ -340,7 +376,7 @@ export function VoiceAgent({ role }: { role: string }) {
         <label htmlFor="kk-voice-language" className="block text-xs font-medium text-muted-foreground">Spoken language</label>
         <select id="kk-voice-language" value={lang} onChange={e=>{setLang(e.target.value);try{localStorage.setItem('kk-voice-language',e.target.value)}catch{/* Language preference is optional. */}}} className="h-9 w-full rounded-lg border bg-background px-2 text-xs">{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
         <div aria-live="polite" className="min-h-12 rounded-lg bg-muted/60 p-2 text-xs"><p>{message}</p>{transcript&&<p className="mt-2 border-t pt-2 text-muted-foreground">Heard: {transcript}</p>}</div>
-        <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'bg-destructive text-destructive-foreground':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button></div>
+        <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'bg-destructive text-destructive-foreground':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button><button type="button" onClick={stopConversation} aria-label="Stop conversation" title="Stop listening, generation and speech" className="flex size-9 items-center justify-center rounded-lg border text-destructive"><Square size={15}/></button></div>
         <button type="button" disabled={draftBusy} onClick={() => void loadFactDrafts()} className="h-8 w-full rounded-lg border text-xs disabled:opacity-40">{draftBusy ? 'Loading drafts…' : 'Review saved fact drafts'}</button>
         <form onSubmit={e=>{e.preventDefault();command(transcript, 'TEXT')}} className="flex gap-2"><input aria-label="Type a voice command" value={transcript} onChange={e=>setTranscript(e.target.value)} placeholder="Or type: show my farms" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-xs"/><button type="submit" className="rounded-lg border px-2 text-xs">Go</button></form>
         {unsupported&&<p className="text-xs text-muted-foreground">Speech recognition is not available in this browser; typed commands still work.</p>}

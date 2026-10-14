@@ -488,6 +488,7 @@ export const api = {
     conversationId: string,
     content: string,
     language?: string,
+    signal?: AbortSignal,
   ) =>
     request<{
       message: { id: string; content: string }
@@ -502,6 +503,7 @@ export const api = {
           content,
           ...(language ? { language } : {}),
         }),
+        ...(signal ? { signal } : {}),
       },
     ),
 

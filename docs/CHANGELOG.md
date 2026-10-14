@@ -1231,3 +1231,8 @@ est build: passed, exit code 0 (approximately 106 seconds).
 - 2026-10-13: Added preview-hash-bound fact draft confirmation/rejection with reauthorization and atomic audit/status transitions. Voice Agent can list and review drafts with original evidence and validation errors; confirmation is explicitly not application to domain records.
 
 - 2026-10-13: Made fact-draft creation atomic with `AI_FACT_DRAFT_CREATED` audit logging; a missing audit service now fails closed instead of saving an unlogged candidate.
+## 2026-10-14 — Voice Agent responsiveness
+- Fixed accumulated speech-recognition results causing repeated voice submissions; added per-session submission and short duplicate guards.
+- Added Stop conversation control to stop recognition, browser speech and the active response request; closing the panel also stops activity.
+- Removed the per-turn provider-status round trip, shortened local generation budgets, extended local model keep-alive, and removed the duplicated current question from prompt history.
+- Adjusted default spoken reply rate and pitch.
