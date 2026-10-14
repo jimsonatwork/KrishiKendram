@@ -18,10 +18,12 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ConversationService } from './conversation.service';
 import { AiRegistryService } from '../registry/ai-registry.service';
 import { TextGenerationService } from '../text-generation.service';
+import { classifyTextGenerationTask } from '../routing/ai-task-classifier';
 import { UserAiContextService } from '../context/user-ai-context.service';
 import { AiVoiceCapabilityService } from '../voice/ai-voice-capability.service';
 import { FactDraftService } from './fact-draft.service';
 import { CropsService } from '../../crops/crops.service';
+import { FarmsService } from '../../farms/farms.service';
 import type { UserAiContextEnvelope } from '../contracts/ai-context';
 
 interface AuthenticatedRequest {
@@ -44,6 +46,7 @@ export class AiConversationController {
     private readonly voiceCapabilities: AiVoiceCapabilityService,
     private readonly factDrafts: FactDraftService,
     private readonly crops: CropsService,
+    private readonly farms: FarmsService,
   ) {}
 
   @Get('voice-intents')
@@ -98,27 +101,30 @@ export class AiConversationController {
       content,
       conversationId: conversation.id,
       requestedBy: userId,
+      task: classifyTextGenerationTask(content),
       ...(language === undefined ? {} : { language }),
     };
 
     // The canonical registry chooses which module-owned records are relevant.
     // Authorize the AI context envelope before loading any protected module data.
-    const providerStatus = this.textGeneration.getStatus() as { ready?: boolean };
+    const providerStatus = this.textGeneration.getStatus(classifyTextGenerationTask(content)) as { ready?: boolean };
     const dataContextIntent = this.registry.resolveDataContextIntent(content);
     const needsCropContext = dataContextIntent?.resolver === 'USER_OWNED_CROPS';
+    const needsFarmContext = dataContextIntent?.resolver === 'USER_OWNED_FARMS';
     let aiContext: UserAiContextEnvelope | undefined;
     let ownedCrops: Awaited<ReturnType<CropsService['findMyCrops']>> | undefined;
+    let ownedFarms: Awaited<ReturnType<FarmsService['findMyFarms']>> | undefined;
     // Deterministic registry-backed answers remain available when the LLM is
     // warming, unavailable, or not yet production-approved. They still require
     // the same authorization gate and the module's owner-scoped service.
-    if (providerStatus.ready === true || needsCropContext) {
+    if (providerStatus.ready === true || needsCropContext || needsFarmContext) {
       aiContext = await this.userAiContext.buildContext({
         actor: { userId, role: this.requireUserRole(req) },
         moduleId: this.registry.getConversationModuleId(),
         capability: 'CONVERSATION',
         authorizationModule: 'platform',
         references: ['userId', 'moduleId'],
-        fields: needsCropContext ? ['conversation', 'messages', 'context'] : ['conversation', 'messages'],
+        fields: needsCropContext || needsFarmContext ? ['conversation', 'messages', 'context'] : ['conversation', 'messages'],
         authorization: {
           resource: 'conversation',
           resourceId: conversation.id,
@@ -140,7 +146,7 @@ export class AiConversationController {
             language: message.language,
             createdAt: message.createdAt,
           })),
-          ...(needsCropContext ? { context: {} } : {}),
+          ...(needsCropContext || needsFarmContext ? { context: {} } : {}),
         },
       });
       markStage('authorizedContextMs');
@@ -162,6 +168,25 @@ export class AiConversationController {
             farmId: crop.farmId,
           })),
         };
+      } else if (needsFarmContext && dataContextIntent) {
+        // FarmsService enforces the module's normal READ authorization and owner scope.
+        ownedFarms = await this.farms.findMyFarms(userId, this.requireUserRole(req));
+        markStage('ownedFarmReadMs');
+        aiContext.fields.context = {
+          intentId: dataContextIntent.intentId,
+          sourceModuleId: dataContextIntent.moduleId,
+          sourceFields: dataContextIntent.fields,
+          totalCount: ownedFarms.length,
+          truncated: ownedFarms.length > 100,
+          farms: ownedFarms.slice(0, 100).map((farm) => ({
+            id: farm.id,
+            name: farm.name,
+            type: farm.type ?? null,
+            location: farm.location ?? null,
+            area: farm.area ?? null,
+            unit: farm.unit ?? null,
+          })),
+        };
       }
     }
     let result: Awaited<ReturnType<TextGenerationService['generate']>>;
@@ -171,6 +196,18 @@ export class AiConversationController {
         // probabilistic model. It is O(1) generation work and cannot invent rows.
         result = {
           content: this.formatOwnedCropsAnswer(ownedCrops),
+          providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
+          modelId: 'rule:' + dataContextIntent.intentId,
+          modelVersion: 'registry-v' + this.registry.getRegistry().version,
+          mode: 'LOCAL',
+          ...(language ? { language } : {}),
+          generatedAt: new Date().toISOString(),
+          requiresValidation: true,
+          requiresUserConfirmation: true,
+        };
+      } else if (needsFarmContext && dataContextIntent && ownedFarms) {
+        result = {
+          content: this.formatOwnedFarmsAnswer(ownedFarms),
           providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
           modelId: 'rule:' + dataContextIntent.intentId,
           modelVersion: 'registry-v' + this.registry.getRegistry().version,
@@ -365,6 +402,24 @@ export class AiConversationController {
     );
   }
 
+  @Post(':conversationId/fact-candidates/:candidateId/apply')
+  applyFactCandidate(
+    @Req() req: AuthenticatedRequest,
+    @Param('conversationId') conversationId: string,
+    @Param('candidateId') candidateId: string,
+    @Body() body: unknown,
+  ) {
+    const userId = this.requireUserId(req);
+    const role = this.requireUserRole(req);
+    const data = this.asRecord(body);
+    return this.factDrafts.applyConfirmedDraft(
+      conversationId,
+      this.requiredText(candidateId, 'candidateId', 200),
+      this.requiredText(data.previewHash, 'previewHash', 64),
+      { userId, role },
+    );
+  }
+
   @Post(':conversationId/fact-candidates/:candidateId/reject')
   rejectFactCandidate(
     @Req() req: AuthenticatedRequest,
@@ -416,6 +471,16 @@ export class AiConversationController {
     });
     const remaining = crops.length - rows.length;
     return 'You have ' + crops.length + ' registered crop' + (crops.length === 1 ? '' : 's') + ':\n' + rows.join('\n') + (remaining > 0 ? '\n- Plus ' + remaining + ' more.' : '');
+  }
+
+  private formatOwnedFarmsAnswer(farms: Awaited<ReturnType<FarmsService['findMyFarms']>>): string {
+    if (farms.length === 0) return 'You have no farms registered in KrishiKendram yet. Say “create a farm” and I will guide you through the details.';
+    const rows = farms.slice(0, 8).map((farm) => {
+      const details = [farm.location ? String(farm.location) : undefined, farm.area != null ? String(farm.area) + (farm.unit ? ' ' + farm.unit : '') : undefined].filter((item): item is string => Boolean(item));
+      return '- ' + farm.name + (details.length ? ' (' + details.join('; ') + ')' : '');
+    });
+    const remaining = farms.length - rows.length;
+    return 'You have ' + farms.length + ' registered farm' + (farms.length === 1 ? '' : 's') + ':\n' + rows.join('\n') + (remaining > 0 ? '\n- Plus ' + remaining + ' more.' : '');
   }
 
   private requireUserId(req: AuthenticatedRequest): string {

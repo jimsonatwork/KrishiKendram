@@ -9,6 +9,7 @@ import { AiRegistryService } from '../registry/ai-registry.service';
 import { TextGenerationService } from '../text-generation.service';
 import { UserAiContextService } from '../context/user-ai-context.service';
 import { FactDraftService } from './fact-draft.service';
+import { FarmsService } from '../../farms/farms.service';
 
 describe('AiConversationController', () => {
   let controller: AiConversationController;
@@ -22,8 +23,9 @@ describe('AiConversationController', () => {
   let textGeneration: { getStatus: jest.Mock; getDetailedStatus: jest.Mock; generate: jest.Mock };
   let userAiContext: { buildContext: jest.Mock };
   let voiceCapabilities: { getIntentsForUser: jest.Mock };
-  let factDrafts: { createDraft: jest.Mock; listDrafts: jest.Mock; confirmDraft: jest.Mock; rejectDraft: jest.Mock };
+  let factDrafts: { createDraft: jest.Mock; listDrafts: jest.Mock; confirmDraft: jest.Mock; applyConfirmedDraft: jest.Mock; rejectDraft: jest.Mock };
   let crops: { findMyCrops: jest.Mock };
+  let farms: { findMyFarms: jest.Mock };
 
   const req = { user: { userId: 'jwt-user-1', role: 'FARMER' } };
   const contextEnvelope = {
@@ -74,10 +76,12 @@ describe('AiConversationController', () => {
     })) };
     voiceCapabilities = { getIntentsForUser: jest.fn().mockResolvedValue({ intents: [] }) };
     crops = { findMyCrops: jest.fn().mockResolvedValue([]) };
+    farms = { findMyFarms: jest.fn().mockResolvedValue([]) };
     factDrafts = {
       createDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1' }, validation: { valid: true, applied: false } }),
       listDrafts: jest.fn().mockResolvedValue([]),
       confirmDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1', status: 'CONFIRMED' }, applied: false }),
+      applyConfirmedDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1', status: 'APPLIED' }, applied: true, targetEntityType: 'Farm', targetEntityId: 'farm-1', targetFieldId: 'name' }),
       rejectDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1', status: 'REJECTED' }, applied: false }),
     };
 
@@ -89,6 +93,7 @@ describe('AiConversationController', () => {
       voiceCapabilities as never,
       factDrafts as unknown as FactDraftService,
       crops as never,
+      farms as unknown as FarmsService,
     );
   });
 
@@ -151,6 +156,7 @@ describe('AiConversationController', () => {
       conversationId: 'conversation-1',
       requestedBy: 'jwt-user-1',
       language: 'en-IN',
+      task: 'ADVANCED_REASONING',
       context: contextEnvelope,
     });
     expect(conversations.appendMessage).toHaveBeenCalledWith(
@@ -222,6 +228,26 @@ describe('AiConversationController', () => {
     expect(textGeneration.generate).not.toHaveBeenCalled();
   });
 
+  it('answers farm-list questions from owner-authorized farm records, not the crop resolver or LLM', async () => {
+    textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
+    registry.resolveDataContextIntent.mockReturnValue({
+      intentId: 'KK-AI-CONTEXT-FARMS-001', moduleId: 'KK-FARM-001',
+      capability: 'CONVERSATION', resolver: 'USER_OWNED_FARMS',
+      phrases: ['list my farms'], fields: ['farm', 'location', 'land'], references: ['userId', 'farmId'],
+    });
+    farms.findMyFarms.mockResolvedValue([{ id: 'farm-1', name: 'Green Valley', location: 'Hyderabad', area: 2, unit: 'acres' }]);
+
+    await controller.respond(req, 'conversation-1', { content: 'List my farms' });
+
+    expect(farms.findMyFarms).toHaveBeenCalledWith('jwt-user-1', 'FARMER');
+    expect(crops.findMyCrops).not.toHaveBeenCalled();
+    expect(textGeneration.generate).not.toHaveBeenCalled();
+    expect(conversations.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Green Valley (Hyderabad; 2 acres)'),
+      modelId: 'rule:KK-AI-CONTEXT-FARMS-001',
+    }), 'jwt-user-1');
+  });
+
   it('does not assemble context when the provider is unavailable', async () => {
     textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
     textGeneration.generate.mockRejectedValue(new ServiceUnavailableException('provider unavailable'));
@@ -231,7 +257,7 @@ describe('AiConversationController', () => {
 
     expect(userAiContext.buildContext).not.toHaveBeenCalled();
     expect(textGeneration.generate).toHaveBeenCalledWith({
-      content: 'Hello', conversationId: 'conversation-1', requestedBy: 'jwt-user-1',
+      content: 'Hello', conversationId: 'conversation-1', requestedBy: 'jwt-user-1', task: 'CONVERSATION',
     });
   });
 
@@ -381,6 +407,18 @@ describe('AiConversationController', () => {
       'conversation-1',
       'candidate-1',
       'a'.repeat(64),
+      { userId: 'jwt-user-1', role: 'FARMER' },
+    );
+  });
+
+  it('applies only the confirmed candidate through the guarded service with actor, role and preview hash', async () => {
+    await controller.applyFactCandidate(req, 'conversation-1', 'candidate-1', {
+      previewHash: 'c'.repeat(64),
+    });
+    expect(factDrafts.applyConfirmedDraft).toHaveBeenCalledWith(
+      'conversation-1',
+      'candidate-1',
+      'c'.repeat(64),
       { userId: 'jwt-user-1', role: 'FARMER' },
     );
   });

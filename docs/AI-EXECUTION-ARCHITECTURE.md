@@ -114,3 +114,30 @@ Phase 5: module opt-in integration one capability at a time; test disabled-provi
 Phase 6: evaluate candidate runtimes, smaller models, retrieval and offline speech; promote only with benchmark and security evidence.
 
 Do not declare a phase complete until backend tests, frontend build, health checks, authorized/unauthorized tests, module regression tests, and rollback verification pass. No destructive DB changes are included in this plan.
+
+## 2026-10-14 — Task-aware multi-model routing foundation
+
+### Decision
+KrishiKendram uses one governed AI gateway with task-aware, interchangeable provider adapters. Routing hints classify computational shape only; they never grant data access or tool permissions. The deterministic application path remains first for known operations.
+
+### Implemented in this batch
+- Added TextGenerationTask values for general conversation, structured extraction and advanced reasoning.
+- Added an injectable provider pool and optional adapter task capability/priority contracts.
+- Provider candidates are filtered against the canonical provider inventory before task priority is considered. Unregistered candidates and non-local providers are rejected by this execution path.
+- Cloud fallback remains disabled. Provider/model priority is not an authorization decision.
+- Added deterministic task classification and regression tests.
+- Added a monotonically increasing VoiceAgent turn epoch so interrupted requests cannot publish stale late answers.
+
+### Acceptance status and limits
+- Verification: full AI regression gate passed 13 suites / 125 tests; the focused gate covers 6 suites / 67 tests. Backend build and frontend TypeScript/Vite production build passed on 2026-10-14.
+- Multiple production-approved inference models are not yet verified. The current inventory contains an evaluation-only local Ollama adapter and a disabled provider; do not claim a production multi-model fleet until additional adapters are installed, registered, approved and benchmarked.
+- A short local Ollama health probe timed out; runtime reachability is not confirmed by this probe.
+- Backend build and frontend build must pass before this batch is considered verified.
+- Farm listing remains deterministic and owner-scoped. A complete voice-to-crop-creation workflow, with required-field collection, preview, confirmation and module-service persistence, remains a separate acceptance gate.
+
+### Next gates
+1. Complete backend build and frontend build without disrupting active application services.
+2. Add provider contract tests for each new adapter and ensure task priority never bypasses registry authorization.
+3. Benchmark installed local model candidates under the host's resource limits before approving concurrent inference.
+4. Complete a module-owned multi-field create workflow and test actual persisted results.
+5. Add governed outcome/correction capture and regression publication; no raw-conversation training or automatic permission changes.

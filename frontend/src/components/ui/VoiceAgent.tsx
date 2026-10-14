@@ -42,10 +42,13 @@ export function VoiceAgent({ role }: { role: string }) {
   const [message,setMessage] = useState('Your voice assistant is ready. Press Speak when you want to use it.')
   const [turns,setTurns] = useState<VoiceTurn[]>([])
   const turnId = useRef(0)
+  // Monotonic epoch invalidates any response that outlives an interruption.
+  const turnEpoch = useRef(0)
   const [unsupported,setUnsupported] = useState(false)
   const rec = useRef<Recognition|null>(null)
   const activeRequest = useRef<AbortController | null>(null)
   const commandInFlight = useRef(false)
+  const speechSuppressed = useRef(false)
   const lastVoiceSubmission = useRef<{ text: string; at: number } | null>(null)
   const conversationId = useRef<string|null>(null)
   const conversationPromise = useRef<Promise<string>|null>(null)
@@ -240,7 +243,7 @@ export function VoiceAgent({ role }: { role: string }) {
     activeRequest.current = null
     setMessage(text)
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
-    if (spoken && 'speechSynthesis' in window) {
+    if (spoken && !speechSuppressed.current && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
       const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 1.08; u.pitch = 1.04
       window.speechSynthesis.speak(u)
@@ -250,7 +253,9 @@ export function VoiceAgent({ role }: { role: string }) {
     const original = raw.trim()
     const q = original.toLocaleLowerCase()
     if (!q || commandInFlight.current) return
+    speechSuppressed.current = false
     commandInFlight.current = true
+    const epoch = ++turnEpoch.current
     const controller = new AbortController()
     activeRequest.current = controller
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
@@ -297,7 +302,10 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
     if (['stop speaking','silence','ఆపు','रुको'].some(w => q.includes(w))) {
-      window.speechSynthesis?.cancel(); say('Okay, I stopped speaking.'); return
+      speechSuppressed.current = true
+      window.speechSynthesis?.cancel()
+      setMessage('Speech stopped. You can press Speak and ask a corrected question.')
+      return
     }
     const token = accessToken
     if (!token) {
@@ -308,7 +316,7 @@ export function VoiceAgent({ role }: { role: string }) {
 
     setMessage('Saving your question and preparing a local answer…')
     const id = await persistence
-    if (controller.signal.aborted) {
+    if (controller.signal.aborted || epoch !== turnEpoch.current) {
       if (activeRequest.current === controller) {
         activeRequest.current = null
         commandInFlight.current = false
@@ -330,14 +338,14 @@ export function VoiceAgent({ role }: { role: string }) {
         lang,
         controller.signal,
       )
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && epoch === turnEpoch.current) {
         const answer = typeof response?.message?.content === 'string'
           ? response.message.content.trim()
           : ''
         say(answer || 'The local AI service returned an empty answer. Your question is saved; please try once more. No farm record was changed.')
       }
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && epoch === turnEpoch.current) {
         const detail = error instanceof Error ? error.message.trim() : ''
         const safeDetail = detail && detail.length < 180 ? ' Details: ' + detail : ''
         say(
@@ -352,6 +360,9 @@ export function VoiceAgent({ role }: { role: string }) {
     }
   }
   const stopConversation = () => {
+    // Invalidate before aborting: a provider may resolve concurrently with abort.
+    turnEpoch.current += 1
+    speechSuppressed.current = true
     rec.current?.stop()
     rec.current = null
     setListening(false)
@@ -364,7 +375,9 @@ export function VoiceAgent({ role }: { role: string }) {
 
   const listen = () => {
     if (listening) { stopConversation(); return }
-    if (commandInFlight.current) { setMessage('Please stop the current response before starting another question.'); return }
+    // Pressing Speak during a reply is an interrupt-and-correct action.
+    // Cancel speech and the in-flight request, then immediately reopen listening.
+    if (commandInFlight.current || Boolean(window.speechSynthesis?.speaking)) stopConversation()
     const w = window as SpeechWindow, Ctor = w.SpeechRecognition || w.webkitSpeechRecognition
     if (!Ctor) { setUnsupported(true); say('Speech recognition is unavailable in this browser. You can type a command instead.'); return }
     try {
@@ -406,7 +419,7 @@ export function VoiceAgent({ role }: { role: string }) {
           : providerStatus?.runtime?.reachable ? 'Runtime online; configured model missing' : 'Local runtime unavailable'}
         {providerStatus?.modelId ? ' (' + providerStatus.modelId + ')' : ''}
       </div>
-      <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-sm">{turn.text}</p></div>)}</div>
+      <div className="min-h-0 space-y-2 overflow-y-auto p-3 text-xs"><div aria-label="Live conversation subtitles" aria-live="polite" className="max-h-36 space-y-2 overflow-y-auto rounded-lg border bg-background p-2">{turns.length===0?<p className="text-xs text-muted-foreground">Conversation subtitles will appear here. Both your words and the agent’s replies remain visible while this panel is open.</p>:turns.map(turn=><div key={turn.id} className={turn.speaker==='You'?'text-right':''}><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{turn.speaker} · {turn.at}</p><p className="break-words text-xs leading-relaxed">{turn.text}</p></div>)}</div>
         {draftReviewOpen && <section aria-label="Fact draft review" className="space-y-2 rounded-lg border bg-background p-2">
           <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">Draft review</p><button type="button" className="text-xs text-muted-foreground underline" onClick={() => setDraftReviewOpen(false)}>Hide</button></div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">Confirmation approves only the exact validated proposal shown below. Applying an existing-record change is a separate step that rechecks authorization, field policy and stale-value conflicts through the normal module service.</p>
@@ -439,7 +452,7 @@ export function VoiceAgent({ role }: { role: string }) {
         <button type="button" disabled={draftBusy} onClick={() => void loadFactDrafts()} className="h-8 w-full rounded-lg border text-xs disabled:opacity-40">{draftBusy ? 'Loading drafts…' : 'Review saved fact drafts'}</button>
         <form onSubmit={e=>{e.preventDefault();command(transcript, 'TEXT')}} className="flex gap-2"><input aria-label="Type a voice command" value={transcript} onChange={e=>setTranscript(e.target.value)} placeholder="Or type: show my farms" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-xs"/><button type="submit" className="rounded-lg border px-2 text-xs">Go</button></form>
         {unsupported&&<p className="text-xs text-muted-foreground">Speech recognition is not available in this browser; typed commands still work.</p>}
-        <p className="text-[11px] leading-relaxed text-muted-foreground">Microphone stays off until you press Speak. Browser speech recognition may use the browser provider. Local evaluation responses are not production-approved and never write records. Saved proposals require review, explicit confirmation and a second authorized application step; unsupported targets remain unapplied.</p>
+        <p className="text-[9px] leading-snug text-muted-foreground">Mic is off until Speak. Browser speech recognition may use its provider. Local AI is evaluation-only; cloud fallback is off. Answers are advisory. Farm and crop changes need review, confirmation and module authorization.</p>
       </div></section>}
     <button type="button" onClick={()=>setOpen(v=>!v)} aria-label={open?'Minimize voice assistant':'Open voice assistant'} title="Voice assistant" className="flex h-10 items-center gap-2 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-lg"><Mic size={19}/><span>Voice Agent</span><ChevronUp size={16} className={open?'rotate-180 transition-transform':'transition-transform'}/></button>
   </div>

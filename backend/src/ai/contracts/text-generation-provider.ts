@@ -2,6 +2,9 @@ import type { AiRunMode } from './asr-provider';
 import type { UserAiContextEnvelope } from './ai-context';
 
 export const TEXT_GENERATION_PROVIDER = Symbol('TEXT_GENERATION_PROVIDER');
+export const TEXT_GENERATION_PROVIDERS = Symbol('TEXT_GENERATION_PROVIDERS');
+
+export type TextGenerationTask = 'CONVERSATION' | 'STRUCTURED_EXTRACTION' | 'ADVANCED_REASONING';
 
 export interface TextGenerationRequest {
   content: string;
@@ -10,6 +13,8 @@ export interface TextGenerationRequest {
   requestedBy: string;
   /** Minimal context already authorized and projected by UserAiContextService. */
   context?: UserAiContextEnvelope;
+  /** Task hint for policy-controlled multi-model routing; never grants tool permissions. */
+  task?: TextGenerationTask;
 }
 
 export interface TextGenerationResult {
@@ -40,6 +45,10 @@ export interface TextGenerationProvider {
   readonly modelId: string;
   readonly modelVersion: string;
   readonly mode: AiRunMode;
+  /** Optional capability declaration for task-aware routing. */
+  supportsTask?(task: TextGenerationTask): boolean;
+  /** Higher values win only among equally authorized providers. */
+  taskPriority?(task: TextGenerationTask): number;
   checkHealth?(): Promise<{
     reachable: boolean;
     modelInstalled: boolean;
