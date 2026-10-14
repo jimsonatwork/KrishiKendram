@@ -170,7 +170,7 @@ test('multiple farms require an explicit farm selection before preview and confi
     { id: 'farm-2', name: 'River Field' },
   ])
   await typeCommand(page, 'I have planted mango plants across one acre')
-  await expect(page.getByText(/Which farm should I use/)).toBeVisible()
+  await expect(page.getByLabel('Live conversation subtitles').getByText(/Which farm should I use/)).toBeVisible()
   expect(intakeCalls).toHaveLength(0)
 
   await typeCommand(page, 'River Field')
