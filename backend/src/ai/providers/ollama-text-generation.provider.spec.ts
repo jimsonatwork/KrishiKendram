@@ -43,6 +43,7 @@ describe('OllamaTextGenerationProvider', () => {
     }));
     const body = JSON.parse((fetchSpy.mock.calls[1][1] as RequestInit).body as string);
     expect(body.think).toBe(false);
+    expect(body.options.num_predict).toBe(128);
     expect(body.keep_alive).toBe('5m');
     expect(result).toMatchObject({
       content: 'What is your farm name?', providerId: 'KK-AI-LLM-OLLAMA-LOCAL',

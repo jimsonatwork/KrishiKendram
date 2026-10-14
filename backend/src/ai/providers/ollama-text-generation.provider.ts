@@ -28,7 +28,7 @@ const MAX_INPUT_CHARS = 6000;
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_HISTORY_MESSAGE_CHARS = 2000;
 const MAX_CONTEXT_CHARS = 10000;
-const MAX_OUTPUT_TOKENS = 512;
+const MAX_OUTPUT_TOKENS = 128;
 const SYSTEM_PROMPT = [
   'You are the local KrishiKendram assistant for Indian farm management.',
   'Respond helpfully and concisely. Mirror the user language when practical.',
