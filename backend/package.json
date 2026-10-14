@@ -114,6 +114,7 @@
     "prisma@6.19.3": true
   },
   "overrides": {
-    "deepmerge-ts": "8.0.2"
+    "deepmerge-ts": "8.0.2",
+    "proxy-addr": "2.0.8"
   }
 }
