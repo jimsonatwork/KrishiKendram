@@ -141,7 +141,8 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           messages,
           stream: false,
           keep_alive: '4h',
-          options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 2048 },
+          // Keep local inference CPU-bounded, matching warm-up and benchmark settings, so the app remains responsive on WSL/laptop hardware.
+          options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 2048, num_thread: 2 },
         }),
         signal: AbortSignal.timeout(this.timeoutMs),
       });

@@ -96,6 +96,53 @@ describe('TextGenerationService', () => {
     }
   });
 
+  it('does not report generation available when an authorized local provider has no reachable model', async () => {
+    const originalOptIn = process.env.KK_AI_ALLOW_LOCAL_EVALUATION;
+    const originalProviderId = provider.providerId;
+    const originalMode = provider.mode;
+    const originalHealth = (provider as any).checkHealth;
+    try {
+      process.env.KK_AI_ALLOW_LOCAL_EVALUATION = 'true';
+      provider.providerId = 'KK-AI-LLM-OLLAMA-LOCAL';
+      provider.mode = 'LOCAL';
+      (provider as any).checkHealth = jest.fn().mockResolvedValue({
+        reachable: false,
+        modelInstalled: false,
+        providerId: provider.providerId,
+        modelId: provider.modelId,
+        modelVersion: provider.modelVersion,
+        mode: 'LOCAL',
+        checkedAt: '2026-10-15T00:00:00.000Z',
+        error: 'RUNTIME_UNREACHABLE',
+      });
+      registry.getControlPlaneOverview.mockReturnValue({
+        inventories: { providers: { providers: [{
+          providerId: provider.providerId,
+          capability: 'CONVERSATION',
+          status: 'EVALUATION_IN_PROGRESS',
+          productionReady: false,
+          evaluationOnly: true,
+          cloudFallbackAllowed: false,
+        }] } },
+        providerRules: { cloudFallback: false },
+      });
+      service = new TextGenerationService(provider as never, registry as never);
+
+      await expect(service.getDetailedStatus()).resolves.toMatchObject({
+        ready: true,
+        canGenerate: false,
+        runtime: { reachable: false, modelInstalled: false },
+      });
+    } finally {
+      if (originalOptIn === undefined) delete process.env.KK_AI_ALLOW_LOCAL_EVALUATION;
+      else process.env.KK_AI_ALLOW_LOCAL_EVALUATION = originalOptIn;
+      provider.providerId = originalProviderId;
+      provider.mode = originalMode;
+      if (originalHealth === undefined) delete (provider as any).checkHealth;
+      else (provider as any).checkHealth = originalHealth;
+    }
+  });
+
   it('passes the authorized context envelope unchanged to an approved provider', async () => {
     provider.mode = 'LOCAL';
     registry.getControlPlaneOverview.mockReturnValue({

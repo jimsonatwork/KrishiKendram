@@ -24,6 +24,7 @@ type FarmFixture = { id: string; name: string; location?: string }
 async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1', name: 'Green Valley', location: 'Hyderabad' }]) {
   const intakeCalls: Array<{ body: Record<string, unknown> }> = []
   const messageCalls: Array<{ body: Record<string, unknown> }> = []
+  const responseCalls: Array<{ body: Record<string, unknown> }> = []
 
   await page.addInitScript(() => {
     localStorage.setItem('accessToken', 'playwright-test-token')
@@ -91,6 +92,15 @@ async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1
       await route.fulfill({ json: { id: 'message-' + messageCalls.length } })
       return
     }
+    if (route.request().method() === 'POST' && pathname === '/ai/conversations/conversation-test-1/respond') {
+      responseCalls.push({ body: route.request().postDataJSON() as Record<string, unknown> })
+      await route.fulfill({ json: {
+        message: { id: 'assistant-response-' + responseCalls.length, content: 'Recording sowing dates helps you track crop age, plan irrigation and estimate harvest timing.' },
+        requiresValidation: true,
+        requiresUserConfirmation: true,
+      } })
+      return
+    }
     if (route.request().method() === 'POST' && pathname === '/intake') {
       intakeCalls.push({ body: route.request().postDataJSON() as Record<string, unknown> })
       await route.fulfill({ json: {
@@ -112,7 +122,7 @@ async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1
   await page.getByRole('button', { name: 'Open voice assistant' }).click()
   await expect(page.getByRole('region', { name: 'KrishiKendram voice assistant' })).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Spoken language' })).toBeVisible()
-  return { intakeCalls, messageCalls }
+  return { intakeCalls, messageCalls, responseCalls }
 }
 
 async function typeCommand(page: Page, content: string) {
@@ -218,4 +228,14 @@ test('an uncertain network outcome is not automatically retried', async ({ page 
   await typeCommand(page, 'confirm')
   await expect(page.getByText(/could not verify the save result/i).last()).toBeVisible()
   expect(attempts).toBe(1)
+})
+
+
+test('typed general questions reach the conversation response API and render the returned local answer', async ({ page }) => {
+  const { intakeCalls, responseCalls } = await setupVoiceAgent(page)
+  await typeCommand(page, 'Why should I record sowing dates?')
+  await expect(page.getByText(/Recording sowing dates helps you track crop age/).last()).toBeVisible()
+  expect(responseCalls).toHaveLength(1)
+  expect(responseCalls[0].body).toMatchObject({ content: 'Why should I record sowing dates?', language: 'en-IN' })
+  expect(intakeCalls).toHaveLength(0)
 })

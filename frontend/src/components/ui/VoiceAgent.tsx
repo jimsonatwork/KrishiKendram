@@ -43,12 +43,19 @@ const findKnownCrop = (text: string, vocabulary: VoiceCropTerminology | null) =>
 }
 const isPlantingRequest = (text: string, vocabulary: VoiceCropTerminology | null) => {
   if (!vocabulary) return false
+  // A question about planting/sowing is not itself a request to create a crop.
+  // In particular, "Why should I record sowing dates?" must reach AI Q&A,
+  // not the planting-intake wizard just because it contains the word "sowing".
+  const questionLead = /^\s*(what|why|when|where|how|which|who|can|could|should|would|do|does|did|is|are|explain|tell me)\b/i
+  if (questionLead.test(text)) return false
+
   const plantingVerb = new RegExp('\\b(' + vocabulary.plantingVerbs.join('|') + ')\\b', 'i')
   const imperative = new RegExp('^\\s*' + vocabulary.imperativeCropAction + '\\s+', 'i')
   const hasCrop = Boolean(findKnownCrop(text, vocabulary))
   const registrationVerb = new RegExp('\\b(' + vocabulary.cropRegistrationVerbs.join('|') + ')\\b', 'i')
   const explicitCropRecord = /\b(crop|planting|field)\b/i.test(text)
-  return plantingVerb.test(text) ||
+  const firstPersonPlantingStatement = /\b(i|we|my farm|our farm)\b.{0,40}\b(planted|planting|sowed|sowing|sown|transplanted|cultivated)\b/i.test(text)
+  return (plantingVerb.test(text) && (hasCrop || explicitCropRecord || firstPersonPlantingStatement)) ||
     (hasCrop && imperative.test(text)) ||
     (hasCrop && registrationVerb.test(text) && explicitCropRecord)
 }

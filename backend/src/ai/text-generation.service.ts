@@ -123,7 +123,8 @@ export class TextGenerationService {
     return {
       ...status,
       modelVersion: runtime.modelVersion || status.modelVersion,
-      canGenerate: status.ready,
+      // Policy approval alone is insufficient: the local runtime and selected model must also be available.
+      canGenerate: status.ready && runtime.reachable === true && runtime.modelInstalled === true,
       runtime,
     };
   }
