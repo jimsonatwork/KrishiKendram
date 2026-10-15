@@ -239,3 +239,9 @@ test('typed general questions reach the conversation response API and render the
   expect(responseCalls[0].body).toMatchObject({ content: 'Why should I record sowing dates?', language: 'en-IN' })
   expect(intakeCalls).toHaveLength(0)
 })
+
+test('provider status clearly marks the local model as evaluation-only rather than production-approved', async ({ page }) => {
+  await setupVoiceAgent(page)
+  await expect(page.getByText('Local evaluation only - not production approved')).toBeVisible()
+  await expect(page.getByText(/qwen3:1\.7b/)).toBeVisible()
+})
