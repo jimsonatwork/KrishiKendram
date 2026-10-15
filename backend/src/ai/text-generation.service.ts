@@ -35,6 +35,8 @@ type ProviderOverview = {
 export class TextGenerationService {
   private readonly logger = new Logger(TextGenerationService.name);
   private generationInFlight = false;
+  private readonly generationQueue: Array<() => void> = [];
+  private readonly maxQueuedGenerations = 3;
 
   constructor(
     @Inject(TEXT_GENERATION_PROVIDER)
@@ -196,19 +198,18 @@ export class TextGenerationService {
       'CONVERSATION',
     );
 
-    // This host is intentionally CPU/memory constrained. A single local model
-    // generation at a time prevents concurrent requests from saturating Ollama
-    // and starving normal backend work. Deterministic intents bypass this service.
-    if (this.generationInFlight) {
+    // Serialize CPU-bound local inference, but queue a few ordinary follow-up
+    // questions instead of turning them into avoidable HTTP 429 failures.
+    // Deterministic data intents bypass this service and remain independently fast.
+    if (this.generationInFlight && this.generationQueue.length >= this.maxQueuedGenerations) {
       throw new HttpException({
         statusCode: HttpStatus.TOO_MANY_REQUESTS,
-        code: 'KK_AI_GENERATION_BUSY',
-        message: 'The local AI worker is busy. Please retry shortly.',
-        retryAfterSeconds: 3,
+        code: 'KK_AI_GENERATION_QUEUE_FULL',
+        message: 'The local AI queue is full. Please wait for the current answer and retry.',
+        retryAfterSeconds: 10,
       }, HttpStatus.TOO_MANY_REQUESTS);
     }
-
-    this.generationInFlight = true;
+    await this.acquireGenerationSlot();
     try {
       for (let index = 0; index < candidates.length; index += 1) {
         const candidate = candidates[index];
@@ -231,7 +232,25 @@ export class TextGenerationService {
       }
       throw new ServiceUnavailableException('No authorized local provider completed the request.');
     } finally {
-      this.generationInFlight = false;
+      this.releaseGenerationSlot();
     }
+  }
+
+  private async acquireGenerationSlot(): Promise<void> {
+    if (!this.generationInFlight) {
+      this.generationInFlight = true;
+      return;
+    }
+    await new Promise<void>((resolve) => this.generationQueue.push(resolve));
+  }
+
+  private releaseGenerationSlot(): void {
+    const next = this.generationQueue.shift();
+    if (next) {
+      // Keep the slot marked busy while ownership passes to the next waiter.
+      next();
+      return;
+    }
+    this.generationInFlight = false;
   }
 }

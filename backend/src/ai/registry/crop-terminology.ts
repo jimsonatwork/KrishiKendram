@@ -19,6 +19,7 @@ export const CROP_TERMINOLOGY = {
     'cultivating',
   ],
   imperativeCropAction: 'plant',
+  cropRegistrationVerbs: ['register', 'registering', 'registered', 'add', 'adding', 'added', 'create', 'creating', 'created', 'record', 'recording', 'recorded'],
   crops: [
     { name: 'Mango', aliases: ['mango', 'mangoes'] },
     { name: 'Rice', aliases: ['rice'] },

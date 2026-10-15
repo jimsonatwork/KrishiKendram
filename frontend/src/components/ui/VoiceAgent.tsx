@@ -29,6 +29,7 @@ type VoiceCropTerminology = {
   ownerModule: string
   plantingVerbs: string[]
   imperativeCropAction: string
+  cropRegistrationVerbs: string[]
   crops: Array<{ name: string; aliases: string[] }>
   areaUnits: string[]
   numberWords: Record<string, number>
@@ -44,7 +45,12 @@ const isPlantingRequest = (text: string, vocabulary: VoiceCropTerminology | null
   if (!vocabulary) return false
   const plantingVerb = new RegExp('\\b(' + vocabulary.plantingVerbs.join('|') + ')\\b', 'i')
   const imperative = new RegExp('^\\s*' + vocabulary.imperativeCropAction + '\\s+', 'i')
-  return plantingVerb.test(text) || (imperative.test(text) && Boolean(findKnownCrop(text, vocabulary)))
+  const hasCrop = Boolean(findKnownCrop(text, vocabulary))
+  const registrationVerb = new RegExp('\\b(' + vocabulary.cropRegistrationVerbs.join('|') + ')\\b', 'i')
+  const explicitCropRecord = /\b(crop|planting|field)\b/i.test(text)
+  return plantingVerb.test(text) ||
+    (hasCrop && imperative.test(text)) ||
+    (hasCrop && registrationVerb.test(text) && explicitCropRecord)
 }
 const parseSpokenArea = (text: string, vocabulary: VoiceCropTerminology | null): { area?: number; unit?: string } => {
   if (!vocabulary) return {}
@@ -77,9 +83,29 @@ const cropPreviewText = (draft: VoiceCropIntakeDraft) => [
   'Farm: ' + (draft.farmName ?? 'not selected'),
   'Crop: ' + (draft.cropName ?? 'not identified'),
   draft.area === undefined ? 'Area: not provided' : 'Area: ' + draft.area + ' ' + (draft.unit ?? 'unit not specified'),
-  'Season: Unknown because it was not specified. Status: Sown. Planting date: today.',
+  'Season: not specified. Status: Sown. Planting date: today if you confirm; the intake service assigns today’s date.',
   'Say “confirm” to save through the authorized intake workflow, or “cancel” to discard this draft.',
 ].join(' ')
+const inferTextLanguage = (text: string, preferred: string): string => {
+  const scripts: Array<{ language: string; pattern: RegExp }> = [
+    { language: 'te-IN', pattern: /[\u0C00-\u0C7F]/ },
+    { language: 'ta-IN', pattern: /[\u0B80-\u0BFF]/ },
+    { language: 'kn-IN', pattern: /[\u0C80-\u0CFF]/ },
+    { language: 'ml-IN', pattern: /[\u0D00-\u0D7F]/ },
+    { language: 'bn-IN', pattern: /[\u0980-\u09FF]/ },
+    { language: 'gu-IN', pattern: /[\u0A80-\u0AFF]/ },
+    { language: 'pa-IN', pattern: /[\u0A00-\u0A7F]/ },
+  ]
+  const script = scripts.find(item => item.pattern.test(text))
+  if (script) return script.language
+  if (/[\u0900-\u097F]/.test(text)) {
+    return preferred === 'mr-IN' ? 'mr-IN' : 'hi-IN'
+  }
+  // Typed Latin-script questions should not inherit a stale Indic speech
+  // selection. Voice recognition continues to use the explicitly selected locale.
+  if (/[A-Za-z]/.test(text)) return 'en-IN'
+  return preferred
+}
 const LANGUAGES = [
   ['en-IN','English'],['hi-IN','हिन्दी'],['te-IN','తెలుగు'],['ta-IN','தமிழ்'],['kn-IN','ಕನ್ನಡ'],
   ['ml-IN','മലയാളം'],['bn-IN','বাংলা'],['mr-IN','मराठी'],['gu-IN','ગુજરાતી'],['pa-IN','ਪੰਜਾਬੀ'],
@@ -173,6 +199,7 @@ export function VoiceAgent({ role }: { role: string }) {
   const persistUserMessage = async (
     content: string,
     source: 'TEXT' | 'VOICE',
+    language: string = lang,
   ): Promise<string | null> => {
     const token = accessToken
     if (!token) {
@@ -186,7 +213,7 @@ export function VoiceAgent({ role }: { role: string }) {
       if (!id) {
         if (!conversationPromise.current) {
           conversationPromise.current = api
-            .createAiConversation(token, lang)
+            .createAiConversation(token, language)
             .then(result => {
               if (!result?.id) {
                 throw new Error('Conversation response did not include an id.')
@@ -208,7 +235,7 @@ export function VoiceAgent({ role }: { role: string }) {
         id,
         content,
         source,
-        lang,
+        language,
       )
       if (savedMessage?.id) lastEvidenceMessageId.current = savedMessage.id
       return id
@@ -313,14 +340,14 @@ export function VoiceAgent({ role }: { role: string }) {
     }
   }
 
-  const say = (text:string) => {
+  const say = (text:string, speechLanguage: string = lang) => {
     commandInFlight.current = false
     activeRequest.current = null
     setMessage(text)
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
     if (spoken && !speechSuppressed.current && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(text); u.lang = lang; u.rate = 1.08; u.pitch = 1.04
+      const u = new SpeechSynthesisUtterance(text); u.lang = speechLanguage; u.rate = 1.08; u.pitch = 1.04
       window.speechSynthesis.speak(u)
     }
   }
@@ -475,7 +502,8 @@ export function VoiceAgent({ role }: { role: string }) {
     const controller = new AbortController()
     activeRequest.current = controller
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
-    const persistence = persistUserMessage(original, source)
+    const turnLanguage = source === 'VOICE' ? lang : inferTextLanguage(original, lang)
+    const persistence = persistUserMessage(original, source, turnLanguage)
     // Weather intent is recognized explicitly, but fails closed until a
     // production-ready weather provider is registered and verified.
     const weatherIntent =
@@ -573,14 +601,14 @@ export function VoiceAgent({ role }: { role: string }) {
         token,
         id,
         original,
-        lang,
+        turnLanguage,
         controller.signal,
       )
       if (!controller.signal.aborted && epoch === turnEpoch.current) {
         const answer = typeof response?.message?.content === 'string'
           ? response.message.content.trim()
           : ''
-        say(answer || 'The local AI service returned an empty answer. Your question is saved; please try once more. No farm record was changed.')
+        say(answer || 'The local AI service returned an empty answer. Your question is saved; please try once more. No farm record was changed.', turnLanguage)
       }
     } catch (error) {
       if (!controller.signal.aborted && epoch === turnEpoch.current) {

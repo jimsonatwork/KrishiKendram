@@ -462,6 +462,7 @@ export const api = {
         ownerModule: string
         plantingVerbs: string[]
         imperativeCropAction: string
+        cropRegistrationVerbs: string[]
         crops: Array<{ name: string; aliases: string[] }>
         areaUnits: string[]
         numberWords: Record<string, number>

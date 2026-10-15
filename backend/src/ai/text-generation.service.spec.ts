@@ -121,7 +121,7 @@ describe('TextGenerationService', () => {
     expect(registry.assertCapabilityAllowed).toHaveBeenCalledWith('KK-AI-CONVERSATION-001', 'CONVERSATION');
   });
 
-  it('rejects concurrent local generation with a typed busy response', async () => {
+  it('queues concurrent local generations instead of returning avoidable 429 responses', async () => {
     provider.mode = 'LOCAL';
     registry.getControlPlaneOverview.mockReturnValue({
       inventories: { providers: { providers: [{
@@ -130,13 +130,22 @@ describe('TextGenerationService', () => {
       }] } },
       providerRules: { cloudFallback: false },
     });
-    provider.generate.mockImplementation(() => new Promise(() => undefined));
+    let finishFirst!: (value: { content: string; providerId: string; modelId: string; modelVersion: string; mode: 'LOCAL'; generatedAt: string; requiresValidation: boolean; requiresUserConfirmation: boolean }) => void;
+    const firstResult = { content: 'First answer', providerId: provider.providerId, modelId: 'local-model', modelVersion: '1', mode: 'LOCAL' as const, generatedAt: '2026-10-15T00:00:00.000Z', requiresValidation: true, requiresUserConfirmation: true };
+    const secondResult = { ...firstResult, content: 'Second answer' };
+    provider.generate
+      .mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve; }))
+      .mockResolvedValueOnce(secondResult);
 
-    void service.generate({ content: 'First request', conversationId: 'conversation-1', requestedBy: 'user-1' });
-    await expect(service.generate({
-      content: 'Second request', conversationId: 'conversation-2', requestedBy: 'user-2',
-    })).rejects.toMatchObject({ status: 429 });
+    const first = service.generate({ content: 'First request', conversationId: 'conversation-1', requestedBy: 'user-1' });
+    const second = service.generate({ content: 'Second request', conversationId: 'conversation-2', requestedBy: 'user-2' });
+    await Promise.resolve();
     expect(provider.generate).toHaveBeenCalledTimes(1);
+
+    finishFirst(firstResult);
+    await expect(first).resolves.toEqual(firstResult);
+    await expect(second).resolves.toEqual(secondResult);
+    expect(provider.generate).toHaveBeenCalledTimes(2);
   });
 
   it('routes to a task-specialized provider only when the canonical inventory authorizes it', async () => {

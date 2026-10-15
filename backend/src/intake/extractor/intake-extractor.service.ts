@@ -51,12 +51,16 @@ export class IntakeExtractorService {
     );
     const plantingVerb = plantingVerbPattern.test(text) ||
       new RegExp('^\\s*' + CROP_TERMINOLOGY.imperativeCropAction + '\\s+').test(text);
+    const registrationVerb = new RegExp(
+      '\\b(' + CROP_TERMINOLOGY.cropRegistrationVerbs.join('|') + ')\\b',
+      'i',
+    ).test(text) && /\b(crop|planting|field)\b/i.test(text);
     const matchedCrop = cropCatalogue.find((crop) =>
       crop.aliases.some((alias) =>
         new RegExp('\\b' + alias.replace(/ /g, '\\s+') + '\\b', 'i').test(text),
       ),
     );
-    if (matchedCrop && plantingVerb) {
+    if (matchedCrop && (plantingVerb || registrationVerb)) {
       result.category = 'PLANTING';
       result.crop = { name: matchedCrop.name };
     }

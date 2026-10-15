@@ -19,6 +19,14 @@ describe('IntakeExtractorService', () => {
     });
   });
 
+  it('recognizes an explicit crop-registration request and extracts its area', async () => {
+    await expect(service.extract('register a crop with two acres of paddy')).resolves.toMatchObject({
+      category: 'PLANTING',
+      crop: { name: 'Paddy' },
+      activity: { type: 'PLANTING', area: 2, unit: 'acres' },
+    });
+  });
+
   it('does not treat a rice question as a planting event', async () => {
     await expect(service.extract('How is rice doing in this weather?')).resolves.toMatchObject({
       category: 'GENERAL',
