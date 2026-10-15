@@ -196,6 +196,48 @@ export function VoiceAgent({ role }: { role: string }) {
     return () => { active = false }
   }, [accessToken])
 
+  // Recover the most recent owner-scoped conversation after refresh/remount so
+  // saved drafts and their evidence remain reviewable instead of appearing lost.
+  useEffect(() => {
+    let active = true
+    conversationId.current = null
+    conversationPromise.current = null
+    lastEvidenceMessageId.current = null
+    setTurns([])
+    setFactDrafts([])
+    setDraftEvidence({})
+    setDraftReviewOpen(false)
+    if (!accessToken) return () => { active = false }
+
+    api.listAiConversations(accessToken).then(async conversations => {
+      if (!active || !conversations.length || conversationId.current || conversationPromise.current) return
+      const latest = conversations[0]
+      conversationId.current = latest.id
+      const [history, candidates] = await Promise.all([
+        api.getAiConversationHistory(accessToken, latest.id),
+        api.getAiFactCandidates(accessToken, latest.id),
+      ])
+      if (!active) return
+      setFactDrafts(candidates)
+      setDraftEvidence(Object.fromEntries(history.map(item => [item.id, item.content])))
+      const restored = history.slice(-60).map(item => ({
+        id: ++turnId.current,
+        speaker: item.role === 'USER' ? 'You' as const : 'Krishi' as const,
+        text: item.content,
+        at: new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }))
+      setTurns(restored)
+      if (candidates.length) {
+        setMessage(`Restored your last conversation with ${candidates.length} saved fact draft(s). Open Review saved fact drafts to continue safely.`)
+      } else if (history.length) {
+        setMessage('Restored your last AI conversation. You can continue it or review saved fact drafts.')
+      }
+    }).catch(() => {
+      // Recovery is best-effort; the normal create-conversation path remains usable.
+    })
+    return () => { active = false }
+  }, [accessToken])
+
   const persistUserMessage = async (
     content: string,
     source: 'TEXT' | 'VOICE',

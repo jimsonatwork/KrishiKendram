@@ -109,6 +109,24 @@ export class ConversationService {
     });
   }
 
+  async listRecentConversations(userId: string, moduleId: string, limit = 20) {
+    // Owner and module are both constrained in the query; never expose another
+    // user's titles, message counts, or activity metadata to the caller.
+    return this.prisma.conversation.findMany({
+      where: { userId, moduleId },
+      orderBy: { updatedAt: 'desc' },
+      take: Math.max(1, Math.min(50, limit)),
+      select: {
+        id: true,
+        title: true,
+        primaryLanguage: true,
+        status: true,
+        lastMessageAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async getConversation(conversationId: string, userId: string, options?: { responseOnly?: boolean }) {
     // Filter by owner in the query so private messages/contexts are never
     // loaded for a non-owner before the ownership decision. A response turn

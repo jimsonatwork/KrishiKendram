@@ -349,6 +349,14 @@ export class AiConversationController {
     };
   }
 
+  @Get()
+  listRecent(@Req() req: AuthenticatedRequest) {
+    return this.conversations.listRecentConversations(
+      this.requireUserId(req),
+      this.registry.getConversationModuleId(),
+    );
+  }
+
   @Post()
   create(@Req() req: AuthenticatedRequest, @Body() body: unknown) {
     const userId = this.requireUserId(req);

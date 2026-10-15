@@ -524,6 +524,12 @@ export const api = {
       },
     ),
 
+  listAiConversations: (token: string) =>
+    request<Array<{ id: string; title: string | null; primaryLanguage: string | null; status: string; lastMessageAt: string | null; updatedAt: string }>>(
+      '/ai/conversations',
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
+
   createAiConversation: (token: string, primaryLanguage?: string) =>
     request<{ id: string }>('/ai/conversations', {
       method: 'POST',

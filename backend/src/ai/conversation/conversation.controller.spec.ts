@@ -17,6 +17,7 @@ describe('AiConversationController', () => {
   let controller: AiConversationController;
   let conversations: {
     createConversation: jest.Mock;
+    listRecentConversations: jest.Mock;
     getConversation: jest.Mock;
     appendMessage: jest.Mock;
     listHistory: jest.Mock;
@@ -43,6 +44,7 @@ describe('AiConversationController', () => {
   beforeEach(() => {
     conversations = {
       createConversation: jest.fn().mockResolvedValue({ id: 'conversation-1' }),
+      listRecentConversations: jest.fn().mockResolvedValue([{ id: 'conversation-1' }]),
       getConversation: jest.fn().mockResolvedValue({
         id: 'conversation-1', userId: 'jwt-user-1', moduleId: 'KK-AI-CONVERSATION-001',
         title: 'Farm help', primaryLanguage: 'en', status: 'ACTIVE', messages: [],
@@ -102,6 +104,14 @@ describe('AiConversationController', () => {
       farms as unknown as FarmsService,
       livestock as unknown as LivestockService,
       marketplace as unknown as MarketplaceService,
+    );
+  });
+
+  it('lists only the authenticated actor conversation history in the registered AI module', async () => {
+    await expect(controller.listRecent(req)).resolves.toEqual([{ id: 'conversation-1' }]);
+    expect(conversations.listRecentConversations).toHaveBeenCalledWith(
+      'jwt-user-1',
+      'KK-AI-CONVERSATION-001',
     );
   });
 

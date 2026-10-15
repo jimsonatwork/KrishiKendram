@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { Store, RefreshCw, Send, Archive, Pencil, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,10 @@ export function MarketplacePage() {
   const [form, setForm] = useState({ resourceType: 'crop', resourceId: '', title: '', description: '', quantity: '', unit: '', price: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [savingCreate, setSavingCreate] = useState(false)
+  const createInFlight = useRef(false)
+  const [busyListingIds, setBusyListingIds] = useState<string[]>([])
+  const busyListingRef = useRef(new Set<string>())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ title: '', description: '', quantity: '', unit: '', price: '', currency: 'INR' })
 
@@ -41,7 +45,10 @@ export function MarketplacePage() {
 
   async function create(event: React.FormEvent) {
     event.preventDefault()
-    if (!token || !form.resourceId.trim() || !form.title.trim()) return
+    if (createInFlight.current || !token || !form.resourceId.trim() || !form.title.trim()) return
+    createInFlight.current = true
+    setSavingCreate(true)
+    setError('')
     try {
       await api.createMarketplaceListing({
         resourceType: form.resourceType, resourceId: form.resourceId.trim(),
@@ -52,6 +59,7 @@ export function MarketplacePage() {
       setForm((v) => ({ ...v, resourceId: '', title: '', description: '', quantity: '', unit: '', price: '' }))
       await load()
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to create listing.') }
+    finally { createInFlight.current = false; setSavingCreate(false) }
   }
 
   function beginEdit(item: Listing) {
@@ -60,24 +68,45 @@ export function MarketplacePage() {
   }
 
   async function saveEdit(id: string) {
-    if (!token || !editForm.title.trim()) return
+    if (busyListingRef.current.has(id) || !token || !editForm.title.trim()) return
+    busyListingRef.current.add(id)
+    setBusyListingIds(previous => [...previous, id])
+    setError('')
     try {
       await api.updateMarketplaceListing(id, { title: editForm.title.trim(), description: editForm.description.trim() || undefined, quantity: editForm.quantity ? Number(editForm.quantity) : undefined, unit: editForm.unit.trim() || undefined, price: editForm.price ? Number(editForm.price) : undefined, currency: editForm.currency.trim().toUpperCase() }, token)
       setEditingId(null)
       await load()
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to update listing.') }
+    finally {
+      busyListingRef.current.delete(id)
+      setBusyListingIds(previous => previous.filter(value => value !== id))
+    }
   }
 
   async function publish(id: string) {
-    if (!token) return
+    if (busyListingRef.current.has(id) || !token) return
+    busyListingRef.current.add(id)
+    setBusyListingIds(previous => [...previous, id])
+    setError('')
     try { await api.publishMarketplaceListing(id, token); await load() }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to publish listing.') }
+    finally {
+      busyListingRef.current.delete(id)
+      setBusyListingIds(previous => previous.filter(value => value !== id))
+    }
   }
 
   async function archive(id: string) {
-    if (!token) return
+    if (busyListingRef.current.has(id) || !token) return
+    busyListingRef.current.add(id)
+    setBusyListingIds(previous => [...previous, id])
+    setError('')
     try { await api.deleteMarketplaceListing(id, token); await load() }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to archive listing.') }
+    finally {
+      busyListingRef.current.delete(id)
+      setBusyListingIds(previous => previous.filter(value => value !== id))
+    }
   }
 
   return (
@@ -105,7 +134,7 @@ export function MarketplacePage() {
           <input className="h-10 rounded-md border bg-background px-3 text-sm" placeholder="Unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
           <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min="0" placeholder="Price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         </div>
-        <Button className="mt-4" type="submit">Create listing</Button>
+        <Button className="mt-4" type="submit" disabled={savingCreate}>{savingCreate ? "Creating…" : "Create listing"}</Button>
       </form>}
 
       {token && mine.length > 0 && <section>
@@ -117,15 +146,15 @@ export function MarketplacePage() {
               <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
               <div className="grid grid-cols-2 gap-2"><input className="h-9 rounded-md border bg-background px-3 text-sm" type="number" min="0" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} placeholder="Quantity" /><input className="h-9 rounded-md border bg-background px-3 text-sm" value={editForm.unit} onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })} placeholder="Unit" /></div>
               <div className="grid grid-cols-2 gap-2"><input className="h-9 rounded-md border bg-background px-3 text-sm" type="number" min="0" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} placeholder="Price" /><input className="h-9 rounded-md border bg-background px-3 text-sm" value={editForm.currency} onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })} placeholder="Currency" /></div>
-              <div className="flex gap-2"><Button size="sm" onClick={() => void saveEdit(item.id)}><Save className="mr-2 h-4 w-4" />Save</Button><Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="mr-2 h-4 w-4" />Cancel</Button></div>
+              <div className="flex gap-2"><Button size="sm" disabled={busyListingIds.includes(item.id)} onClick={() => void saveEdit(item.id)}><Save className="mr-2 h-4 w-4" />Save</Button><Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="mr-2 h-4 w-4" />Cancel</Button></div>
             </div> : <>
               <div className="font-semibold">{item.title}</div>
               <div className="mt-1 text-sm text-muted-foreground">{item.resourceType} · {item.status}</div>
               {item.price !== undefined && <div className="mt-2 font-medium">{item.currency} {item.price}</div>}
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => beginEdit(item)}><Pencil className="mr-2 h-4 w-4" />Edit</Button>
-                {item.status === 'DRAFT' && <Button size="sm" onClick={() => void publish(item.id)}><Send className="mr-2 h-4 w-4" />Publish</Button>}
-                <Button size="sm" variant="ghost" onClick={() => void archive(item.id)}><Archive className="mr-2 h-4 w-4" />Archive</Button>
+                {item.status === 'DRAFT' && <Button size="sm" disabled={busyListingIds.includes(item.id)} onClick={() => void publish(item.id)}><Send className="mr-2 h-4 w-4" />Publish</Button>}
+                <Button size="sm" variant="ghost" disabled={busyListingIds.includes(item.id)} onClick={() => void archive(item.id)}><Archive className="mr-2 h-4 w-4" />Archive</Button>
               </div>
             </>}
           </article>)}

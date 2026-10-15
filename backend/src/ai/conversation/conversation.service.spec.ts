@@ -29,6 +29,7 @@ describe('ConversationService AI governance', () => {
     audit = { createInTransaction: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
     prisma = {
       conversation: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'conversation-1' }]),
         findUnique: jest.fn().mockResolvedValue({
           id: 'conversation-1',
           userId: 'user-1',
@@ -80,6 +81,25 @@ describe('ConversationService AI governance', () => {
     }).compile();
 
     service = moduleRef.get(ConversationService);
+  });
+
+  it('lists only the authenticated user conversations for the requested module', async () => {
+    await expect(service.listRecentConversations('user-1', 'KK-USER-001')).resolves.toEqual([
+      { id: 'conversation-1' },
+    ]);
+    expect(prisma.conversation.findMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', moduleId: 'KK-USER-001' },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        title: true,
+        primaryLanguage: true,
+        status: true,
+        lastMessageAt: true,
+        updatedAt: true,
+      },
+    });
   });
 
   it('rejects an assistant message without provenance', async () => {
