@@ -507,7 +507,7 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
 
-    let next = { ...draft }
+    const next = { ...draft }
     let changed = false
     const cropCorrection = findKnownCrop(original, cropTerminology)
     if (cropCorrection && /(change|correct|actually|instead|crop|make it|not)/i.test(q)) {

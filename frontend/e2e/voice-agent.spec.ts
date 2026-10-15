@@ -7,6 +7,7 @@ const cropTerminology = {
   version: 1,
   ownerModule: 'KK-CROP-001',
   plantingVerbs: ['planted', 'planting', 'sowed', 'sowing', 'sown', 'transplanted', 'transplanting', 'cultivated', 'cultivating'],
+  cropRegistrationVerbs: ['register', 'record', 'add'],
   imperativeCropAction: 'plant',
   crops: [
     { name: 'Mango', aliases: ['mango', 'mangoes'] },
