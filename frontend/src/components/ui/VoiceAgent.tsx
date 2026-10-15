@@ -395,7 +395,7 @@ export function VoiceAgent({ role }: { role: string }) {
     }
     const draft: VoiceCropIntakeDraft = { content, cropName, ...area, phase: 'NEEDS_FARM', farms }
     setIntakeDraft(draft)
-    say('Which farm should I use for the ' + cropName + ' planting? Say one farm name: ' + farms.map(farm => farm.name).join(', ') + '. Nothing has been saved.')
+    say('Which farm should I use for the ' + cropName + ' planting? Say a farm name or its number: ' + farms.map((farm, index) => (index + 1) + ', ' + farm.name).join('; ') + '. Nothing has been saved.')
   }
 
   const confirmCropIntake = async (draft: VoiceCropIntakeDraft) => {
@@ -447,7 +447,10 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
     if (draft.phase === 'NEEDS_FARM') {
-      const farm = draft.farms.find(item => q.includes(item.name.toLocaleLowerCase()))
+      const numberedFarm = q.match(/^(?:farm\s+|option\s+)?(\d+|first|second|third|fourth|fifth|one|two|three|four|five)(?:\s+farm)?[.! ]*$/i)
+      const farmOrdinal: Record<string, number> = { first: 1, one: 1, second: 2, two: 2, third: 3, three: 3, fourth: 4, four: 4, fifth: 5, five: 5 }
+      const selectedIndex = numberedFarm ? Number(farmOrdinal[numberedFarm[1].toLocaleLowerCase()] ?? numberedFarm[1]) - 1 : -1
+      const farm = selectedIndex >= 0 ? draft.farms[selectedIndex] : draft.farms.find(item => q.includes(item.name.toLocaleLowerCase()))
       if (!farm) {
         say('I could not match that to a farm you can access. Please say one of these names: ' + draft.farms.map(item => item.name).join(', ') + '. Nothing has been saved.')
         return
@@ -457,7 +460,7 @@ export function VoiceAgent({ role }: { role: string }) {
       say(cropPreviewText(next))
       return
     }
-    if (/^(confirm|confirm save|save|yes|yes save|okay|ok)$/i.test(q)) {
+    if (/^(?:(?:today|date is today)\s+)?(?:confirm|confirm save|save|yes|yes save|okay|ok)(?:\s+(?:today|date is today))?[.! ]*$/i.test(q)) {
       await confirmCropIntake(draft)
       return
     }
