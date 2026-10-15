@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import os from 'node:os';
+import { promisify } from 'node:util';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const execFileAsync = promisify(execFile);
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDir, '../..');
@@ -42,10 +47,62 @@ async function getJson(path) {
   if (!response.ok) throw new Error('Ollama ' + path + ' failed with HTTP ' + response.status);
   return response.json();
 }
+
+// Best-effort Linux/WSL sampling of the Ollama server and its llama.cpp runner.
+// This runs only after the explicit maintenance-window guard above.
+async function sampleOllamaRssBytes() {
+  if (process.platform !== 'linux') return null;
+  try {
+    const { stdout } = await execFileAsync('ps', ['-eo', 'rss=,args='], {
+      timeout: 2000,
+      maxBuffer: 1024 * 1024,
+    });
+    let totalBytes = 0;
+    for (const line of stdout.split('\n')) {
+      const match = line.trim().match(/^(\d+)\s+(.+)$/);
+      if (!match) continue;
+      const command = match[2];
+      if (command.includes('llama-server --model') || /(?:^|\/)ollama serve(?:\s|$)/.test(command)) {
+        totalBytes += Number(match[1]) * 1024;
+      }
+    }
+    return totalBytes || null;
+  } catch {
+    return null;
+  }
+}
+
+function startOllamaRssSampler() {
+  let peakBytes = null;
+  let sampling = false;
+  const sample = async () => {
+    if (sampling) return;
+    sampling = true;
+    try {
+      const rssBytes = await sampleOllamaRssBytes();
+      if (rssBytes !== null) peakBytes = Math.max(peakBytes ?? 0, rssBytes);
+    } finally {
+      sampling = false;
+    }
+  };
+  const timer = setInterval(() => { void sample(); }, 1000);
+  timer.unref();
+  void sample();
+  return async () => {
+    clearInterval(timer);
+    await sample();
+    return peakBytes;
+  };
+}
+
 const tags = await getJson('/api/tags');
-if (!Array.isArray(tags.models) || !tags.models.some((item) => item.name === modelId || item.name?.startsWith(modelId + ':'))) {
+const installedModel = Array.isArray(tags.models)
+  ? tags.models.find((item) => item.name === modelId || item.name?.startsWith(modelId + ':'))
+  : undefined;
+if (!installedModel) {
   throw new Error('Selected evaluation model is not installed in the local Ollama runtime.');
 }
+const runtimeInfo = await getJson('/api/version').catch(() => ({ version: null }));
 const liveModelId = registry.activeModelId;
 const startedAt = new Date().toISOString();
 const results = [];
@@ -54,6 +111,16 @@ try {
   // Release the live model first to avoid holding two model weights in limited WSL RAM.
   await post('/api/generate', { model: liveModelId, prompt: '', stream: false, keep_alive: 0 }, 30000);
   for (const testCase of suite.cases) {
+    const conversationMessages = Array.isArray(testCase.messages)
+      ? testCase.messages
+      : [{ role: 'user', content: testCase.prompt }];
+    if (!conversationMessages.length || conversationMessages.some((message) =>
+      !message || !['user', 'assistant'].includes(message.role)
+      || typeof message.content !== 'string' || !message.content.trim()
+    )) {
+      throw new Error('Benchmark case ' + testCase.id + ' has invalid conversation messages.');
+    }
+    const stopMemorySampler = startOllamaRssSampler();
     const started = performance.now();
     let firstTokenMs = null;
     let content = '';
@@ -62,7 +129,7 @@ try {
       model: modelId,
       messages: [
         { role: 'system', content: 'You are KrishiKendram, a concise Indian farm assistant. Be accurate, practical, and cautious. Do not invent user records, current facts, or treatment doses. If important information is missing, ask a short clarifying question. Respond in the requested language.' },
-        { role: 'user', content: testCase.prompt },
+        ...conversationMessages,
       ],
       stream: true,
       think: false,
@@ -93,12 +160,14 @@ try {
       if (chunk.done) final = chunk;
     }
     const elapsedMs = Math.round(performance.now() - started);
+    const peakOllamaRssBytes = await stopMemorySampler();
     const evalCount = final?.eval_count ?? null;
     const evalDurationMs = final?.eval_duration ? Math.round(final.eval_duration / 1e6) : null;
     results.push({
       id: testCase.id,
       language: testCase.language,
       elapsedMs,
+      peakOllamaRssBytes,
       timeToFirstTokenMs: firstTokenMs,
       modelLoadMs: final?.load_duration ? Math.round(final.load_duration / 1e6) : null,
       promptTokens: final?.prompt_eval_count ?? null,
@@ -130,9 +199,27 @@ const report = {
   suiteVersion: suite.version,
   registryId: registry.registryId,
   modelId,
+  modelArtifact: {
+    digest: installedModel.digest ?? null,
+    sizeBytes: installedModel.size ?? null,
+    details: installedModel.details ?? null,
+    licenseReview: 'MANUAL_REVIEW_REQUIRED',
+  },
+  runtime: 'OLLAMA_LOCAL',
+  runtimeVersion: runtimeInfo.version ?? null,
+  system: {
+    platform: process.platform,
+    architecture: process.arch,
+    release: os.release(),
+    cpuCount: os.cpus().length,
+    totalMemoryBytes: os.totalmem(),
+    freeMemoryAtStartBytes: os.freemem(),
+    memoryMeasurement: process.platform === 'linux'
+      ? 'best-effort sampled RSS of Ollama serve plus llama-server'
+      : 'not available on this platform',
+  },
   liveModelId,
   liveModelChanged: false,
-  runtime: 'OLLAMA_LOCAL',
   startedAt,
   completedAt: new Date().toISOString(),
   settings: suite.defaultSettings,
