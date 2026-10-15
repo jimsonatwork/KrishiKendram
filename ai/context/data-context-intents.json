@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-CONTEXT-INTENTS-001",
-  "version": 1,
+  "version": 2,
   "status": "CANONICAL",
   "intents": [
     {
@@ -72,6 +72,59 @@
       "references": [
         "userId",
         "farmId"
+      ]
+    },
+    {
+      "intentId": "KK-AI-CONTEXT-LIVESTOCK-001",
+      "moduleId": "KK-LIVESTOCK-001",
+      "capability": "CONVERSATION",
+      "resolver": "USER_OWNED_LIVESTOCK",
+      "phrases": [
+        "show my livestock",
+        "my livestock",
+        "my animals",
+        "list my animals",
+        "what animals do i have",
+        "मेरे पशु",
+        "నా పశువులు"
+      ],
+      "fields": [
+        "animal",
+        "species",
+        "breed",
+        "ownership"
+      ],
+      "references": [
+        "userId",
+        "farmId",
+        "livestockId"
+      ]
+    },
+    {
+      "intentId": "KK-AI-CONTEXT-MARKETPLACE-001",
+      "moduleId": "KK-MARKETPLACE-001",
+      "capability": "CONVERSATION",
+      "resolver": "USER_OWNED_MARKETPLACE_LISTINGS",
+      "phrases": [
+        "show my marketplace listings",
+        "my marketplace listings",
+        "my listings",
+        "list my listings",
+        "मेरी लिस्टिंग",
+        "నా ప్రకటనలు"
+      ],
+      "fields": [
+        "listing",
+        "product",
+        "availability",
+        "quantity",
+        "price",
+        "seller",
+        "service",
+        "rental"
+      ],
+      "references": [
+        "userId"
       ]
     }
   ]

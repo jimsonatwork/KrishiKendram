@@ -10,6 +10,8 @@ import { TextGenerationService } from '../text-generation.service';
 import { UserAiContextService } from '../context/user-ai-context.service';
 import { FactDraftService } from './fact-draft.service';
 import { FarmsService } from '../../farms/farms.service';
+import { LivestockService } from '../../livestock/livestock.service';
+import { MarketplaceService } from '../../marketplace/marketplace.service';
 
 describe('AiConversationController', () => {
   let controller: AiConversationController;
@@ -26,6 +28,8 @@ describe('AiConversationController', () => {
   let factDrafts: { createDraft: jest.Mock; listDrafts: jest.Mock; confirmDraft: jest.Mock; applyConfirmedDraft: jest.Mock; rejectDraft: jest.Mock };
   let crops: { findMyCrops: jest.Mock };
   let farms: { findMyFarms: jest.Mock };
+  let livestock: { findMine: jest.Mock };
+  let marketplace: { findMine: jest.Mock };
 
   const req = { user: { userId: 'jwt-user-1', role: 'FARMER' } };
   const contextEnvelope = {
@@ -77,6 +81,8 @@ describe('AiConversationController', () => {
     voiceCapabilities = { getIntentsForUser: jest.fn().mockResolvedValue({ intents: [] }) };
     crops = { findMyCrops: jest.fn().mockResolvedValue([]) };
     farms = { findMyFarms: jest.fn().mockResolvedValue([]) };
+    livestock = { findMine: jest.fn().mockResolvedValue([]) };
+    marketplace = { findMine: jest.fn().mockResolvedValue([]) };
     factDrafts = {
       createDraft: jest.fn().mockResolvedValue({ candidate: { id: 'candidate-1' }, validation: { valid: true, applied: false } }),
       listDrafts: jest.fn().mockResolvedValue([]),
@@ -94,6 +100,8 @@ describe('AiConversationController', () => {
       factDrafts as unknown as FactDraftService,
       crops as never,
       farms as unknown as FarmsService,
+      livestock as unknown as LivestockService,
+      marketplace as unknown as MarketplaceService,
     );
   });
 
@@ -228,6 +236,52 @@ describe('AiConversationController', () => {
 
     expect(conversations.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
       content: expect.stringContaining('మీకు 1 నమోదైన పంటలు ఉన్నాయి'),
+    }), 'jwt-user-1');
+    expect(textGeneration.generate).not.toHaveBeenCalled();
+  });
+
+  it('answers livestock-list questions from owner-authorized livestock records', async () => {
+    textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
+    registry.resolveDataContextIntent.mockReturnValue({
+      intentId: 'KK-AI-CONTEXT-LIVESTOCK-001', moduleId: 'KK-LIVESTOCK-001',
+      capability: 'CONVERSATION', resolver: 'USER_OWNED_LIVESTOCK',
+      phrases: ['my animals'], fields: ['animal', 'species', 'breed', 'ownership'],
+      references: ['userId', 'farmId', 'livestockId'],
+    });
+    livestock.findMine.mockResolvedValue([{
+      id: 'animal-1', farmId: 'farm-1', name: 'Lakshmi', tag: 'COW-1',
+      species: 'Cattle', breed: 'Gir', sex: 'Female', count: 1, status: 'ACTIVE',
+    }]);
+
+    await controller.respond(req, 'conversation-1', { content: 'show my livestock', language: 'en-IN' });
+
+    expect(livestock.findMine).toHaveBeenCalledWith('jwt-user-1', 'FARMER');
+    expect(conversations.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Lakshmi (Cattle; Gir; ACTIVE)'),
+      modelId: 'rule:KK-AI-CONTEXT-LIVESTOCK-001',
+    }), 'jwt-user-1');
+    expect(textGeneration.generate).not.toHaveBeenCalled();
+  });
+
+  it('answers marketplace-list questions from owner-authorized seller records', async () => {
+    textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
+    registry.resolveDataContextIntent.mockReturnValue({
+      intentId: 'KK-AI-CONTEXT-MARKETPLACE-001', moduleId: 'KK-MARKETPLACE-001',
+      capability: 'CONVERSATION', resolver: 'USER_OWNED_MARKETPLACE_LISTINGS',
+      phrases: ['my listings'], fields: ['listing', 'product', 'availability', 'quantity', 'price', 'seller', 'service', 'rental'],
+      references: ['userId'],
+    });
+    marketplace.findMine.mockResolvedValue([{
+      id: 'listing-1', title: 'Fresh tomatoes', resourceType: 'crop',
+      quantity: 20, unit: 'kg', price: 35, currency: 'INR', status: 'PUBLISHED',
+    }]);
+
+    await controller.respond(req, 'conversation-1', { content: 'show my marketplace listings', language: 'en-IN' });
+
+    expect(marketplace.findMine).toHaveBeenCalledWith('jwt-user-1', 'FARMER');
+    expect(conversations.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Fresh tomatoes (crop; 20 kg; 35 INR; PUBLISHED)'),
+      modelId: 'rule:KK-AI-CONTEXT-MARKETPLACE-001',
     }), 'jwt-user-1');
     expect(textGeneration.generate).not.toHaveBeenCalled();
   });

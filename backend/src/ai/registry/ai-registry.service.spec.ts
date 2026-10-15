@@ -40,6 +40,21 @@ describe('AiRegistryService', () => {
     expect(overview.safety.secretValuesExposed).toBe(false);
   });
 
+  it('resolves owner-scoped livestock and marketplace intents from the central manifest', () => {
+    expect(service.resolveDataContextIntent('show my livestock')).toMatchObject({
+      intentId: 'KK-AI-CONTEXT-LIVESTOCK-001',
+      moduleId: 'KK-LIVESTOCK-001',
+      resolver: 'USER_OWNED_LIVESTOCK',
+      fields: ['animal', 'species', 'breed', 'ownership'],
+    });
+    expect(service.resolveDataContextIntent('show my marketplace listings')).toMatchObject({
+      intentId: 'KK-AI-CONTEXT-MARKETPLACE-001',
+      moduleId: 'KK-MARKETPLACE-001',
+      resolver: 'USER_OWNED_MARKETPLACE_LISTINGS',
+      fields: ['listing', 'product', 'availability', 'quantity', 'price', 'seller', 'service', 'rental'],
+    });
+  });
+
   it('loads the canonical effective policy and keeps unsafe capabilities disabled', () => {
     expect(service.getEffectivePolicy()).toMatchObject({
       registryId: 'KK-AI-REGISTRY-001',

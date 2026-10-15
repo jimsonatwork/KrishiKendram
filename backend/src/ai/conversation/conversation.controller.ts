@@ -24,6 +24,8 @@ import { AiVoiceCapabilityService } from '../voice/ai-voice-capability.service';
 import { FactDraftService } from './fact-draft.service';
 import { CropsService } from '../../crops/crops.service';
 import { FarmsService } from '../../farms/farms.service';
+import { LivestockService } from '../../livestock/livestock.service';
+import { MarketplaceService } from '../../marketplace/marketplace.service';
 import type { UserAiContextEnvelope } from '../contracts/ai-context';
 
 interface AuthenticatedRequest {
@@ -47,6 +49,8 @@ export class AiConversationController {
     private readonly factDrafts: FactDraftService,
     private readonly crops: CropsService,
     private readonly farms: FarmsService,
+    private readonly livestock: LivestockService,
+    private readonly marketplace: MarketplaceService,
   ) {}
 
   @Get('voice-intents')
@@ -111,20 +115,25 @@ export class AiConversationController {
     const dataContextIntent = this.registry.resolveDataContextIntent(content);
     const needsCropContext = dataContextIntent?.resolver === 'USER_OWNED_CROPS';
     const needsFarmContext = dataContextIntent?.resolver === 'USER_OWNED_FARMS';
+    const needsLivestockContext = dataContextIntent?.resolver === 'USER_OWNED_LIVESTOCK';
+    const needsMarketplaceContext = dataContextIntent?.resolver === 'USER_OWNED_MARKETPLACE_LISTINGS';
+    const needsModuleContext = needsCropContext || needsFarmContext || needsLivestockContext || needsMarketplaceContext;
     let aiContext: UserAiContextEnvelope | undefined;
     let ownedCrops: Awaited<ReturnType<CropsService['findMyCrops']>> | undefined;
     let ownedFarms: Awaited<ReturnType<FarmsService['findMyFarms']>> | undefined;
+    let ownedLivestock: Awaited<ReturnType<LivestockService['findMine']>> | undefined;
+    let ownedListings: Awaited<ReturnType<MarketplaceService['findMine']>> | undefined;
     // Deterministic registry-backed answers remain available when the LLM is
     // warming, unavailable, or not yet production-approved. They still require
     // the same authorization gate and the module's owner-scoped service.
-    if (providerStatus.ready === true || needsCropContext || needsFarmContext) {
+    if (providerStatus.ready === true || needsModuleContext) {
       aiContext = await this.userAiContext.buildContext({
         actor: { userId, role: this.requireUserRole(req) },
         moduleId: this.registry.getConversationModuleId(),
         capability: 'CONVERSATION',
         authorizationModule: 'platform',
         references: ['userId', 'moduleId'],
-        fields: needsCropContext || needsFarmContext ? ['conversation', 'messages', 'context'] : ['conversation', 'messages'],
+        fields: needsModuleContext ? ['conversation', 'messages', 'context'] : ['conversation', 'messages'],
         authorization: {
           resource: 'conversation',
           resourceId: conversation.id,
@@ -146,7 +155,7 @@ export class AiConversationController {
             language: message.language,
             createdAt: message.createdAt,
           })),
-          ...(needsCropContext || needsFarmContext ? { context: {} } : {}),
+          ...(needsModuleContext ? { context: {} } : {}),
         },
       });
       markStage('authorizedContextMs');
@@ -188,6 +197,50 @@ export class AiConversationController {
           })),
         };
       }
+      else if (needsLivestockContext && dataContextIntent) {
+        // LivestockService enforces READ authorization and limits records to farms owned by this actor.
+        ownedLivestock = await this.livestock.findMine(userId, this.requireUserRole(req));
+        markStage('ownedLivestockReadMs');
+        aiContext.fields.context = {
+          intentId: dataContextIntent.intentId,
+          sourceModuleId: dataContextIntent.moduleId,
+          sourceFields: dataContextIntent.fields,
+          totalCount: ownedLivestock.length,
+          truncated: ownedLivestock.length > 100,
+          livestock: ownedLivestock.slice(0, 100).map((animal) => ({
+            id: animal.id,
+            name: animal.name ?? null,
+            tag: animal.tag ?? null,
+            species: animal.species,
+            breed: animal.breed ?? null,
+            sex: animal.sex ?? null,
+            count: animal.count ?? 1,
+            status: animal.status ?? null,
+            farmId: animal.farmId,
+          })),
+        };
+      } else if (needsMarketplaceContext && dataContextIntent) {
+        // MarketplaceService enforces READ authorization and seller ownership.
+        ownedListings = await this.marketplace.findMine(userId, this.requireUserRole(req));
+        markStage('ownedMarketplaceReadMs');
+        aiContext.fields.context = {
+          intentId: dataContextIntent.intentId,
+          sourceModuleId: dataContextIntent.moduleId,
+          sourceFields: dataContextIntent.fields,
+          totalCount: ownedListings.length,
+          truncated: ownedListings.length > 100,
+          listings: ownedListings.slice(0, 100).map((listing) => ({
+            id: listing.id,
+            title: listing.title,
+            resourceType: listing.resourceType,
+            quantity: listing.quantity ?? null,
+            unit: listing.unit ?? null,
+            price: listing.price ?? null,
+            currency: listing.currency ?? 'INR',
+            status: listing.status,
+          })),
+        };
+      }
     }
     let result: Awaited<ReturnType<TextGenerationService['generate']>>;
     try {
@@ -208,6 +261,30 @@ export class AiConversationController {
       } else if (needsFarmContext && dataContextIntent && ownedFarms) {
         result = {
           content: this.formatOwnedFarmsAnswer(ownedFarms, language),
+          providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
+          modelId: 'rule:' + dataContextIntent.intentId,
+          modelVersion: 'registry-v' + this.registry.getRegistry().version,
+          mode: 'LOCAL',
+          ...(language ? { language } : {}),
+          generatedAt: new Date().toISOString(),
+          requiresValidation: true,
+          requiresUserConfirmation: true,
+        };
+      } else if (needsLivestockContext && dataContextIntent && ownedLivestock) {
+        result = {
+          content: this.formatOwnedLivestockAnswer(ownedLivestock, language),
+          providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
+          modelId: 'rule:' + dataContextIntent.intentId,
+          modelVersion: 'registry-v' + this.registry.getRegistry().version,
+          mode: 'LOCAL',
+          ...(language ? { language } : {}),
+          generatedAt: new Date().toISOString(),
+          requiresValidation: true,
+          requiresUserConfirmation: true,
+        };
+      } else if (needsMarketplaceContext && dataContextIntent && ownedListings) {
+        result = {
+          content: this.formatOwnedListingsAnswer(ownedListings, language),
           providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
           modelId: 'rule:' + dataContextIntent.intentId,
           modelVersion: 'registry-v' + this.registry.getRegistry().version,
@@ -496,6 +573,34 @@ export class AiConversationController {
     const header = hindi ? 'आपके ' + farms.length + ' दर्ज खेत हैं:\n' : telugu ? 'మీకు ' + farms.length + ' నమోదైన పొలాలు ఉన్నాయి:\n' : 'You have ' + farms.length + ' registered farm' + (farms.length === 1 ? '' : 's') + ':\n';
     const more = remaining > 0 ? '\n- ' + (hindi ? 'और ' : telugu ? 'మరియు ' : 'Plus ') + remaining + (hindi ? ' और।' : telugu ? ' మరిన్ని.' : ' more.') : '';
     return header + rows.join('\n') + more;
+  }
+
+  private formatOwnedLivestockAnswer(items: Awaited<ReturnType<LivestockService['findMine']>>, language?: string): string {
+    const hindi = language?.startsWith('hi');
+    const telugu = language?.startsWith('te');
+    if (!items.length) {
+      if (hindi) return 'KrishiKendram में अभी आपके कोई पशु दर्ज नहीं हैं।';
+      if (telugu) return 'KrishiKendramలో ప్రస్తుతం మీ పశువులు నమోదు కాలేదు.';
+      return 'You have no livestock registered in KrishiKendram yet.';
+    }
+    const rows = items.slice(0, 8).map((animal) => '- ' + (animal.name || animal.species) + ' (' + [animal.species, animal.breed, animal.count && animal.count > 1 ? 'count ' + animal.count : undefined, animal.status].filter(Boolean).join('; ') + ')');
+    const header = hindi ? 'आपके ' + items.length + ' पशु दर्ज हैं:\\n' : telugu ? 'మీకు ' + items.length + ' పశువులు నమోదు అయ్యాయి:\\n' : 'You have ' + items.length + ' registered livestock record' + (items.length === 1 ? '' : 's') + ':\\n';
+    const more = items.length > rows.length ? '\\n- ' + (hindi ? 'और ' : telugu ? 'మరియు ' : 'Plus ') + (items.length - rows.length) + (hindi ? ' और।' : telugu ? ' మరిన్ని.' : ' more.') : '';
+    return header + rows.join('\\n') + more;
+  }
+
+  private formatOwnedListingsAnswer(items: Awaited<ReturnType<MarketplaceService['findMine']>>, language?: string): string {
+    const hindi = language?.startsWith('hi');
+    const telugu = language?.startsWith('te');
+    if (!items.length) {
+      if (hindi) return 'KrishiKendram में अभी आपकी कोई मार्केटप्लेस लिस्टिंग नहीं है।';
+      if (telugu) return 'KrishiKendramలో ప్రస్తుతం మీ మార్కెట్‌ప్లేస్ ప్రకటనలు లేవు.';
+      return 'You have no marketplace listings in KrishiKendram yet.';
+    }
+    const rows = items.slice(0, 8).map((item) => '- ' + item.title + ' (' + [item.resourceType, item.quantity != null ? String(item.quantity) + (item.unit ? ' ' + item.unit : '') : undefined, item.price != null ? String(item.price) + ' ' + (item.currency || 'INR') : undefined, item.status].filter(Boolean).join('; ') + ')');
+    const header = hindi ? 'आपकी ' + items.length + ' मार्केटप्लेस लिस्टिंग हैं:\\n' : telugu ? 'మీకు ' + items.length + ' మార్కెట్‌ప్లేస్ ప్రకటనలు ఉన్నాయి:\\n' : 'You have ' + items.length + ' marketplace listing' + (items.length === 1 ? '' : 's') + ':\\n';
+    const more = items.length > rows.length ? '\\n- ' + (hindi ? 'और ' : telugu ? 'మరియు ' : 'Plus ') + (items.length - rows.length) + (hindi ? ' और।' : telugu ? ' మరిన్ని.' : ' more.') : '';
+    return header + rows.join('\\n') + more;
   }
 
   private requireUserId(req: AuthenticatedRequest): string {
