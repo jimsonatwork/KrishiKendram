@@ -212,6 +212,26 @@ describe('AiConversationController', () => {
     }), 'jwt-user-1');
   });
 
+  it('answers registered crop-list intents in the requested Telugu language', async () => {
+    textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
+    registry.resolveDataContextIntent.mockReturnValue({
+      intentId: 'KK-AI-CONTEXT-CROPS-001', moduleId: 'KK-CROP-001',
+      capability: 'CONVERSATION', resolver: 'USER_OWNED_CROPS',
+      phrases: ['నా పంటలు'], fields: ['crop'], references: ['userId'],
+    });
+    crops.findMyCrops.mockResolvedValue([{
+      id: 'crop-1', farmId: 'farm-1', name: 'వరి', variety: 'BPT-5204',
+      sowingDate: new Date('2026-10-01T00:00:00.000Z'), harvestDate: null,
+    }]);
+
+    await controller.respond(req, 'conversation-1', { content: 'నా పంటలు', language: 'te-IN' });
+
+    expect(conversations.appendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('మీకు 1 నమోదైన పంటలు ఉన్నాయి'),
+    }), 'jwt-user-1');
+    expect(textGeneration.generate).not.toHaveBeenCalled();
+  });
+
   it('answers an empty crop list deterministically without requiring a model', async () => {
     textGeneration.getStatus.mockReturnValue({ ready: false, enabled: false, cloudFallback: false });
     registry.resolveDataContextIntent.mockReturnValue({

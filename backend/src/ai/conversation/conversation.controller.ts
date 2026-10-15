@@ -195,7 +195,7 @@ export class AiConversationController {
         // This answer is derived from owner-authorized module records, not a
         // probabilistic model. It is O(1) generation work and cannot invent rows.
         result = {
-          content: this.formatOwnedCropsAnswer(ownedCrops),
+          content: this.formatOwnedCropsAnswer(ownedCrops, language),
           providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
           modelId: 'rule:' + dataContextIntent.intentId,
           modelVersion: 'registry-v' + this.registry.getRegistry().version,
@@ -207,7 +207,7 @@ export class AiConversationController {
         };
       } else if (needsFarmContext && dataContextIntent && ownedFarms) {
         result = {
-          content: this.formatOwnedFarmsAnswer(ownedFarms),
+          content: this.formatOwnedFarmsAnswer(ownedFarms, language),
           providerId: 'KK-AI-INTENT-ROUTER-LOCAL',
           modelId: 'rule:' + dataContextIntent.intentId,
           modelVersion: 'registry-v' + this.registry.getRegistry().version,
@@ -457,30 +457,45 @@ export class AiConversationController {
     return role as UserRole;
   }
 
-  private formatOwnedCropsAnswer(crops: Awaited<ReturnType<CropsService['findMyCrops']>>): string {
+  private formatOwnedCropsAnswer(crops: Awaited<ReturnType<CropsService['findMyCrops']>>, language?: string): string {
+    const locale = language?.startsWith('hi') ? 'hi-IN' : language?.startsWith('te') ? 'te-IN' : 'en-IN';
+    const hindi = locale === 'hi-IN';
+    const telugu = locale === 'te-IN';
     if (crops.length === 0) {
+      if (hindi) return 'KrishiKendram में अभी आपकी कोई फसल दर्ज नहीं है। आप फसल मॉड्यूल से फसल जोड़ सकते हैं।';
+      if (telugu) return 'KrishiKendramలో ప్రస్తుతం మీ పంటలు నమోదు కాలేదు. Crops మాడ్యూల్‌లో పంటను జోడించవచ్చు.';
       return 'You have no crops registered in KrishiKendram yet. You can add one from the Crops module.';
     }
     const rows = crops.slice(0, 8).map((crop) => {
       const details = [
-        crop.variety ? 'variety ' + crop.variety : undefined,
-        crop.sowingDate ? 'sown ' + new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.sowingDate) : undefined,
-        crop.harvestDate ? 'harvest ' + new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.harvestDate) : undefined,
+        crop.variety ? (hindi ? 'किस्म ' : telugu ? 'రకం ' : 'variety ') + crop.variety : undefined,
+        crop.sowingDate ? (hindi ? 'बुवाई ' : telugu ? 'విత్తిన తేదీ ' : 'sown ') + new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.sowingDate) : undefined,
+        crop.harvestDate ? (hindi ? 'कटाई ' : telugu ? 'కోత ' : 'harvest ') + new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(crop.harvestDate) : undefined,
       ].filter((item): item is string => Boolean(item));
       return '- ' + crop.name + (details.length ? ' (' + details.join('; ') + ')' : '');
     });
     const remaining = crops.length - rows.length;
-    return 'You have ' + crops.length + ' registered crop' + (crops.length === 1 ? '' : 's') + ':\n' + rows.join('\n') + (remaining > 0 ? '\n- Plus ' + remaining + ' more.' : '');
+    const header = hindi ? 'आपकी ' + crops.length + ' दर्ज फसलें हैं:\n' : telugu ? 'మీకు ' + crops.length + ' నమోదైన పంటలు ఉన్నాయి:\n' : 'You have ' + crops.length + ' registered crop' + (crops.length === 1 ? '' : 's') + ':\n';
+    const more = remaining > 0 ? '\n- ' + (hindi ? 'और ' : telugu ? 'మరియు ' : 'Plus ') + remaining + (hindi ? ' और।' : telugu ? ' మరిన్ని.' : ' more.') : '';
+    return header + rows.join('\n') + more;
   }
 
-  private formatOwnedFarmsAnswer(farms: Awaited<ReturnType<FarmsService['findMyFarms']>>): string {
-    if (farms.length === 0) return 'You have no farms registered in KrishiKendram yet. Say “create a farm” and I will guide you through the details.';
+  private formatOwnedFarmsAnswer(farms: Awaited<ReturnType<FarmsService['findMyFarms']>>, language?: string): string {
+    const hindi = language?.startsWith('hi');
+    const telugu = language?.startsWith('te');
+    if (farms.length === 0) {
+      if (hindi) return 'KrishiKendram में अभी आपका कोई खेत दर्ज नहीं है। आप खेत मॉड्यूल में नया खेत जोड़ सकते हैं।';
+      if (telugu) return 'KrishiKendramలో ప్రస్తుతం మీ పొలాలు నమోదు కాలేదు. Farms మాడ్యూల్‌లో కొత్త పొలాన్ని జోడించవచ్చు.';
+      return 'You have no farms registered in KrishiKendram yet. Say “create a farm” and I will guide you through the details.';
+    }
     const rows = farms.slice(0, 8).map((farm) => {
       const details = [farm.location ? String(farm.location) : undefined, farm.area != null ? String(farm.area) + (farm.unit ? ' ' + farm.unit : '') : undefined].filter((item): item is string => Boolean(item));
       return '- ' + farm.name + (details.length ? ' (' + details.join('; ') + ')' : '');
     });
     const remaining = farms.length - rows.length;
-    return 'You have ' + farms.length + ' registered farm' + (farms.length === 1 ? '' : 's') + ':\n' + rows.join('\n') + (remaining > 0 ? '\n- Plus ' + remaining + ' more.' : '');
+    const header = hindi ? 'आपके ' + farms.length + ' दर्ज खेत हैं:\n' : telugu ? 'మీకు ' + farms.length + ' నమోదైన పొలాలు ఉన్నాయి:\n' : 'You have ' + farms.length + ' registered farm' + (farms.length === 1 ? '' : 's') + ':\n';
+    const more = remaining > 0 ? '\n- ' + (hindi ? 'और ' : telugu ? 'మరియు ' : 'Plus ') + remaining + (hindi ? ' और।' : telugu ? ' మరిన్ని.' : ' more.') : '';
+    return header + rows.join('\n') + more;
   }
 
   private requireUserId(req: AuthenticatedRequest): string {
