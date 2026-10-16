@@ -14,23 +14,21 @@ const registryPath = resolve(projectRoot, 'ai/providers/model-link-registry.json
 const suitePath = resolve(projectRoot, 'ai/evaluations/KK-EVAL-LLM-001.json');
 const outputDir = resolve(projectRoot, 'ai/evaluations/results');
 const args = new Set(process.argv.slice(2));
+const preflightOnly = args.has('--preflight');
 const baseUrl = process.env.KK_AI_OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 const parsedUrl = new URL(baseUrl);
 if (parsedUrl.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(parsedUrl.hostname) || parsedUrl.username || parsedUrl.password) {
   throw new Error('Benchmark only permits a loopback Ollama URL.');
 }
-if (!args.has('--maintenance-window')) {
+if (!preflightOnly && !args.has('--maintenance-window')) {
   console.error('Refusing to run: candidate inference competes for CPU/RAM with the live app.');
   console.error('Run only during an explicitly scheduled quiet/maintenance window with --maintenance-window.');
+  console.error('Use --preflight for read-only checks that never run inference.');
   process.exit(2);
 }
 
 const registry = JSON.parse(await readFile(registryPath, 'utf8'));
 const suite = JSON.parse(await readFile(suitePath, 'utf8'));
-const modelId = registry.evaluationModelId;
-if (!modelId || modelId === registry.activeModelId) throw new Error('Select a separate evaluation model in God Mode before benchmarking.');
-const model = registry.models.find((item) => item.modelId === modelId);
-if (!model || !model.linked || model.productionReady === true) throw new Error('Evaluation model must be a linked, non-production-approved catalogue candidate.');
 const endpoint = (path) => baseUrl.replace(/\/$/, '') + path;
 async function post(path, body, timeoutMs = 180000) {
   const response = await fetch(endpoint(path), {
@@ -96,13 +94,66 @@ function startOllamaRssSampler() {
 }
 
 const tags = await getJson('/api/tags');
+const runtimeInfo = await getJson('/api/version').catch(() => ({ version: null }));
+
+if (preflightOnly) {
+  const installedModels = Array.isArray(tags.models) ? tags.models : [];
+  const catalog = registry.models.map((item) => {
+    const installed = installedModels.find((candidate) => candidate.name === item.modelId || candidate.name?.startsWith(item.modelId + ':'));
+    return {
+      modelId: item.modelId,
+      linked: item.linked,
+      active: item.modelId === registry.activeModelId,
+      selectedForEvaluation: item.modelId === registry.evaluationModelId,
+      productionReady: item.productionReady === true,
+      installed: Boolean(installed),
+      installedSizeBytes: installed?.size ?? null,
+      digest: installed?.digest ?? null,
+      quantization: installed?.details?.quantization_level ?? null,
+      parameterSize: installed?.details?.parameter_size ?? null,
+    };
+  });
+  const selected = catalog.find((item) => item.modelId === registry.evaluationModelId);
+  const blockers = [];
+  if (!tags.models || !Array.isArray(tags.models)) blockers.push('Ollama did not return a valid model inventory.');
+  if (!selected) blockers.push('No evaluation candidate is selected; use God Mode to link and select an installed model.');
+  else {
+    if (!selected.linked) blockers.push('Selected evaluation candidate is not linked.');
+    if (!selected.installed) blockers.push('Selected evaluation candidate is not installed in local Ollama.');
+    if (selected.active) blockers.push('The live model cannot be its own evaluation candidate.');
+    if (selected.productionReady) blockers.push('Production-approved models are not evaluation candidates.');
+  }
+  console.log(JSON.stringify({
+    mode: 'READ_ONLY_PREFLIGHT',
+    inferenceExecuted: false,
+    liveModelChanged: false,
+    cloudFallbackAllowed: false,
+    runtime: 'OLLAMA_LOCAL',
+    runtimeVersion: runtimeInfo.version ?? null,
+    registryVersion: registry.version,
+    activeModelId: registry.activeModelId,
+    evaluationModelId: registry.evaluationModelId ?? null,
+    benchmarkCases: suite.cases.length,
+    catalog,
+    status: blockers.length ? 'BLOCKED' : 'READY_FOR_MAINTENANCE_WINDOW',
+    blockers,
+    nextStep: blockers.length
+      ? 'Resolve blockers through the authorized God Mode model-connection workflow; do not edit the registry directly.'
+      : 'Run the benchmark only during an explicitly authorized maintenance window with --maintenance-window.',
+  }, null, 2));
+  process.exit(0);
+}
+
+const modelId = registry.evaluationModelId;
+if (!modelId || modelId === registry.activeModelId) throw new Error('Select a separate evaluation model in God Mode before benchmarking.');
+const model = registry.models.find((item) => item.modelId === modelId);
+if (!model || !model.linked || model.productionReady === true) throw new Error('Evaluation model must be a linked, non-production-approved catalogue candidate.');
 const installedModel = Array.isArray(tags.models)
   ? tags.models.find((item) => item.name === modelId || item.name?.startsWith(modelId + ':'))
   : undefined;
 if (!installedModel) {
   throw new Error('Selected evaluation model is not installed in the local Ollama runtime.');
 }
-const runtimeInfo = await getJson('/api/version').catch(() => ({ version: null }));
 const liveModelId = registry.activeModelId;
 const startedAt = new Date().toISOString();
 const results = [];

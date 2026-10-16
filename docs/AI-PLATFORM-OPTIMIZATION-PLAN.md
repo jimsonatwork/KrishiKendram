@@ -39,9 +39,11 @@ The canonical execution boundary and plug-and-play contract are documented in [A
 
 ### Phase B - Model benchmark
 - [x] Register Qwen3.5 0.8B as an evaluation candidate.
-- [ ] Resume and complete the model download during a quiet/maintenance window, then verify the local runtime reports it installed; partial blobs are retained.
-- [ ] Select it for evaluation through God Mode (audited action).
-- [ ] Benchmark current Qwen3 1.7B and candidate using the same fixed prompts, output cap and runtime settings during a quiet/maintenance window. Do not benchmark while normal app traffic is expected on this low-memory machine.
+- [x] Verify Qwen3.5 0.8B is installed in the local Ollama inventory; capture its digest, quantization and artifact size without running inference.
+- [x] Add a read-only preflight mode that reports candidate/link/install blockers and refuses to run inference unless the maintenance-window flag is present.
+- [ ] Link and select Qwen3.5 0.8B for evaluation through God Mode (audited actions); direct registry edits are prohibited.
+- [ ] Run `node backend/scripts/kk-ai-benchmark.mjs --preflight` and confirm it reports `READY_FOR_MAINTENANCE_WINDOW`.
+- [ ] Benchmark current Qwen3 1.7B and candidate using the same fixed prompts, output cap and runtime settings during an explicitly authorized quiet/maintenance window. Do not benchmark while normal app traffic is expected on this low-memory machine.
 - [ ] Review answer quality manually against a rubric; no automatic script may mark a model production-ready.
 - [ ] Promote only after speed, language quality, grounding and security gates pass.
 
