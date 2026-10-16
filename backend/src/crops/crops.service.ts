@@ -40,6 +40,7 @@ export class CropsService {
     userId: string,
     role: UserRole,
     dto: CreateCropDto,
+    tx?: Prisma.TransactionClient,
   ) {
     return this.createCanonical(
       dto.farmId,
@@ -67,6 +68,7 @@ export class CropsService {
         preventSameDayDuplicate: false,
         preserveNullDates: true,
       },
+      tx,
     );
   }
 

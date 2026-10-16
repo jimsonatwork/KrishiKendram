@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { ConversationFactCandidateStatus, ConversationMessageRole, Prisma, UserRole } from '@prisma/client';
+import { ConversationFactCandidate, ConversationFactCandidateStatus, ConversationMessageRole, Prisma, UserRole } from '@prisma/client';
 import { AuditService } from '../../platform/audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthorizationAction } from '../../platform/authorization/authorization.types';
@@ -15,9 +15,13 @@ import { FarmsService } from '../../farms/farms.service';
 import { CropsService } from '../../crops/crops.service';
 import { LivestockService } from '../../livestock/livestock.service';
 import { MarketplaceService } from '../../marketplace/marketplace.service';
+import { CreateFarmDto } from '../../farms/dto/create-farm.dto';
 import { UpdateFarmDto } from '../../farms/dto/update-farm.dto';
+import { CreateCropDto } from '../../crops/dto/create-crop.dto';
 import { UpdateCropDto } from '../../crops/dto/update-crop.dto';
+import { CreateLivestockDto } from '../../livestock/dto/create-livestock.dto';
 import { UpdateLivestockDto } from '../../livestock/dto/update-livestock.dto';
+import { CreateListingDto } from '../../marketplace/dto/create-listing.dto';
 import { UpdateListingDto } from '../../marketplace/dto/update-listing.dto';
 
 type AiTargetContext = {
@@ -368,6 +372,14 @@ export class FactDraftService {
     if (!field || !resource || !resource.fields ||
         !Object.prototype.hasOwnProperty.call(resource.fields, field)) {
       throw new ForbiddenException('The target field is not registered for the selected resource.');
+    }
+    if (!candidate.targetEntityId && !ownProfileUpdate) {
+      return this.applyNewRecordDraftGroup(
+        conversationId,
+        candidate,
+        suppliedPreviewHash,
+        actor,
+      );
     }
     if (ownProfileUpdate) {
       if (resource.model !== 'User') {
@@ -727,6 +739,205 @@ export class FactDraftService {
       default:
         throw new ForbiddenException('No governed AI row lock is registered for this target.');
     }
+  }
+
+  private async applyNewRecordDraftGroup(
+    conversationId: string,
+    candidate: ConversationFactCandidate,
+    suppliedPreviewHash: string,
+    actor: { userId: string; role: UserRole },
+  ) {
+    const entityType = candidate.targetEntityType ?? '';
+    const contract = {
+      Farm: {
+        moduleId: 'KK-FARM-001',
+        required: ['name'],
+        allowed: ['name', 'type', 'description', 'location', 'latitude', 'longitude', 'area', 'unit'],
+      },
+      Crop: {
+        moduleId: 'KK-CROP-001',
+        required: ['farmId', 'name', 'season'],
+        allowed: ['farmId', 'name', 'variety', 'season', 'status', 'sowingDate', 'harvestDate', 'area', 'unit', 'notes'],
+      },
+      Livestock: {
+        moduleId: 'KK-LIVESTOCK-001',
+        required: ['farmId', 'species', 'count'],
+        allowed: ['farmId', 'species', 'name', 'tag', 'breed', 'sex', 'count', 'status', 'acquiredAt', 'notes'],
+      },
+      MarketplaceListing: {
+        moduleId: 'KK-MARKETPLACE-001',
+        required: ['resourceType', 'resourceId', 'title'],
+        allowed: ['resourceType', 'resourceId', 'title', 'description', 'quantity', 'unit', 'price', 'currency'],
+      },
+    } as const;
+    const definition = contract[entityType as keyof typeof contract];
+    if (!definition || candidate.moduleId !== definition.moduleId) {
+      throw new ForbiddenException('New-record creation is not registered for this AI module and resource.');
+    }
+    const sessionId = candidate.sessionId?.trim();
+    if (!sessionId) {
+      throw new ConflictException('New-record drafts must share a sessionId so all fields can be confirmed and applied together.');
+    }
+    if (candidate.targetEntityId) {
+      throw new ConflictException('This draft targets an existing record and cannot use the new-record workflow.');
+    }
+
+    const conversation = await this.conversations.getConversation(conversationId, actor.userId);
+    const resource = this.platformRegistry.getAll().find((item) => item.model === entityType);
+    if (!resource || !resource.fields) {
+      throw new ForbiddenException('The target resource is no longer registered for AI creation.');
+    }
+    const group = await this.prisma.conversationFactCandidate.findMany({
+      where: {
+        conversationId,
+        userId: actor.userId,
+        sessionId,
+        moduleId: candidate.moduleId,
+        targetEntityType: entityType,
+        targetEntityId: null,
+      },
+    }) as ConversationFactCandidate[];
+    if (!group.some((item) => item.id === candidate.id)) {
+      throw new NotFoundException('The new-record draft group was not found.');
+    }
+    if (group.length === 0 || group.some((item) => item.status !== ConversationFactCandidateStatus.CONFIRMED)) {
+      throw new ConflictException('Confirm every field in this new-record draft before applying it.');
+    }
+
+    const allowedFields: readonly string[] = definition.allowed;
+    const values: Record<string, unknown> = {};
+    const fieldIds: string[] = [];
+    const evidenceReferences: string[] = [];
+    for (const item of group) {
+      const field = item.targetFieldId;
+      if (!field || !allowedFields.includes(field)) {
+        throw new ForbiddenException('Field ' + String(field ?? '') + ' is not allowed for new ' + entityType + ' records.');
+      }
+      if (Object.prototype.hasOwnProperty.call(values, field)) {
+        throw new ConflictException('The new-record draft contains duplicate field ' + field + '.');
+      }
+      if (item.previousValue !== null && item.previousValue !== undefined) {
+        throw new ConflictException('A new-record field unexpectedly contains a previous value; recreate the draft.');
+      }
+      const validationResult = item.validationResult;
+      if (!validationResult || typeof validationResult !== 'object' || Array.isArray(validationResult) ||
+          (validationResult as Record<string, unknown>).valid !== true) {
+        throw new BadRequestException('Every field in a new-record draft must pass central validation before apply.');
+      }
+      this.assertEvidenceStillPresent(conversation.messages, item.evidenceReference);
+      if (!Object.prototype.hasOwnProperty.call(resource.fields, field)) {
+        throw new ForbiddenException('Field ' + field + ' is no longer registered for ' + entityType + '.');
+      }
+      const validation = this.platformRegistry.validateResourceField(resource.name, field, item.proposedValue);
+      if (!validation.valid || validation.value === undefined || validation.value === null) {
+        throw new BadRequestException({
+          message: 'Field ' + field + ' no longer passes central validation.',
+          errors: validation.errors,
+        });
+      }
+      values[field] = validation.value;
+      fieldIds.push(field);
+      if (item.evidenceReference) evidenceReferences.push(item.evidenceReference);
+    }
+
+    const missing = definition.required.filter((field) =>
+      !Object.prototype.hasOwnProperty.call(values, field) ||
+      values[field] === undefined ||
+      values[field] === null ||
+      values[field] === '',
+    );
+    if (missing.length > 0) {
+      throw new BadRequestException({
+        message: 'The draft is missing required fields. Answer the missing questions before applying this record.',
+        missingFields: missing,
+        targetEntityType: entityType,
+        sessionId,
+      });
+    }
+
+    await this.assertAiWriteAuthorization(actor, {
+      user: actor,
+      module: resource.module,
+      resource: resource.name,
+      action: AuthorizationAction.CREATE,
+      ownerId: actor.userId,
+    }, fieldIds, 'Current authorization no longer permits creating this record.');
+
+    const applied = await this.prisma.$transaction(async (tx) => {
+      let created: { id: string } | undefined;
+      switch (entityType) {
+        case 'Farm':
+          if (!this.farms) break;
+          created = await this.farms.create(actor.userId, actor.role, values as unknown as CreateFarmDto, tx);
+          break;
+        case 'Crop':
+          if (!this.crops) break;
+          created = await this.crops.create(actor.userId, actor.role, values as unknown as CreateCropDto, tx);
+          break;
+        case 'Livestock':
+          if (!this.livestock) break;
+          created = await this.livestock.create(actor.userId, actor.role, values as unknown as CreateLivestockDto, tx);
+          break;
+        case 'MarketplaceListing':
+          if (!this.marketplace) break;
+          created = await this.marketplace.create(actor.userId, actor.role, values as unknown as CreateListingDto, tx);
+          break;
+      }
+      if (!created?.id) {
+        throw new ForbiddenException('The authorized module-owned creation service is not available.');
+      }
+
+      const transition = await tx.conversationFactCandidate.updateMany({
+        where: {
+          id: { in: group.map((item) => item.id) },
+          conversationId,
+          userId: actor.userId,
+          status: ConversationFactCandidateStatus.CONFIRMED,
+        },
+        data: {
+          status: ConversationFactCandidateStatus.APPLIED,
+          targetEntityId: created.id,
+          appliedAt: new Date(),
+          resolutionNote: 'Applied as one confirmed multi-field record through the authorized module-owned creation workflow.',
+        },
+      });
+      if (transition.count !== group.length) {
+        throw new ConflictException('The draft group changed while being applied; no record was committed. Reload and review the draft.');
+      }
+      const saved = await tx.conversationFactCandidate.findUnique({ where: { id: candidate.id } });
+      if (!saved) throw new NotFoundException('Applied draft could not be reloaded.');
+      await this.audit.createInTransaction(tx, {
+        actorId: actor.userId,
+        action: 'AI_FACT_DRAFT_GROUP_APPLIED',
+        resourceType: entityType,
+        resourceId: created.id,
+        description: 'Confirmed multi-field AI draft created a domain record through the authorized module service.',
+        metadata: {
+          conversationId,
+          sessionId,
+          moduleId: candidate.moduleId,
+          targetEntityType: entityType,
+          targetEntityId: created.id,
+          candidateIds: group.map((item) => item.id),
+          targetFieldIds: fieldIds,
+          evidenceReferences,
+          previewHash: suppliedPreviewHash,
+          applied: true,
+          applicationService: entityType + 'Service.create',
+        },
+      });
+      return { candidate: saved, created };
+    });
+
+    return {
+      candidate: applied.candidate,
+      applied: true,
+      created: true,
+      appliedCandidateIds: group.map((item) => item.id),
+      targetEntityType: entityType,
+      targetEntityId: applied.created.id,
+      targetFieldId: candidate.targetFieldId ?? '',
+    };
   }
 
   private async applyAiTargetUpdate(

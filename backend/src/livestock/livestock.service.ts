@@ -82,7 +82,12 @@ export class LivestockService {
       ownerId: await this.owner(item.id, item.farm.ownerId),
     });
   }
-  async create(userId: string, role: UserRole, dto: CreateLivestockDto) {
+  async create(
+    userId: string,
+    role: UserRole,
+    dto: CreateLivestockDto,
+    tx?: Prisma.TransactionClient,
+  ) {
     const farm = await this.prisma.farm.findUnique({
       where: { id: dto.farmId },
       select: { id: true, ownerId: true },
@@ -100,9 +105,8 @@ export class LivestockService {
 
     const data = this.validate(dto);
     delete data.farmId;
-
-    return this.prisma.$transaction(async (tx) => {
-      const livestock = await tx.livestock.create({
+    const createInTransaction = async (client: Prisma.TransactionClient) => {
+      const livestock = await client.livestock.create({
         data: {
           farmId: farm.id,
           ...(data as any),
@@ -110,9 +114,9 @@ export class LivestockService {
         },
       });
       await this.relationships.createOwnerRelationship(
-        tx, 'livestock', livestock.id, farm.ownerId, livestock.createdAt,
+        client, 'livestock', livestock.id, farm.ownerId, livestock.createdAt,
       );
-      await this.audit.createInTransaction(tx, {
+      await this.audit.createInTransaction(client, {
         actorId: userId,
         action: 'CREATE',
         resourceType: 'livestock',
@@ -120,7 +124,9 @@ export class LivestockService {
         description: 'Livestock created.',
       });
       return livestock;
-    });
+    };
+
+    return tx ? createInTransaction(tx) : this.prisma.$transaction(createInTransaction);
   }
 
   async findMine(userId: string, role: UserRole) {

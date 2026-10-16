@@ -66,7 +66,12 @@ export class MarketplaceService {
     return data;
   }
 
-  async create(userId: string, role: UserRole, dto: CreateListingDto) {
+  async create(
+    userId: string,
+    role: UserRole,
+    dto: CreateListingDto,
+    transaction?: Prisma.TransactionClient,
+  ) {
     const validated = this.validateFields({
       resourceType: dto.resourceType,
       resourceId: dto.resourceId,
@@ -96,11 +101,12 @@ export class MarketplaceService {
       action: AuthorizationAction.CREATE,
       ownerId,
     });
-    return this.prisma.$transaction(async (tx) => {
+    const createInTransaction = async (tx: Prisma.TransactionClient) => {
       const listing = await tx.marketplaceListing.create({ data: { sellerId: ownerId, resourceType: dto.resourceType, resourceId: dto.resourceId, title: validated.title!, description: validated.description, quantity: validated.quantity, unit: validated.unit, price: validated.price, currency: validated.currency || 'INR' } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE', resourceType: 'marketplaceListing', resourceId: listing.id, description: 'Marketplace listing created' });
       return listing;
-    });
+    };
+    return transaction ? createInTransaction(transaction) : this.prisma.$transaction(createInTransaction);
   }
 
   async findPublished() {

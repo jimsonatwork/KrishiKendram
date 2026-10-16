@@ -76,11 +76,12 @@ describe('FactDraftService central validation and authorization', () => {
       farm: {
         findFirst: jest.fn().mockImplementation(({ select }: any) =>
           select?.ownerId ? { id: 'farm-1', ownerId: 'farmer-1' } : { name: 'Old Farm' }),
+        create: jest.fn().mockResolvedValue({ id: 'farm-new', name: 'Green Valley' }),
         update: jest.fn().mockResolvedValue({ id: 'farm-1', name: 'New Farm' }),
       },
-      crop: { findFirst: jest.fn(), update: jest.fn() },
-      livestock: { findFirst: jest.fn(), update: jest.fn() },
-      marketplaceListing: { findFirst: jest.fn(), update: jest.fn() },
+      crop: { findFirst: jest.fn(), create: jest.fn().mockResolvedValue({ id: 'crop-new', name: 'Paddy' }), update: jest.fn() },
+      livestock: { findFirst: jest.fn(), create: jest.fn().mockResolvedValue({ id: 'livestock-new', species: 'cattle' }), update: jest.fn() },
+      marketplaceListing: { findFirst: jest.fn(), create: jest.fn().mockResolvedValue({ id: 'listing-new', title: 'Hay' }), update: jest.fn() },
       conversationFactCandidate: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUnique: jest.fn().mockImplementation(({ where }: any) => ({
@@ -102,15 +103,28 @@ describe('FactDraftService central validation and authorization', () => {
       resourceRelationship: { findFirst: jest.fn().mockResolvedValue(null) },
       conversationFactCandidate: {
         findFirst: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       $transaction: jest.fn().mockImplementation((callback: any) => callback(tx)),
     };
     audit = { createInTransaction: jest.fn().mockResolvedValue({ id: 'audit-1' }) };
     users = { update: jest.fn().mockResolvedValue({ id: 'farmer-1', name: 'New Name' }) };
-    farms = { update: jest.fn().mockResolvedValue({ id: 'farm-1', name: 'New Farm' }) };
-    crops = { update: jest.fn().mockResolvedValue({ id: 'crop-1', name: 'New Crop' }) };
-    livestock = { update: jest.fn().mockResolvedValue({ id: 'livestock-1', name: 'New Animal' }) };
-    marketplace = { update: jest.fn().mockResolvedValue({ id: 'listing-1', title: 'New Listing' }) };
+    farms = {
+      create: jest.fn().mockResolvedValue({ id: 'farm-new', name: 'Green Valley' }),
+      update: jest.fn().mockResolvedValue({ id: 'farm-1', name: 'New Farm' }),
+    };
+    crops = {
+      create: jest.fn().mockResolvedValue({ id: 'crop-new', name: 'Paddy' }),
+      update: jest.fn().mockResolvedValue({ id: 'crop-1', name: 'New Crop' }),
+    };
+    livestock = {
+      create: jest.fn().mockResolvedValue({ id: 'livestock-new', species: 'cattle' }),
+      update: jest.fn().mockResolvedValue({ id: 'livestock-1', name: 'New Animal' }),
+    };
+    marketplace = {
+      create: jest.fn().mockResolvedValue({ id: 'listing-new', title: 'Hay' }),
+      update: jest.fn().mockResolvedValue({ id: 'listing-1', title: 'New Listing' }),
+    };
     service = new FactDraftService(
       conversations as ConversationService,
       aiRegistry as AiRegistryService,
@@ -683,6 +697,149 @@ describe('FactDraftService central validation and authorization', () => {
       metadata: expect.objectContaining({ previewHash: preview.previewHash, applied: false }),
     }));
     expect(result.applied).toBe(false);
+  });
+
+  it('creates a new farm from a fully confirmed multi-field draft in one authorized transaction', async () => {
+    const group = [
+      {
+        id: 'candidate-farm-name',
+        conversationId: 'conversation-1',
+        userId: 'farmer-1',
+        sessionId: 'farm-session-1',
+        moduleId: 'KK-FARM-001',
+        targetEntityType: 'Farm',
+        targetEntityId: null,
+        targetFieldId: 'name',
+        proposedValue: 'Green Valley',
+        previousValue: null,
+        status: 'CONFIRMED',
+        evidenceReference: 'user-message-1',
+        validationResult: { valid: true, errors: [] },
+        provenance: { providerId: 'conversation-draft-service' },
+        source: 'CONVERSATION_DRAFT',
+      },
+      {
+        id: 'candidate-farm-area',
+        conversationId: 'conversation-1',
+        userId: 'farmer-1',
+        sessionId: 'farm-session-1',
+        moduleId: 'KK-FARM-001',
+        targetEntityType: 'Farm',
+        targetEntityId: null,
+        targetFieldId: 'area',
+        proposedValue: 2,
+        previousValue: null,
+        status: 'CONFIRMED',
+        evidenceReference: 'user-message-1',
+        validationResult: { valid: true, errors: [] },
+        provenance: { providerId: 'conversation-draft-service' },
+        source: 'CONVERSATION_DRAFT',
+      },
+    ];
+    aiRegistry.getModule.mockReturnValue({
+      allowedCapabilities: ['EXTRACTION'],
+      candidateFactTargets: ['Farm'],
+      applyFields: { Farm: ['name', 'area'] },
+    });
+    platformRegistry.getAll.mockReturnValue([{
+      name: 'farm',
+      model: 'Farm',
+      module: 'farms',
+      fields: { name: { definition: 'farmName' }, area: { definition: 'farmArea' } },
+    }]);
+    platformRegistry.validateResourceField.mockImplementation((_resource: string, _field: string, value: unknown) => ({
+      valid: true,
+      value,
+      errors: [],
+    }));
+    conversations.listFactCandidates.mockResolvedValue(group);
+    prisma.conversationFactCandidate.findFirst.mockResolvedValue(group[0]);
+    prisma.conversationFactCandidate.findMany.mockResolvedValue(group);
+    tx.conversationFactCandidate.updateMany.mockResolvedValue({ count: group.length });
+    tx.conversationFactCandidate.findUnique.mockResolvedValue({ ...group[0], status: 'APPLIED' });
+
+    const [preview] = await service.listDrafts('conversation-1', 'farmer-1');
+    const result = await service.applyConfirmedDraft('conversation-1', group[0].id, preview.previewHash, {
+      userId: 'farmer-1',
+      role: UserRole.FARMER,
+    });
+
+    expect(farms.create).toHaveBeenCalledWith(
+      'farmer-1',
+      UserRole.FARMER,
+      { name: 'Green Valley', area: 2 },
+      tx,
+    );
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.conversationFactCandidate.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        id: { in: ['candidate-farm-name', 'candidate-farm-area'] },
+        status: 'CONFIRMED',
+      }),
+      data: expect.objectContaining({ status: 'APPLIED' }),
+    }));
+    expect(audit.createInTransaction).toHaveBeenCalledWith(tx, expect.objectContaining({
+      action: 'AI_FACT_DRAFT_GROUP_APPLIED',
+      resourceType: 'Farm',
+      resourceId: 'farm-new',
+      metadata: expect.objectContaining({
+        applied: true,
+        candidateIds: ['candidate-farm-name', 'candidate-farm-area'],
+        applicationService: 'FarmService.create',
+      }),
+    }));
+    expect(result).toMatchObject({
+      applied: true,
+      created: true,
+      targetEntityType: 'Farm',
+      targetEntityId: 'farm-new',
+      appliedCandidateIds: ['candidate-farm-name', 'candidate-farm-area'],
+    });
+  });
+
+  it('does not create a new record when a required field is still missing', async () => {
+    const candidate = {
+      id: 'candidate-crop-name',
+      conversationId: 'conversation-1',
+      userId: 'farmer-1',
+      sessionId: 'crop-session-1',
+      moduleId: 'KK-CROP-001',
+      targetEntityType: 'Crop',
+      targetEntityId: null,
+      targetFieldId: 'name',
+      proposedValue: 'Paddy',
+      previousValue: null,
+      status: 'CONFIRMED',
+      evidenceReference: 'user-message-1',
+      validationResult: { valid: true, errors: [] },
+      provenance: { providerId: 'conversation-draft-service' },
+      source: 'CONVERSATION_DRAFT',
+    };
+    aiRegistry.getModule.mockReturnValue({
+      allowedCapabilities: ['EXTRACTION'],
+      candidateFactTargets: ['Crop'],
+      applyFields: { Crop: ['name', 'farmId', 'season'] },
+    });
+    platformRegistry.getAll.mockReturnValue([{
+      name: 'crop',
+      model: 'Crop',
+      module: 'farms',
+      fields: { name: { definition: 'cropName' }, farmId: { definition: 'farmId' }, season: { definition: 'cropSeason' } },
+    }]);
+    platformRegistry.validateResourceField.mockReturnValue({ valid: true, value: 'Paddy', errors: [] });
+    conversations.listFactCandidates.mockResolvedValue([candidate]);
+    prisma.conversationFactCandidate.findFirst.mockResolvedValue(candidate);
+    prisma.conversationFactCandidate.findMany.mockResolvedValue([candidate]);
+    const [preview] = await service.listDrafts('conversation-1', 'farmer-1');
+
+    await expect(service.applyConfirmedDraft('conversation-1', candidate.id, preview.previewHash, {
+      userId: 'farmer-1',
+      role: UserRole.FARMER,
+    })).rejects.toMatchObject({
+      response: expect.objectContaining({ missingFields: expect.arrayContaining(['farmId', 'season']) }),
+    });
+    expect(crops.create).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('rejects a request without valid actor identity', async () => {

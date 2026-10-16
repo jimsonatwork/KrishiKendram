@@ -149,6 +149,7 @@ test('opening Voice Agent starts recognition and keeps the planting conversation
   })
 
   await expect(page.getByText(/When was this crop sown/).last()).toBeVisible()
+  await expect(page.getByText(/You · \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)).toBeVisible()
   expect(intakeCalls).toHaveLength(0)
   await typeCommand(page, 'today')
   await expect(page.getByText(/Planting draft — nothing has been saved yet\./).last()).toBeVisible()

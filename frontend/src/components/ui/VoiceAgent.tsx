@@ -13,6 +13,14 @@ type Recognition = {
 type SpeechWindow = Window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }
 type VoiceTurn = { id: number; speaker: 'You' | 'Krishi'; text: string; at: string }
 type VoiceFarm = { id: string; name: string; location?: string }
+type VoiceRecordDraftField = { value: unknown; evidenceMessageId: string }
+type VoiceRecordCreationDraft = {
+  kind: 'FARM' | 'LIVESTOCK'
+  sessionId: string
+  phase: 'NEEDS_NAME' | 'NEEDS_FARM' | 'NEEDS_SPECIES' | 'NEEDS_COUNT'
+  fields: Record<string, VoiceRecordDraftField>
+  farms: VoiceFarm[]
+}
 type VoiceCropIntakeDraft = {
   content: string
   cropName?: string
@@ -63,6 +71,16 @@ const isPlantingRequest = (text: string, vocabulary: VoiceCropTerminology | null
     (hasCrop && imperative.test(text)) ||
     (hasCrop && registrationVerb.test(text) && explicitCropRecord)
 }
+const isFarmCreationRequest = (text: string) =>
+  !/^\s*(what|why|when|where|how|which|who|can|could|should|would|do|does|did|is|are|explain|tell me)\b/i.test(text) &&
+  /\b(add|create|register|record|start|new)\b/i.test(text) &&
+  /\bfarm\b/i.test(text) &&
+  !/\b(crop|planting|sowing|livestock|animal)\b/i.test(text)
+const isLivestockCreationRequest = (text: string) =>
+  !/^\s*(what|why|when|where|how|which|who|can|could|should|would|do|does|did|is|are|explain|tell me)\b/i.test(text) &&
+  /(\b(add|create|register|record|save|track|enter)\b|\b(i have|we have|my farm has)\b)/i.test(text) &&
+  Boolean(parseLivestockSpecies(text))
+
 const parseSpokenArea = (text: string, vocabulary: VoiceCropTerminology | null): { area?: number; unit?: string } => {
   if (!vocabulary) return {}
   const numberWords = Object.keys(vocabulary.numberWords).join('|')
@@ -75,6 +93,79 @@ const parseSpokenArea = (text: string, vocabulary: VoiceCropTerminology | null):
   const amount = match[1].toLowerCase()
   return { area: vocabulary.numberWords[amount] ?? Number(amount), unit: match[2].toLowerCase().startsWith('acer') ? 'acres' : match[2] }
 }
+const parseNumberValue = (text: string, vocabulary: VoiceCropTerminology | null): number | undefined => {
+  const words: Record<string, number> = {
+    ...(vocabulary?.numberWords ?? {}),
+    zero: 0, one: 1, a: 1, an: 1, two: 2, three: 3, four: 4, five: 5,
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  }
+  const alternatives = Object.keys(words).sort((a, b) => b.length - a.length).map(word => word.replace(/ /g, '\\s+')).join('|')
+  const match = text.normalize('NFKC').toLocaleLowerCase().match(new RegExp('\\b(\\d+(?:\\.\\d+)?|' + alternatives + ')\\b', 'i'))
+  if (!match) return undefined
+  const raw = match[1].toLocaleLowerCase()
+  const value = Number(raw)
+  return Number.isFinite(value) ? value : words[raw]
+}
+const livestockSpeciesAliases: Array<{ value: string; aliases: string[] }> = [
+  { value: 'Cattle', aliases: ['cattle', 'cow', 'cows', 'bull', 'bulls', 'calf', 'calves', 'ఆవు', 'ఆవులు', 'పశువు', 'పశువులు', 'गाय', 'गायें'] },
+  { value: 'Buffalo', aliases: ['buffalo', 'buffaloes', 'బర్రె', 'బర్రెలు', 'మహిషి', 'भैंस', 'भैंसें'] },
+  { value: 'Goat', aliases: ['goat', 'goats', 'మేక', 'మేకలు', 'बकरी', 'बकरियां'] },
+  { value: 'Sheep', aliases: ['sheep', 'గొర్రె', 'గొర్రెలు', 'भेड़'] },
+  { value: 'Poultry', aliases: ['chicken', 'chickens', 'hen', 'hens', 'poultry', 'కోడి', 'కోళ్లు', 'मुर्गी', 'मुर्गियां'] },
+  { value: 'Pig', aliases: ['pig', 'pigs', 'పంది', 'పందులు', 'सूअर'] },
+  { value: 'Horse', aliases: ['horse', 'horses', 'గుర్రం', 'గుర్రాలు', 'घोड़ा', 'घोड़े'] },
+]
+const containsNonAscii = (value: string) => [...value].some(character => character.charCodeAt(0) > 127)
+const parseLivestockSpecies = (text: string): string | undefined => {
+  const normalized = text.normalize('NFKC').toLocaleLowerCase()
+  for (const group of livestockSpeciesAliases) {
+    if (group.aliases.some(alias => containsNonAscii(alias)
+      ? normalized.includes(alias.toLocaleLowerCase())
+      : new RegExp('\\b' + alias + '\\b', 'i').test(normalized))) return group.value
+  }
+  return undefined
+}
+const parseLivestockCount = (text: string, vocabulary: VoiceCropTerminology | null): number | undefined => {
+  const normalized = text.normalize('NFKC').toLocaleLowerCase()
+  const species = livestockSpeciesAliases.flatMap(group => group.aliases)
+    .sort((a, b) => b.length - a.length)
+    .find(alias => containsNonAscii(alias)
+      ? normalized.includes(alias.toLocaleLowerCase())
+      : new RegExp('\\b' + alias + '\\b', 'i').test(normalized))
+  if (!species) return undefined
+  const index = normalized.indexOf(species.toLocaleLowerCase())
+  const before = normalized.slice(0, index)
+  const value = parseNumberValue(before, vocabulary)
+  if (value !== undefined && value >= 1 && value <= 100000) return Math.floor(value)
+  if (/\b(?:a|an|one)\s*$/i.test(before)) return 1
+  return undefined
+}
+const parseFarmLocation = (text: string): string | undefined => {
+  const match = text.normalize('NFKC').match(/\b(?:in|at|near)\s+([A-Za-z][A-Za-z0-9 .'-]{1,60})\s*$/i)
+  const location = match?.[1]?.replace(/[,.!? ]+$/, '').trim()
+  return location && !/^(?:my farm|the farm|there)$/i.test(location) ? location : undefined
+}
+const parseFarmName = (text: string, vocabulary: VoiceCropTerminology | null): string | undefined => {
+  const named = text.match(/\b(?:farm\s+)?(?:named|called|name\s+is)\s+(.+?)(?=,|\b(?:in|at|near)\s+|$)/i)
+  let name = named?.[1] ?? text.replace(/^\s*(?:please\s+)?(?:add|create|register|record|start|new)\s+(?:a\s+|my\s+|another\s+)?farm\b/i, '')
+  const numberWords = Object.keys(vocabulary?.numberWords ?? {}).sort((a, b) => b.length - a.length).map(word => word.replace(/ /g, '\\s+')).join('|')
+  const units = [...(vocabulary?.areaUnits ?? []), 'acre', 'acres', 'hectare', 'hectares', 'acer', 'acers'].join('|')
+  if (units) name = name.replace(new RegExp('\\b(?:\\d+(?:\\.\\d+)?' + (numberWords ? '|' + numberWords : '') + ')\\s*(?:' + units + ')\\b', 'ig'), ' ')
+  name = name.replace(/\b(?:with|having|area|land)\b/ig, ' ')
+    .replace(/\b(?:in|at|near)\s+.+$/i, ' ')
+    .replace(/[,.!?]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!name || /^(?:with|of|for|a|an|my|new|farm|please|another)$/i.test(name)) return undefined
+  return name.length > 100 ? name.slice(0, 100).trim() : name
+}
+const formatTurnTimestamp = (value: Date | string = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value)
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' +
+    pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds())
+}
+
 const parseWeeksAgo = (text: string, vocabulary: VoiceCropTerminology | null): number | undefined => {
   const match = text.normalize('NFKC').toLocaleLowerCase().match(/\b(?:last|past|about|around)?\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+weeks?\s*(?:ago|back|now)?\b/i)
   if (!match) return undefined
@@ -207,6 +298,7 @@ export function VoiceAgent({ role }: { role: string }) {
   const [draftReviewOpen, setDraftReviewOpen] = useState(false)
   const [draftBusy, setDraftBusy] = useState(false)
   const [intakeDraft, setIntakeDraft] = useState<VoiceCropIntakeDraft | null>(null)
+  const [recordCreationDraft, setRecordCreationDraft] = useState<VoiceRecordCreationDraft | null>(null)
   const [cropTerminology, setCropTerminology] = useState<VoiceCropTerminology | null>(null)
   const intakeCommitInFlight = useRef(false)
   const lastEvidenceMessageId = useRef<string | null>(null)
@@ -222,6 +314,7 @@ export function VoiceAgent({ role }: { role: string }) {
     let active = true
     // Never carry a pending farm/crop draft or stale vocabulary across account changes.
     setIntakeDraft(null)
+    setRecordCreationDraft(null)
     setCropTerminology(null)
     if (!accessToken) {
       setVoiceIntents([])
@@ -275,7 +368,7 @@ export function VoiceAgent({ role }: { role: string }) {
         id: ++turnId.current,
         speaker: item.role === 'USER' ? 'You' as const : 'Krishi' as const,
         text: item.content,
-        at: new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        at: formatTurnTimestamp(item.createdAt),
       }))
       setTurns(restored)
       if (candidates.length) {
@@ -390,9 +483,12 @@ export function VoiceAgent({ role }: { role: string }) {
     try {
       const applied = await api.applyAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash)
       const refreshed = await loadFactDrafts()
+      const successMessage = applied.created
+        ? `${applied.targetEntityType} record created through its authorized module service; ${applied.appliedCandidateIds?.length ?? 1} confirmed field draft(s) were applied and audit-recorded.`
+        : `${applied.targetEntityType} field ${applied.targetFieldId} updated through its authorized module service and audit-recorded.`
       setMessage(refreshed
-        ? `${applied.targetEntityType} field ${applied.targetFieldId} updated through its authorized module service and audit-recorded.`
-        : 'The record update succeeded and was audited, but the refreshed preview could not be loaded.')
+        ? successMessage
+        : 'The authorized record operation succeeded and was audited, but the refreshed preview could not be loaded.')
     } catch {
       await loadFactDrafts()
       setMessage('The record update could not be applied. No success is claimed; review the draft status and retry only if it remains CONFIRMED.')
@@ -412,6 +508,53 @@ export function VoiceAgent({ role }: { role: string }) {
         : 'Draft confirmation succeeded and was audited, but the refreshed preview could not be loaded. Reopen Review saved fact drafts before taking another action.')
     } catch {
       setMessage('The draft could not be confirmed. Its preview may have changed, validation may have failed, or authorization may have changed. Reload the drafts and review again.')
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
+  const confirmFactDraftGroup = async (sessionId: string) => {
+    if (!accessToken || !conversationId.current) return
+    const group = factDrafts.filter(draft => draft.sessionId === sessionId && !draft.targetEntityId)
+    if (!group.length) {
+      setMessage('I could not find the complete record draft group. Reload the saved drafts before continuing.')
+      return
+    }
+    const invalid = group.find(draft => {
+      const validation = draft.validationResult && typeof draft.validationResult === 'object'
+        ? draft.validationResult as { valid?: boolean }
+        : {}
+      return validation.valid !== true
+    })
+    if (invalid) {
+      setMessage('At least one field needs correction before the record can be confirmed. Review the validation message on each field; nothing has been created.')
+      return
+    }
+    const pending = group.filter(draft => ['VALIDATION_PENDING', 'AWAITING_CONFIRMATION'].includes(draft.status))
+    setDraftBusy(true)
+    try {
+      for (const draft of pending) {
+        await api.confirmAiFactCandidate(accessToken, conversationId.current, draft.id, draft.previewHash)
+      }
+      const [candidates, history] = await Promise.all([
+        api.getAiFactCandidates(accessToken, conversationId.current),
+        api.getAiConversationHistory(accessToken, conversationId.current),
+      ])
+      setFactDrafts(candidates)
+      setDraftEvidence(Object.fromEntries(history.map(item => [item.id, item.content])))
+      setMessage('All ' + group.length + ' fields are confirmed. No record has been created yet. Choose Apply confirmed on one field to create the complete record through its authorized module service.')
+    } catch {
+      try {
+        const [candidates, history] = await Promise.all([
+          api.getAiFactCandidates(accessToken, conversationId.current),
+          api.getAiConversationHistory(accessToken, conversationId.current),
+        ])
+        setFactDrafts(candidates)
+        setDraftEvidence(Object.fromEntries(history.map(item => [item.id, item.content])))
+      } catch {
+        // Preserve the confirmation failure message.
+      }
+      setMessage('I could not confirm every field. No record was created. Reload the drafts and review which fields remain awaiting confirmation.')
     } finally {
       setDraftBusy(false)
     }
@@ -437,7 +580,7 @@ export function VoiceAgent({ role }: { role: string }) {
     commandInFlight.current = false
     activeRequest.current = null
     setMessage(text)
-    setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
+    setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: formatTurnTimestamp() }].slice(-60))
     const resumeAfterReply = () => {
       if (!voiceSessionActive.current || speechSuppressed.current) return
       window.setTimeout(() => {
@@ -722,6 +865,234 @@ export function VoiceAgent({ role }: { role: string }) {
     }
     say('The planting draft is still unsaved. Say “confirm” to save, “cancel” to discard, or say a correction such as “change crop to rice” or “change area to two acres”.')
   }
+  const createRecordDraftCandidates = async (draft: VoiceRecordCreationDraft) => {
+    const token = accessToken
+    const id = conversationId.current
+    if (!token || !id) {
+      setRecordCreationDraft(null)
+      say('Please sign in again before I can save a reviewable record draft. Nothing was created.')
+      return
+    }
+    const fields = Object.entries(draft.fields)
+    if (!fields.length) {
+      setRecordCreationDraft(null)
+      say('I do not have enough details to prepare a record draft. Nothing was created.')
+      return
+    }
+
+    setDraftBusy(true)
+    try {
+      const moduleId = draft.kind === 'FARM' ? 'KK-FARM-001' : 'KK-LIVESTOCK-001'
+      const targetEntityType = draft.kind === 'FARM' ? 'Farm' : 'Livestock'
+      const results = []
+      for (const [targetFieldId, field] of fields) {
+        results.push(await api.createAiFactCandidate(token, id, {
+          targetModuleId: moduleId,
+          targetEntityType,
+          targetFieldId,
+          evidenceMessageId: field.evidenceMessageId,
+          proposedValue: field.value,
+          sessionId: draft.sessionId,
+        }))
+      }
+      const [candidates, history] = await Promise.all([
+        api.getAiFactCandidates(token, id),
+        api.getAiConversationHistory(token, id),
+      ])
+      setFactDrafts(candidates)
+      setDraftEvidence(Object.fromEntries(history.map(item => [item.id, item.content])))
+      setDraftReviewOpen(true)
+      setRecordCreationDraft(null)
+      const invalid = results.some(result => !result.validation.valid)
+      say(invalid
+        ? 'I saved the proposed ' + targetEntityType.toLocaleLowerCase() + ' fields for review, but one or more fields did not pass central validation. Open Review saved fact drafts to inspect them. Nothing was created.'
+        : 'I prepared a ' + targetEntityType.toLocaleLowerCase() + ' draft with ' + fields.map(([field]) => field).join(', ') + '. Nothing has been created yet. Review the saved fact drafts and confirm each field, then choose Apply on one confirmed field to create the complete record.')
+    } catch {
+      setRecordCreationDraft(null)
+      try {
+        const [candidates, history] = await Promise.all([
+          api.getAiFactCandidates(token, id),
+          api.getAiConversationHistory(token, id),
+        ])
+        setFactDrafts(candidates)
+        setDraftEvidence(Object.fromEntries(history.map(item => [item.id, item.content])))
+        setDraftReviewOpen(true)
+      } catch {
+        // Keep the original save failure visible below.
+      }
+      say('I could not prepare every field of this record draft. No farm or livestock record was created. Review any saved draft fields before trying again.')
+    } finally {
+      setDraftBusy(false)
+    }
+  }
+
+  const beginRecordCreationDraft = async (original: string, evidenceMessageId: string | null, epoch: number) => {
+    if (!evidenceMessageId) {
+      say('I could not link the request to its saved conversation message, so I will not prepare a record draft. Please try again.')
+      return
+    }
+    const sessionId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : 'voice-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10)
+
+    if (isFarmCreationRequest(original)) {
+      const fields: VoiceRecordCreationDraft['fields'] = {}
+      const name = parseFarmName(original, cropTerminology)
+      const area = parseSpokenArea(original, cropTerminology)
+      const location = parseFarmLocation(original)
+      if (name) fields.name = { value: name, evidenceMessageId }
+      if (area.area !== undefined) {
+        fields.area = { value: area.area, evidenceMessageId }
+        fields.unit = { value: area.unit ?? 'acres', evidenceMessageId }
+      }
+      if (location) fields.location = { value: location, evidenceMessageId }
+      if (!name) {
+        const draft: VoiceRecordCreationDraft = { kind: 'FARM', sessionId, phase: 'NEEDS_NAME', fields, farms: [] }
+        setRecordCreationDraft(draft)
+        say('What name should I give this farm? You can include its area and location in the same answer. Nothing will be created until you review and confirm the draft.')
+        return
+      }
+      await createRecordDraftCandidates({ kind: 'FARM', sessionId, phase: 'NEEDS_NAME', fields, farms: [] })
+      return
+    }
+
+    const token = accessToken
+    if (!token) {
+      say('Please sign in again before I can prepare a livestock record. Nothing was created.')
+      return
+    }
+    let farms: VoiceFarm[]
+    try {
+      farms = (await api.farms(token))
+        .map(item => ({
+          id: String(item.id ?? ''),
+          name: String(item.name ?? '').trim(),
+          ...(typeof item.location === 'string' ? { location: item.location } : {}),
+        }))
+        .filter(item => item.id && item.name)
+    } catch {
+      say('I could not load the farms you are authorized to use. Nothing was created; please try again after checking your connection.')
+      return
+    }
+    if (epoch !== turnEpoch.current) return
+    if (!farms.length) {
+      say('You do not have a farm available for this animal yet. Let us register your farm first, then I can record the livestock. Nothing was created.')
+      return
+    }
+
+    const fields: VoiceRecordCreationDraft['fields'] = {}
+    const species = parseLivestockSpecies(original)
+    const count = parseLivestockCount(original, cropTerminology)
+    const selectedFarm = farms.length === 1
+      ? farms[0]
+      : farms.find(farm => original.toLocaleLowerCase().includes(farm.name.toLocaleLowerCase()))
+    if (selectedFarm) fields.farmId = { value: selectedFarm.id, evidenceMessageId }
+    if (species) fields.species = { value: species, evidenceMessageId }
+    if (count !== undefined) fields.count = { value: count, evidenceMessageId }
+    const draft: VoiceRecordCreationDraft = {
+      kind: 'LIVESTOCK',
+      sessionId,
+      phase: !selectedFarm ? 'NEEDS_FARM' : !species ? 'NEEDS_SPECIES' : 'NEEDS_COUNT',
+      fields,
+      farms,
+    }
+    if (!selectedFarm) {
+      setRecordCreationDraft(draft)
+      say('Which farm should this animal belong to? Say its name or its number: ' + farms.map((farm, index) => (index + 1) + ', ' + farm.name).join('; ') + '.')
+      return
+    }
+    if (!species) {
+      setRecordCreationDraft({ ...draft, phase: 'NEEDS_SPECIES' })
+      say('What kind of animal should I record? You can say cow, buffalo, goat, sheep, poultry, pig or horse.')
+      return
+    }
+    if (count === undefined) {
+      setRecordCreationDraft({ ...draft, phase: 'NEEDS_COUNT' })
+      say('How many ' + species.toLocaleLowerCase() + ' should I record? Please say a number.')
+      return
+    }
+    await createRecordDraftCandidates(draft)
+  }
+
+  const handleRecordCreationTurn = async (
+    original: string,
+    q: string,
+    draft: VoiceRecordCreationDraft,
+    epoch: number,
+  ) => {
+    if (/^(cancel|cancel draft|discard|no|do not save|don't save|stop)$/i.test(q)) {
+      setRecordCreationDraft(null)
+      say('Record draft discarded. No farm or livestock record was created.')
+      return
+    }
+    const evidenceMessageId = lastEvidenceMessageId.current
+    if (!evidenceMessageId) {
+      say('I could not link that answer to the saved conversation. Nothing was created; please repeat the answer.')
+      return
+    }
+    const fields = { ...draft.fields }
+    const addField = (field: string, value: unknown) => {
+      fields[field] = { value, evidenceMessageId }
+    }
+
+    if (draft.kind === 'FARM') {
+      const name = parseFarmName(original, cropTerminology)
+      if (!name) {
+        say('Please tell me the farm name, for example “Green Valley”. You can also include its area or location.')
+        return
+      }
+      addField('name', name)
+      const area = parseSpokenArea(original, cropTerminology)
+      if (area.area !== undefined) {
+        addField('area', area.area)
+        addField('unit', area.unit ?? 'acres')
+      }
+      const location = parseFarmLocation(original)
+      if (location) addField('location', location)
+      if (epoch !== turnEpoch.current) return
+      await createRecordDraftCandidates({ ...draft, fields })
+      return
+    }
+
+    if (draft.phase === 'NEEDS_FARM') {
+      const numberedFarm = q.match(/^(?:farm\s+|option\s+)?(\d+|first|second|third|fourth|fifth|one|two|three|four|five)(?:\s+farm)?[.! ]*$/i)
+      const ordinal: Record<string, number> = { first: 1, one: 1, second: 2, two: 2, third: 3, three: 3, fourth: 4, four: 4, fifth: 5, five: 5 }
+      const index = numberedFarm ? Number(ordinal[numberedFarm[1].toLocaleLowerCase()] ?? numberedFarm[1]) - 1 : -1
+      const farm = index >= 0 ? draft.farms[index] : draft.farms.find(item => q.includes(item.name.toLocaleLowerCase()))
+      if (!farm) {
+        say('I could not match that answer to a farm you can access. Please say one of these names: ' + draft.farms.map(item => item.name).join(', ') + '.')
+        return
+      }
+      addField('farmId', farm.id)
+    }
+
+    if (!fields.species) {
+      const species = parseLivestockSpecies(original)
+      if (species) addField('species', species)
+    }
+    if (!fields.count) {
+      const count = parseLivestockCount(original, cropTerminology) ?? parseNumberValue(original, cropTerminology)
+      if (count !== undefined && count >= 1 && count <= 100000) addField('count', Math.floor(count))
+    }
+    if (!fields.species) {
+      setRecordCreationDraft({ ...draft, phase: 'NEEDS_SPECIES', fields })
+      say('What kind of animal should I record? You can say cow, buffalo, goat, sheep, poultry, pig or horse.')
+      return
+    }
+    if (!fields.count) {
+      setRecordCreationDraft({ ...draft, phase: 'NEEDS_COUNT', fields })
+      say('How many ' + String(fields.species.value).toLocaleLowerCase() + ' should I record? Please say a number.')
+      return
+    }
+    if (!fields.farmId) {
+      setRecordCreationDraft({ ...draft, phase: 'NEEDS_FARM', fields })
+      say('Which farm should this animal belong to? Say its name or its number: ' + draft.farms.map((farm, index) => (index + 1) + ', ' + farm.name).join('; ') + '.')
+      return
+    }
+    if (epoch !== turnEpoch.current) return
+    await createRecordDraftCandidates({ ...draft, fields })
+  }
+
   const command = async (raw:string, source: 'TEXT' | 'VOICE' = 'TEXT') => {
     const original = raw.trim()
     const q = original.toLocaleLowerCase()
@@ -738,7 +1109,7 @@ export function VoiceAgent({ role }: { role: string }) {
     }
     const controller = new AbortController()
     activeRequest.current = controller
-    setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
+    setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: formatTurnTimestamp() }].slice(-60))
     const turnLanguage = source === 'VOICE' ? lang : inferTextLanguage(original, lang)
     const persistence = persistUserMessage(original, source, turnLanguage)
     // Weather intent is recognized explicitly, but fails closed until a
@@ -806,6 +1177,17 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
 
+    if (recordCreationDraft) {
+      const savedId = await persistence
+      if (controller.signal.aborted || epoch !== turnEpoch.current) return
+      if (!savedId) {
+        say('I could not save your answer, so the farm or livestock draft was not changed. Please try again.')
+        return
+      }
+      await handleRecordCreationTurn(original, q, recordCreationDraft, epoch)
+      return
+    }
+
     if (isPlantingRequest(original, cropTerminology)) {
       const savedId = await persistence
       if (controller.signal.aborted || epoch !== turnEpoch.current) return
@@ -814,6 +1196,17 @@ export function VoiceAgent({ role }: { role: string }) {
         return
       }
       await beginCropIntakeDraft(original, findKnownCrop(original, cropTerminology), epoch)
+      return
+    }
+
+    if (isFarmCreationRequest(original) || isLivestockCreationRequest(original)) {
+      const savedId = await persistence
+      if (controller.signal.aborted || epoch !== turnEpoch.current) return
+      if (!savedId) {
+        say('I could not save your request, so no farm or livestock draft was prepared. Please try again.')
+        return
+      }
+      await beginRecordCreationDraft(original, lastEvidenceMessageId.current, epoch)
       return
     }
 
@@ -967,12 +1360,16 @@ export function VoiceAgent({ role }: { role: string }) {
         {draftReviewOpen && <section aria-label="Fact draft review" className="space-y-2 rounded-lg border bg-background p-2">
           <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">Draft review</p><button type="button" className="text-xs text-muted-foreground underline" onClick={() => setDraftReviewOpen(false)}>Hide</button></div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">Confirmation approves only the exact validated proposal shown below. Applying an existing-record change is a separate step that rechecks authorization, field policy and stale-value conflicts through the normal module service.</p>
-          {factDrafts.length === 0 ? <p className="text-xs text-muted-foreground">No saved fact drafts in this conversation.</p> : factDrafts.map(draft => {
+          {factDrafts.length === 0 ? <p className="text-xs text-muted-foreground">No saved fact drafts in this conversation.</p> : factDrafts.map((draft, index) => {
             const validation = draft.validationResult && typeof draft.validationResult === 'object'
               ? draft.validationResult as { valid?: boolean; errors?: string[] }
               : {}
             const canConfirm = validation.valid === true && ['VALIDATION_PENDING','AWAITING_CONFIRMATION'].includes(draft.status)
-            const canApply = draft.status === 'CONFIRMED' && Boolean(draft.targetEntityId)
+            const supportsNewRecord = !draft.targetEntityId && Boolean(draft.sessionId) && ['Farm','Crop','Livestock','MarketplaceListing'].includes(draft.targetEntityType ?? '')
+            const canApply = draft.status === 'CONFIRMED' && (Boolean(draft.targetEntityId) || supportsNewRecord)
+            const groupDrafts = draft.sessionId ? factDrafts.filter(item => item.sessionId === draft.sessionId && !item.targetEntityId) : []
+            const firstGroupDraft = supportsNewRecord && factDrafts.findIndex(item => item.sessionId === draft.sessionId && !item.targetEntityId) === index
+            const canConfirmGroup = firstGroupDraft && groupDrafts.some(item => ['VALIDATION_PENDING','AWAITING_CONFIRMATION'].includes(item.status))
             const canReject = ['DETECTED','NORMALIZED','VALIDATION_PENDING','CONFLICT','AWAITING_CONFIRMATION'].includes(draft.status)
             const value = typeof draft.proposedValue === 'string' ? draft.proposedValue : JSON.stringify(draft.proposedValue)
             const evidence = draft.evidenceReference ? draftEvidence[draft.evidenceReference] : undefined
@@ -982,6 +1379,7 @@ export function VoiceAgent({ role }: { role: string }) {
               <p className="text-[11px] text-muted-foreground">Source: {evidence ? `“${evidence}”` : 'Original user message unavailable'}</p>
               {validation.valid === false && <div className="rounded bg-destructive/10 p-2 text-[11px]">{(validation.errors ?? ['Central validation failed.']).join(' ')}</div>}
               <div className="flex flex-wrap gap-2">
+                {canConfirmGroup && <button type="button" disabled={draftBusy} onClick={() => void confirmFactDraftGroup(draft.sessionId!)} className="h-8 w-full rounded-lg border border-primary px-2 text-xs font-semibold disabled:opacity-40">Confirm all fields in this record</button>}
                 <button type="button" disabled={draftBusy || !canConfirm} onClick={() => void confirmFactDraft(draft)} className="h-8 min-w-0 flex-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">Confirm draft</button>
                 {canApply && <button type="button" disabled={draftBusy} onClick={() => void applyFactDraft(draft)} className="h-8 flex-1 rounded-lg border px-2 text-xs disabled:opacity-40">Apply confirmed</button>}
                 <button type="button" disabled={draftBusy || !canReject} onClick={() => void rejectFactDraft(draft)} className="h-8 rounded-lg border px-2 text-xs disabled:opacity-40">Reject</button>

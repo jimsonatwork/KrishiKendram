@@ -50,6 +50,7 @@ export type AiFactCandidate = {
   id: string
   conversationId: string
   userId: string
+  sessionId?: string | null
   moduleId: string
   targetEntityType: string | null
   targetEntityId: string | null
@@ -592,7 +593,7 @@ export const api = {
     ),
 
   applyAiFactCandidate: (token: string, conversationId: string, candidateId: string, previewHash: string) =>
-    request<{ candidate: AiFactCandidate; applied: true; targetEntityType: string; targetEntityId: string; targetFieldId: string }>(
+    request<{ candidate: AiFactCandidate; applied: true; created?: boolean; appliedCandidateIds?: string[]; targetEntityType: string; targetEntityId: string; targetFieldId: string }>(
       `/ai/conversations/${encodeURIComponent(conversationId)}/fact-candidates/${encodeURIComponent(candidateId)}/apply`,
       {
         method: 'POST',

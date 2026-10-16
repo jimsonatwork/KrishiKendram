@@ -77,7 +77,12 @@ export class FarmsService {
     return relationship?.userId ?? fallbackOwnerId;
   }
 
-  async create(ownerId: string, role: UserRole, dto: CreateFarmDto) {
+  async create(
+    ownerId: string,
+    role: UserRole,
+    dto: CreateFarmDto,
+    tx?: Prisma.TransactionClient,
+  ) {
     await this.authorization.assertCan({
       user: {
         userId: ownerId,
@@ -90,15 +95,14 @@ export class FarmsService {
     });
 
     const validatedData = this.validateFarmFields(dto);
-
-    return this.prisma.$transaction(async (tx) => {
-      const entity = await tx.entity.create({
+    const createInTransaction = async (client: Prisma.TransactionClient) => {
+      const entity = await client.entity.create({
         data: {
           type: 'FARM',
         },
       });
 
-      const farm = await tx.farm.create({
+      const farm = await client.farm.create({
         data: {
           ...validatedData,
           name: validatedData.name as string,
@@ -108,14 +112,14 @@ export class FarmsService {
       });
 
       await this.relationships.createOwnerRelationship(
-        tx,
+        client,
         'farm',
         farm.id,
         ownerId,
         farm.createdAt,
       );
 
-      await this.audit.createInTransaction(tx, {
+      await this.audit.createInTransaction(client, {
         actorId: ownerId,
         action: 'CREATE',
         resourceType: 'farm',
@@ -124,7 +128,9 @@ export class FarmsService {
       });
 
       return farm;
-    });
+    };
+
+    return tx ? createInTransaction(tx) : this.prisma.$transaction(createInTransaction);
   }
 
   private validateFarmFields(
