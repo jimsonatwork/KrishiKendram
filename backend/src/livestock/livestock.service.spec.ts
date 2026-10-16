@@ -15,7 +15,7 @@ describe('LivestockService', () => {
       findMany: jest.fn(),
       update: jest.fn(),
     },
-    resourceRelationship: { findFirst: jest.fn() },
+    resourceRelationship: { findFirst: jest.fn(), findMany: jest.fn() },
     $transaction: jest.fn(),
   } as any;
 
@@ -427,7 +427,8 @@ describe('LivestockService', () => {
     );
   });
 
-  it('lists only active livestock belonging to the requesting owner', async () => {
+  it('lists farm-owned and independently transferred livestock through active ownership relationships', async () => {
+    prisma.resourceRelationship.findMany.mockResolvedValue([{ resourceId: 'livestock-transferred' }]);
     prisma.livestock.findMany.mockResolvedValue([]);
 
     await service.findMine('user-1', UserRole.FARMER);
@@ -439,11 +440,17 @@ describe('LivestockService', () => {
       action: AuthorizationAction.READ,
       ownerId: 'user-1',
     });
-
+    expect(prisma.resourceRelationship.findMany).toHaveBeenCalledWith({
+      where: { resourceType: 'livestock', relationshipType: 'OWNER', userId: 'user-1', endedAt: null },
+      select: { resourceId: true },
+    });
     expect(prisma.livestock.findMany).toHaveBeenCalledWith({
       where: {
         deletedAt: null,
-        farm: { ownerId: 'user-1' },
+        OR: [
+          { farm: { ownerId: 'user-1' } },
+          { id: { in: ['livestock-transferred'] } },
+        ],
       },
       include: { farm: true },
       orderBy: { createdAt: 'desc' },

@@ -18,7 +18,11 @@ type VoiceCropIntakeDraft = {
   cropName?: string
   area?: number
   unit?: string
-  phase: 'NEEDS_CROP' | 'NEEDS_FARM' | 'PREVIEW'
+  weeksAgo?: number
+  fertilizer?: string
+  areaUnknown?: boolean
+  sowingDateUnknown?: boolean
+  phase: 'NEEDS_CROP' | 'NEEDS_FARM' | 'NEEDS_AREA' | 'NEEDS_DATE' | 'PREVIEW'
   farms: VoiceFarm[]
   farmId?: string
   farmName?: string
@@ -62,35 +66,72 @@ const isPlantingRequest = (text: string, vocabulary: VoiceCropTerminology | null
 const parseSpokenArea = (text: string, vocabulary: VoiceCropTerminology | null): { area?: number; unit?: string } => {
   if (!vocabulary) return {}
   const numberWords = Object.keys(vocabulary.numberWords).join('|')
-  const areaUnits = vocabulary.areaUnits.join('|')
+  // Speech recognition often transcribes "acre(s)" as "acer(s)".
+  const areaUnits = [...vocabulary.areaUnits, 'acer', 'acers'].join('|')
   const match = text.normalize('NFKC').toLocaleLowerCase().match(
     new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i'),
   )
   if (!match) return {}
   const amount = match[1].toLowerCase()
-  return { area: vocabulary.numberWords[amount] ?? Number(amount), unit: match[2] }
+  return { area: vocabulary.numberWords[amount] ?? Number(amount), unit: match[2].toLowerCase().startsWith('acer') ? 'acres' : match[2] }
+}
+const parseWeeksAgo = (text: string, vocabulary: VoiceCropTerminology | null): number | undefined => {
+  const match = text.normalize('NFKC').toLocaleLowerCase().match(/\b(?:last|past|about|around)?\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+weeks?\s*(?:ago|back|now)?\b/i)
+  if (!match) return undefined
+  const raw = match[1].toLocaleLowerCase()
+  const weeks = Number(raw) || vocabulary?.numberWords[raw] || 0
+  return weeks > 0 && weeks <= 104 && /\b(last|past|ago|back|sown|sowed|planted|planting|transplanted)\b/i.test(text) ? weeks : undefined
+}
+const hasSowingDate = (text: string, vocabulary: VoiceCropTerminology | null) =>
+  parseWeeksAgo(text, vocabulary) !== undefined ||
+  /\b(?:sown|sowed|planted|planting|transplanted)\s+(?:today|yesterday)\b|\b(?:sowing|planting) date\s+(?:is\s+)?unknown\b/i.test(text)
+const isUnknownAnswer = (text: string) => /\b(?:i\s+)?(?:do not know|don't know|dont know|not sure|unknown|skip)\b/i.test(text.trim())
+const areaQuestion = 'How much land is planted with this crop? Please say the amount, for example “one acre” or “two acres”. If you are not sure, say “I don’t know”.'
+const dateQuestion = 'When was this crop sown? You can say “today”, “yesterday”, “five weeks ago”, or “I don’t know”.'
+const nextMissingPlantingPhase = (draft: Pick<VoiceCropIntakeDraft, 'area' | 'areaUnknown' | 'content' | 'sowingDateUnknown'>, vocabulary: VoiceCropTerminology | null): VoiceCropIntakeDraft['phase'] => {
+  if (draft.area === undefined && !draft.areaUnknown) return 'NEEDS_AREA'
+  if (!draft.sowingDateUnknown && !hasSowingDate(draft.content, vocabulary)) return 'NEEDS_DATE'
+  return 'PREVIEW'
+}
+
+const appendSentence = (content: string, sentence: string) =>
+  content.trim().replace(/[. ]+$/, '') + '. ' + sentence.trim().replace(/^[. ]+|[. ]+$/g, '') + '.'
+const replaceSowingDateInText = (content: string, normalizedDate: string) => {
+  const age = /\b(?:sown|sowed|planted|planting|transplanted)\s+(?:(?:last|past|about|around)\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:weeks?|days?)\s*(?:ago|back|now)?\b/i
+  const calendarDate = /\b(?:sown|sowed|planted|planting|transplanted)\s+(?:today|yesterday)\b/i
+  const withoutOldDate = content.replace(age, '').replace(calendarDate, '').replace(/\b(?:sowing|planting) date\s+(?:is\s+)?unknown\b/ig, '').trim()
+  return appendSentence(withoutOldDate, 'Sown ' + normalizedDate)
 }
 const replaceCropInText = (content: string, oldCrop: string | undefined, nextCrop: string) => {
   if (oldCrop) {
     const pattern = new RegExp('\\b' + oldCrop.replace(/ /g, '\\s+') + '\\b', 'i')
     if (pattern.test(content)) return content.replace(pattern, nextCrop)
   }
-  return content + '. Crop: ' + nextCrop
+  return appendSentence(content, 'Crop: ' + nextCrop)
 }
 const replaceAreaInText = (content: string, area: number, unit: string, vocabulary: VoiceCropTerminology | null) => {
   if (!vocabulary) return content
   const numberWords = Object.keys(vocabulary.numberWords).join('|')
-  const areaUnits = vocabulary.areaUnits.join('|')
+  const areaUnits = [...vocabulary.areaUnits, 'acer', 'acers'].join('|')
   const pattern = new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i')
-  const replacement = String(area) + ' ' + unit
-  return pattern.test(content) ? content.replace(pattern, replacement) : content + '. Area ' + replacement
+  const normalizedUnit = unit.toLocaleLowerCase().startsWith('acer') ? (area === 1 ? 'acre' : 'acres') : unit
+  const replacement = String(area) + ' ' + normalizedUnit
+  return pattern.test(content) ? content.replace(pattern, replacement) : appendSentence(content, 'Area ' + replacement)
 }
 const cropPreviewText = (draft: VoiceCropIntakeDraft) => [
   'Planting draft — nothing has been saved yet.',
   'Farm: ' + (draft.farmName ?? 'not selected'),
   'Crop: ' + (draft.cropName ?? 'not identified'),
-  draft.area === undefined ? 'Area: not provided' : 'Area: ' + draft.area + ' ' + (draft.unit ?? 'unit not specified'),
-  'Season: not specified. Status: Sown. Planting date: today if you confirm; the intake service assigns today’s date.',
+  draft.area === undefined
+    ? draft.areaUnknown ? 'Area: not recorded (you said you do not know)' : 'Area: not provided'
+    : 'Area: ' + draft.area + ' ' + (draft.unit ?? 'unit not specified'),
+  'Season: not specified. Status: Sown. Planting date: ' + (
+    draft.sowingDateUnknown ? 'not recorded (you said you do not know)' :
+    draft.weeksAgo ? 'approximately ' + draft.weeksAgo + ' weeks ago (estimated)' :
+    /\byesterday\b/i.test(draft.content) ? 'yesterday' :
+    /\btoday\b/i.test(draft.content) ? 'today' : 'not provided'
+  ) + '.',
+  'Fertilizer: ' + (draft.fertilizer ?? (draft.content.toLocaleLowerCase().includes('npk') ? 'NPK' : draft.content.toLocaleLowerCase().includes('fertilizer') ? 'mentioned' : 'not stated')),
   'Say “confirm” to save through the authorized intake workflow, or “cancel” to discard this draft.',
 ].join(' ')
 const inferTextLanguage = (text: string, preferred: string): string => {
@@ -140,13 +181,16 @@ export function VoiceAgent({ role }: { role: string }) {
   const [spoken,setSpoken] = useState(true)
   const [lang,setLang] = useState(() => { try { return localStorage.getItem('kk-voice-language') || 'en-IN' } catch { return 'en-IN' } })
   const [transcript,setTranscript] = useState('')
-  const [message,setMessage] = useState('Your voice assistant is ready. Press Speak when you want to use it.')
+  const [message,setMessage] = useState('Open Voice Agent and start speaking. I will listen between turns until you press Stop.')
   const [turns,setTurns] = useState<VoiceTurn[]>([])
   const turnId = useRef(0)
   // Monotonic epoch invalidates any response that outlives an interruption.
   const turnEpoch = useRef(0)
   const [unsupported,setUnsupported] = useState(false)
   const rec = useRef<Recognition|null>(null)
+  // A voice session remains active across farmer turns until the farmer presses Stop.
+  const voiceSessionActive = useRef(false)
+  const resumeListening = useRef<(() => void) | null>(null)
   const activeRequest = useRef<AbortController | null>(null)
   const commandInFlight = useRef(false)
   const speechSuppressed = useRef(false)
@@ -394,10 +438,23 @@ export function VoiceAgent({ role }: { role: string }) {
     activeRequest.current = null
     setMessage(text)
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'Krishi' as const, text, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
+    const resumeAfterReply = () => {
+      if (!voiceSessionActive.current || speechSuppressed.current) return
+      window.setTimeout(() => {
+        if (voiceSessionActive.current && !commandInFlight.current && !rec.current && !window.speechSynthesis?.speaking) {
+          resumeListening.current?.()
+        }
+      }, 250)
+    }
     if (spoken && !speechSuppressed.current && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
       const u = new SpeechSynthesisUtterance(text); u.lang = speechLanguage; u.rate = 1.08; u.pitch = 1.04
+      u.onend = resumeAfterReply
+      u.onerror = resumeAfterReply
       window.speechSynthesis.speak(u)
+    } else {
+      // Muted replies still return to listening mode without requiring another tap.
+      resumeAfterReply()
     }
   }
 
@@ -433,16 +490,32 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
     const area = parseSpokenArea(content, cropTerminology)
+    const baseDraft = {
+      content, cropName, ...area,
+      weeksAgo: parseWeeksAgo(content, cropTerminology),
+      fertilizer: /\bnpk\b/i.test(content) ? 'NPK' : /\bfertilizer\b/i.test(content) ? 'Fertilizer mentioned' : undefined,
+      sowingDateUnknown: /\b(?:sowing|planting) date\s+(?:is\s+)?unknown\b/i.test(content),
+    }
     if (farms.length === 1) {
       const draft: VoiceCropIntakeDraft = {
-        content, cropName, ...area, phase: 'PREVIEW', farms,
+        ...baseDraft, phase: 'PREVIEW', farms,
         farmId: farms[0].id, farmName: farms[0].name,
       }
-      setIntakeDraft(draft)
-      say(cropPreviewText(draft))
+      if (draft.area === undefined) {
+        draft.phase = 'NEEDS_AREA'
+        setIntakeDraft(draft)
+        say(areaQuestion)
+      } else if (!draft.sowingDateUnknown && !hasSowingDate(draft.content, cropTerminology)) {
+        draft.phase = 'NEEDS_DATE'
+        setIntakeDraft(draft)
+        say(dateQuestion)
+      } else {
+        setIntakeDraft(draft)
+        say(cropPreviewText(draft))
+      }
       return
     }
-    const draft: VoiceCropIntakeDraft = { content, cropName, ...area, phase: 'NEEDS_FARM', farms }
+    const draft: VoiceCropIntakeDraft = { ...baseDraft, phase: 'NEEDS_FARM', farms }
     setIntakeDraft(draft)
     say('Which farm should I use for the ' + cropName + ' planting? Say a farm name or its number: ' + farms.map((farm, index) => (index + 1) + ', ' + farm.name).join('; ') + '. Nothing has been saved.')
   }
@@ -505,6 +578,111 @@ export function VoiceAgent({ role }: { role: string }) {
         return
       }
       const next: VoiceCropIntakeDraft = { ...draft, phase: 'PREVIEW', farmId: farm.id, farmName: farm.name }
+      // If the farmer volunteers more information while answering, merge it into the same draft.
+      const spokenCrop = findKnownCrop(original, cropTerminology)
+      if (spokenCrop && spokenCrop !== next.cropName) {
+        next.content = replaceCropInText(next.content, next.cropName, spokenCrop)
+        next.cropName = spokenCrop
+      }
+      const spokenArea = parseSpokenArea(original, cropTerminology)
+      if (spokenArea.area !== undefined) {
+        next.content = replaceAreaInText(next.content, spokenArea.area, spokenArea.unit ?? 'acres', cropTerminology)
+        next.area = spokenArea.area
+        next.unit = spokenArea.unit
+        next.areaUnknown = false
+      }
+      const spokenWeeks = parseWeeksAgo(original, cropTerminology)
+      if (spokenWeeks !== undefined) {
+        next.content = replaceSowingDateInText(next.content, spokenWeeks + ' weeks ago')
+        next.weeksAgo = spokenWeeks
+        next.sowingDateUnknown = false
+      } else if (/\btoday\b/i.test(q) || /\byesterday\b/i.test(q)) {
+        const dateWord = /\byesterday\b/i.test(q) ? 'yesterday' : 'today'
+        next.content = replaceSowingDateInText(next.content, dateWord)
+        next.weeksAgo = undefined
+        next.sowingDateUnknown = false
+      }
+      if (/\bnpk\b/i.test(q)) {
+        if (!/\bnpk\b/i.test(next.content)) next.content = appendSentence(next.content, 'NPK fertilizer')
+        next.fertilizer = 'NPK'
+      }
+      next.phase = nextMissingPlantingPhase(next, cropTerminology)
+      setIntakeDraft(next)
+      say(next.phase === 'NEEDS_AREA' ? areaQuestion : next.phase === 'NEEDS_DATE' ? dateQuestion : cropPreviewText(next))
+      return
+    }
+    if (draft.phase === 'NEEDS_AREA') {
+      const area = parseSpokenArea(original, cropTerminology)
+      const next: VoiceCropIntakeDraft = { ...draft }
+      if (area.area !== undefined) {
+        next.content = replaceAreaInText(next.content, area.area, area.unit ?? 'acres', cropTerminology)
+        next.area = area.area
+        next.unit = area.unit
+        next.areaUnknown = false
+      } else if (isUnknownAnswer(q)) {
+        next.areaUnknown = true
+        next.content = appendSentence(next.content, 'Land area unknown')
+      } else {
+        say('I did not catch the land amount. Please say “one acre”, “two acres”, or “I don’t know”.')
+        return
+      }
+      const spokenWeeks = parseWeeksAgo(original, cropTerminology)
+      if (spokenWeeks !== undefined) {
+        next.content = replaceSowingDateInText(next.content, spokenWeeks + ' weeks ago')
+        next.weeksAgo = spokenWeeks
+        next.sowingDateUnknown = false
+      } else if (/\btoday\b/i.test(q) || /\byesterday\b/i.test(q)) {
+        const dateWord = /\byesterday\b/i.test(q) ? 'yesterday' : 'today'
+        next.content = replaceSowingDateInText(next.content, dateWord)
+        next.weeksAgo = undefined
+        next.sowingDateUnknown = false
+      }
+      if (/\bnpk\b/i.test(q)) {
+        if (!/\bnpk\b/i.test(next.content)) next.content = appendSentence(next.content, 'NPK fertilizer')
+        next.fertilizer = 'NPK'
+      }
+      next.phase = nextMissingPlantingPhase(next, cropTerminology)
+      setIntakeDraft(next)
+      say(next.phase === 'NEEDS_DATE' ? dateQuestion : cropPreviewText(next))
+      return
+    }
+    if (draft.phase === 'NEEDS_DATE') {
+      const next: VoiceCropIntakeDraft = { ...draft }
+      if (/\btoday\b/i.test(q)) {
+        next.content = replaceSowingDateInText(next.content, 'today')
+        next.weeksAgo = undefined
+        next.sowingDateUnknown = false
+      } else if (/\byesterday\b/i.test(q)) {
+        next.content = replaceSowingDateInText(next.content, 'yesterday')
+        next.weeksAgo = undefined
+        next.sowingDateUnknown = false
+      } else {
+        const weeksAgo = parseWeeksAgo(original, cropTerminology)
+        if (weeksAgo !== undefined) {
+          next.content = replaceSowingDateInText(next.content, original)
+          next.weeksAgo = weeksAgo
+          next.sowingDateUnknown = false
+        } else if (isUnknownAnswer(q)) {
+          next.content = appendSentence(next.content, 'Sowing date unknown')
+          next.sowingDateUnknown = true
+          next.weeksAgo = undefined
+        } else {
+          say('I did not catch the planting date. Please say “today”, “yesterday”, for example “five weeks ago”, or “I don’t know”.')
+          return
+        }
+      }
+      const spokenArea = parseSpokenArea(original, cropTerminology)
+      if (spokenArea.area !== undefined) {
+        next.content = replaceAreaInText(next.content, spokenArea.area, spokenArea.unit ?? 'acres', cropTerminology)
+        next.area = spokenArea.area
+        next.unit = spokenArea.unit
+        next.areaUnknown = false
+      }
+      if (/\bnpk\b/i.test(q)) {
+        if (!/\bnpk\b/i.test(next.content)) next.content = appendSentence(next.content, 'NPK fertilizer')
+        next.fertilizer = 'NPK'
+      }
+      next.phase = 'PREVIEW'
       setIntakeDraft(next)
       say(cropPreviewText(next))
       return
@@ -551,6 +729,13 @@ export function VoiceAgent({ role }: { role: string }) {
     speechSuppressed.current = false
     commandInFlight.current = true
     const epoch = ++turnEpoch.current
+    // Typed input temporarily pauses an active voice session; the session resumes after Krishi replies.
+    if (source === 'TEXT' && rec.current) {
+      const currentRecognition = rec.current
+      rec.current = null
+      currentRecognition.stop()
+      setListening(false)
+    }
     const controller = new AbortController()
     activeRequest.current = controller
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }].slice(-60))
@@ -680,6 +865,7 @@ export function VoiceAgent({ role }: { role: string }) {
   const stopConversation = () => {
     if (intakeCommitInFlight.current) {
       // A confirmed write cannot be safely canceled once the request is sent.
+      voiceSessionActive.current = false
       speechSuppressed.current = true
       rec.current?.stop()
       rec.current = null
@@ -690,6 +876,7 @@ export function VoiceAgent({ role }: { role: string }) {
     }
     // Invalidate before aborting: a provider may resolve concurrently with abort.
     turnEpoch.current += 1
+    voiceSessionActive.current = false
     speechSuppressed.current = true
     rec.current?.stop()
     rec.current = null
@@ -711,7 +898,8 @@ export function VoiceAgent({ role }: { role: string }) {
     // Cancel speech and the in-flight request, then immediately reopen listening.
     if (commandInFlight.current || Boolean(window.speechSynthesis?.speaking)) stopConversation()
     const w = window as SpeechWindow, Ctor = w.SpeechRecognition || w.webkitSpeechRecognition
-    if (!Ctor) { setUnsupported(true); say('Speech recognition is unavailable in this browser. You can type a command instead.'); return }
+    if (!Ctor) { voiceSessionActive.current = false; setUnsupported(true); say('Speech recognition is unavailable in this browser. You can type a command instead.'); return }
+    voiceSessionActive.current = true
     try {
       const r = new Ctor(); r.lang = lang; r.continuous = false; r.interimResults = true
       let submitted = false
@@ -729,18 +917,42 @@ export function VoiceAgent({ role }: { role: string }) {
           const normalized = finalText.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
           const previous = lastVoiceSubmission.current
           const now = Date.now()
-          if (previous && previous.text === normalized && now - previous.at < 5000) return
+          if (previous && previous.text === normalized && now - previous.at < 5000) {
+            // Ignore a duplicate transcript, but keep the voice session alive.
+            submitted = false
+            r.stop()
+            return
+          }
           lastVoiceSubmission.current = { text: normalized, at: now }
           setListening(false)
           r.stop()
           void command(finalText.trim(), 'VOICE')
         }
       }
-      r.onerror = e => { setListening(false); if (e.error !== 'aborted') say(e.error === 'not-allowed' ? 'Microphone access was denied. Allow it in browser settings to use voice.' : 'Voice input stopped. Please try again.') }
-      r.onend = () => setListening(false)
-      rec.current = r; setTranscript(''); setListening(true); setMessage('Listening… speak naturally.'); r.start()
-    } catch { setListening(false); say('Could not start the microphone. Check browser permissions and try again.') }
+      r.onerror = e => {
+        setListening(false)
+        if (rec.current === r) rec.current = null
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') voiceSessionActive.current = false
+        if (e.error !== 'aborted') say(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+          ? 'Microphone access was denied. Allow it in browser settings to use voice.'
+          : 'I could not hear that clearly. I will listen again after this message; you can also try speaking a little slower.')
+      }
+      r.onend = () => {
+        if (rec.current === r) rec.current = null
+        setListening(false)
+        // Browser recognition often ends after a pause. Keep the session alive unless Stop was pressed.
+        if (voiceSessionActive.current && !submitted && !commandInFlight.current) {
+          window.setTimeout(() => {
+            if (voiceSessionActive.current && !commandInFlight.current && !rec.current) resumeListening.current?.()
+          }, 350)
+        }
+      }
+      rec.current = r; setTranscript(''); setListening(true); setMessage('Listening… speak naturally. Say “stop” or press Stop whenever you want to pause.'); r.start()
+    } catch { voiceSessionActive.current = false; setListening(false); say('Could not start the microphone. Check browser permissions and try again.') }
   }
+  useEffect(() => {
+    resumeListening.current = listen
+  })
   return <div className="fixed bottom-4 right-3 z-[80] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 sm:bottom-5 sm:right-5">
     {open && <section aria-label="KrishiKendram voice assistant" className="flex max-h-[calc(100dvh-6rem)] w-[min(20rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl">
       <header className="flex shrink-0 items-center justify-between border-b px-3 py-2"><div className="flex items-center gap-2"><span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Sparkles size={18}/></span><div><p className="text-sm font-semibold">Krishi Voice Agent</p><p className="text-xs text-muted-foreground">{admin?'Administrator workspace':'Farm assistant'}</p></div></div><button type="button" aria-label="Close voice assistant" onClick={()=>{stopConversation();setOpen(false)}} className="rounded-lg p-2 hover:bg-muted"><X size={16}/></button></header>
@@ -780,12 +992,12 @@ export function VoiceAgent({ role }: { role: string }) {
         <label htmlFor="kk-voice-language" className="block text-xs font-medium text-muted-foreground">Spoken language</label>
         <select id="kk-voice-language" value={lang} onChange={e=>{setLang(e.target.value);try{localStorage.setItem('kk-voice-language',e.target.value)}catch{/* Language preference is optional. */}}} className="h-9 w-full rounded-lg border bg-background px-2 text-xs">{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
         <div aria-live="polite" className="min-h-12 rounded-lg bg-muted/60 p-2 text-xs"><p>{message}</p>{transcript&&<p className="mt-2 border-t pt-2 text-muted-foreground">Heard: {transcript}</p>}</div>
-        <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'bg-destructive text-destructive-foreground':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button><button type="button" onClick={stopConversation} aria-label="Stop conversation" title="Stop listening, generation and speech" className="flex size-9 items-center justify-center rounded-lg border text-destructive"><Square size={15}/></button></div>
+        <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'border border-destructive bg-background text-destructive':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button><button type="button" onClick={stopConversation} aria-label="Stop conversation" title="Stop listening, generation and speech" className="flex size-9 items-center justify-center rounded-lg border text-destructive"><Square size={15}/></button></div>
         <button type="button" disabled={draftBusy} onClick={() => void loadFactDrafts()} className="h-8 w-full rounded-lg border text-xs disabled:opacity-40">{draftBusy ? 'Loading drafts…' : 'Review saved fact drafts'}</button>
         <form onSubmit={e=>{e.preventDefault();command(transcript, 'TEXT')}} className="flex gap-2"><input aria-label="Type a voice command" value={transcript} onChange={e=>setTranscript(e.target.value)} placeholder="Or type: show my farms" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-xs"/><button type="submit" className="rounded-lg border px-2 text-xs">Go</button></form>
         {unsupported&&<p className="text-xs text-muted-foreground">Speech recognition is not available in this browser; typed commands still work.</p>}
-        <p className="text-[9px] leading-snug text-muted-foreground">Mic is off until Speak. Browser speech recognition may use its provider. Local AI is evaluation-only; cloud fallback is off. Answers are advisory. Farm and crop changes need review, confirmation and module authorization.</p>
+        <p className="text-[9px] leading-snug text-muted-foreground">Opening Voice Agent starts listening when browser permission allows. Listening pauses while Krishi speaks and resumes after each reply until you press Stop. Browser speech recognition may use its provider. Local AI is evaluation-only; cloud fallback is off. Farm and crop changes require review, confirmation and module authorization.</p>
       </div></section>}
-    <button type="button" onClick={()=>setOpen(v=>!v)} aria-label={open?'Minimize voice assistant':'Open voice assistant'} title="Voice assistant" className="flex h-10 items-center gap-2 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-lg"><Mic size={19}/><span>Voice Agent</span><ChevronUp size={16} className={open?'rotate-180 transition-transform':'transition-transform'}/></button>
+    <button type="button" onClick={()=>{if(open){stopConversation();setOpen(false)}else{setOpen(true);voiceSessionActive.current=true;listen()}}} aria-label={open?'Minimize voice assistant':'Open voice assistant'} title="Voice assistant — open and start speaking" className="flex h-10 items-center gap-2 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-lg"><Mic size={19}/><span>Voice Agent</span><ChevronUp size={16} className={open?'rotate-180 transition-transform':'transition-transform'}/></button>
   </div>
 }

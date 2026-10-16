@@ -25,6 +25,12 @@ export interface IntakeExtraction {
     type: string;
     area?: number;
     unit?: string;
+    /** ISO timestamp derived from an explicit user-provided relative planting date. */
+    sowingDate?: string;
+    /** User-reported fertilizer context; never treated as a separate expense when part of planting intake. */
+    fertilizer?: string;
+    /** Explicitly records that the farmer does not know the sowing date; never replace it with today. */
+    sowingDateUnknown?: boolean;
   };
 }
 
@@ -79,7 +85,7 @@ export class IntakeExtractorService {
     /*
      * Expense detection
      */
-    if (text.includes('fertilizer') || text.includes('urea')) {
+    if ((text.includes('fertilizer') || text.includes('urea')) && result.category !== 'PLANTING') {
       result.category = 'EXPENSE';
 
       result.expense = {
@@ -105,7 +111,8 @@ export class IntakeExtractorService {
       };
 
       const numberWords = Object.keys(CROP_TERMINOLOGY.numberWords).join('|');
-      const areaUnits = CROP_TERMINOLOGY.areaUnits.join('|');
+      // Accept common speech-recognition misspellings of acre(s).
+      const areaUnits = [...CROP_TERMINOLOGY.areaUnits, 'acer', 'acers'].join('|');
       const areaMatch = text.match(
         new RegExp('\\b(\\d+(?:\\.\\d+)?|' + numberWords + ')\\s*(' + areaUnits + ')\\b', 'i'),
       );
@@ -115,8 +122,31 @@ export class IntakeExtractorService {
         result.activity.area = CROP_TERMINOLOGY.numberWords[
           amount as keyof typeof CROP_TERMINOLOGY.numberWords
         ] ?? Number(amount);
-        result.activity.unit = areaMatch[2].toLowerCase();
+        const matchedUnit = areaMatch[2].toLowerCase();
+        result.activity.unit = matchedUnit.startsWith('acer')
+          ? (result.activity.area === 1 ? 'acre' : 'acres')
+          : matchedUnit;
       }
+      if (/\b(?:sowing date|planting date)\s+(?:is\s+)?unknown\b|\b(?:i\s+)?(?:do not know|don't know|dont know)\s+(?:the\s+)?(?:sowing|planting)?\s*date\b/i.test(text)) {
+        result.activity.sowingDateUnknown = true;
+      } else if (/\btoday\b/i.test(text) && /\b(sown|sowed|planted|planting|sowing|transplanted)\b/i.test(text)) {
+        result.activity.sowingDate = new Date().toISOString();
+      } else if (/\byesterday\b/i.test(text) && /\b(sown|sowed|planted|planting|sowing|transplanted)\b/i.test(text)) {
+        result.activity.sowingDate = new Date(Date.now() - 86400000).toISOString();
+      } else {
+        const durationMatch = text.match(/\b(?:last|past|about|around)?\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(weeks?|days?)\s*(?:ago|back|now)?\b/i);
+        if (durationMatch && /\b(last|past|ago|back|sown|sowed|planted|planting|sowing|transplanted)\b/i.test(text)) {
+          const rawAmount = durationMatch[1].toLowerCase();
+          const amount = Number(rawAmount) || CROP_TERMINOLOGY.numberWords[rawAmount as keyof typeof CROP_TERMINOLOGY.numberWords] || 0;
+          const unit = durationMatch[2].toLowerCase();
+          if (amount > 0 && amount <= 730) {
+            const elapsedDays = unit.startsWith('week') ? amount * 7 : amount;
+            result.activity.sowingDate = new Date(Date.now() - elapsedDays * 86400000).toISOString();
+          }
+        }
+      }
+      if (text.includes('npk')) result.activity.fertilizer = 'NPK';
+      else if (text.includes('fertilizer')) result.activity.fertilizer = 'Unspecified fertilizer';
     }
 
     return result;

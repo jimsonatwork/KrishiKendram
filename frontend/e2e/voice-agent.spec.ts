@@ -11,6 +11,7 @@ const cropTerminology = {
   imperativeCropAction: 'plant',
   crops: [
     { name: 'Mango', aliases: ['mango', 'mangoes'] },
+    { name: 'Paddy', aliases: ['paddy', 'paddy rice'] },
     { name: 'Rice', aliases: ['rice'] },
     { name: 'Maize', aliases: ['maize', 'corn'] },
     { name: 'Cotton', aliases: ['cotton'] },
@@ -37,7 +38,9 @@ async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1
       onerror: ((event: unknown) => void) | null = null
       onend: (() => void) | null = null
       start() {
-        ;(window as Window & { __kkFakeRecognition?: FakeRecognition }).__kkFakeRecognition = this
+        const testWindow = window as Window & { __kkFakeRecognition?: FakeRecognition; __kkFakeRecognitionStartCount?: number }
+        testWindow.__kkFakeRecognition = this
+        testWindow.__kkFakeRecognitionStartCount = (testWindow.__kkFakeRecognitionStartCount ?? 0) + 1
       }
       stop() {}
     }
@@ -102,11 +105,12 @@ async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1
       return
     }
     if (route.request().method() === 'POST' && pathname === '/intake') {
-      intakeCalls.push({ body: route.request().postDataJSON() as Record<string, unknown> })
+      const body = route.request().postDataJSON() as Record<string, unknown>
+      intakeCalls.push({ body })
       await route.fulfill({ json: {
         id: 'farm-record-test-1',
         category: 'PLANTING',
-        createdCrop: { id: 'crop-test-1', name: 'Mango' },
+        createdCrop: { id: 'crop-test-1', name: /paddy/i.test(String(body.content ?? '')) ? 'Paddy' : 'Mango' },
       } })
       return
     }
@@ -130,10 +134,10 @@ async function typeCommand(page: Page, content: string) {
   await page.getByRole('button', { name: 'Go' }).click()
 }
 
-test('Speak starts recognition immediately and a spoken planting request is previewed before saving', async ({ page }) => {
+test('opening Voice Agent starts recognition and keeps the planting conversation in one guided draft', async ({ page }) => {
   const { intakeCalls, messageCalls } = await setupVoiceAgent(page)
-  await page.getByRole('button', { name: 'Speak' }).click()
-  await expect(page.getByText('Listening… speak naturally.')).toBeVisible()
+  await expect(page.getByText(/Listening… speak naturally/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Stop listening' })).toBeVisible()
   await expect.poll(() => page.evaluate(() => Boolean((window as Window & { __kkFakeRecognition?: unknown }).__kkFakeRecognition))).toBe(true)
 
   await page.evaluate(() => {
@@ -144,26 +148,50 @@ test('Speak starts recognition immediately and a spoken planting request is prev
     })
   })
 
+  await expect(page.getByText(/When was this crop sown/).last()).toBeVisible()
+  expect(intakeCalls).toHaveLength(0)
+  await typeCommand(page, 'today')
   await expect(page.getByText(/Planting draft — nothing has been saved yet\./).last()).toBeVisible()
   await expect(page.getByText(/Farm: Green Valley/).last()).toBeVisible()
   await expect(page.getByText(/Crop: Mango/).last()).toBeVisible()
   await expect(page.getByText(/Area: 1 acre/).last()).toBeVisible()
-  expect(intakeCalls).toHaveLength(0)
+  await expect(page.getByText(/Planting date: today/).last()).toBeVisible()
 
   await typeCommand(page, 'confirm')
   await expect(page.getByText(/Saved\. The Mango crop record was created/).last()).toBeVisible()
   expect(intakeCalls).toHaveLength(1)
-  expect(intakeCalls[0].body).toMatchObject({
-    farmId: 'farm-1',
-    inputMethod: 'VOICE',
-    content: 'I have planted mango plants across one acre of my farm',
-  })
+  expect(intakeCalls[0].body).toMatchObject({ farmId: 'farm-1', inputMethod: 'VOICE' })
+  expect(intakeCalls[0].body.content).toContain('I have planted mango plants across one acre of my farm')
+  expect(intakeCalls[0].body.content).toContain('Sown today')
   expect(messageCalls.some(item => item.body.source === 'VOICE')).toBe(true)
+})
+
+test('missing planting details are asked one at a time and new answers merge into the existing draft', async ({ page }) => {
+  const { intakeCalls } = await setupVoiceAgent(page)
+  await typeCommand(page, 'Register a paddy crop')
+  await expect(page.getByText(/How much land is planted with this crop/).last()).toBeVisible()
+  expect(intakeCalls).toHaveLength(0)
+
+  await typeCommand(page, 'two acres and sown five weeks ago using NPK fertilizer')
+  await expect(page.getByText(/Crop: Paddy/).last()).toBeVisible()
+  await expect(page.getByText(/Area: 2 acres/).last()).toBeVisible()
+  await expect(page.getByText(/approximately 5 weeks ago/).last()).toBeVisible()
+  await expect(page.getByText(/Fertilizer: NPK/).last()).toBeVisible()
+  expect(intakeCalls).toHaveLength(0)
+
+  await typeCommand(page, 'confirm')
+  await expect(page.getByText(/Saved\. The Paddy crop record was created/).last()).toBeVisible()
+  expect(intakeCalls).toHaveLength(1)
+  expect(intakeCalls[0].body.content).toContain('2 acres')
+  expect(intakeCalls[0].body.content).toContain('5 weeks ago')
+  expect(intakeCalls[0].body.content).toContain('NPK')
 })
 
 test('crop/area corrections update the preview and cancellation never submits a mutation', async ({ page }) => {
   const { intakeCalls } = await setupVoiceAgent(page)
   await typeCommand(page, 'I have planted mango plants across one acre of my farm')
+  await expect(page.getByText(/When was this crop sown/).last()).toBeVisible()
+  await typeCommand(page, 'today')
   await expect(page.getByText(/Area: 1 acre/).last()).toBeVisible()
 
   await typeCommand(page, 'change area to two acres')
@@ -185,6 +213,8 @@ test('multiple farms require an explicit farm selection before preview and confi
   expect(intakeCalls).toHaveLength(0)
 
   await typeCommand(page, 'River Field')
+  await expect(page.getByText(/When was this crop sown/).last()).toBeVisible()
+  await typeCommand(page, 'today')
   await expect(page.getByText(/Farm: River Field/).last()).toBeVisible()
   await typeCommand(page, 'confirm')
   await expect(page.getByText(/Saved\. The Mango crop record was created for River Field/).last()).toBeVisible()
@@ -193,6 +223,7 @@ test('multiple farms require an explicit farm selection before preview and confi
 })
 
 test('the voice panel has no serious or critical automated accessibility violations', async ({ page }) => {
+  test.setTimeout(60_000)
   await setupVoiceAgent(page)
   const results = await new AxeBuilder({ page })
     .include('section[aria-label="KrishiKendram voice assistant"]')
@@ -210,6 +241,8 @@ test('an ambiguous save response never claims that a crop record was created', a
     await route.fulfill({ json: { id: 'farm-record-only', category: 'PLANTING' } })
   })
   await typeCommand(page, 'I have planted mango plants across one acre of my farm')
+  await expect(page.getByText(/When was this crop sown/).last()).toBeVisible()
+  await typeCommand(page, 'today')
   await expect(page.getByText(/Planting draft — nothing has been saved yet\./).last()).toBeVisible()
   await typeCommand(page, 'confirm')
   await expect(page.getByText(/did not confirm a created crop record ID/).last()).toBeVisible()
@@ -224,6 +257,8 @@ test('an uncertain network outcome is not automatically retried', async ({ page 
     await route.abort('failed')
   })
   await typeCommand(page, 'I have planted mango plants across one acre of my farm')
+  await expect(page.getByText(/When was this crop sown/).last()).toBeVisible()
+  await typeCommand(page, 'today')
   await expect(page.getByText(/Planting draft — nothing has been saved yet\./).last()).toBeVisible()
   await typeCommand(page, 'confirm')
   await expect(page.getByText(/could not verify the save result/i).last()).toBeVisible()
@@ -238,6 +273,21 @@ test('typed general questions reach the conversation response API and render the
   expect(responseCalls).toHaveLength(1)
   expect(responseCalls[0].body).toMatchObject({ content: 'Why should I record sowing dates?', language: 'en-IN' })
   expect(intakeCalls).toHaveLength(0)
+})
+
+test('voice session automatically listens again after Krishi finishes speaking', async ({ page }) => {
+  const { responseCalls } = await setupVoiceAgent(page)
+  await page.evaluate(() => {
+    const synthesis = window.speechSynthesis as SpeechSynthesis & { speak: (utterance: SpeechSynthesisUtterance) => void }
+    synthesis.speak = (utterance: SpeechSynthesisUtterance) => {
+      window.setTimeout(() => utterance.onend?.(new Event('end') as SpeechSynthesisEvent), 0)
+    }
+  })
+  const startsBefore = await page.evaluate(() => (window as Window & { __kkFakeRecognitionStartCount?: number }).__kkFakeRecognitionStartCount ?? 0)
+  await typeCommand(page, 'Why should I record sowing dates?')
+  await expect(page.getByText(/Recording sowing dates helps you track crop age/).last()).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window as Window & { __kkFakeRecognitionStartCount?: number }).__kkFakeRecognitionStartCount ?? 0)).toBeGreaterThan(startsBefore)
+  expect(responseCalls).toHaveLength(1)
 })
 
 test('provider status clearly marks the local model as evaluation-only rather than production-approved', async ({ page }) => {

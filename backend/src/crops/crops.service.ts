@@ -131,6 +131,7 @@ export class CropsService {
       season?: CropSeason;
       status?: CropStatus;
       sowingDate?: Date;
+      sowingDateUnknown?: boolean;
       harvestDate?: Date;
       area?: number;
       unit?: string;
@@ -147,7 +148,8 @@ export class CropsService {
       {
         defaultSeason: CropSeason.UNKNOWN,
         defaultStatus: CropStatus.SOWN,
-        defaultSowingDate: new Date(),
+        defaultSowingDate: input.sowingDateUnknown ? undefined : new Date(),
+        preserveNullDates: input.sowingDateUnknown === true,
         preventSameDayDuplicate: true,
       },
       tx,

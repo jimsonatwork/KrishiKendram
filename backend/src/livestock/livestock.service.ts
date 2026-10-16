@@ -131,8 +131,28 @@ export class LivestockService {
       action: AuthorizationAction.READ,
       ownerId: userId,
     });
+    // A livestock record can be transferred independently of its farm. Include
+    // resources whose active temporal OWNER relationship belongs to this user,
+    // even when the underlying farm still has a different owner.
+    const ownedRelationships = await this.prisma.resourceRelationship.findMany({
+      where: {
+        resourceType: 'livestock',
+        relationshipType: 'OWNER',
+        userId,
+        endedAt: null,
+      },
+      select: { resourceId: true },
+    });
+    const relationshipOwnedIds = ownedRelationships.map((item: { resourceId: string }) => item.resourceId);
+
     return this.prisma.livestock.findMany({
-      where: { deletedAt: null, farm: { ownerId: userId } },
+      where: {
+        deletedAt: null,
+        OR: [
+          { farm: { ownerId: userId } },
+          { id: { in: relationshipOwnedIds } },
+        ],
+      },
       include: { farm: true },
       orderBy: { createdAt: 'desc' },
     });

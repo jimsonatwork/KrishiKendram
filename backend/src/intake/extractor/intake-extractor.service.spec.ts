@@ -52,4 +52,24 @@ describe('IntakeExtractorService', () => {
       activity: { type: 'PLANTING', area: 3, unit: 'hectares' },
     });
   });
+
+  it('preserves two acres, five-week crop age and NPK when ASR mishears acres as acers', async () => {
+    const result = await service.extract('create a paddy crop for 2 acers of land sown last five weeks now using NPK fertilizer');
+    expect(result).toMatchObject({
+      category: 'PLANTING',
+      crop: { name: 'Paddy' },
+      activity: { type: 'PLANTING', area: 2, unit: 'acres', fertilizer: 'NPK' },
+    });
+    expect(result.activity?.sowingDate).toBeDefined();
+    const age = Date.now() - new Date(result.activity!.sowingDate!).getTime();
+    expect(age).toBeGreaterThanOrEqual(34 * 86400000);
+    expect(age).toBeLessThanOrEqual(36 * 86400000);
+  });
+
+  it('preserves an explicit unknown sowing date instead of inventing today', async () => {
+    await expect(service.extract('I planted paddy on two acres. Sowing date unknown.')).resolves.toMatchObject({
+      category: 'PLANTING',
+      activity: { area: 2, unit: 'acres', sowingDateUnknown: true },
+    });
+  });
 });

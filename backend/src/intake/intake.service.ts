@@ -95,7 +95,10 @@ export class IntakeService {
           dto.farmId,
           {
             name: extracted.crop.name,
-            sowingDate: new Date(),
+            sowingDate: extracted.activity?.sowingDate
+              ? new Date(extracted.activity.sowingDate)
+              : extracted.activity?.sowingDateUnknown ? undefined : new Date(),
+            sowingDateUnknown: extracted.activity?.sowingDateUnknown === true,
             area: extracted.activity?.area,
             unit: extracted.activity?.unit,
           },
