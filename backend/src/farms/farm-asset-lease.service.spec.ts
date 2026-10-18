@@ -32,7 +32,7 @@ describe('FarmAssetLeaseService', () => {
     findOwner.mockResolvedValue({ userId: 'owner-1' });
     findDestination.mockResolvedValue({ id: 'lessee-1', status: 'ACTIVE' });
     transaction.mockImplementation(async (callback: (tx: any) => unknown) =>
-      callback({ user: { findUnique: findDestination } }),
+      callback({ farm: { findFirst: jest.fn().mockResolvedValue({ id: 'farm-1' }) }, user: { findUnique: findDestination } }),
     );
     assignLessee.mockResolvedValue({
       previousRelationship: { userId: 'old-lessee' },

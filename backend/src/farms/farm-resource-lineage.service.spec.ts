@@ -12,6 +12,7 @@ describe('FarmResourceLineageService', () => {
   const audit = { createInTransaction: jest.fn() } as any;
 
   const tx = {
+    farm: { findFirst: jest.fn().mockResolvedValue({ id: 'farm-1' }) },
     farmAsset: {
       create: jest.fn(), findUniqueOrThrow: jest.fn(),
       update: jest.fn(),

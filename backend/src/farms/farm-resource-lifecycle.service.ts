@@ -15,6 +15,7 @@ import { RESOURCE_EVIDENCE_RESOLVER } from '../platform/relationships/evidence-r
 import type { ResourceEvidenceResolver } from '../platform/relationships/evidence-resolution.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { assertFarmActive } from './farm-asset-active.guard';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 
@@ -245,11 +246,11 @@ export class FarmResourceLifecycleService {
       select: {
         id: true,
         farmId: true,
-        farm: { select: { id: true, ownerId: true } },
+        farm: { select: { id: true, ownerId: true, deletedAt: true } },
       },
     });
 
-    if (!asset || asset.farmId !== farmId) {
+    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -287,6 +288,7 @@ export class FarmResourceLifecycleService {
         tx.farmAsset.findUnique({
           where: { id: assetId },
         }),
+      farmId,
     );
   }
 
@@ -297,6 +299,7 @@ export class FarmResourceLifecycleService {
     dto: TransferResourceDto,
     minimumEffectiveAt: Date,
     persistResource: (tx: any) => Promise<unknown>,
+    farmId?: string,
   ) {
     if (dto.destinationUserId === sourceUserId) {
       throw new BadRequestException(
@@ -336,6 +339,7 @@ export class FarmResourceLifecycleService {
       : undefined;
 
     return this.prisma.$transaction(async (tx) => {
+      if (resourceType === 'farmAsset' && farmId) await assertFarmActive(tx, farmId);
       const destination = await tx.user.findUnique({
         where: { id: dto.destinationUserId },
         select: { id: true, status: true },

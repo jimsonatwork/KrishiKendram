@@ -46,7 +46,7 @@ describe('FarmAssetCustodyService', () => {
       status: 'ACTIVE',
     });
     transaction.mockImplementation(async (callback: (tx: any) => unknown) =>
-      callback({ user: { findUnique: findDestination } }),
+      callback({ farm: { findFirst: jest.fn().mockResolvedValue({ id: 'farm-1' }) }, user: { findUnique: findDestination } }),
     );
     returnCustodian.mockResolvedValue({
       relationship: { userId: 'custodian-1' },
@@ -167,4 +167,20 @@ describe('FarmAssetCustodyService', () => {
     expect(transaction).not.toHaveBeenCalled();
     expect(assignCustodian).not.toHaveBeenCalled();
   });
+  it('rejects custody mutation when the parent farm is archived before authorization', async () => {
+    const service = new FarmAssetCustodyService(prisma, authorization, relationships, audit);
+    findAsset.mockResolvedValueOnce({
+      id: 'asset-1', farmId: 'farm-1', createdAt: new Date('2026-01-01T00:00:00Z'),
+      farm: { ownerId: 'owner-1', deletedAt: new Date('2026-10-18T00:00:00Z') },
+    });
+
+    await expect(service.assignCustodian('farm-1', 'asset-1', {
+      destinationUserId: 'custodian-1', reason: 'Hand over equipment',
+    }, 'owner-1', 'FARMER' as any)).rejects.toThrow('Asset not found');
+
+    expect(assertCan).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+    expect(assignCustodian).not.toHaveBeenCalled();
+  });
+
 });

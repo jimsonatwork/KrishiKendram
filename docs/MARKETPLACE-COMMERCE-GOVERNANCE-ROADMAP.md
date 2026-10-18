@@ -261,3 +261,8 @@ Documentation is not implementation. Mark each feature complete only when its se
 - Registry definitions cover notification fields and list filters. Query limits are bounded to 1–100. Links are restricted to internal /app/ routes; external or unsafe hrefs are suppressed.
 - The browser UI exposes severity, event type and unread-only filters, severity styling, refresh, per-item read and mark-all-read. When unread-only is active, read items disappear from the visible list immediately.
 - External SMS/email/push delivery is intentionally separate from persisted in-app notifications and remains a plug-in integration. Notifications do not hard-delete history.
+
+### Core module handoff after Marketplace closure — 2026-10-18 22:35 IST
+- Marketplace, Inventory and Finance consolidation is committed and remains an ancestor of canonical main. Keep Marketplace as the commercial parent workspace; do not recreate independent Finance/Inventory farmer destinations or duplicate their ledgers.
+- The next core module gate is Farm Assets, not further Marketplace feature expansion unless regression reveals a blocker. Focus on custody, lease, ownership transfer, split/merge, lineage, evidence, and archived-parent invariants.
+- All asset writes must re-check active parent farm state in the same transaction. Archiving must not delete movement/evidence/lineage history. Live payments, payouts and tax remittance remain disabled until provider integration and qualified reviews.

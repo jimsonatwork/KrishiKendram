@@ -7,6 +7,7 @@ import { ResourceRelationshipService } from '../platform/relationships/relations
 import { ResourceMovementType } from '../platform/relationships/movement.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { assertFarmActive } from './farm-asset-active.guard';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 
@@ -32,11 +33,11 @@ export class FarmAssetCustodyService {
         id: true,
         farmId: true,
         createdAt: true,
-        farm: { select: { ownerId: true } },
+        farm: { select: { ownerId: true, deletedAt: true } },
       },
     });
 
-    if (!asset || asset.farmId !== farmId) {
+    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -84,6 +85,7 @@ export class FarmAssetCustodyService {
       : undefined;
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const result = await this.relationships.returnCustodian(
         tx,
         'farmAsset',
@@ -130,11 +132,11 @@ export class FarmAssetCustodyService {
         id: true,
         farmId: true,
         createdAt: true,
-        farm: { select: { ownerId: true } },
+        farm: { select: { ownerId: true, deletedAt: true } },
       },
     });
 
-    if (!asset || asset.farmId !== farmId) {
+    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -186,6 +188,7 @@ export class FarmAssetCustodyService {
       : undefined;
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const destination = await tx.user.findUnique({
         where: { id: dto.destinationUserId },
         select: { id: true, status: true },

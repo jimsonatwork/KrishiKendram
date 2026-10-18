@@ -17,6 +17,7 @@ import { createResourceLineage, createResourceMovement } from '../platform/relat
 import type { ResourceLineageResolver } from '../platform/relationships/lineage-resolution.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { assertFarmActive } from './farm-asset-active.guard';
 
 import { SplitFarmAssetDto } from './dto/split-farm-asset.dto';
 import { MergeFarmAssetsDto } from './dto/merge-farm-assets.dto';
@@ -40,7 +41,7 @@ export class FarmResourceLineageService {
   ) {
     const asset = await this.prisma.farmAsset.findUnique({
       where: { id: assetId },
-      select: { farmId: true, farm: { select: { ownerId: true } } },
+      select: { farmId: true, farm: { select: { ownerId: true, deletedAt: true } } },
     });
     if (!asset || asset.farmId !== farmId) {
       throw new NotFoundException('Asset not found');
@@ -95,11 +96,11 @@ export class FarmResourceLineageService {
         quantity: true,
         unit: true,
         metadata: true,
-        farm: { select: { id: true, ownerId: true } },
+        farm: { select: { id: true, ownerId: true, deletedAt: true } },
       },
     });
 
-    if (assets.length !== sourceIds.length) {
+    if (assets.length !== sourceIds.length || assets.some((asset) => asset.farm.deletedAt)) {
       throw new NotFoundException('One or more source assets were not found.');
     }
 
@@ -174,6 +175,7 @@ export class FarmResourceLineageService {
     const totalQuantity = assets.reduce((sum, asset) => sum + (asset.quantity ?? 0), 0);
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const target = await tx.farmAsset.create({
         data: {
           farmId,
@@ -289,11 +291,11 @@ export class FarmResourceLineageService {
         quantity: true,
         unit: true,
         metadata: true,
-        farm: { select: { id: true, ownerId: true } },
+        farm: { select: { id: true, ownerId: true, deletedAt: true } },
       },
     });
 
-    if (!asset || asset.farmId !== farmId) {
+    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
     if (asset.quantity === null || asset.quantity === undefined) {
@@ -360,6 +362,7 @@ export class FarmResourceLineageService {
     const remainingQuantity = asset.quantity - dto.quantity;
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const target = await tx.farmAsset.create({
         data: {
           farmId,

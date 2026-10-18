@@ -17,7 +17,7 @@ describe('FarmResourceLifecycleService', () => {
 
   const tx = {
     user: { findUnique: jest.fn() },
-    farm: { update: jest.fn(), findUnique: jest.fn() },
+    farm: { update: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn().mockResolvedValue({ id: 'farm-1' }) },
     farmAsset: {
       findUnique: jest.fn(),
       create: jest.fn(),

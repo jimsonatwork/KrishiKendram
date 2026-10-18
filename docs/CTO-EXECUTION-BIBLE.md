@@ -1960,3 +1960,11 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - Regression coverage includes archived-farm update denial, direct record denial, transaction-aware Intake record denial, successful restore with relationship/audit, and a failed stale/concurrent restore with no relationship/audit side effects.
 - Verification on isolated C worktree: FarmsService 45/45; full backend regression 66 suites / 644 tests; backend Nest build exit 0; frontend production build exit 0; authenticated archive/restore Playwright journey 1/1; full frontend Playwright suite 19/19.
 - No schema migration, database reset, hard deletion, payment integration, or change to central Registry/AuthorizationService policy was introduced. Existing migration-history notes remain untouched.
+
+## Farm Assets — archived-parent and temporal integrity gate (2026-10-18)
+- Farm Assets are governed child resources: no new asset, update, removal, custody change, lease start/end, ownership transfer, split, or merge may mutate a farm after that parent farm is archived.
+- Every composite write re-checks Farm.deletedAt IS NULL inside its database transaction. An archive racing with a write must cause the entire write to fail, including relationship changes, movement/lineage/evidence rows, and audit records.
+- Pre-authorization context includes the parent farm's archive state and fails closed before protected resource mutation. Do not expose archived parent state through a different error path that leaks protected asset details.
+- Historical movement, evidence, relationship and lineage reads remain governed by normal authorization; archiving a parent does not erase history.
+- Split/merge must preserve positive quantities, common units, ownership consistency, temporal ordering, source-quantity compare-and-swap, and atomic movement + lineage + audit creation.
+- The shared assertFarmActive transaction guard is the common enforcement point for asset write services. Extend it to any future asset mutation workflow rather than duplicating a partial check.

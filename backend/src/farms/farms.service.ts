@@ -6,6 +6,7 @@ import {
 
 import { Prisma, UserRole } from '@prisma/client';
 import { AuditService } from '../platform/audit/audit.service';
+import { assertFarmActive } from './farm-asset-active.guard';
 
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { RegistryService } from '../platform/registry/registry.service';
@@ -273,10 +274,11 @@ export class FarmsService {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
-    if (!farmContext) {
+    if (!farmContext || farmContext.deletedAt) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -515,6 +517,7 @@ export class FarmsService {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },
@@ -560,10 +563,11 @@ export class FarmsService {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
-    if (!farmContext) {
+    if (!farmContext || farmContext.deletedAt) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -585,6 +589,7 @@ export class FarmsService {
     const validatedData = this.validateFarmAssetFields(dto);
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const asset = await tx.farmAsset.create({
         data: {
           farmId,
@@ -667,12 +672,13 @@ export class FarmsService {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },
     });
 
-    if (!assetContext) {
+    if (!assetContext || assetContext.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -699,6 +705,7 @@ export class FarmsService {
     const validatedData = this.validateFarmAssetFields(dto);
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const asset = await tx.farmAsset.update({
         where: { id: assetId },
         data: validatedData,
@@ -736,12 +743,13 @@ export class FarmsService {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },
     });
 
-    if (!assetContext) {
+    if (!assetContext || assetContext.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -766,6 +774,7 @@ export class FarmsService {
     });
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const endedAt = new Date();
 
       await this.relationships.terminateResourceRelationships(

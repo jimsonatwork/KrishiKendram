@@ -58,6 +58,7 @@ describe('FarmsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.resourceRelationship.findFirst.mockResolvedValue(undefined);
+    prisma.farm.findFirst.mockResolvedValue({ id: 'farm-1' });
     prisma.$transaction.mockImplementation(
       async (callback: (tx: any) => Promise<unknown>) =>
         callback({
@@ -146,6 +147,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
@@ -209,6 +211,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
   });
@@ -235,6 +238,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
   });
@@ -1056,6 +1060,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
@@ -1124,6 +1129,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
   });
@@ -1154,6 +1160,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
   });
@@ -1196,6 +1203,7 @@ describe('FarmsService', () => {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },
@@ -1351,6 +1359,7 @@ describe('FarmsService', () => {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },

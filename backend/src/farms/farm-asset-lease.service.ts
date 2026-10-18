@@ -7,6 +7,7 @@ import { ResourceMovementType } from '../platform/relationships/movement.types';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { assertFarmActive } from './farm-asset-active.guard';
 
 import { TransferResourceDto } from './dto/transfer-resource.dto';
 
@@ -28,9 +29,9 @@ export class FarmAssetLeaseService {
   ) {
     const asset = await this.prisma.farmAsset.findUnique({
       where: { id: assetId },
-      select: { id: true, farmId: true, createdAt: true, farm: { select: { ownerId: true } } },
+      select: { id: true, farmId: true, createdAt: true, farm: { select: { ownerId: true, deletedAt: true } } },
     });
-    if (!asset || asset.farmId !== farmId) throw new NotFoundException('Asset not found');
+    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) throw new NotFoundException('Asset not found');
 
     const owner = await this.prisma.resourceRelationship.findFirst({
       where: { resourceType: 'farmAsset', resourceId: assetId, relationshipType: 'OWNER', endedAt: null },
@@ -66,6 +67,7 @@ export class FarmAssetLeaseService {
       : undefined;
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const destination = await tx.user.findUnique({ where: { id: dto.destinationUserId }, select: { id: true, status: true } });
       if (!destination || destination.status !== UserStatus.ACTIVE) {
         throw new BadRequestException('Destination lessee is not active.');
@@ -110,9 +112,9 @@ export class FarmAssetLeaseService {
   ) {
     const asset = await this.prisma.farmAsset.findUnique({
       where: { id: assetId },
-      select: { id: true, farmId: true, createdAt: true, farm: { select: { ownerId: true } } },
+      select: { id: true, farmId: true, createdAt: true, farm: { select: { ownerId: true, deletedAt: true } } },
     });
-    if (!asset || asset.farmId !== farmId) throw new NotFoundException('Asset not found');
+    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) throw new NotFoundException('Asset not found');
 
     const owner = await this.prisma.resourceRelationship.findFirst({
       where: { resourceType: 'farmAsset', resourceId: assetId, relationshipType: 'OWNER', endedAt: null },
@@ -146,6 +148,7 @@ export class FarmAssetLeaseService {
       : undefined;
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const result = await this.relationships.endLease(
         tx, 'farmAsset', assetId, userId, effectiveAt,
         dto.reason, dto.transactionId, evidenceInput,
