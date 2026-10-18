@@ -339,7 +339,7 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: Core-stack acceptance closure — Users lifecycle restore**
+**Current position: Core-stack acceptance closure — Admin/Roles/Permissions registry reconciliation**
 
 UsersService Field Policy migration is complete for the current implementation segment.
 
@@ -1942,3 +1942,11 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - The admin Users UI exposes Restore only for PENDING_DELETE rows and restricts status editing for those rows, directing operators to the explicit restore action.
 - Focused UsersService regression rejects direct reactivation and stale restore attempts. The Playwright lifecycle journey covers user creation, explicit restore and activity/relationship empty states.
 - The Users product module remains PARTIAL overall until the full regression, builds, runtime checks and CBA promotion complete.
+
+### 18 Oct 2026 — Authorization registry reconciliation visibility
+
+- The persisted permission matrix remains a read-only operational surface; the backend Authorization service remains the sole decision engine.
+- The backend already exposes registry reconciliation and unit tests for declared, missing, covered and stale permission entries. The Permissions UI previously did not call that endpoint, so operators could not see drift from the canonical Registry.
+- The Permissions page now loads the persisted matrix and reconciliation independently, displays declared/persisted/covered/missing/stale counts, and lists missing declarations and stale persisted resource permissions. A reconciliation failure is shown separately and does not hide the persisted matrix.
+- No role mutation or second authorization engine was introduced. The frontend uses the existing typed API adapter and backend reconciliation result.
+- Acceptance evidence: frontend production build and the Super Admin Playwright reconciliation journey pass; full regression and CBA promotion remain required before closure.

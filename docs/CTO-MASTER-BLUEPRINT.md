@@ -3449,3 +3449,9 @@ Sandbox payment intent and webhook routes are a non-production harness only. Req
 The existing user lifecycle uses PENDING_DELETE as a reversible state and preserves records/history. Normal profile/status editing must not reactivate or finalize that state. The explicit restore endpoint is the only reactivation path and must re-check PENDING_DELETE inside its transaction, restore ACTIVE, clear deletion-request flags, and persist actor-attributed history and audit events atomically.
 
 The admin Users workspace exposes Restore only for PENDING_DELETE rows. The edit dialog keeps the status fixed while deletion is pending and explains the explicit restore action. The overall Users module remains PARTIAL until full integration regression and CBA promotion pass; the Field Policy and shared Registry remain the only validation authority.
+
+## Authorization Registry Reconciliation — 18 October 2026
+
+The Permissions administration view now exposes the existing backend Registry reconciliation endpoint. It reports declared capabilities, persisted resource permissions, covered declarations, missing declarations and stale persisted entries, and lists the missing/stale keys for investigation. Permission-matrix loading and reconciliation loading/errors are independent, so an unavailable reconciliation endpoint does not erase the persisted view.
+
+This is intentionally read-only: Registry declarations remain authoritative, backend Authorization remains the sole decision engine, and no separate role/permission mutation path was added. The role/permission gate remains PARTIAL until full regression, production builds, browser journeys, runtime checks and CBA promotion pass.
