@@ -244,3 +244,11 @@ Documentation is not implementation. Mark each feature complete only when its se
 - Disputes use the existing persistent, audited Marketplace trust-case queue, keep evidence links private to authorized reviewers, and support review, resolution/dismissal, and the existing caution/restriction governance where warranted.
 - Admin/Super Admin can separately record payout holds only when a captured payment record exists. Holds and reconciliation remain statement/governance records, not actual fund movement.
 - UI explicitly states that an internal dispute is not a payment-provider chargeback and does not move funds. Provider-backed chargebacks, evidence deadlines, external arbitration, real settlement/payout, and compliance review remain production gates.
+
+
+## Reports & Analytics module (implemented backend workflow)
+- The Reports screen reads a single authenticated backend overview endpoint instead of independently aggregating six client-side API calls. The API composes existing farm, crop, livestock, inventory, finance, and current-user Marketplace services; it does not write or mutate domain records.
+- Farm filtering is checked against the farms returned for the authenticated user. Unknown or foreign farm identifiers are not disclosed. Inclusive from/to date filters are checked by the central Registry, must be real calendar dates, and reject reversed ranges.
+- The Registry defines the reports module, farmReport resource, and reusable farm/date filter fields. The API uses existing module service authorization, returns an as-of timestamp, and reports optional-source failures as warnings while preserving other authorized sections. If farm access cannot be verified for a requested farm filter, the report fails closed.
+- Farm summaries include crop and livestock counts, inventory counts and reorder-level alerts, and recorded income/expense/net by currency. Currency totals are never added across currencies and no exchange rate is invented. Marketplace counts are limited to the current seller and are not falsely attributed to a farm.
+- CSV export includes farm summaries, filtered financial detail, the generation timestamp, filters, and data-scope notes. Reports are read-only and are not bank balances, audited accounts, tax advice, or statutory filings.

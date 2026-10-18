@@ -929,6 +929,15 @@ export const api = {
   markNotificationRead: (id: string, token: string) => request<any>('/notifications/' + id + '/read', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token } }),
   markAllNotificationsRead: (token: string) => request<{ markedRead: number }>('/notifications/read-all', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),
 
+  reportsOverview: (token: string, filters?: { farmId?: string; fromDate?: string; toDate?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.farmId) params.set('farmId', filters.farmId)
+    if (filters?.fromDate) params.set('fromDate', filters.fromDate)
+    if (filters?.toDate) params.set('toDate', filters.toDate)
+    const query = params.toString()
+    return request<any>('/reports/overview' + (query ? '?' + query : ''), { headers: { Authorization: 'Bearer ' + token } })
+  },
+
   financeRecords: (token: string) => request<any[]>('/finance/records', { headers: { Authorization: 'Bearer ' + token } }),
   createFinanceRecord: (data: Record<string, unknown>, token: string) => request<any>('/finance/records', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
   updateFinanceRecord: (id: string, data: Record<string, unknown>, token: string) => request<any>('/finance/records/' + id, { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),

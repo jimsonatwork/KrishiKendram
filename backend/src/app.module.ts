@@ -28,6 +28,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { FinanceModule } from './finance/finance.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ReportsModule } from './reports/reports.module';
 import { AiModule } from './ai/ai.module';
 
 @Module({
@@ -50,6 +51,7 @@ import { AiModule } from './ai/ai.module';
     InventoryModule,
     FinanceModule,
     NotificationsModule,
+    ReportsModule,
     AiModule,
     GodModeModule,
   ],

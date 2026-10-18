@@ -38,4 +38,10 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     name: 'Notifications',
     lifecycle: 'ACTIVE',
   },
+  {
+    id: 'reports',
+    name: 'Reports & Analytics',
+    lifecycle: 'ACTIVE',
+    dependencies: ['farms', 'livestock', 'marketplace', 'inventory', 'finance'],
+  },
 ];

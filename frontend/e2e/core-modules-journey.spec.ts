@@ -28,6 +28,7 @@ test('core farm workflows connect inventory ledger, finance records, notificatio
     if (path === '/farms/my') return route.fulfill({ json: [farm] })
     if (path === '/crops' || path === '/livestock') return route.fulfill({ json: [] })
     if (path === '/marketplace/listings') return route.fulfill({ json: [] })
+    if (path === '/reports/overview') return route.fulfill({ json: { generatedAt: new Date().toISOString(), filters: { farmId: null, fromDate: null, toDate: null }, availableFarms: [farm], totals: { farmCount: 1, cropRecords: 0, livestockRecords: 0, inventoryItems: inventory.length, lowStockItems: inventory.filter(item => Number(item.quantityOnHand || 0) <= Number(item.reorderLevel || 0)).length, listingCount: 0, publishedListings: 0, financeByCurrency: [{ currency: 'INR', income: finances.filter(item => item.type === 'INCOME').reduce((sum, item) => sum + Number(item.amount || 0), 0), expense: finances.filter(item => item.type === 'EXPENSE').reduce((sum, item) => sum + Number(item.amount || 0), 0), net: finances.filter(item => item.type === 'INCOME').reduce((sum, item) => sum + Number(item.amount || 0), 0) - finances.filter(item => item.type === 'EXPENSE').reduce((sum, item) => sum + Number(item.amount || 0), 0) }] }, farms: [{ farmId: farm.id, name: farm.name, area: farm.area, unit: farm.unit, cropRecords: 0, livestockRecords: 0, inventoryItems: inventory.length, lowStockItems: inventory.filter(item => Number(item.quantityOnHand || 0) <= Number(item.reorderLevel || 0)).length, financeByCurrency: [{ currency: 'INR', income: finances.filter(item => item.type === 'INCOME').reduce((sum, item) => sum + Number(item.amount || 0), 0), expense: finances.filter(item => item.type === 'EXPENSE').reduce((sum, item) => sum + Number(item.amount || 0), 0), net: finances.filter(item => item.type === 'INCOME').reduce((sum, item) => sum + Number(item.amount || 0), 0) - finances.filter(item => item.type === 'EXPENSE').reduce((sum, item) => sum + Number(item.amount || 0), 0) }] }], financialDetails: finances.map(item => ({ id: item.id, farmId: item.farmId, farmName: farm.name, type: item.type, category: item.category || '', amount: Number(item.amount || 0), currency: item.currency || 'INR', occurredAt: item.occurredAt || null, reference: item.reference || '', notes: item.notes || '' })), warnings: [], notes: { financialTotals: 'Amounts are grouped by currency; no foreign-exchange conversion is applied.', marketplaceListings: 'Listing totals are seller-wide.', source: 'Aggregated from authorized module services.' } } })
 
     if (path === '/inventory/items' && method === 'GET') return route.fulfill({ json: inventory })
     if (path === '/inventory/items' && method === 'POST') {
@@ -110,7 +111,7 @@ test('core farm workflows connect inventory ledger, finance records, notificatio
 
   await page.goto('/app/reports')
   await expect(page.getByText('Farm Reports')).toBeVisible()
-  await expect(page.getByRole('cell', { name: 'Jinse Agro Farm' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Jinse Agro Farm' }).first()).toBeVisible()
   await expect(page.getByText('Farm operational summary')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled()
 })
