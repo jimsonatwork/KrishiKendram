@@ -18,6 +18,8 @@ import { CreateSandboxPaymentIntentDto } from './dto/create-sandbox-payment-inte
 import { SandboxPaymentWebhookDto } from './dto/sandbox-payment-webhook.dto';
 import { CreateSandboxRefundDto } from './dto/create-sandbox-refund.dto';
 import { SandboxRefundWebhookDto } from './dto/sandbox-refund-webhook.dto';
+import { CreateSandboxChargebackDto } from './dto/create-sandbox-chargeback.dto';
+import { SandboxChargebackWebhookDto } from './dto/sandbox-chargeback-webhook.dto';
 import { CreateTaxProfileDto } from './dto/create-tax-profile.dto';
 import { ApproveTaxProfileDto } from './dto/approve-tax-profile.dto';
 import { RetireTaxProfileDto } from './dto/retire-tax-profile.dto';
@@ -95,7 +97,10 @@ export class MarketplaceController {
   @Post('orders/:id/reviews') @UseGuards(JwtAuthGuard) createReview(@Req() req: any, @Param('id') id: string, @Body() dto: CreateReviewDto) { return this.marketplace.createReview(req.user.userId, req.user.role, id, dto); }
   @Post('listings/:id/orders') @UseGuards(JwtAuthGuard) createOrder(@Req() req: any, @Param('id') id: string, @Body() dto: CreateOrderDto) { return this.marketplace.createOrder(req.user.userId, req.user.role, id, dto); }
   @Post('orders/:id/payments/sandbox-intent') @UseGuards(JwtAuthGuard) createSandboxPaymentIntent(@Req() req: any, @Param('id') id: string, @Body() dto: CreateSandboxPaymentIntentDto) { return this.marketplace.createSandboxPaymentIntent(req.user.userId, req.user.role, id, dto.idempotencyKey); }
+  @Post('orders/:id/chargebacks/sandbox') @UseGuards(JwtAuthGuard) createSandboxChargeback(@Req() req: any, @Param('id') id: string, @Body() dto: CreateSandboxChargebackDto) { return this.marketplace.createSandboxChargeback(req.user.userId, req.user.role, id, dto); }
+  @Patch('chargebacks/sandbox/:id/evidence') @UseGuards(JwtAuthGuard) submitSandboxChargebackEvidence(@Req() req: any, @Param('id') id: string, @Body('evidenceUrls') evidenceUrls: string[]) { return this.marketplace.submitSandboxChargebackEvidence(req.user.userId, req.user.role, id, evidenceUrls); }
   @Post('orders/:id/payments/sandbox-refunds') @UseGuards(JwtAuthGuard) createSandboxRefundRequest(@Req() req: any, @Param('id') id: string, @Body() dto: CreateSandboxRefundDto) { return this.marketplace.createSandboxRefundRequest(req.user.userId, req.user.role, id, dto); }
+  @Post('payments/sandbox/chargebacks/webhook') handleSandboxChargebackWebhook(@Req() req: any, @Headers('x-kk-sandbox-signature') signature: string | undefined, @Body() dto: SandboxChargebackWebhookDto) { return this.marketplace.handleSandboxChargebackWebhook(req.rawBody, signature, dto); }
   @Post('payments/sandbox/refunds/webhook') handleSandboxRefundWebhook(@Req() req: any, @Headers('x-kk-sandbox-signature') signature: string | undefined, @Body() dto: SandboxRefundWebhookDto) { return this.marketplace.handleSandboxRefundWebhook(req.rawBody, signature, dto); }
   @Post('payments/sandbox/webhook') handleSandboxPaymentWebhook(@Req() req: any, @Headers('x-kk-sandbox-signature') signature: string | undefined, @Body() dto: SandboxPaymentWebhookDto) { return this.marketplace.handleSandboxPaymentWebhook(req.rawBody, signature, dto); }
   @Patch('orders/:id/delivery') @UseGuards(JwtAuthGuard) updateDelivery(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateDeliveryDto) { return this.marketplace.updateDelivery(req.user.userId, req.user.role, id, dto); }

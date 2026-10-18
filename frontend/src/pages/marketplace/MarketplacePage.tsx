@@ -140,6 +140,12 @@ export function MarketplacePage() {
   const [sandboxRefundReasons, setSandboxRefundReasons] = useState<Record<string, string>>({})
   const [sandboxRefundBusyIds, setSandboxRefundBusyIds] = useState<string[]>([])
   const [sandboxRefundKeys, setSandboxRefundKeys] = useState<Record<string, string>>({})
+  const [sandboxChargebackAmounts, setSandboxChargebackAmounts] = useState<Record<string, string>>({})
+  const [sandboxChargebackReasons, setSandboxChargebackReasons] = useState<Record<string, string>>({})
+  const [sandboxChargebackBusyIds, setSandboxChargebackBusyIds] = useState<string[]>([])
+  const [sandboxChargebackKeys, setSandboxChargebackKeys] = useState<Record<string, string>>({})
+  const [sandboxChargebackEvidence, setSandboxChargebackEvidence] = useState<Record<string, string>>({})
+  const [sandboxChargebackEvidenceBusyIds, setSandboxChargebackEvidenceBusyIds] = useState<string[]>([])
   const [cropChoices, setCropChoices] = useState<ResourceChoice[]>([])
   const [livestockChoices, setLivestockChoices] = useState<ResourceChoice[]>([])
   const [assetChoices, setAssetChoices] = useState<ResourceChoice[]>([])
@@ -529,6 +535,36 @@ export function MarketplacePage() {
     finally { setSandboxRefundBusyIds(previous => previous.filter(id => id !== order.id)) }
   }
 
+  async function createSandboxChargeback(order: any, remaining: number) {
+    if (!token || sandboxChargebackBusyIds.includes(order.id)) return
+    const amount = (sandboxChargebackAmounts[order.id] || String(remaining)).trim()
+    const reason = (sandboxChargebackReasons[order.id] || '').trim()
+    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0 || Number(amount) > remaining) { setError('Chargeback amount must be positive and no greater than the unrefunded captured amount.'); return }
+    if (reason.length < 5) { setError('Add a chargeback reason of at least five characters.'); return }
+    const idempotencyKey = sandboxChargebackKeys[order.id] || crypto.randomUUID()
+    setSandboxChargebackKeys(previous => ({ ...previous, [order.id]: idempotencyKey }))
+    setSandboxChargebackBusyIds(previous => [...previous, order.id]); setError('')
+    try {
+      await api.createMarketplaceSandboxChargeback(order.id, { idempotencyKey, amount, reason }, token)
+      setSandboxChargebackKeys(previous => ({ ...previous, [order.id]: '' }))
+      await load()
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to open sandbox chargeback.') }
+    finally { setSandboxChargebackBusyIds(previous => previous.filter(id => id !== order.id)) }
+  }
+
+  async function submitSandboxChargebackEvidence(chargeback: any) {
+    if (!token || sandboxChargebackEvidenceBusyIds.includes(chargeback.id)) return
+    const urls = (sandboxChargebackEvidence[chargeback.id] || '').split(',').map(value => value.trim()).filter(Boolean)
+    if (!urls.length || urls.some(value => !value.startsWith('https://'))) { setError('Provide one or more HTTPS evidence links.'); return }
+    setSandboxChargebackEvidenceBusyIds(previous => [...previous, chargeback.id]); setError('')
+    try {
+      await api.submitMarketplaceSandboxChargebackEvidence(chargeback.id, urls, token)
+      setSandboxChargebackEvidence(previous => ({ ...previous, [chargeback.id]: '' }))
+      await load()
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to submit chargeback evidence.') }
+    finally { setSandboxChargebackEvidenceBusyIds(previous => previous.filter(id => id !== chargeback.id)) }
+  }
+
   async function updateOrder(item: any, action: 'accept' | 'reject' | 'cancel' | 'complete' | 'confirm-price') {
     if (!token || orderBusyIds.includes(item.id)) return
     setOrderBusyIds(previous => [...previous, item.id]); setError('')
@@ -811,10 +847,14 @@ export function MarketplacePage() {
               {currentUserRole==='SUPER_ADMIN' && order.payments?.some((p:any)=>p.status==='CAPTURED') && <div className="mt-2 w-full rounded-md border border-dashed p-2"><div className="text-xs font-medium">Governance payout hold (record only)</div><input aria-label={'Payout hold reason '+order.id} className="mt-2 h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Reason for hold" value={createHoldReasons[order.id]||''} onChange={e=>setCreateHoldReasons(prev=>({...prev,[order.id]:e.target.value}))}/><Button className="mt-2" size="sm" variant="outline" disabled={holdBusyIds.includes(order.id)} onClick={()=>void createPayoutHold(order)}>{holdBusyIds.includes(order.id)?'Saving…':'Record payout hold'}</Button><p className="mt-1 text-xs text-muted-foreground">Does not hold real funds or initiate a payout.</p></div>}
               {order.payments?.filter((p: any) => p.provider === 'sandbox').map((payment: any) => {
                 const refunds = payment.refunds || []
-                const reserved = refunds.filter((r: any) => r.status === 'REQUESTED' || r.status === 'SUCCEEDED').reduce((sum: number, r: any) => sum + Number(r.amount), 0)
-                const remaining = Math.max(0, Number(payment.amount) - reserved)
+                const chargebacks = payment.chargebacks || []
+                const reservedRefunds = refunds.filter((r: any) => r.status === 'REQUESTED' || r.status === 'SUCCEEDED').reduce((sum: number, r: any) => sum + Number(r.amount), 0)
+                const reservedChargebacks = chargebacks.filter((c: any) => c.status === 'OPEN' || c.status === 'LOST').reduce((sum: number, c: any) => sum + Number(c.amount), 0)
+                const remaining = Math.max(0, Number(payment.amount) - reservedRefunds - reservedChargebacks)
                 return <div key={payment.id + '-refunds'} className="mt-2 space-y-2 rounded-md border p-2 text-xs">
                   {refunds.map((refund: any) => <div key={refund.id} className="border-b pb-2 last:border-0"><div className="font-medium">Sandbox refund - {refund.status} - {refund.currency} {refund.amount}</div><div>{refund.reason}</div></div>)}
+                  {chargebacks.map((chargeback: any) => <div key={chargeback.id} className="space-y-2 border-b pb-2 last:border-0"><div className="font-medium">Sandbox chargeback - {chargeback.status} - {chargeback.currency} {chargeback.amount}</div><div>{chargeback.reason}</div><div>Evidence deadline: {new Date(chargeback.evidenceDeadline).toLocaleString()}</div>{chargeback.outcomeReason && <div>Outcome: {chargeback.outcomeReason}</div>}{(chargeback.evidenceUrls || []).map((url: string, index: number) => <a key={url + index} className="block underline" href={url} target="_blank" rel="noreferrer">Evidence link {index + 1}</a>)}{isSeller && chargeback.status === 'OPEN' && new Date(chargeback.evidenceDeadline).getTime() > Date.now() && <div className="space-y-2"><input aria-label={'Evidence links for chargeback ' + chargeback.id} className="h-9 w-full rounded-md border bg-background px-3 text-sm" maxLength={2048} placeholder="HTTPS evidence links, comma-separated" value={sandboxChargebackEvidence[chargeback.id] || ''} onChange={e => setSandboxChargebackEvidence(previous => ({ ...previous, [chargeback.id]: e.target.value }))} /><Button size="sm" variant="outline" disabled={sandboxChargebackEvidenceBusyIds.includes(chargeback.id)} onClick={() => void submitSandboxChargebackEvidence(chargeback)}>{sandboxChargebackEvidenceBusyIds.includes(chargeback.id) ? 'Submitting…' : 'Submit evidence'}</Button></div>}</div>)}
+                  {!isSeller && payment.status === 'CAPTURED' && featureEnabledForUi('marketplace.chargebacks_sandbox') && remaining > 0 && <div className="space-y-2 border-b pb-2"><div className="font-medium">Open sandbox chargeback (remaining {payment.currency} {remaining.toFixed(2)})</div><input aria-label={'Sandbox chargeback amount ' + order.id} className="h-9 w-full rounded-md border bg-background px-3 text-sm" type="number" min="0.01" max={remaining} step="0.01" value={sandboxChargebackAmounts[order.id] ?? remaining.toFixed(2)} onChange={e => setSandboxChargebackAmounts(previous => ({ ...previous, [order.id]: e.target.value }))} /><input aria-label={'Sandbox chargeback reason ' + order.id} className="h-9 w-full rounded-md border bg-background px-3 text-sm" maxLength={1000} placeholder="Reason for chargeback" value={sandboxChargebackReasons[order.id] || ''} onChange={e => setSandboxChargebackReasons(previous => ({ ...previous, [order.id]: e.target.value }))} /><Button size="sm" variant="outline" disabled={sandboxChargebackBusyIds.includes(order.id)} onClick={() => void createSandboxChargeback(order, remaining)}>{sandboxChargebackBusyIds.includes(order.id) ? 'Opening…' : 'Open sandbox chargeback'}</Button><p className="text-muted-foreground">Simulation only. Creates an evidence deadline and a record-only payout hold; signed sandbox outcome required. No real provider or funds are involved.</p></div>}
                   {!isSeller && payment.status === 'CAPTURED' && featureEnabledForUi('marketplace.refunds_sandbox') && remaining > 0 && <div className="space-y-2"><div className="font-medium">Request sandbox refund (remaining {payment.currency} {remaining.toFixed(2)})</div><input aria-label={'Sandbox refund amount ' + order.id} className="h-9 w-full rounded-md border bg-background px-3 text-sm" type="number" min="0.01" max={remaining} step="0.01" value={sandboxRefundAmounts[order.id] ?? remaining.toFixed(2)} onChange={e => setSandboxRefundAmounts(previous => ({ ...previous, [order.id]: e.target.value }))} /><input aria-label={'Sandbox refund reason ' + order.id} className="h-9 w-full rounded-md border bg-background px-3 text-sm" maxLength={1000} placeholder="Reason for refund" value={sandboxRefundReasons[order.id] || ''} onChange={e => setSandboxRefundReasons(previous => ({ ...previous, [order.id]: e.target.value }))} /><Button size="sm" variant="outline" disabled={sandboxRefundBusyIds.includes(order.id)} onClick={() => void createSandboxRefund(order, remaining)}>{sandboxRefundBusyIds.includes(order.id) ? 'Requesting...' : 'Request sandbox refund'}</Button><p className="text-muted-foreground">Simulation only; a signed sandbox event is required to mark the refund successful.</p></div>}
                 </div>
               })}

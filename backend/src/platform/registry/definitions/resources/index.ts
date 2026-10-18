@@ -15,6 +15,7 @@ import { marketplaceFeatureFlagResource } from './marketplace-feature-flag.resou
 import { marketplaceTrustCaseResource } from './marketplace-trust-case.resource';
 import { marketplaceRestrictionResource } from './marketplace-restriction.resource';
 import { marketplaceTaxProfileResource } from './marketplace-tax-profile.resource';
+import { marketplaceChargebackResource } from './marketplace-chargeback.resource';
 import { inventoryItemResource } from './inventory-item.resource';
 import { financialRecordResource } from './financial-record.resource';
 import { farmReportResource } from './farm-report.resource';
@@ -45,6 +46,7 @@ export const RESOURCE_DEFINITIONS: ResourceDefinition[] = [
   marketplaceTrustCaseResource,
   marketplaceRestrictionResource,
   marketplaceTaxProfileResource,
+  marketplaceChargebackResource,
   inventoryItemResource,
   financialRecordResource,
   farmReportResource,
@@ -69,6 +71,7 @@ export {
   marketplaceTrustCaseResource,
   marketplaceRestrictionResource,
   marketplaceTaxProfileResource,
+  marketplaceChargebackResource,
   inventoryItemResource,
   financialRecordResource,
   farmReportResource,

@@ -591,6 +591,7 @@ model MarketplaceOrder {
   reviews             MarketplaceReview[]
   payments            MarketplacePayment[]
   refunds             MarketplaceRefund[]
+  chargebacks         MarketplaceChargeback[]
   ledgerEntries       MarketplaceLedgerEntry[]
   buyer               User                     @relation("MarketplaceOrderBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
   seller              User                     @relation("MarketplaceOrderSeller", fields: [sellerId], references: [id], onDelete: Restrict)
@@ -1621,6 +1622,7 @@ model MarketplacePayment {
   ledgerEntries MarketplaceLedgerEntry[]
   events        MarketplacePaymentEvent[]
   refunds       MarketplaceRefund[]
+  chargebacks   MarketplaceChargeback[]
 
   @@index([orderId, status, createdAt])
   @@index([provider, providerPaymentId])
@@ -1663,6 +1665,32 @@ model MarketplaceRefund {
 
   @@index([paymentId, status, createdAt])
   @@index([orderId, createdAt])
+}
+
+model MarketplaceChargeback {
+  id                  String   @id @default(cuid())
+  paymentId           String
+  orderId             String
+  createdById         String
+  idempotencyKey      String   @unique
+  providerChargebackId String  @unique
+  status              String   @default("OPEN")
+  amount              Decimal  @db.Decimal(12, 2)
+  currency            String
+  reason              String
+  evidenceUrls        String[] @default([])
+  evidenceDeadline    DateTime
+  externalEventId     String?
+  outcomeReason       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  payment       MarketplacePayment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  order         MarketplaceOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  ledgerEntries MarketplaceLedgerEntry[]
+
+  @@index([paymentId, status, createdAt])
+  @@index([orderId, status, createdAt])
 }
 
 model MarketplaceSellerProfile {
@@ -1797,6 +1825,7 @@ model MarketplaceLedgerEntry {
   orderId     String
   paymentId   String?
   refundId    String?
+  chargebackId String?
   entryKey    String   @unique
   accountCode String
   direction   String
@@ -1809,9 +1838,11 @@ model MarketplaceLedgerEntry {
   order   MarketplaceOrder    @relation(fields: [orderId], references: [id], onDelete: Restrict)
   payment MarketplacePayment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   refund  MarketplaceRefund?  @relation(fields: [refundId], references: [id], onDelete: Restrict)
+  chargeback MarketplaceChargeback? @relation(fields: [chargebackId], references: [id], onDelete: Restrict)
 
   @@index([orderId, createdAt])
   @@index([refundId])
+  @@index([chargebackId])
   @@index([paymentId])
   @@index([accountCode, createdAt])
 }

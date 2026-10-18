@@ -54,6 +54,7 @@ const MARKETPLACE_FEATURES: Array<{ key: string; title: string; description: str
   { key: 'marketplace.payment_sandbox', title: 'Sandbox payment simulation', description: 'Signed, replay-protected simulated payment events; never moves money.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.orders'] },
   { key: 'marketplace.payments', title: 'Provider-backed payments', description: 'Disabled until provider, webhook, ledger and reconciliation review passes.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.orders'] },
   { key: 'marketplace.refunds_sandbox', title: 'Sandbox refund simulation', description: 'Signed, idempotent simulated refunds with balanced ledger reversals; never moves money.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.payment_sandbox'] },
+  { key: 'marketplace.chargebacks_sandbox', title: 'Sandbox chargeback simulation', description: 'Evidence deadlines, temporary payout holds and signed simulated chargeback outcomes; never moves money.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.payment_sandbox'] },
   { key: 'marketplace.refunds', title: 'Refunds and chargebacks', description: 'Provider-backed full/partial refunds and disputes.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.payments'] },
   { key: 'marketplace.settlement', title: 'Seller settlement and payouts', description: 'Reconciled seller net, payout holds and settlement.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.payments'] },
 ];
@@ -853,7 +854,7 @@ export class MarketplaceService {
 
   async findMyOrders(userId: string, role: UserRole) {
     await this.authorization.assertCan({ user: { userId, role }, module: 'marketplace', resource: 'marketplaceOrder', action: AuthorizationAction.READ, ownerId: userId });
-    return this.prisma.marketplaceOrder.findMany({ where: { OR: [{ buyerId: userId }, { sellerId: userId }] }, include: { listing: { select: { id: true, title: true, resourceType: true, resourceId: true } }, buyer: { select: { id: true, name: true } }, seller: { select: { id: true, name: true } }, reviews: { where: { OR: [{ reviewerId: userId }, { revieweeId: userId }] }, select: { id: true, rating: true, status: true, comment: true, sellerResponse: true, reviewerId: true, revieweeId: true } }, payments: { select: { id: true, provider: true, status: true, amount: true, currency: true, createdAt: true, refunds: { select: { id: true, status: true, amount: true, currency: true, reason: true, createdAt: true } } } } }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.marketplaceOrder.findMany({ where: { OR: [{ buyerId: userId }, { sellerId: userId }] }, include: { listing: { select: { id: true, title: true, resourceType: true, resourceId: true } }, buyer: { select: { id: true, name: true } }, seller: { select: { id: true, name: true } }, reviews: { where: { OR: [{ reviewerId: userId }, { revieweeId: userId }] }, select: { id: true, rating: true, status: true, comment: true, sellerResponse: true, reviewerId: true, revieweeId: true } }, payments: { select: { id: true, provider: true, status: true, amount: true, currency: true, createdAt: true, refunds: { select: { id: true, status: true, amount: true, currency: true, reason: true, createdAt: true } }, chargebacks: { select: { id: true, status: true, amount: true, currency: true, reason: true, evidenceUrls: true, evidenceDeadline: true, outcomeReason: true, providerChargebackId: true, createdAt: true } } } } }, orderBy: { createdAt: 'desc' } });
   }
 
   async createReview(userId: string, role: UserRole, orderId: string, dto: CreateReviewDto) {
@@ -1011,7 +1012,6 @@ export class MarketplaceService {
   }
 
   async handleSandboxPaymentWebhook(rawBody: Buffer | undefined, signature: string | undefined, event: { eventId: string; providerPaymentId: string; status: 'AUTHORIZED' | 'CAPTURED' | 'FAILED'; amount: string; currency: string }) {
-    await this.assertFeatureEnabled('marketplace.payment_sandbox');
     this.sandboxPaymentEnabled();
     const secret = process.env.KK_MARKETPLACE_PAYMENT_SANDBOX_SECRET!;
     if (!rawBody?.length || !signature) throw new UnauthorizedException('A signed sandbox webhook is required.');
@@ -1054,6 +1054,7 @@ export class MarketplaceService {
 
   async createSandboxRefundRequest(userId: string, role: UserRole, orderId: string, dto: { idempotencyKey: string; amount: string; reason: string }) {
     await this.assertFeatureEnabled('marketplace.refunds_sandbox');
+    await this.assertFeatureEnabled('marketplace.payment_sandbox');
     this.sandboxPaymentEnabled();
     if (!/^[A-Za-z0-9._:-]{8,128}$/.test(dto.idempotencyKey || '')) throw new BadRequestException('Provide a valid refund idempotency key.');
     if (!dto.reason?.trim() || dto.reason.trim().length < 5 || dto.reason.trim().length > 1000) throw new BadRequestException('Provide a refund reason between 5 and 1000 characters.');
@@ -1070,16 +1071,21 @@ export class MarketplaceService {
     const payment = await this.prisma.marketplacePayment.findFirst({ where: { orderId, provider: 'sandbox', status: 'CAPTURED' }, orderBy: { capturedAt: 'desc' } });
     if (!payment) throw new BadRequestException('No captured sandbox payment exists for this order.');
     const reserved = await this.prisma.marketplaceRefund.aggregate({ where: { paymentId: payment.id, status: { in: ['REQUESTED', 'SUCCEEDED'] } }, _sum: { amount: true } });
-    const alreadyRefunded = new Prisma.Decimal(reserved._sum.amount ?? 0);
-    if (alreadyRefunded.plus(amount).gt(payment.amount)) throw new BadRequestException('Requested refund exceeds the remaining captured amount.');
+    const chargebackReserved = await this.prisma.marketplaceChargeback.aggregate({ where: { paymentId: payment.id, status: { in: ['OPEN', 'LOST'] } }, _sum: { amount: true } });
+    const alreadyReserved = new Prisma.Decimal(reserved._sum.amount ?? 0).plus(chargebackReserved._sum.amount ?? 0);
+    if (alreadyReserved.plus(amount).gt(payment.amount)) throw new BadRequestException('Requested refund exceeds the remaining captured amount after refunds and chargebacks.');
     await this.authorization.assertCan({ user: { userId, role }, module: 'marketplace', resource: 'marketplaceRefund', action: AuthorizationAction.CREATE, ownerId: userId, resourceId: orderId });
     const providerRefundId = 'sandbox_refund_' + randomUUID();
     try {
       const refund = await this.prisma.$transaction(async (tx) => {
+        const txRefunds = await tx.marketplaceRefund.aggregate({ where: { paymentId: payment.id, status: { in: ['REQUESTED', 'SUCCEEDED'] } }, _sum: { amount: true } });
+        const txChargebacks = await tx.marketplaceChargeback.aggregate({ where: { paymentId: payment.id, status: { in: ['OPEN', 'LOST'] } }, _sum: { amount: true } });
+        const txReserved = new Prisma.Decimal(txRefunds._sum.amount ?? 0).plus(txChargebacks._sum.amount ?? 0);
+        if (txReserved.plus(amount).gt(payment.amount)) throw new BadRequestException('Requested refund exceeds the remaining captured amount after refunds and chargebacks.');
         const created = await tx.marketplaceRefund.create({ data: { paymentId: payment.id, orderId, createdById: userId, idempotencyKey: dto.idempotencyKey, providerRefundId, status: 'REQUESTED', amount, currency: payment.currency, reason: dto.reason.trim() } });
         await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE_MARKETPLACE_SANDBOX_REFUND', resourceType: 'marketplaceRefund', resourceId: created.id, description: 'Sandbox refund requested without moving funds', metadata: { orderId, paymentId: payment.id, amount: amount.toString(), currency: payment.currency, reason: dto.reason.trim(), simulationOnly: true } });
         return created;
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       return { id: refund.id, orderId: refund.orderId, status: refund.status, amount: refund.amount.toString(), currency: refund.currency, providerRefundId: refund.providerRefundId, simulationOnly: true, notice: 'Sandbox refund simulation only. No money is moved.' };
     } catch (error: any) {
       if (error?.code === 'P2002') {
@@ -1091,7 +1097,6 @@ export class MarketplaceService {
   }
 
   async handleSandboxRefundWebhook(rawBody: Buffer | undefined, signature: string | undefined, event: { eventId: string; providerRefundId: string; status: 'SUCCEEDED' | 'FAILED'; amount: string; currency: string }) {
-    await this.assertFeatureEnabled('marketplace.refunds_sandbox');
     this.sandboxPaymentEnabled();
     const secret = process.env.KK_MARKETPLACE_PAYMENT_SANDBOX_SECRET!;
     if (!rawBody?.length || !signature) throw new UnauthorizedException('A signed sandbox refund webhook is required.');
@@ -1125,6 +1130,135 @@ export class MarketplaceService {
       }
       await this.audit.createInTransaction(tx, { actorId: null, action: 'PROCESS_MARKETPLACE_SANDBOX_REFUND_EVENT', resourceType: 'marketplaceRefund', resourceId: refund.id, description: 'Signed sandbox refund event processed; no funds moved', metadata: { provider: 'sandbox', eventId: event.eventId, status: event.status, payloadHash, ledgerBalanced: event.status === 'SUCCEEDED', simulationOnly: true } });
       return { accepted: true, replayed: false, refundStatus: updated.status, simulationOnly: true, ledgerEntriesCreated: event.status === 'SUCCEEDED' ? 2 : 0, notice: 'Sandbox refund simulation only. No money has moved.' };
+    });
+  }
+
+  private sandboxChargebackView(chargeback: any) {
+    return {
+      id: chargeback.id, orderId: chargeback.orderId, providerChargebackId: chargeback.providerChargebackId,
+      status: chargeback.status, amount: chargeback.amount?.toString?.() ?? String(chargeback.amount),
+      currency: chargeback.currency, reason: chargeback.reason, evidenceUrls: chargeback.evidenceUrls || [],
+      evidenceDeadline: chargeback.evidenceDeadline, outcomeReason: chargeback.outcomeReason,
+      createdAt: chargeback.createdAt, simulationOnly: true,
+      notice: 'Sandbox chargeback simulation only. No payment provider has been contacted and no money has moved.',
+    };
+  }
+
+  private validateSandboxEvidence(evidenceUrls: string[] | undefined) {
+    if (!Array.isArray(evidenceUrls) || evidenceUrls.length > 10) throw new BadRequestException('Provide at most 10 HTTPS evidence links.');
+    for (const value of evidenceUrls) {
+      if (typeof value !== 'string' || value.length > 2048) throw new BadRequestException('Each evidence link must be a valid HTTPS URL under 2048 characters.');
+      try { if (new URL(value).protocol !== 'https:') throw new Error('protocol'); }
+      catch { throw new BadRequestException('Chargeback evidence links must use HTTPS.'); }
+    }
+    return evidenceUrls;
+  }
+
+  async createSandboxChargeback(userId: string, role: UserRole, orderId: string, dto: { idempotencyKey: string; amount: string; reason: string; evidenceUrls?: string[] }) {
+    await this.assertFeatureEnabled('marketplace.chargebacks_sandbox');
+    await this.assertFeatureEnabled('marketplace.payment_sandbox');
+    this.sandboxPaymentEnabled();
+    if (!/^[A-Za-z0-9._:-]{8,128}$/.test(dto.idempotencyKey || '')) throw new BadRequestException('Provide a valid chargeback idempotency key.');
+    if (!dto.reason?.trim() || dto.reason.trim().length < 5 || dto.reason.trim().length > 1000) throw new BadRequestException('Provide a chargeback reason between 5 and 1000 characters.');
+    const amount = new Prisma.Decimal(dto.amount);
+    if (!amount.isFinite() || amount.lte(0)) throw new BadRequestException('Chargeback amount must be greater than zero.');
+    const evidenceUrls = this.validateSandboxEvidence(dto.evidenceUrls || []);
+    const reasonValidation = this.registry.validateResourceField('marketplaceChargeback', 'reason', dto.reason.trim());
+    if (!reasonValidation.valid) throw new BadRequestException({ message: 'Invalid chargeback reason.', errors: reasonValidation.errors });
+    const order = await this.prisma.marketplaceOrder.findUnique({ where: { id: orderId } });
+    if (!order || order.buyerId !== userId) throw new NotFoundException('Marketplace order not found.');
+    if (!['ACCEPTED', 'COMPLETED'].includes(order.status)) throw new BadRequestException('A sandbox chargeback can only be opened for an accepted or completed order.');
+    const existing = await this.prisma.marketplaceChargeback.findUnique({ where: { idempotencyKey: dto.idempotencyKey } });
+    if (existing) {
+      if (existing.orderId !== orderId || !new Prisma.Decimal(existing.amount).equals(amount)) throw new BadRequestException('That chargeback idempotency key is already bound to a different request.');
+      return this.sandboxChargebackView(existing);
+    }
+    const payment = await this.prisma.marketplacePayment.findFirst({ where: { orderId, provider: 'sandbox', status: 'CAPTURED' }, orderBy: { capturedAt: 'desc' } });
+    if (!payment) throw new BadRequestException('No captured sandbox payment exists for this order.');
+    await this.authorization.assertCan({ user: { userId, role }, module: 'marketplace', resource: 'marketplaceOrder', action: AuthorizationAction.READ, ownerId: userId, resourceId: orderId });
+    const providerChargebackId = 'sandbox_chargeback_' + randomUUID();
+    const evidenceDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    try {
+      const chargeback = await this.prisma.$transaction(async (tx) => {
+        const refunds = await tx.marketplaceRefund.aggregate({ where: { paymentId: payment.id, status: { in: ['REQUESTED', 'SUCCEEDED'] } }, _sum: { amount: true } });
+        const chargebacks = await tx.marketplaceChargeback.aggregate({ where: { paymentId: payment.id, status: { in: ['OPEN', 'LOST'] } }, _sum: { amount: true } });
+        const reserved = new Prisma.Decimal(refunds._sum.amount ?? 0).plus(chargebacks._sum.amount ?? 0);
+        if (reserved.plus(amount).gt(payment.amount)) throw new BadRequestException('Chargeback amount exceeds the remaining captured amount after refunds and other chargebacks.');
+        const created = await tx.marketplaceChargeback.create({ data: { paymentId: payment.id, orderId, createdById: userId, idempotencyKey: dto.idempotencyKey, providerChargebackId, status: 'OPEN', amount, currency: payment.currency, reason: dto.reason.trim(), evidenceUrls, evidenceDeadline } });
+        await tx.marketplacePayoutHold.create({ data: { sellerId: order.sellerId, orderId, amount, currency: payment.currency, status: 'ACTIVE', reason: 'Sandbox chargeback ' + providerChargebackId + ': ' + dto.reason.trim(), createdById: userId } });
+        await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE_MARKETPLACE_SANDBOX_CHARGEBACK', resourceType: 'marketplaceChargeback', resourceId: created.id, description: 'Sandbox chargeback opened with an evidence deadline and simulated payout hold; no funds moved', metadata: { orderId, paymentId: payment.id, amount: amount.toString(), currency: payment.currency, providerChargebackId, evidenceDeadline: evidenceDeadline.toISOString(), simulationOnly: true } });
+        return created;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return this.sandboxChargebackView(chargeback);
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        const raced = await this.prisma.marketplaceChargeback.findUnique({ where: { idempotencyKey: dto.idempotencyKey } });
+        if (raced && raced.orderId === orderId && new Prisma.Decimal(raced.amount).equals(amount)) return this.sandboxChargebackView(raced);
+      }
+      throw error;
+    }
+  }
+
+  async submitSandboxChargebackEvidence(userId: string, _role: UserRole, chargebackId: string, evidenceUrls: string[]) {
+    await this.assertFeatureEnabled('marketplace.chargebacks_sandbox');
+    const chargeback = await this.prisma.marketplaceChargeback.findUnique({ where: { id: chargebackId }, include: { order: true } });
+    if (!chargeback) throw new NotFoundException('Sandbox chargeback not found.');
+    if (chargeback.order.sellerId !== userId) throw new NotFoundException('Sandbox chargeback not found.');
+    const urls = this.validateSandboxEvidence(evidenceUrls);
+    if (urls.length === 0) throw new BadRequestException('Add at least one HTTPS evidence link.');
+    if (chargeback.status !== 'OPEN') throw new BadRequestException('Evidence can only be added while the chargeback is open.');
+    if (new Date() > chargeback.evidenceDeadline) throw new BadRequestException('The chargeback evidence deadline has passed.');
+    if ((chargeback.evidenceUrls || []).length + urls.length > 10) throw new BadRequestException('A maximum of 10 evidence links is allowed per chargeback.');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const write = await tx.marketplaceChargeback.updateMany({ where: { id: chargebackId, status: 'OPEN', updatedAt: chargeback.updatedAt, evidenceDeadline: { gt: new Date() } }, data: { evidenceUrls: [...chargeback.evidenceUrls, ...urls] } });
+      if (write.count !== 1) throw new BadRequestException('Chargeback state changed or its evidence deadline passed; reload before retrying.');
+      const row = await tx.marketplaceChargeback.findUnique({ where: { id: chargebackId } });
+      await this.audit.createInTransaction(tx, { actorId: userId, action: 'SUBMIT_MARKETPLACE_SANDBOX_CHARGEBACK_EVIDENCE', resourceType: 'marketplaceChargeback', resourceId: chargebackId, description: 'Seller submitted evidence links before the sandbox chargeback deadline', metadata: { evidenceCount: urls.length, simulationOnly: true } });
+      return row;
+    });
+    return this.sandboxChargebackView(updated);
+  }
+
+  async handleSandboxChargebackWebhook(rawBody: Buffer | undefined, signature: string | undefined, event: { eventId: string; providerChargebackId: string; status: 'WON' | 'LOST'; amount: string; currency: string; reason: string }) {
+    this.sandboxPaymentEnabled();
+    const secret = process.env.KK_MARKETPLACE_PAYMENT_SANDBOX_SECRET!;
+    if (!rawBody?.length || !signature) throw new UnauthorizedException('A signed sandbox chargeback event is required.');
+    const supplied = signature.replace(/^sha256=/i, '').toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(supplied)) throw new UnauthorizedException('Invalid sandbox chargeback signature.');
+    const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
+    if (!timingSafeEqual(Buffer.from(supplied, 'hex'), Buffer.from(expected, 'hex'))) throw new UnauthorizedException('Invalid sandbox chargeback signature.');
+    const payloadHash = createHash('sha256').update(rawBody).digest('hex');
+    const chargeback = await this.prisma.marketplaceChargeback.findFirst({ where: { providerChargebackId: event.providerChargebackId }, include: { payment: true } });
+    if (!chargeback || chargeback.payment.provider !== 'sandbox') throw new NotFoundException('Sandbox chargeback not found.');
+    if (!new Prisma.Decimal(event.amount).equals(new Prisma.Decimal(chargeback.amount)) || event.currency !== chargeback.currency) throw new BadRequestException('Sandbox chargeback outcome amount or currency does not match the immutable chargeback request.');
+    if (!event.reason?.trim() || event.reason.trim().length < 5 || event.reason.trim().length > 1000) throw new BadRequestException('Provide an outcome reason between 5 and 1000 characters.');
+    const outcomeValidation = this.registry.validateResourceField('marketplaceChargeback', 'status', event.status);
+    if (!outcomeValidation.valid) throw new BadRequestException({ message: 'Invalid chargeback outcome.', errors: outcomeValidation.errors });
+    const uniqueEvent = { provider_externalEventId: { provider: 'sandbox_chargeback', externalEventId: event.eventId } };
+    const prior = await this.prisma.marketplacePaymentEvent.findUnique({ where: uniqueEvent });
+    if (prior) {
+      if (prior.paymentId !== chargeback.paymentId || prior.payloadHash !== payloadHash) throw new BadRequestException('Sandbox chargeback event ID was reused with a different payload.');
+      return { accepted: true, replayed: true, chargebackStatus: chargeback.status, simulationOnly: true };
+    }
+    if (chargeback.status !== 'OPEN') throw new BadRequestException('Only an open sandbox chargeback can receive a terminal outcome.');
+    return this.prisma.$transaction(async (tx) => {
+      const concurrentReplay = await tx.marketplacePaymentEvent.findUnique({ where: uniqueEvent });
+      if (concurrentReplay) {
+        if (concurrentReplay.paymentId !== chargeback.paymentId || concurrentReplay.payloadHash !== payloadHash) throw new BadRequestException('Sandbox chargeback event ID was reused with a different payload.');
+        return { accepted: true, replayed: true, chargebackStatus: chargeback.status, simulationOnly: true };
+      }
+      const transition = await tx.marketplaceChargeback.updateMany({ where: { id: chargeback.id, status: 'OPEN' }, data: { status: event.status, externalEventId: event.eventId, outcomeReason: event.reason.trim() } });
+      if (transition.count !== 1) throw new BadRequestException('Only an open sandbox chargeback can receive a terminal outcome.');
+      const updated = await tx.marketplaceChargeback.findUnique({ where: { id: chargeback.id } });
+      if (!updated) throw new NotFoundException('Sandbox chargeback disappeared during outcome processing.');
+      await tx.marketplacePaymentEvent.create({ data: { paymentId: chargeback.paymentId, provider: 'sandbox_chargeback', externalEventId: event.eventId, status: 'CHARGEBACK_' + event.status, payloadHash } });
+      if (event.status === 'LOST') {
+        await tx.marketplaceLedgerEntry.create({ data: { orderId: chargeback.orderId, paymentId: chargeback.paymentId, chargebackId: chargeback.id, entryKey: chargeback.id + ':chargeback:debit', accountCode: 'BUYER_FUNDS_HELD', direction: 'DEBIT', amount: chargeback.amount, currency: chargeback.currency, entryType: 'SANDBOX_CHARGEBACK', metadata: { provider: 'sandbox_chargeback', eventId: event.eventId, simulationOnly: true } } });
+        await tx.marketplaceLedgerEntry.create({ data: { orderId: chargeback.orderId, paymentId: chargeback.paymentId, chargebackId: chargeback.id, entryKey: chargeback.id + ':chargeback:credit', accountCode: 'PAYMENT_CLEARING', direction: 'CREDIT', amount: chargeback.amount, currency: chargeback.currency, entryType: 'SANDBOX_CHARGEBACK', metadata: { provider: 'sandbox_chargeback', eventId: event.eventId, simulationOnly: true } } });
+      }
+      await tx.marketplacePayoutHold.updateMany({ where: { orderId: chargeback.orderId, status: 'ACTIVE', reason: { contains: chargeback.providerChargebackId } }, data: { status: 'RELEASED', releasedAt: new Date(), releaseReason: 'Sandbox chargeback outcome: ' + event.status } });
+      await this.audit.createInTransaction(tx, { actorId: null, action: 'PROCESS_MARKETPLACE_SANDBOX_CHARGEBACK_EVENT', resourceType: 'marketplaceChargeback', resourceId: chargeback.id, description: 'Signed sandbox chargeback outcome processed; no funds moved', metadata: { provider: 'sandbox_chargeback', eventId: event.eventId, status: event.status, payloadHash, ledgerBalanced: event.status === 'LOST', simulationOnly: true } });
+      return { accepted: true, replayed: false, chargebackStatus: updated.status, simulationOnly: true, ledgerEntriesCreated: event.status === 'LOST' ? 2 : 0, payoutHoldReleased: true, notice: 'Sandbox chargeback simulation only. No payment provider has been contacted and no money has moved.' };
     });
   }
 

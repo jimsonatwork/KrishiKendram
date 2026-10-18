@@ -880,6 +880,13 @@ export const api = {
     method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   }),
 
+  createMarketplaceSandboxChargeback: (id: string, data: { idempotencyKey: string; amount: string; reason: string; evidenceUrls?: string[] }, token: string) => request<any>('/marketplace/orders/' + id + '/chargebacks/sandbox', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  submitMarketplaceSandboxChargebackEvidence: (id: string, evidenceUrls: string[], token: string) => request<any>('/marketplace/chargebacks/sandbox/' + encodeURIComponent(id) + '/evidence', {
+    method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ evidenceUrls }),
+  }),
+
   createMarketplaceSandboxPaymentIntent: (id: string, idempotencyKey: string, token: string) => request<any>('/marketplace/orders/' + id + '/payments/sandbox-intent', {
     method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ idempotencyKey }),
   }),

@@ -46,6 +46,8 @@ export const MARKETPLACE_FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   { name: 'marketplaceTrustCaseType', type: 'enum', description: 'Marketplace trust case type.', validation: { required: true, enumValues: ['REPORT', 'DISPUTE', 'APPEAL'] }, overrideMode: 'FIXED' },
   { name: 'marketplaceTrustCaseCategory', type: 'enum', description: 'Marketplace trust case category.', validation: { required: true, enumValues: ['FRAUD', 'MISREPRESENTATION', 'NON_DELIVERY', 'QUALITY', 'HARASSMENT', 'PAYMENT_DISPUTE', 'SAFETY', 'OTHER'] }, overrideMode: 'FIXED' },
   { name: 'marketplaceTrustCaseStatus', type: 'enum', description: 'Marketplace trust case lifecycle status.', validation: { required: true, enumValues: ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'DISMISSED'] }, overrideMode: 'FIXED' },
+  { name: 'marketplaceChargebackStatus', type: 'enum', description: 'Sandbox chargeback lifecycle status.', validation: { required: true, enumValues: ['OPEN', 'WON', 'LOST'] }, overrideMode: 'FIXED' },
+  text('marketplaceChargebackReason', 1000),
   text('marketplaceTrustCaseDescription', 4000),
   { name: 'marketplaceRestrictionScope', type: 'enum', description: 'Scoped Marketplace restriction.', validation: { required: true, enumValues: ['CAUTION', 'LISTING_CREATE', 'ORDER_CREATE', 'MARKETPLACE_ALL'] }, overrideMode: 'FIXED' },
 
