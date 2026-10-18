@@ -3470,3 +3470,6 @@ FarmAsset is a temporal, auditable child of Farm. All writes must reject archive
 
 ## Farm Records module closure — 2026-10-18
 Both direct FarmRecord creation and composite Intake persistence enforce the active-parent predicate inside their database transaction. The direct API first performs its minimal context and authorization checks, then validates through the central Registry, and finally rechecks the parent farm in-transaction before inserting the record and actor-attributed audit entry. A concurrent archive must leave neither record nor audit side effect. Historical records are retained; no schema migration is needed for this service invariant.
+
+## Crop module closure — 2026-10-18
+The canonical CropsService boundary enforces the active-parent predicate for direct create, direct Intake create, transaction-aware Intake create, update and restore. Parent archive state is checked in minimal context before protected validation/authorization as appropriate, and rechecked in the write transaction. Crop creation must atomically preserve temporal owner relationship and actor-attributed audit history. Crop restore is prohibited under an archived farm; historical reads remain authorized and non-destructive.

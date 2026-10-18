@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegistryService } from '../platform/registry/registry.service';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { assertFarmActive } from '../farms/farm-asset-active.guard';
 
 import {
   AuthorizationAction,
@@ -193,10 +194,11 @@ export class CropsService {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
-    if (!farm) {
+    if (!farm || farm.deletedAt) {
       throw new NotFoundException('Farm not found.');
     }
 
@@ -221,6 +223,8 @@ export class CropsService {
     const sowingDate =
       input.sowingDate ??
       options.defaultSowingDate;
+
+    if (tx) await assertFarmActive(tx, farmId);
 
     /*
      * Intake historically prevented duplicate same-day Crop creation.
@@ -311,6 +315,7 @@ export class CropsService {
     }
 
     return this.prisma.$transaction(async (transaction) => {
+      await assertFarmActive(transaction, farmId);
       const crop = await transaction.crop.create({
         data: {
           farmId: farm.id,
@@ -443,12 +448,13 @@ export class CropsService {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },
     });
 
-    if (!cropContext) {
+    if (!cropContext || cropContext.farm.deletedAt) {
       throw new NotFoundException('Crop not found.');
     }
 
@@ -563,12 +569,13 @@ export class CropsService {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },
     });
 
-    if (!cropContext) {
+    if (!cropContext || cropContext.farm.deletedAt) {
       throw new NotFoundException('Crop not found.');
     }
 
@@ -606,6 +613,7 @@ export class CropsService {
     }
 
     const performUpdate = async (tx: Prisma.TransactionClient) => {
+      await assertFarmActive(tx, cropContext.farmId);
       const updated = await tx.crop.update({
         where: {
           id: cropId,
@@ -651,9 +659,9 @@ export class CropsService {
   ) {
     const cropContext = await this.prisma.crop.findFirst({
       where: { id: cropId, deletedAt: { not: null } },
-      select: { id: true, farmId: true, farm: { select: { id: true, ownerId: true } } },
+      select: { id: true, farmId: true, farm: { select: { id: true, ownerId: true, deletedAt: true } } },
     });
-    if (!cropContext) throw new NotFoundException('Archived crop not found.');
+    if (!cropContext || cropContext.farm.deletedAt) throw new NotFoundException('Archived crop not found.');
 
     const lastOwnerRelationship = await this.prisma.resourceRelationship.findFirst({
       where: {
@@ -676,6 +684,7 @@ export class CropsService {
       ownerId,
     });
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, cropContext.farmId);
       const crop = await tx.crop.update({ where: { id: cropId }, data: { deletedAt: null } });
       const restoredAt = new Date();
       await this.relationships.createOwnerRelationship(tx, 'crop', crop.id, ownerId, restoredAt);

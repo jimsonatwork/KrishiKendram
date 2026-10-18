@@ -11,6 +11,7 @@ describe('CropsService', () => {
   const prisma = {
     farm: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     crop: {
       create: jest.fn(),
@@ -38,9 +39,11 @@ describe('CropsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.farm.findFirst.mockResolvedValue({ id: 'farm-1' });
     prisma.$transaction.mockImplementation(
       async (callback: (tx: any) => Promise<unknown>) =>
         callback({
+        farm: prisma.farm,
         crop: prisma.crop,
         auditEvent: { create: audit.createInTransaction },
       }),
@@ -53,6 +56,49 @@ describe('CropsService', () => {
       relationships,
       audit,
     );
+  });
+
+  it('does not create a crop if the parent farm is archived before the write transaction', async () => {
+    prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', ownerId: 'user-1', deletedAt: null });
+    prisma.farm.findFirst.mockResolvedValueOnce(null);
+    registry.validateResourceField.mockImplementation(
+      (_resource: string, _field: string, value: unknown) => ({ valid: true, value, errors: [] }),
+    );
+
+    await expect(service.create('user-1', UserRole.FARMER, {
+      farmId: 'farm-1', name: 'Paddy',
+    } as any)).rejects.toThrow('Farm not found');
+
+    expect(prisma.farm.findFirst).toHaveBeenCalledWith({
+      where: { id: 'farm-1', deletedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.crop.create).not.toHaveBeenCalled();
+    expect(relationships.createOwnerRelationship).not.toHaveBeenCalled();
+    expect(audit.createInTransaction).not.toHaveBeenCalled();
+  });
+
+  it('does not append an Intake crop when the parent farm is archived inside the supplied transaction', async () => {
+    prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', ownerId: 'user-1', deletedAt: null });
+    registry.validateResourceField.mockImplementation(
+      (_resource: string, _field: string, value: unknown) => ({ valid: true, value, errors: [] }),
+    );
+    const tx = {
+      farm: { findFirst: jest.fn().mockResolvedValue(null) },
+      crop: { findFirst: jest.fn(), create: jest.fn() },
+    } as any;
+
+    await expect(service.createFromIntakeInTransaction(
+      tx, 'farm-1', { name: 'Paddy' }, 'user-1', UserRole.FARMER,
+    )).rejects.toThrow('Farm not found or archived');
+
+    expect(tx.farm.findFirst).toHaveBeenCalledWith({
+      where: { id: 'farm-1', deletedAt: null },
+      select: { id: true },
+    });
+    expect(tx.crop.create).not.toHaveBeenCalled();
+    expect(relationships.createOwnerRelationship).not.toHaveBeenCalled();
+    expect(audit.createInTransaction).not.toHaveBeenCalled();
   });
 
   it('uses the central Registry value when creating a crop', async () => {
@@ -609,10 +655,26 @@ describe('CropsService', () => {
           select: {
             id: true,
             ownerId: true,
+            deletedAt: true,
           },
         },
       },
     });
+  });
+
+  it('does not update a crop if the parent farm is archived before the update transaction', async () => {
+    prisma.crop.findFirst.mockResolvedValue({
+      id: 'crop-1', farmId: 'farm-1', deletedAt: null,
+      farm: { id: 'farm-1', ownerId: 'user-1', deletedAt: null },
+    });
+    prisma.farm.findFirst.mockResolvedValueOnce(null);
+
+    await expect(service.update('user-1', UserRole.FARMER, 'crop-1', {
+      notes: 'update racing with archive',
+    } as any)).rejects.toThrow('Farm not found or archived');
+
+    expect(prisma.crop.update).not.toHaveBeenCalled();
+    expect(audit.createInTransaction).not.toHaveBeenCalled();
   });
 
   it('does not validate or mutate when crop update authorization is denied', async () => {
@@ -711,6 +773,19 @@ describe('CropsService', () => {
     ).toBeLessThan(
       prisma.crop.update.mock.invocationCallOrder[0],
     );
+  });
+
+  it('does not restore a crop when its parent farm is archived', async () => {
+    prisma.crop.findFirst.mockResolvedValueOnce({
+      id: 'crop-1', farmId: 'farm-1',
+      farm: { id: 'farm-1', ownerId: 'user-1', deletedAt: new Date('2026-10-18T00:00:00Z') },
+    });
+
+    await expect(service.restore('user-1', UserRole.FARMER, 'crop-1'))
+      .rejects.toThrow('Archived crop not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('restores a crop to its last temporal owner after archive', async () => {

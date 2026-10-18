@@ -1975,3 +1975,9 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - The direct endpoint's outer active-farm read and authorization check are not sufficient to close an archive race between authorization and persistence. Use the shared assertFarmActive guard before inserting the record.
 - If the parent was archived before the transaction acquired its write path, fail closed with no FarmRecord or CREATE audit row. Registry validation remains centralized and authorization remains ahead of protected payload validation.
 - Farm archive is not record deletion. Historical FarmRecords remain stored and readable under the normal authorization policy.
+
+## Crop — active-parent lifecycle integrity (2026-10-18)
+- All Crop creation routes, including direct CreateCropDto, direct Intake creation and transaction-aware Intake creation, must use the canonical CropsService boundary and re-check Farm.deletedAt IS NULL inside the transaction that writes the crop, temporal owner relationship and audit record.
+- Crop updates must re-check the active parent farm inside the update transaction; a farm archive racing with an update must roll back both Crop and audit mutations.
+- Crop restore is not allowed beneath an archived parent farm. Check parent archive state before authorization and again inside the restore transaction.
+- Historical crop reads remain available under normal authorization; parent archive must not erase crop, relationship or audit history. Keep Registry normalization and same-day duplicate behavior centralized in CropsService.

@@ -272,3 +272,8 @@ Documentation is not implementation. Mark each feature complete only when its se
 - Farm Assets archived-parent guards have been promoted through CBA. The next core gate is Farm Records.
 - Direct record creation and the Intake composite writer must both check active parent state inside the transaction. Preserve Registry-only validation, authorization-before-validation ordering, actor-attributed audit history, and historical read access after farm archive.
 - After Farm Records closure, continue with Crop and then Intake; do not drift back into Marketplace or AI-only work unless a core dependency requires it.
+
+### Crop core-stack handoff — 2026-10-18 23:06 IST
+- Farm Records direct-write archive race is closed and promoted. Crop is the active core module before the final Intake closure.
+- Keep all crop creation paths canonical and Registry-backed; enforce active-parent checks in direct and composite create, update, and restore transactions. Preserve temporal ownership and audit history.
+- After Crop closure, complete Intake transaction atomicity, multilingual original/translation persistence, uncertainty confirmation, and process-style missing-field follow-ups. Avoid detouring back to Marketplace/AI-only scope.
