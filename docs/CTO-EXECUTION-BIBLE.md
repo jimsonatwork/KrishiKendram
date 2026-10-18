@@ -1968,3 +1968,10 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - Historical movement, evidence, relationship and lineage reads remain governed by normal authorization; archiving a parent does not erase history.
 - Split/merge must preserve positive quantities, common units, ownership consistency, temporal ordering, source-quantity compare-and-swap, and atomic movement + lineage + audit creation.
 - The shared assertFarmActive transaction guard is the common enforcement point for asset write services. Extend it to any future asset mutation workflow rather than duplicating a partial check.
+
+
+## Farm Records — direct-write archive race closure (2026-10-18)
+- Direct FarmRecord creation and the transaction-aware Intake writer must both re-check Farm.deletedAt IS NULL inside the write transaction.
+- The direct endpoint's outer active-farm read and authorization check are not sufficient to close an archive race between authorization and persistence. Use the shared assertFarmActive guard before inserting the record.
+- If the parent was archived before the transaction acquired its write path, fail closed with no FarmRecord or CREATE audit row. Registry validation remains centralized and authorization remains ahead of protected payload validation.
+- Farm archive is not record deletion. Historical FarmRecords remain stored and readable under the normal authorization policy.

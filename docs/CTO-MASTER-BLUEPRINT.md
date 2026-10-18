@@ -3466,3 +3466,7 @@ This is intentionally read-only: Registry declarations remain authoritative, bac
 - Verification on 2026-10-18 isolated C worktree: FarmsService 45/45, full backend 66 suites / 644 tests, backend and frontend builds exit 0, dedicated archive/restore journey 1/1, and full frontend Playwright suite 19/19. CBA promotion is the remaining gate.
 ## Farm Assets module closure — 2026-10-18
 FarmAsset is a temporal, auditable child of Farm. All writes must reject archived parent farms and re-check active-parent state inside the same transaction that writes the asset, relationship, movement, lineage, evidence, and audit records. Historical reads remain available under normal authorization. Custody, lease, ownership transfer, split, and merge share the common active-farm guard; split/merge additionally preserve quantity/unit/owner/time invariants and use compare-and-swap updates to prevent concurrent quantity loss.
+
+
+## Farm Records module closure — 2026-10-18
+Both direct FarmRecord creation and composite Intake persistence enforce the active-parent predicate inside their database transaction. The direct API first performs its minimal context and authorization checks, then validates through the central Registry, and finally rechecks the parent farm in-transaction before inserting the record and actor-attributed audit entry. A concurrent archive must leave neither record nor audit side effect. Historical records are retained; no schema migration is needed for this service invariant.

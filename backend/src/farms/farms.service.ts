@@ -932,6 +932,7 @@ export class FarmsService {
         : validatedData.title;
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
       const record = await tx.farmRecord.create({
         data: {
           farmId,

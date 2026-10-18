@@ -2065,6 +2065,27 @@ describe('FarmsService', () => {
     expect(prisma.farmRecord.create).not.toHaveBeenCalled();
   });
 
+  it('does not create a direct farm record if the parent is archived before the write transaction', async () => {
+    prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', ownerId: 'user-1' });
+    prisma.farm.findFirst.mockResolvedValueOnce(null);
+    registry.validateResourceField.mockImplementation(
+      (_resource: string, _field: string, value: unknown) => ({ valid: true, value, errors: [] }),
+    );
+
+    await expect(service.addRecord('farm-1', {
+      category: 'ACTIVITY',
+      inputMethod: 'MANUAL',
+      data: { note: 'Archive raced with direct record creation' },
+    }, 'user-1', UserRole.FARMER)).rejects.toThrow('Farm not found');
+
+    expect(prisma.farm.findFirst).toHaveBeenCalledWith({
+      where: { id: 'farm-1', deletedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.farmRecord.create).not.toHaveBeenCalled();
+    expect(audit.createInTransaction).not.toHaveBeenCalled();
+  });
+
   it('does not append a record to an archived farm inside a composite transaction', async () => {
     const tx = {
       farm: { findFirst: jest.fn().mockResolvedValue(null) },

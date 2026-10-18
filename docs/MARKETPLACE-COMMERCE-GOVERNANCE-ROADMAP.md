@@ -266,3 +266,9 @@ Documentation is not implementation. Mark each feature complete only when its se
 - Marketplace, Inventory and Finance consolidation is committed and remains an ancestor of canonical main. Keep Marketplace as the commercial parent workspace; do not recreate independent Finance/Inventory farmer destinations or duplicate their ledgers.
 - The next core module gate is Farm Assets, not further Marketplace feature expansion unless regression reveals a blocker. Focus on custody, lease, ownership transfer, split/merge, lineage, evidence, and archived-parent invariants.
 - All asset writes must re-check active parent farm state in the same transaction. Archiving must not delete movement/evidence/lineage history. Live payments, payouts and tax remittance remain disabled until provider integration and qualified reviews.
+
+
+### Farm Records core-stack handoff — 2026-10-18 23:01 IST
+- Farm Assets archived-parent guards have been promoted through CBA. The next core gate is Farm Records.
+- Direct record creation and the Intake composite writer must both check active parent state inside the transaction. Preserve Registry-only validation, authorization-before-validation ordering, actor-attributed audit history, and historical read access after farm archive.
+- After Farm Records closure, continue with Crop and then Intake; do not drift back into Marketplace or AI-only work unless a core dependency requires it.
