@@ -5,6 +5,7 @@ import { AuthorizationService } from '../platform/authorization/authorization.se
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { RegistryService } from '../platform/registry/registry.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import { CreateInventoryTransactionDto } from './dto/create-inventory-transaction.dto';
@@ -105,7 +106,7 @@ export class InventoryService {
       if (changed.count !== 1) throw new BadRequestException('Inventory changed concurrently. Refresh and retry the transaction.');
       const transaction = await tx.inventoryTransaction.create({ data: { inventoryItemId: id, actorId: userId, type: dto.type, quantity: dto.quantity, quantityBefore: before, quantityAfter: after, unitCost: dto.unitCost, reference: dto.reference?.trim() || null, notes: dto.notes?.trim() || null } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: dto.type, resourceType: 'inventoryItem', resourceId: id, description: 'Inventory stock transaction recorded', metadata: { transactionId: transaction.id, quantityBefore: before, quantityAfter: after, unit: item.unit } });
-      if (before > item.reorderLevel && after <= item.reorderLevel) await tx.notification.create({ data: { userId: context.farm.ownerId, type: 'LOW_STOCK', title: 'Inventory reorder alert', message: item.name + ' has reached ' + after + ' ' + item.unit + '.', href: '/app/marketplace?workspace=inventory' } });
+      if (before > item.reorderLevel && after <= item.reorderLevel) await NotificationsService.createInTransaction(tx, { userId: context.farm.ownerId, type: 'LOW_STOCK', title: 'Inventory reorder alert', message: item.name + ' has reached ' + after + ' ' + item.unit + '.', href: '/app/marketplace?workspace=inventory', severity: after <= 0 ? 'CRITICAL' : 'WARNING', source: 'inventory', dedupeKey: 'inventory-low-stock:' + id + ':' + transaction.id });
       return { item: { id, quantityOnHand: after, unit: item.unit }, transaction };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }

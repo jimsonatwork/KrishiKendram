@@ -15,7 +15,7 @@ describe('InventoryService', () => {
   let service: InventoryService;
   const farm = { id: 'farm-1', ownerId: 'farmer-1' };
   const item = { id: 'item-1', farmId: 'farm-1', name: 'Paddy seed', category: 'SEED', unit: 'kg', quantityOnHand: 10, reorderLevel: 2, farm };
-  const tx: any = { inventoryItem: prisma.inventoryItem, inventoryTransaction: prisma.inventoryTransaction, notification: { create: jest.fn() } };
+  const tx: any = { inventoryItem: prisma.inventoryItem, inventoryTransaction: prisma.inventoryTransaction, notification: { create: jest.fn(), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) } };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -62,7 +62,7 @@ describe('InventoryService', () => {
   it('notifies the farm owner when stock crosses below the reorder level', async () => {
     prisma.inventoryItem.findFirst.mockResolvedValueOnce({ id: 'item-1', farmId: 'farm-1', farm }).mockResolvedValueOnce({ id: 'item-1', name: 'Paddy seed', quantityOnHand: 5, reorderLevel: 2, unit: 'kg' });
     await service.recordTransaction('farmer-1', UserRole.FARMER, 'item-1', { type: InventoryTransactionType.STOCK_OUT, quantity: 3 });
-    expect(tx.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'farmer-1', type: 'LOW_STOCK', href: '/app/marketplace?workspace=inventory' }) });
+    expect(tx.notification.createMany).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'farmer-1', type: 'LOW_STOCK', severity: 'WARNING', source: 'inventory', dedupeKey: expect.stringContaining('inventory-low-stock:'), href: '/app/marketplace?workspace=inventory' }), skipDuplicates: true });
   });
 
   it('does not archive an item with remaining stock', async () => {

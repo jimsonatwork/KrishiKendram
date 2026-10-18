@@ -5,6 +5,7 @@ import { AuthorizationService } from '../platform/authorization/authorization.se
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { RegistryService } from '../platform/registry/registry.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateLivestockRecordDto } from './dto/create-livestock-record.dto';
 
 @Injectable()
@@ -37,7 +38,7 @@ export class LivestockRecordsService {
     return this.prisma.$transaction(async tx => {
       const record = await tx.livestockRecord.create({ data: { livestockId, createdBy: userId, type: dto.type, description: data.description as string, quantity: data.quantity as number | undefined, unit: data.unit as string | undefined, reference: data.reference as string | undefined, notes: data.notes as string | undefined, recordedAt: dto.recordedAt ? new Date(dto.recordedAt) : new Date(), nextDueAt: dto.nextDueAt ? new Date(dto.nextDueAt) : undefined } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE', resourceType: 'livestockRecord', resourceId: record.id, description: 'Livestock operational record added', metadata: { livestockId, type: dto.type, recordedAt: record.recordedAt.toISOString() } });
-      if (dto.nextDueAt) await tx.notification.create({ data: { userId: animal.ownerId, type: 'LIVESTOCK_FOLLOW_UP', title: 'Livestock follow-up scheduled', message: dto.description + ' · due ' + new Date(dto.nextDueAt).toLocaleDateString(), href: '/app/livestock' } });
+      if (dto.nextDueAt) await NotificationsService.createInTransaction(tx, { userId: animal.ownerId, type: 'LIVESTOCK_FOLLOW_UP', title: 'Livestock follow-up scheduled', message: dto.description + ' · due ' + new Date(dto.nextDueAt).toLocaleDateString(), href: '/app/livestock', severity: 'INFO', source: 'livestock', dedupeKey: 'livestock-follow-up:' + record.id });
       return record;
     });
   }

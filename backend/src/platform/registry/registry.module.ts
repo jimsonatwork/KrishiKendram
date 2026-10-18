@@ -17,6 +17,7 @@ import { MARKETPLACE_FIELD_DEFINITIONS } from './definitions/fields/marketplace-
 import { INVENTORY_FIELD_DEFINITIONS } from './definitions/fields/inventory-field-definitions';
 import { FINANCE_FIELD_DEFINITIONS } from './definitions/fields/finance-field-definitions';
 import { REPORT_FIELD_DEFINITIONS } from './definitions/fields/report-field-definitions';
+import { NOTIFICATION_FIELD_DEFINITIONS } from './definitions/fields/notification-field-definitions';
 import { LIVESTOCK_RECORD_FIELD_DEFINITIONS } from './definitions/fields/livestock-record-field-definitions';
 
 import { MODULE_DEFINITIONS } from './definitions/modules';
@@ -124,6 +125,10 @@ export class RegistryModule {
     }
 
     for (const definition of REPORT_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
+
+    for (const definition of NOTIFICATION_FIELD_DEFINITIONS) {
       this.registry.registerField(definition);
     }
 

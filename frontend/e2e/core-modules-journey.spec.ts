@@ -12,7 +12,7 @@ test('core farm workflows connect inventory ledger, finance records, notificatio
   let inventory: any[] = []
   let movements: any[] = []
   let finances: any[] = []
-  let notifications: any[] = [{ id: 'notice-1', userId: 'farmer-1', type: 'LOW_STOCK', title: 'Seed reorder alert', message: 'Paddy seed is running low.', href: '/app/inventory', readAt: null, createdAt: '2026-10-18T08:00:00.000Z' }]
+  let notifications: any[] = [{ id: 'notice-1', userId: 'farmer-1', type: 'LOW_STOCK', title: 'Seed reorder alert', message: 'Paddy seed is running low.', href: '/app/inventory', severity: 'WARNING', source: 'inventory', expiresAt: '2027-04-16T08:00:00.000Z', readAt: null, createdAt: '2026-10-18T08:00:00.000Z' }]
   let inventoryCreateCalls = 0
   let movementCalls = 0
   let financeCreateCalls = 0
@@ -60,7 +60,17 @@ test('core farm workflows connect inventory ledger, finance records, notificatio
       return route.fulfill({ json: record })
     }
 
-    if (path === '/notifications' && method === 'GET') return route.fulfill({ json: notifications })
+    if (path === '/notifications' && method === 'GET') {
+      let result = [...notifications]
+      const severity = url.searchParams.get('severity')
+      const type = url.searchParams.get('type')
+      const unreadOnly = url.searchParams.get('unreadOnly') === 'true'
+      const limit = Number(url.searchParams.get('limit') || 100)
+      if (severity) result = result.filter(item => item.severity === severity)
+      if (type) result = result.filter(item => item.type === type)
+      if (unreadOnly) result = result.filter(item => !item.readAt)
+      return route.fulfill({ json: result.slice(0, limit) })
+    }
     if (path === '/notifications/unread-count') return route.fulfill({ json: { unreadCount: notifications.filter(item => !item.readAt).length } })
     if (path === '/notifications/read-all' && method === 'POST') {
       const readAt = new Date().toISOString()
@@ -105,9 +115,15 @@ test('core farm workflows connect inventory ledger, finance records, notificatio
 
   await page.goto('/app/notifications')
   await expect(page.getByText('Seed reorder alert')).toBeVisible()
+  await page.getByLabel('Notification severity filter').selectOption('CRITICAL')
+  await expect(page.getByText('No notifications match these filters')).toBeVisible()
+  await page.getByLabel('Notification severity filter').selectOption('WARNING')
+  await page.getByLabel('Unread notifications only').check()
+  await expect(page.getByText('Seed reorder alert')).toBeVisible()
   await page.getByRole('button', { name: 'Mark all read (1)' }).click()
   await expect(page.getByRole('button', { name: 'Mark all read (0)' })).toBeDisabled()
   await expect(page.getByText('New')).toHaveCount(0)
+  await expect(page.getByText('No notifications match these filters')).toBeVisible()
 
   await page.goto('/app/reports')
   await expect(page.getByText('Farm Reports')).toBeVisible()

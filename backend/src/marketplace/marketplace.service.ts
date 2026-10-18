@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InventoryTransactionType, Prisma, UserRole } from '@prisma/client';
 import { AuditService } from '../platform/audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -845,7 +846,7 @@ export class MarketplaceService {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.marketplaceOrder.create({ data: { listingId, buyerId: userId, sellerId: listing.sellerId, quantity: dto.quantity, unitPrice: listedUnitPrice ?? quote.unitPrice, buyerJurisdictionCode: dto.buyerJurisdictionCode || null, ...(offerPrice !== undefined ? { offerPrice } : {}), currency: listing.currency || 'INR', subtotal: quote.subtotal, buyerFeeAmount: quote.buyerFeeAmount, sellerCommissionAmount: quote.sellerCommissionAmount, taxAmount: quote.taxAmount, buyerTotal: quote.buyerTotal, sellerNet: quote.sellerNet, pricingPolicyVersion: quote.pricingPolicyVersion, pricingSnapshot: quote.pricingSnapshot, note: dto.note?.trim() || null, status: 'PENDING' } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE', resourceType: 'marketplaceOrder', resourceId: order.id, description: 'Marketplace order request created' });
-      await tx.notification.create({ data: { userId: listing.sellerId, type: 'MARKETPLACE_ORDER', title: 'New marketplace order', message: 'A buyer requested ' + dto.quantity + ' ' + (listing.unit || 'units') + ' of ' + listing.title + '.', href: '/app/marketplace' } });
+      await NotificationsService.createInTransaction(tx, { userId: listing.sellerId, type: 'MARKETPLACE_ORDER', title: 'New marketplace order', message: 'A buyer requested ' + dto.quantity + ' ' + (listing.unit || 'units') + ' of ' + listing.title + '.', href: '/app/marketplace', severity: 'INFO', source: 'marketplace', dedupeKey: 'marketplace-order-created:' + order.id });
       return order;
     });
   }
@@ -945,7 +946,7 @@ export class MarketplaceService {
           const after = before - order.quantity;
           await tx.inventoryTransaction.create({ data: { inventoryItemId: item.id, actorId: userId, type: InventoryTransactionType.STOCK_OUT, quantity: order.quantity, quantityBefore: before, quantityAfter: after, reference: 'marketplace-order:' + order.id, notes: 'Marketplace sale order ' + order.id } });
           await this.audit.createInTransaction(tx, { actorId: userId, action: 'STOCK_OUT', resourceType: 'inventoryItem', resourceId: item.id, description: 'Inventory stock decremented by completed Marketplace sale', metadata: { orderId: order.id, quantity: order.quantity, quantityBefore: before, quantityAfter: after, unit: item.unit } });
-          if (before > item.reorderLevel && after <= item.reorderLevel) await tx.notification.create({ data: { userId: item.farm.ownerId, type: 'LOW_STOCK', title: 'Marketplace sale reached reorder level', message: item.name + ' has ' + after + ' ' + item.unit + ' remaining after order ' + order.id + '.', href: '/app/marketplace?workspace=inventory' } });
+          if (before > item.reorderLevel && after <= item.reorderLevel) await NotificationsService.createInTransaction(tx, { userId: item.farm.ownerId, type: 'LOW_STOCK', title: 'Marketplace sale reached reorder level', message: item.name + ' has ' + after + ' ' + item.unit + ' remaining after order ' + order.id + '.', href: '/app/marketplace?workspace=inventory', severity: after <= 0 ? 'CRITICAL' : 'WARNING', source: 'inventory', dedupeKey: 'marketplace-inventory-low-stock:' + order.id + ':' + item.id });
         }
         if (listing && listing.quantity !== null && listing.quantity !== undefined) {
           const stockUpdate = await tx.marketplaceListing.updateMany({
@@ -962,7 +963,7 @@ export class MarketplaceService {
       const updated = await tx.marketplaceOrder.update({ where: { id }, data: { ...state, ...(acceptanceQuote ? { subtotal: acceptanceQuote.subtotal, buyerFeeAmount: acceptanceQuote.buyerFeeAmount, sellerCommissionAmount: acceptanceQuote.sellerCommissionAmount, taxAmount: acceptanceQuote.taxAmount, buyerTotal: acceptanceQuote.buyerTotal, sellerNet: acceptanceQuote.sellerNet, pricingPolicyVersion: acceptanceQuote.pricingPolicyVersion, pricingSnapshot: acceptanceQuote.pricingSnapshot } : {}) } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: transition, resourceType: 'marketplaceOrder', resourceId: id, description: 'Marketplace order ' + transition.toLowerCase() + ' transition' });
       const notifyUserId = sellerAction ? order.buyerId : order.sellerId;
-      await tx.notification.create({ data: { userId: notifyUserId, type: 'MARKETPLACE_ORDER', title: 'Marketplace order ' + transition.toLowerCase(), message: 'Your marketplace order is now ' + updated.status + '.', href: '/app/marketplace' } });
+      await NotificationsService.createInTransaction(tx, { userId: notifyUserId, type: 'MARKETPLACE_ORDER', title: 'Marketplace order ' + transition.toLowerCase(), message: 'Your marketplace order is now ' + updated.status + '.', href: '/app/marketplace', severity: transition === 'COMPLETE' || transition === 'ACCEPT' ? 'SUCCESS' : 'INFO', source: 'marketplace', dedupeKey: 'marketplace-order-transition:' + order.id + ':' + updated.status });
       return updated;
     });
   }
@@ -1170,7 +1171,7 @@ export class MarketplaceService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.marketplaceOrder.update({ where: { id }, data });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'UPDATE_DELIVERY_TRACKING', resourceType: 'marketplaceOrder', resourceId: id, description: 'Seller updated Marketplace delivery tracking', metadata: { previousStatus: current || null, status: dto.status || current || null, carrier: dto.carrier || order.deliveryCarrier || null, trackingNumberChanged: dto.trackingNumber !== undefined, trackingUrlChanged: dto.trackingUrl !== undefined, estimatedDeliveryAt: dto.estimatedDeliveryAt || null } });
-      await tx.notification.create({ data: { userId: order.buyerId, type: 'MARKETPLACE_ORDER', title: 'Delivery tracking updated', message: 'The seller updated delivery information for your order.', href: '/app/marketplace' } });
+      await NotificationsService.createInTransaction(tx, { userId: order.buyerId, type: 'MARKETPLACE_ORDER', title: 'Delivery tracking updated', message: 'The seller updated delivery information for your order.', href: '/app/marketplace', severity: 'INFO', source: 'marketplace', dedupeKey: 'marketplace-delivery-tracking:' + order.id + ':' + (dto.status || current || 'UPDATED') + ':' + (dto.trackingNumber || order.deliveryTrackingNumber || '') + ':' + (dto.trackingUrl || order.deliveryTrackingUrl || '') });
       return updated;
     });
   }
@@ -1184,7 +1185,7 @@ export class MarketplaceService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.marketplaceOrder.update({ where: { id }, data: { deliveryStatus: 'DELIVERED', deliveredAt: new Date() } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CONFIRM_DELIVERY', resourceType: 'marketplaceOrder', resourceId: id, description: 'Buyer confirmed receipt of Marketplace order', metadata: { previousDeliveryStatus: order.deliveryStatus } });
-      await tx.notification.create({ data: { userId: order.sellerId, type: 'MARKETPLACE_ORDER', title: 'Buyer confirmed delivery', message: 'The buyer confirmed receipt. You may close the order.', href: '/app/marketplace' } });
+      await NotificationsService.createInTransaction(tx, { userId: order.sellerId, type: 'MARKETPLACE_ORDER', title: 'Buyer confirmed delivery', message: 'The buyer confirmed receipt. You may close the order.', href: '/app/marketplace', severity: 'SUCCESS', source: 'marketplace', dedupeKey: 'marketplace-delivery-confirmed:' + updated.id });
       return updated;
     });
   }
@@ -1208,7 +1209,7 @@ export class MarketplaceService {
         pricingPolicyVersion: quote.pricingPolicyVersion, pricingSnapshot: quote.pricingSnapshot,
       } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'COUNTER_OFFER', resourceType: 'marketplaceOrder', resourceId: id, description: 'Buyer counter-offer returned the order to seller negotiation', metadata: { previousStatus: order.status, previousOfferPrice: order.offerPrice, previousAgreedUnitPrice: order.agreedUnitPrice, counterOfferPrice: price, quantity: order.quantity, currency: order.currency, pricingPolicyVersion: quote.pricingPolicyVersion, pricingSnapshot: quote.pricingSnapshot } });
-      await tx.notification.create({ data: { userId: order.sellerId, type: 'MARKETPLACE_ORDER', title: 'Buyer sent a counter-offer', message: 'The buyer proposed ' + order.currency + ' ' + price + ' per unit. Review the order in Marketplace.', href: '/app/marketplace' } });
+      await NotificationsService.createInTransaction(tx, { userId: order.sellerId, type: 'MARKETPLACE_ORDER', title: 'Buyer sent a counter-offer', message: 'The buyer proposed ' + order.currency + ' ' + price + ' per unit. Review the order in Marketplace.', href: '/app/marketplace', severity: 'INFO', source: 'marketplace', dedupeKey: 'marketplace-counter-offer:' + order.id + ':' + String(order.offerPrice ?? '') + ':' + price });
       return updated;
     });
   }
@@ -1221,7 +1222,7 @@ export class MarketplaceService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.marketplaceOrder.update({ where: { id }, data: { status: 'ACCEPTED', acceptedAt: new Date() } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CONFIRM_PRICE', resourceType: 'marketplaceOrder', resourceId: id, description: 'Buyer confirmed revised marketplace price and quote' });
-      await tx.notification.create({ data: { userId: order.sellerId, type: 'MARKETPLACE_ORDER', title: 'Buyer confirmed revised price', message: 'The buyer confirmed the revised deal price. You may proceed with fulfilment.', href: '/app/marketplace' } });
+      await NotificationsService.createInTransaction(tx, { userId: order.sellerId, type: 'MARKETPLACE_ORDER', title: 'Buyer confirmed revised price', message: 'The buyer confirmed the revised deal price. You may proceed with fulfilment.', href: '/app/marketplace', severity: 'SUCCESS', source: 'marketplace', dedupeKey: 'marketplace-price-confirmed:' + order.id });
       return updated;
     });
   }

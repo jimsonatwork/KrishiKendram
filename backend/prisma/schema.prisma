@@ -793,12 +793,18 @@ model Notification {
   title     String
   message   String
   href      String?
+  severity  String    @default("INFO")
+  source    String?
+  dedupeKey String?
+  expiresAt DateTime?
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
+  @@index([userId, expiresAt, createdAt])
   @@index([type, createdAt])
 }
 

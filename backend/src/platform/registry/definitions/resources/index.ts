@@ -18,6 +18,7 @@ import { marketplaceTaxProfileResource } from './marketplace-tax-profile.resourc
 import { inventoryItemResource } from './inventory-item.resource';
 import { financialRecordResource } from './financial-record.resource';
 import { farmReportResource } from './farm-report.resource';
+import { notificationResource } from './notification.resource';
 import { livestockRecordResource } from './livestock-record.resource';
 import { farmAssetResource } from './farm-asset.resource';
 import { farmRecordResource } from './farm-record.resource';
@@ -47,6 +48,7 @@ export const RESOURCE_DEFINITIONS: ResourceDefinition[] = [
   inventoryItemResource,
   financialRecordResource,
   farmReportResource,
+  notificationResource,
   livestockRecordResource,
   farmAssetResource,
   farmRecordResource,
@@ -70,6 +72,7 @@ export {
   inventoryItemResource,
   financialRecordResource,
   farmReportResource,
+  notificationResource,
   livestockRecordResource,
   farmAssetResource,
   farmRecordResource,

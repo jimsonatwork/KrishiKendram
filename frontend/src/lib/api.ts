@@ -924,7 +924,15 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  notifications: (token: string) => request<any[]>('/notifications', { headers: { Authorization: 'Bearer ' + token } }),
+  notifications: (token: string, filters?: { type?: string; severity?: 'INFO' | 'SUCCESS' | 'WARNING' | 'CRITICAL'; unreadOnly?: boolean; limit?: number }) => {
+    const params = new URLSearchParams()
+    if (filters?.type) params.set('type', filters.type)
+    if (filters?.severity) params.set('severity', filters.severity)
+    if (filters?.unreadOnly) params.set('unreadOnly', 'true')
+    if (filters?.limit) params.set('limit', String(filters.limit))
+    const query = params.toString()
+    return request<any[]>('/notifications' + (query ? '?' + query : ''), { headers: { Authorization: 'Bearer ' + token } })
+  },
   notificationUnreadCount: (token: string) => request<{ unreadCount: number }>('/notifications/unread-count', { headers: { Authorization: 'Bearer ' + token } }),
   markNotificationRead: (id: string, token: string) => request<any>('/notifications/' + id + '/read', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token } }),
   markAllNotificationsRead: (token: string) => request<{ markedRead: number }>('/notifications/read-all', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),

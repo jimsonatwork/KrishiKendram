@@ -48,7 +48,7 @@ describe('MarketplaceService', () => {
       marketplaceFeatureFlag: { upsert: jest.fn().mockImplementation(({ where, create, update }: any) => ({ ...create, ...update, key: where.key })) },
       marketplaceRestriction: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'restriction-1' }), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       marketplaceCommercePolicy: { upsert: jest.fn() },
-      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
+      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     registry.validateResourceField.mockImplementation((_r: string, _f: string, value: any) => ({ valid: true, value }));
     registry.validateField.mockImplementation((_f: string, value: any) => ({ valid: true, value }));
@@ -213,7 +213,7 @@ describe('MarketplaceService', () => {
       marketplaceOrder: { create: jest.fn().mockImplementation(({ data }: any) => { createdData = data; return { id: 'order-1', status: 'PENDING' }; }) },
       marketplaceReview: { create: jest.fn() }, marketplaceTrustCase: { create: jest.fn() },
       marketplaceFeatureFlag: { upsert: jest.fn() }, marketplaceRestriction: { findFirst: jest.fn().mockResolvedValue(null) },
-      marketplaceCommercePolicy: { findUnique: jest.fn().mockResolvedValue(null) }, notification: { create: jest.fn().mockResolvedValue({}) },
+      marketplaceCommercePolicy: { findUnique: jest.fn().mockResolvedValue(null) }, notification: { create: jest.fn().mockResolvedValue({}), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     await service.createOrder('buyer-1', UserRole.FARMER, 'listing-1', { quantity: 30 });
     expect(createdData.unitPrice).toBe(80);
@@ -411,7 +411,7 @@ describe('MarketplaceService', () => {
     const orderUpdate = jest.fn().mockResolvedValue({ id: 'order-1', status: 'PRICE_CONFIRMATION_REQUIRED' });
     prisma.$transaction.mockImplementationOnce((cb: any) => cb({
       marketplaceListing: {}, marketplaceOrder: { update: orderUpdate }, marketplaceCommercePolicy: { findUnique: jest.fn().mockResolvedValue(null) },
-      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
+      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     const result = await service.acceptOrder('seller-1', UserRole.FARMER, 'order-1', { agreedUnitPrice: 14 });
     expect(result.status).toBe('PRICE_CONFIRMATION_REQUIRED');
@@ -422,7 +422,7 @@ describe('MarketplaceService', () => {
     prisma.marketplaceOrder.findUnique.mockResolvedValue({ id: 'order-1', buyerId: 'buyer-1', sellerId: 'seller-1', status: 'PRICE_CONFIRMATION_REQUIRED' });
     prisma.$transaction.mockImplementationOnce((cb: any) => cb({
       marketplaceOrder: { update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'ACCEPTED' }) },
-      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
+      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     await expect(service.confirmOrderPrice('seller-1', UserRole.FARMER, 'order-1')).rejects.toThrow('Marketplace order not found.');
     await expect(service.confirmOrderPrice('buyer-1', UserRole.FARMER, 'order-1')).resolves.toEqual({ id: 'order-1', status: 'ACCEPTED' });
@@ -436,7 +436,7 @@ describe('MarketplaceService', () => {
     prisma.$transaction.mockImplementationOnce((cb: any) => cb({
       marketplaceListing: { findUnique: listingFindUnique, updateMany: listingUpdateMany, update: listingUpdate },
       marketplaceOrder: { update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'COMPLETED' }) },
-      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
+      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     await service.completeOrder('seller-1', UserRole.FARMER, 'order-1', {});
     expect(listingUpdateMany).toHaveBeenCalledWith({ where: { id: 'listing-1', status: 'PUBLISHED', deletedAt: null, quantity: { gte: 2 } }, data: { quantity: { decrement: 2 } } });
@@ -455,7 +455,7 @@ describe('MarketplaceService', () => {
       inventoryItem: { findFirst: inventoryFindFirst, updateMany: inventoryUpdateMany },
       inventoryTransaction: { create: inventoryTransactionCreate },
       marketplaceOrder: { update: jest.fn().mockResolvedValue({ id: 'order-inventory-1', status: 'COMPLETED' }) },
-      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
+      notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     await service.completeOrder('seller-1', UserRole.FARMER, 'order-inventory-1', {});
     expect(inventoryUpdateMany).toHaveBeenCalledWith({ where: { id: 'inventory-1', deletedAt: null, quantityOnHand: { equals: 8, gte: 3 } }, data: { quantityOnHand: { decrement: 3 } } });

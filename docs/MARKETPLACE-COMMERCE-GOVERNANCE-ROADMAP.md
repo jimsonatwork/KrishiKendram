@@ -252,3 +252,12 @@ Documentation is not implementation. Mark each feature complete only when its se
 - The Registry defines the reports module, farmReport resource, and reusable farm/date filter fields. The API uses existing module service authorization, returns an as-of timestamp, and reports optional-source failures as warnings while preserving other authorized sections. If farm access cannot be verified for a requested farm filter, the report fails closed.
 - Farm summaries include crop and livestock counts, inventory counts and reorder-level alerts, and recorded income/expense/net by currency. Currency totals are never added across currencies and no exchange rate is invented. Marketplace counts are limited to the current seller and are not falsely attributed to a farm.
 - CSV export includes farm summaries, filtered financial detail, the generation timestamp, filters, and data-scope notes. Reports are read-only and are not bank balances, audited accounts, tax advice, or statutory filings.
+
+
+## Notifications & Alerts module (in-app event governance)
+- Notifications are persisted in-app events scoped to the authenticated user. The API supports bounded listing, type/severity/unread filters, unread count, mark-one-read and mark-all-read. Every list/count/update query includes the authenticated user ID.
+- Severity is INFO, SUCCESS, WARNING or CRITICAL. Events include their producing module, a stable per-user deduplication key and a logical expiry timestamp. The default retention window is 180 days; expired alerts are hidden, not hard-deleted.
+- A shared transaction-safe writer is used by Inventory low-stock events, Marketplace order/delivery/counter-offer events and Livestock follow-up scheduling. A compound unique key plus createMany(skipDuplicates) prevents duplicate event rows without aborting the originating transaction.
+- Registry definitions cover notification fields and list filters. Query limits are bounded to 1–100. Links are restricted to internal /app/ routes; external or unsafe hrefs are suppressed.
+- The browser UI exposes severity, event type and unread-only filters, severity styling, refresh, per-item read and mark-all-read. When unread-only is active, read items disappear from the visible list immediately.
+- External SMS/email/push delivery is intentionally separate from persisted in-app notifications and remains a plug-in integration. Notifications do not hard-delete history.
