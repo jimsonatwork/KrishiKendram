@@ -3455,3 +3455,12 @@ The admin Users workspace exposes Restore only for PENDING_DELETE rows. The edit
 The Permissions administration view now exposes the existing backend Registry reconciliation endpoint. It reports declared capabilities, persisted resource permissions, covered declarations, missing declarations and stale persisted entries, and lists the missing/stale keys for investigation. Permission-matrix loading and reconciliation loading/errors are independent, so an unavailable reconciliation endpoint does not erase the persisted view.
 
 This is intentionally read-only: Registry declarations remain authoritative, backend Authorization remains the sole decision engine, and no separate role/permission mutation path was added. The role/permission gate remains PARTIAL until full regression, production builds, browser journeys, runtime checks and CBA promotion pass.
+
+
+## 18 Oct 2026 — Farm archive/restore state invariants
+
+- An archived farm is not writable: farm metadata updates and direct FarmRecord creation must reject archived parents, and the transaction-aware FarmRecord path used by Intake rechecks active state within the caller's transaction.
+- Restore is a conditional state transition from archived to active. A transaction must claim the row with an archived-state predicate before creating a fresh active OWNER relationship and actor-attributed RESTORE audit. If the claim count is not exactly one, the operation fails closed and creates no history side effects.
+- Active/archived list switching must trigger an immediate list reload, not rely on periodic/focus refresh.
+- Acceptance tests cover archive/update and record guards, transactional Intake guard, restore success, duplicate/stale restore prevention, and the authenticated UI archive/restore journey. Full browser regression is a release gate; no schema migration is required for these service/UI invariants.
+- Verification on 2026-10-18 isolated C worktree: FarmsService 45/45, full backend 66 suites / 644 tests, backend and frontend builds exit 0, dedicated archive/restore journey 1/1, and full frontend Playwright suite 19/19. CBA promotion is the remaining gate.

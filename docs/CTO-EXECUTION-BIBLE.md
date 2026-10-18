@@ -1950,3 +1950,13 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - The Permissions page now loads the persisted matrix and reconciliation independently, displays declared/persisted/covered/missing/stale counts, and lists missing declarations and stale persisted resource permissions. A reconciliation failure is shown separately and does not hide the persisted matrix.
 - No role mutation or second authorization engine was introduced. The frontend uses the existing typed API adapter and backend reconciliation result.
 - Acceptance evidence: frontend production build and the Super Admin Playwright reconciliation journey pass; full regression and CBA promotion remain required before closure.
+
+
+## 18 Oct 2026 — Farm lifecycle acceptance hardening
+
+- Farm update and FarmRecord creation now fail closed when the parent farm is archived. The composite transaction-aware FarmRecord writer used by Intake repeats the active-farm predicate inside the transaction, so an archive occurring after outer authorization cannot leave new records attached to an archived farm.
+- Farm restore now atomically claims only rows whose deletedAt is still non-null. The service creates the new active OWNER relationship and RESTORE audit record only when exactly one archived row was claimed; stale/concurrent restore requests do not create duplicate relationship or audit history.
+- The Farms UI now reloads immediately when switching between active and archived lists. The shared useLiveRefresh hook intentionally remains unchanged; the page handles its filter-state transition explicitly.
+- Regression coverage includes archived-farm update denial, direct record denial, transaction-aware Intake record denial, successful restore with relationship/audit, and a failed stale/concurrent restore with no relationship/audit side effects.
+- Verification on isolated C worktree: FarmsService 45/45; full backend regression 66 suites / 644 tests; backend Nest build exit 0; frontend production build exit 0; authenticated archive/restore Playwright journey 1/1; full frontend Playwright suite 19/19.
+- No schema migration, database reset, hard deletion, payment integration, or change to central Registry/AuthorizationService policy was introduced. Existing migration-history notes remain untouched.

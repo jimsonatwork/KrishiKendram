@@ -1,6 +1,8 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import type { FormEvent } from 'react'
@@ -1508,6 +1510,16 @@ export function FarmsPage() {
     intervalMs: 30_000,
     onWindowFocus: true,
   })
+
+  // useLiveRefresh keeps the latest callback for timer/focus events, but does
+  // not rerun it when a filter changes. Reload immediately when switching
+  // between active and archived farms rather than waiting for the next timer.
+  const previousShowArchived = useRef(showArchived)
+  useEffect(() => {
+    if (previousShowArchived.current === showArchived) return
+    previousShowArchived.current = showArchived
+    void loadFarms()
+  }, [showArchived, loadFarms])
 
   const selectedFarm = useMemo(
     () => farms.find((farm) => farm.id === selectedFarmId) || null,

@@ -342,10 +342,11 @@ export class FarmsService {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
-    if (!farmContext) {
+    if (!farmContext || farmContext.deletedAt) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -800,6 +801,16 @@ export class FarmsService {
     userId: string,
     role: UserRole,
   ) {
+    // Re-check inside the caller's transaction so Intake cannot append history
+    // to a farm archived after the outer workflow performed its authorization.
+    const activeFarm = await tx.farm.findFirst({
+      where: { id: farmId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!activeFarm) {
+      throw new NotFoundException('Farm not found');
+    }
+
     const validatedData = this.validateFarmRecordFields(dto);
 
     if (
@@ -856,10 +867,11 @@ export class FarmsService {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
-    if (!farmContext) {
+    if (!farmContext || farmContext.deletedAt) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -987,7 +999,19 @@ export class FarmsService {
     });
 
     return this.prisma.$transaction(async (tx) => {
-      const farm = await tx.farm.update({ where: { id }, data: { deletedAt: null } });
+      // Atomic state predicate prevents concurrent restore requests from
+      // creating duplicate active OWNER relationships or duplicate audit rows.
+      const claim = await tx.farm.updateMany({
+        where: { id, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      if (claim.count !== 1) {
+        throw new NotFoundException('Archived farm not found');
+      }
+      const farm = await tx.farm.findUnique({ where: { id } });
+      if (!farm) {
+        throw new NotFoundException('Archived farm not found');
+      }
       const restoredAt = new Date();
       await this.relationships.createOwnerRelationship(tx, 'farm', farm.id, ownerId, restoredAt);
       await this.audit.createInTransaction(tx, {

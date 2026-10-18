@@ -12,9 +12,11 @@ describe('FarmsService', () => {
     $transaction: jest.fn(),
     farm: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
     },
     farmAsset: {
@@ -566,6 +568,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
@@ -636,6 +639,76 @@ describe('FarmsService', () => {
     expect(authorization.assertCan).not.toHaveBeenCalled();
     expect(registry.validateResourceField).not.toHaveBeenCalled();
     expect(prisma.farm.update).not.toHaveBeenCalled();
+  });
+
+  it('does not update an archived farm', async () => {
+    prisma.farm.findUnique.mockResolvedValueOnce({
+      id: 'farm-1',
+      ownerId: 'user-1',
+      deletedAt: new Date('2026-10-18T10:00:00.000Z'),
+    });
+
+    await expect(
+      service.update('farm-1', 'user-1', UserRole.FARMER, {
+        name: 'Attempted archived edit',
+      }),
+    ).rejects.toThrow('Farm not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farm.update).not.toHaveBeenCalled();
+  });
+
+  it('restores an archived farm once and records owner relationship plus audit', async () => {
+    prisma.farm.findFirst.mockResolvedValueOnce({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+    prisma.farm.updateMany.mockResolvedValueOnce({ count: 1 });
+    prisma.farm.findUnique.mockResolvedValueOnce({
+      id: 'farm-1',
+      ownerId: 'user-1',
+      deletedAt: null,
+    });
+
+    const restored = await service.restore('farm-1', 'user-1', UserRole.FARMER);
+
+    expect(prisma.farm.updateMany).toHaveBeenCalledWith({
+      where: { id: 'farm-1', deletedAt: { not: null } },
+      data: { deletedAt: null },
+    });
+    expect(restored).toEqual({
+      id: 'farm-1',
+      ownerId: 'user-1',
+      deletedAt: null,
+    });
+    expect(relationships.createOwnerRelationship).toHaveBeenCalledWith(
+      expect.anything(), 'farm', 'farm-1', 'user-1', expect.any(Date),
+    );
+    expect(audit.createInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'RESTORE',
+        resourceType: 'farm',
+        resourceId: 'farm-1',
+      }),
+    );
+  });
+
+  it('fails closed when a concurrent request already restored the farm', async () => {
+    prisma.farm.findFirst.mockResolvedValueOnce({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+    prisma.farm.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(
+      service.restore('farm-1', 'user-1', UserRole.FARMER),
+    ).rejects.toThrow('Archived farm not found');
+
+    expect(relationships.createOwnerRelationship).not.toHaveBeenCalled();
+    expect(audit.createInTransaction).not.toHaveBeenCalled();
   });
 
   it('authorizes farm archiving using minimal context before mutation', async () => {
@@ -1847,6 +1920,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
 
@@ -1919,6 +1993,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
   });
@@ -1951,8 +2026,62 @@ describe('FarmsService', () => {
       select: {
         id: true,
         ownerId: true,
+        deletedAt: true,
       },
     });
+  });
+
+  it('does not create a farm record for an archived farm', async () => {
+    prisma.farm.findUnique.mockResolvedValueOnce({
+      id: 'farm-1',
+      ownerId: 'user-1',
+      deletedAt: new Date('2026-10-18T10:00:00.000Z'),
+    });
+
+    await expect(
+      service.addRecord(
+        'farm-1',
+        {
+          category: 'ACTIVITY',
+          inputMethod: 'MANUAL',
+          data: { note: 'Archived farm write' },
+        },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Farm not found');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(prisma.farmRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('does not append a record to an archived farm inside a composite transaction', async () => {
+    const tx = {
+      farm: { findFirst: jest.fn().mockResolvedValue(null) },
+      farmRecord: { create: jest.fn() },
+    } as any;
+
+    await expect(
+      service.addRecordInTransaction(
+        tx,
+        'farm-1',
+        {
+          category: 'ACTIVITY',
+          inputMethod: 'MANUAL',
+          data: { note: 'Archived farm intake' },
+        },
+        'user-1',
+        UserRole.FARMER,
+      ),
+    ).rejects.toThrow('Farm not found');
+
+    expect(tx.farm.findFirst).toHaveBeenCalledWith({
+      where: { id: 'farm-1', deletedAt: null },
+      select: { id: true },
+    });
+    expect(registry.validateResourceField).not.toHaveBeenCalled();
+    expect(tx.farmRecord.create).not.toHaveBeenCalled();
   });
 
   it('keeps authorization before farm record validation', async () => {
