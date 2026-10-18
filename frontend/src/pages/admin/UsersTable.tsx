@@ -16,6 +16,7 @@ import {
   Activity,
   Loader2,
   Pencil,
+  RotateCcw,
   Users,
 } from 'lucide-react'
 
@@ -31,6 +32,8 @@ type UsersTableProps = {
   onToggleAll: () => void
   onEdit: (user: AdminUser) => void
   onActivity: (user: AdminUser) => void
+  onRestore: (user: AdminUser) => void
+  restoringUserIds: string[]
   formatRole: (value: string) => string
   formatDate: (value: string | null) => string
   formatDateTime: (
@@ -55,6 +58,8 @@ export function UsersTable({
   onToggleAll,
   onEdit,
   onActivity,
+  onRestore,
+  restoringUserIds,
   formatRole,
   formatDate,
   formatDateTime,
@@ -265,6 +270,18 @@ export function UsersTable({
 
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
+                      {user.status === 'PENDING_DELETE' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={restoringUserIds.includes(user.id)}
+                          onClick={() => onRestore(user)}
+                        >
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          {restoringUserIds.includes(user.id) ? 'Restoring...' : 'Restore'}
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         variant="ghost"

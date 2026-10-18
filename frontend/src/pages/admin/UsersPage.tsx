@@ -265,6 +265,8 @@ export function UsersPage() {
 
   const [isBulkDeleting, setIsBulkDeleting] =
     useState(false)
+  const [restoringUserIds, setRestoringUserIds] =
+    useState<string[]>([])
 
   // ==========================================================
   // CREATE USER
@@ -485,6 +487,48 @@ export function UsersPage() {
   // ==========================================================
   // CREATE USER
   // ==========================================================
+
+  const handleRestore = async (user: AdminUser) => {
+    if (
+      !accessToken ||
+      user.status !== 'PENDING_DELETE' ||
+      restoringUserIds.includes(user.id)
+    ) {
+      return
+    }
+
+    const confirmed = window.confirm(
+      'Restore ' + (user.name || user.email) + ' from pending deletion?',
+    )
+    if (!confirmed) return
+
+    setRestoringUserIds((current) => [...current, user.id])
+    setError('')
+    setNotice('')
+
+    try {
+      const restored = await api.restoreUser(user.id, accessToken)
+      setUsers((current) =>
+        current.map((item) => item.id === restored.id ? restored : item),
+      )
+      setSelectedUserIds((current) =>
+        current.filter((id) => id !== restored.id),
+      )
+      setNotice(
+        (restored.name || restored.email) + ' restored successfully. Account status is ACTIVE.',
+      )
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to restore the user.',
+      )
+    } finally {
+      setRestoringUserIds((current) =>
+        current.filter((id) => id !== user.id),
+      )
+    }
+  }
 
   const handleCreate = async (
     event: FormEvent,
@@ -1336,6 +1380,8 @@ export function UsersPage() {
         onToggleAll={toggleSelectAll}
         onEdit={openRowEdit}
         onActivity={openActivity}
+        onRestore={handleRestore}
+        restoringUserIds={restoringUserIds}
         formatRole={formatRole}
         formatDate={formatDate}
         formatDateTime={formatDateTime}
@@ -1384,7 +1430,11 @@ export function UsersPage() {
           isEditingCurrentUser
         }
         roles={ROLES}
-        statuses={STATUSES}
+        statuses={
+          editState?.user.status === 'PENDING_DELETE'
+            ? ['PENDING_DELETE']
+            : STATUSES
+        }
         onClose={closeEdit}
         onSave={handleSave}
         onPrevious={

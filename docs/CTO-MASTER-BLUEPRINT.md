@@ -3443,3 +3443,9 @@ Sandbox payment intent and webhook routes are a non-production harness only. Req
 - Registry definitions cover notification fields and list filters. Query limits are bounded to 1–100. Links are restricted to internal /app/ routes; external or unsafe hrefs are suppressed.
 - The browser UI exposes severity, event type and unread-only filters, severity styling, refresh, per-item read and mark-all-read. When unread-only is active, read items disappear from the visible list immediately.
 - External SMS/email/push delivery is intentionally separate from persisted in-app notifications and remains a plug-in integration. Notifications do not hard-delete history.
+
+## User Lifecycle Restore Governance — 18 October 2026
+
+The existing user lifecycle uses PENDING_DELETE as a reversible state and preserves records/history. Normal profile/status editing must not reactivate or finalize that state. The explicit restore endpoint is the only reactivation path and must re-check PENDING_DELETE inside its transaction, restore ACTIVE, clear deletion-request flags, and persist actor-attributed history and audit events atomically.
+
+The admin Users workspace exposes Restore only for PENDING_DELETE rows. The edit dialog keeps the status fixed while deletion is pending and explains the explicit restore action. The overall Users module remains PARTIAL until full integration regression and CBA promotion pass; the Field Policy and shared Registry remain the only validation authority.

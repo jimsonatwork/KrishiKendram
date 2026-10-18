@@ -351,6 +351,49 @@ describe('UsersService - centralized field policy', () => {
     )
   })
 
+  it('requires the explicit restore endpoint to reactivate a pending-delete user', async () => {
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'user-id',
+      name: 'Pending User',
+      email: 'pending@example.com',
+      status: 'PENDING_DELETE',
+      role: 'FARMER',
+    })
+
+    await expect(
+      service.update('user-id', { status: 'ACTIVE' as any }),
+    ).rejects.toThrow(
+      'Users pending deletion must be restored through the restore endpoint',
+    )
+
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('rechecks pending-delete status inside the restore transaction', async () => {
+    prisma.user.findUnique
+      .mockResolvedValueOnce({
+        id: 'user-id',
+        name: 'Pending User',
+        email: 'pending@example.com',
+        status: 'PENDING_DELETE',
+        role: 'FARMER',
+      })
+      .mockResolvedValueOnce({
+        id: 'user-id',
+        name: 'Active User',
+        email: 'active@example.com',
+        status: 'ACTIVE',
+        role: 'FARMER',
+      })
+
+    await expect(
+      service.restore('user-id', 'admin-id'),
+    ).rejects.toThrow('Only users pending deletion can be restored')
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+
   it('rejects an invalid preferred input method during update', async () => {
     registry.validateResourceField.mockImplementation(
       (

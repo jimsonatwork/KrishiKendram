@@ -377,6 +377,14 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  restoreUser: (id: string, token: string) =>
+    request<AdminUser>('/users/' + id + '/restore', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + token,
+      },
+    }),
+
 	bulkDeleteUsers: (
   userIds: string[],
   token: string,

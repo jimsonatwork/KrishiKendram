@@ -382,6 +382,12 @@ export function UserEditDialog({
             />
           </div>
 
+          {editState.user.status === 'PENDING_DELETE' ? (
+            <div role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+              This account is pending deletion. Use the row Restore action to reactivate it; status changes are restricted here.
+            </div>
+          ) : null}
+
           {editState.user.role ===
             'SUPER_ADMIN' ||
           editState.role ===

@@ -339,7 +339,7 @@ This avoids giving a reassuring but fabricated completion date.
 
 ## 13. Execution Position
 
-**Current position: V0.3 — FARM LIFECYCLE INTEGRATION**
+**Current position: Core-stack acceptance closure — Users lifecycle restore**
 
 UsersService Field Policy migration is complete for the current implementation segment.
 
@@ -1934,3 +1934,11 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - Registry definitions cover notification fields and list filters. Query limits are bounded to 1–100. Links are restricted to internal /app/ routes; external or unsafe hrefs are suppressed.
 - The browser UI exposes severity, event type and unread-only filters, severity styling, refresh, per-item read and mark-all-read. When unread-only is active, read items disappear from the visible list immediately.
 - External SMS/email/push delivery is intentionally separate from persisted in-app notifications and remains a plug-in integration. Notifications do not hard-delete history.
+
+### 18 Oct 2026 — User lifecycle restore governance
+
+- PENDING_DELETE is a reversible, auditable lifecycle state; it is not hard deletion.
+- Normal user updates must not transition a PENDING_DELETE account to ACTIVE or DELETED. Reactivation must use POST /users/:id/restore, with a transactional status re-check, ACTIVE status, cleared deletion-request flags, user-history entry and AuditEvent actor attribution.
+- The admin Users UI exposes Restore only for PENDING_DELETE rows and restricts status editing for those rows, directing operators to the explicit restore action.
+- Focused UsersService regression rejects direct reactivation and stale restore attempts. The Playwright lifecycle journey covers user creation, explicit restore and activity/relationship empty states.
+- The Users product module remains PARTIAL overall until the full regression, builds, runtime checks and CBA promotion complete.

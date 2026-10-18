@@ -358,6 +358,16 @@ export class UsersService {
           )
         }
 
+        if (
+          currentUser.status === UserStatus.PENDING_DELETE &&
+          dto.status !== undefined &&
+          dto.status !== UserStatus.PENDING_DELETE
+        ) {
+          throw new BadRequestException(
+            'Users pending deletion must be restored through the restore endpoint',
+          )
+        }
+
         let normalizedEmail:
           | string
           | null
@@ -1338,6 +1348,12 @@ updateData.refreshTokenHash = null
         if (!current) {
           throw new NotFoundException(
             'User not found',
+          )
+        }
+
+        if (current.status !== UserStatus.PENDING_DELETE) {
+          throw new BadRequestException(
+            'Only users pending deletion can be restored',
           )
         }
 
