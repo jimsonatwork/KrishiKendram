@@ -127,6 +127,11 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
     }
     const messages = this.buildMessages(request);
     const promptChars = messages.reduce((sum, item) => sum + item.content.length, 0);
+    const isCropList = (request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001';
+    const outputBudget = isCropList ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS;
+    const requestedOutputBudget = Number.isFinite(request.maxOutputTokens)
+      ? Math.floor(request.maxOutputTokens as number) : outputBudget;
+    const numPredict = Math.min(outputBudget, Math.max(16, requestedOutputBudget));
     const generationStartedAt = Date.now();
     let response: Response;
     try {
@@ -142,7 +147,7 @@ export class OllamaTextGenerationProvider implements TextGenerationProvider {
           stream: false,
           keep_alive: '4h',
           // Keep local inference CPU-bounded, matching warm-up and benchmark settings, so the app remains responsive on WSL/laptop hardware.
-          options: { temperature: 0.2, num_predict: ((request.context?.fields?.context as { intentId?: unknown } | undefined)?.intentId === 'KK-AI-CONTEXT-CROPS-001' ? CROP_LIST_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS), num_ctx: 2048, num_thread: 2 },
+          options: { temperature: 0.2, num_predict: numPredict, num_ctx: 2048, num_thread: 2 },
         }),
         signal: AbortSignal.timeout(this.timeoutMs),
       });

@@ -799,7 +799,99 @@ export const api = {
       },
     }),
 
-  marketplaceListings: () => request<any[]>('/marketplace/listings'),
+  marketplaceCategories: () => request<string[]>('/marketplace/categories'),
+  marketplaceListings: (filters?: { period?: string; category?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.period) params.set('period', filters.period)
+    if (filters?.category) params.set('category', filters.category)
+    return request<any[]>('/marketplace/listings' + (params.size ? '?' + params.toString() : ''))
+  },
+
+  marketplaceOrders: (token: string) => request<any[]>('/marketplace/orders/mine', {
+    headers: { Authorization: 'Bearer ' + token },
+  }),
+
+  marketplaceCommercePolicy: () => request<any>('/marketplace/commerce-policy'),
+  marketplacePublicFeatureFlags: () => request<any[]>('/marketplace/features/public'),
+  marketplaceFeatureFlags: (token: string) => request<any[]>('/marketplace/features', { headers: { Authorization: 'Bearer ' + token } }),
+  updateMarketplaceFeatureFlag: (key: string, enabled: boolean, reason: string, token: string) => request<any>('/marketplace/features/' + encodeURIComponent(key), { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, reason }) }),
+  marketplaceHistory: (token: string) => request<any>('/marketplace/history/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceSettlementStatement: (token: string) => request<any>('/marketplace/settlements/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceTaxProfiles: (token: string) => request<any[]>('/marketplace/tax-profiles', { headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceSellerProfile: (token: string) => request<any>('/marketplace/profile/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  updateMarketplaceSellerProfile: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/profile/mine', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  marketplaceFavorites: (token: string) => request<any[]>('/marketplace/favorites/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  addMarketplaceFavorite: (listingId: string, token: string) => request<any>('/marketplace/listings/' + encodeURIComponent(listingId) + '/favorite', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),
+  removeMarketplaceFavorite: (listingId: string, token: string) => request<any>('/marketplace/listings/' + encodeURIComponent(listingId) + '/favorite', { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceMessages: (token: string) => request<any[]>('/marketplace/messages/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  sendMarketplaceMessage: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/messages', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  readMarketplaceMessage: (id: string, token: string) => request<any>('/marketplace/messages/' + encodeURIComponent(id) + '/read', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceOpenRFQs: (token: string) => request<any[]>('/marketplace/rfqs/open', { headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceMyRFQs: (token: string) => request<any[]>('/marketplace/rfqs/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  createMarketplaceRFQ: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/rfqs', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  respondMarketplaceRFQ: (id: string, data: Record<string, unknown>, token: string) => request<any>('/marketplace/rfqs/' + encodeURIComponent(id) + '/responses', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  decideMarketplaceRFQResponse: (id: string, responseId: string, status: 'ACCEPTED'|'REJECTED', reason: string, token: string) => request<any>('/marketplace/rfqs/' + encodeURIComponent(id) + '/responses/' + encodeURIComponent(responseId) + '/decision', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ status, reason }) }),
+  cancelMarketplaceRFQ: (id: string, reason: string, token: string) => request<any>('/marketplace/rfqs/' + encodeURIComponent(id) + '/cancel', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
+
+  createMarketplaceTaxProfile: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/tax-profiles', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  approveMarketplaceTaxProfile: (id: string, reviewReference: string, token: string) => request<any>('/marketplace/tax-profiles/' + encodeURIComponent(id) + '/approve', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewReference }) }),
+  retireMarketplaceTaxProfile: (id: string, reason: string, token: string) => request<any>('/marketplace/tax-profiles/' + encodeURIComponent(id) + '/retire', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
+
+  marketplacePayoutHolds: (token: string) => request<any[]>('/marketplace/settlements/holds', { headers: { Authorization: 'Bearer ' + token } }),
+  createMarketplacePayoutHold: (orderId: string, reason: string, token: string, expiresAt?: string) => request<any>('/marketplace/settlements/orders/' + encodeURIComponent(orderId) + '/holds', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ reason, expiresAt }) }),
+  releaseMarketplacePayoutHold: (id: string, reason: string, token: string) => request<any>('/marketplace/settlements/holds/' + encodeURIComponent(id) + '/release', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
+  runMarketplaceReconciliation: (token: string) => request<any>('/marketplace/settlements/reconciliation/run', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceReconciliationRuns: (token: string) => request<any[]>('/marketplace/settlements/reconciliation', { headers: { Authorization: 'Bearer ' + token } }),
+
+  createMarketplaceTrustCase: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/trust/cases', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  marketplaceTrustCases: (token: string) => request<any[]>('/marketplace/trust/cases', { headers: { Authorization: 'Bearer ' + token } }),
+  resolveMarketplaceTrustCase: (id: string, data: Record<string, unknown>, token: string) => request<any>('/marketplace/trust/cases/' + id + '/resolve', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  marketplaceRestrictions: (token: string) => request<any[]>('/marketplace/trust/restrictions', { headers: { Authorization: 'Bearer ' + token } }),
+  revokeMarketplaceRestriction: (id: string, reason: string, token: string) => request<any>('/marketplace/trust/restrictions/' + id + '/revoke', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
+  marketplaceReviewQueue: (token: string) => request<any[]>('/marketplace/reviews/moderation/queue', { headers: { Authorization: 'Bearer ' + token } }),
+  moderateMarketplaceReview: (id: string, status: 'PUBLISHED' | 'REJECTED' | 'HIDDEN', token: string) => request<any>('/marketplace/reviews/' + id + '/moderate', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }),
+  createMarketplaceReview: (id: string, data: Record<string, unknown>, token: string) => request<any>('/marketplace/orders/' + id + '/reviews', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  respondMarketplaceReview: (id: string, response: string, token: string) => request<any>('/marketplace/reviews/' + id + '/response', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ response }) }),
+  updateMarketplaceCommercePolicy: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/commerce-policy', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+
+  uploadMarketplaceMedia: async (file: File, kind: 'images' | 'videos', token: string) => {
+    const body = new FormData()
+    body.append('file', file)
+    const response = await fetch(API_BASE_URL + '/marketplace/media/' + kind, { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body })
+    const data: any = await response.json().catch(() => null)
+    if (!response.ok) {
+      const message = typeof data?.message === 'string' ? data.message : Array.isArray(data?.message) ? data.message.join(', ') : 'Marketplace media upload failed.'
+      const error = new ApiError(message, response.status, data)
+      reportAppError(error, 'api')
+      throw error
+    }
+    return data as { id: string; mediaType: 'image' | 'video'; mimeType: string; sizeBytes: number; url: string }
+  },
+
+  createMarketplaceSandboxRefund: (id: string, data: { idempotencyKey: string; amount: string; reason: string }, token: string) => request<any>('/marketplace/orders/' + id + '/payments/sandbox-refunds', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+
+  createMarketplaceSandboxPaymentIntent: (id: string, idempotencyKey: string, token: string) => request<any>('/marketplace/orders/' + id + '/payments/sandbox-intent', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ idempotencyKey }),
+  }),
+
+  marketplaceQuote: (id: string, data: Record<string, unknown>, token: string) => request<any>('/marketplace/listings/' + id + '/quote', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+
+  createMarketplaceOrder: (id: string, data: Record<string, unknown>, token: string) => request<any>('/marketplace/listings/' + id + '/orders', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+
+  updateMarketplaceDelivery: (id: string, data: Record<string, unknown>, token: string) => request<any>('/marketplace/orders/' + id + '/delivery', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  confirmMarketplaceDelivery: (id: string, token: string) => request<any>('/marketplace/orders/' + id + '/confirm-delivery', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({}) }),
+
+  counterOfferMarketplaceOrder: (id: string, data: Record<string, unknown>, token: string) => request<any>('/marketplace/orders/' + id + '/counter-offer', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+
+  marketplaceOrderAction: (id: string, action: 'accept' | 'reject' | 'cancel' | 'complete' | 'confirm-price', data: Record<string, unknown>, token: string) => request<any>('/marketplace/orders/' + id + '/' + action, {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
 
   marketplaceMine: (token: string) =>
     request<any[]>('/marketplace/listings/mine', {
@@ -832,9 +924,55 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
+  notifications: (token: string) => request<any[]>('/notifications', { headers: { Authorization: 'Bearer ' + token } }),
+  notificationUnreadCount: (token: string) => request<{ unreadCount: number }>('/notifications/unread-count', { headers: { Authorization: 'Bearer ' + token } }),
+  markNotificationRead: (id: string, token: string) => request<any>('/notifications/' + id + '/read', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token } }),
+  markAllNotificationsRead: (token: string) => request<{ markedRead: number }>('/notifications/read-all', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),
+
+  financeRecords: (token: string) => request<any[]>('/finance/records', { headers: { Authorization: 'Bearer ' + token } }),
+  createFinanceRecord: (data: Record<string, unknown>, token: string) => request<any>('/finance/records', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  updateFinanceRecord: (id: string, data: Record<string, unknown>, token: string) => request<any>('/finance/records/' + id, { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  archiveFinanceRecord: (id: string, token: string) => request<any>('/finance/records/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }),
+
+  inventoryItems: (token: string) => request<any[]>('/inventory/items', { headers: { Authorization: 'Bearer ' + token } }),
+
+  createInventoryItem: (data: Record<string, unknown>, token: string) => request<any>('/inventory/items', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+
+  updateInventoryItem: (id: string, data: Record<string, unknown>, token: string) => request<any>('/inventory/items/' + id, {
+    method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+
+  archiveInventoryItem: (id: string, token: string) => request<any>('/inventory/items/' + id, {
+    method: 'DELETE', headers: { Authorization: 'Bearer ' + token },
+  }),
+
+  recordInventoryTransaction: (id: string, data: Record<string, unknown>, token: string) => request<any>('/inventory/items/' + id + '/transactions', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+
+  inventoryHistory: (id: string, token: string) => request<any[]>('/inventory/items/' + id + '/transactions', {
+    headers: { Authorization: 'Bearer ' + token },
+  }),
+
+  livestockRecords: (id: string, token: string) => request<any[]>('/livestock/' + id + '/records', { headers: { Authorization: 'Bearer ' + token } }),
+  createLivestockRecord: (id: string, data: Record<string, unknown>, token: string) => request<any>('/livestock/' + id + '/records', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+
   livestock: (token: string) =>
     request<any[]>('/livestock', {
       headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  archivedLivestock: (token: string) =>
+    request<any[]>('/livestock/archived', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+
+  restoreLivestock: (id: string, token: string) =>
+    request<any>('/livestock/' + id + '/restore', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
     }),
 
   createLivestock: (data: Record<string, unknown>, token: string) =>
@@ -1137,11 +1275,47 @@ export const api = {
       },
     ),
 
+  translateIntake: (
+    data: { sourceText: string; sourceLanguage: string },
+    token: string,
+  ) =>
+    request<{
+      sourceText: string
+      sourceLanguage: string
+      englishTranslation: string
+      confidence: number | null
+      confidenceThreshold: number
+      confidenceMethod: string
+      belowConfidenceThreshold: boolean
+      numericMismatch: boolean
+      unitMismatch: boolean
+      plantingActionMismatch: boolean
+      reviewNotes: string[]
+      providerId: string
+      modelId: string
+      modelVersion: string
+      generatedAt: string
+      requiresUserReview: true
+      requiresUserConfirmation: true
+      saved: false
+    }>(
+      '/intake/translate',
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: JSON.stringify(data),
+      },
+    ),
+
   createIntake: (
     data: {
       farmId: string
       inputMethod: string
       content: string
+      originalContent?: string
+      originalLanguage?: string
+      englishTranslation?: string
+      translationConfirmed?: boolean
     },
     token: string,
   ) =>

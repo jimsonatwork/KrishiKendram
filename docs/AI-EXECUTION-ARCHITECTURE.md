@@ -131,7 +131,7 @@ KrishiKendram uses one governed AI gateway with task-aware, interchangeable prov
 ### Acceptance status and limits
 - Verification after the voice-intake and shared-vocabulary changes: AI + intake regression gate passed 15 suites / 140 tests; backend build and frontend TypeScript/Vite production build passed on 2026-10-14.
 - Multiple production-approved inference models are not yet verified. The current inventory contains an evaluation-only local Ollama adapter and a disabled provider; do not claim a production multi-model fleet until additional adapters are installed, registered, approved and benchmarked.
-- A short local Ollama health probe timed out; runtime reachability is not confirmed by this probe.
+- Historical checkpoint: a short local Ollama health probe timed out on 2026-10-14; runtime reachability was subsequently verified on 2026-10-17 at the versioned API health route and local Ollama API.
 - Backend build and frontend build both passed after the shared-vocabulary and voice-intake changes; rerun both after subsequent source changes.
 - Farm listing remains deterministic and owner-scoped. Guided voice-to-crop intake now creates an ephemeral draft, resolves an authorized farm, previews crop/area/defaults, accepts crop/area/farm corrections, and only calls the authorized intake service after explicit confirmation. The backend returns the created crop ID from the same transaction as the farm history record.
 - Crop aliases, planting verbs, area units and spoken number words now have one canonical source in backend/src/ai/registry/crop-terminology.ts, linked from the platform registry and served through the authenticated voice-intent manifest. The browser no longer maintains a second crop catalogue.
@@ -151,3 +151,37 @@ KrishiKendram uses one governed AI gateway with task-aware, interchangeable prov
 - The installed local Ollama runtime reports Qwen3 1.7B and Qwen3.5 0.8B. Qwen3.5 remains an unlinked evaluation candidate. Benchmarking must run only in a maintenance window because the benchmark intentionally unloads and reloads the live local model; it must not be run against an active farmer workload.
 - Snyk DeepCode AI remains an optional security-review integration pending data-disclosure, licensing, cost and CI integration review. The public deepcode_ai_fix repository is archived and is not treated as the complete maintained product.
 - Playwright + axe-core are being added as development-only dependencies for mock-backed browser acceptance tests. These tests do not replace an authenticated test-environment run or DB persistence verification.
+
+
+## 2026-10-16 — Intake bilingual contract and verified regression
+
+Intake validates and stores the original transcript/language and reviewed English meaning with confirmation and provenance in FarmRecord.data.intakeMetadata; the existing authorized service boundary and transaction remain authoritative. The backend rejects non-English submissions lacking a confirmed English meaning before extraction. Frontend production build passed; Intake/Livestock/Marketplace focused regression passed 32 tests across 3 suites; /api/v1/health returned HTTP 200. Automatic translation and confidence/deviation-based clarification are still not implemented and must not be described as complete. See docs/AI-INTAKE-MULTILINGUAL-CONTRACT.md.
+
+
+## 2026-10-16 — Operational UI workflow follow-through
+
+Livestock edit, ownership-history and archived restore paths are exposed in the frontend and backed by the authenticated controller/service; marketplace creation uses resource choices from the user's accessible data instead of a manually typed internal ID. Verification: backend build PASS, focused Intake/Livestock/Marketplace tests 33/33 PASS, frontend build PASS, API/UI health HTTP 200, git diff --check PASS. Seller/buyer acceptance and real authenticated browser checks remain open.
+
+
+## 2026-10-17 — Ollama native-store and live-provider verification
+
+The managed local Ollama runtime is version 0.40.3 and is reachable at 127.0.0.1:11434 with cloud disabled. The runtime launcher now defaults to the native WSL model store at /home/jj/.local/share/krishikendram/ollama-models, while preserving the KK_AI_OLLAMA_MODELS_DIR override. The original D: model store remains intact as a recovery copy. The copied store contains all three installed Qwen models, and all three model manifests match the source SHA-256 hashes.
+
+Live provider smoke test passed through OllamaTextGenerationProvider using qwen3:1.7b and its recorded digest. A warm synthetic request returned OK in 1.83 seconds, with 0.011 seconds model load, 1.647 seconds prompt evaluation, and 0.133 seconds generation. A separate cold load still took about 45.93 seconds; cold-start latency remains open. The response remains a proposal requiring canonical validation and user confirmation.
+
+The current active model remains qwen3:1.7b. Qwen3.5 0.8B remains selected for evaluation and Qwen3.5 2B remains a linked installed candidate; neither is production-approved. The read-only preflight found eight benchmark cases and no blockers, but the full benchmark was not run because it intentionally unloads/reloads the model and is gated to a maintenance window. No cloud fallback, production promotion, database mutation, or Docker volume change occurred.
+
+Verification: Ollama model inventory returned all three models; API health at /api/v1/health and UI health at port 4000 returned HTTP 200; focused provider/registry/text-generation tests passed 3 suites and 21 tests; shell syntax and git diff checks passed. Mocked Voice Agent E2E passed 12 of 12 tests; authenticated live-browser acceptance, multilingual translation/confidence handling, and candidate benchmark remain outstanding.
+
+
+## 2026-10-17 - Local Intake translation implementation (2026-10-17T17:37:28+05:30)
+- Added authenticated local Intake translation via the governed TextGenerationService; no cloud fallback and no direct database write.
+- Output confidence is explicitly uncalibrated. A 0.85 review threshold, visible-number check, multilingual acre/hectare check, and planting-action preservation check flag likely material drift; detected drift caps confidence at 0.5. Explicit user review and confirmation remain mandatory.
+- Focused tests pass: 3 suites / 19 tests; backend and frontend builds pass; mocked translation UI E2E passes 1/1. Route is registered; unauthenticated POST returns 401. Authenticated live-backend browser acceptance remains open.
+- Live Telugu smoke demonstrated remaining model-quality limitations: it returned 'I have 2 acres of rice' and omitted the planting action. The action guard caught it. A warm request took about 15 seconds; a later request under startup/model contention took about 87 seconds.
+- Model remains evaluation-only. Do not promote based on this smoke. Multilingual quality benchmarks and authenticated browser acceptance remain open.
+
+
+## 2026-10-17 - Cross-module regression sweep (2026-10-17T17:42:55+05:30)
+- Cross-module regression sweep passed: 7 suites / 57 tests across Intake, Livestock, Marketplace, Ollama provider and AI model-link registry. Backend and frontend builds pass; mocked Intake translation UI E2E passes 1/1.
+- Local translation still requires human review: a live Telugu smoke omitted the planting action, which the new guard caught. Model remains evaluation-only; language quality, cold latency and authenticated browser acceptance remain open.

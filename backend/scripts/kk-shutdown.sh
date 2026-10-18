@@ -156,6 +156,13 @@ if docker inspect "$POSTGRES_CONTAINER" >/dev/null 2>&1 && [[ "$(docker inspect 
 fi
 echo "PASS: PostgreSQL stopped; named volumes were not removed."
 
+# Stop only the WSL/Linux Ollama instance created by the governed runtime launcher.
+# Its PID file is written only by kk-ai-runtime-start.sh; never kill an unowned server.
+if [[ -f "/tmp/krishikendram-ollama.pid" ]]; then
+  echo "Stopping the KrishiKendram-managed local Ollama runtime..."
+  KK_AI_OLLAMA_PID_FILE="/tmp/krishikendram-ollama.pid" KK_AI_OLLAMA_LOG_FILE="/tmp/krishikendram-ollama.log"     bash "/home/jj/Dev/KrishiKendram/scripts/kk-ai-runtime-stop.sh" || fail "Managed local Ollama did not stop cleanly; Docker Desktop and WSL remain available for recovery."
+fi
+
 # Stop the KK-managed Ollama process only. Do not kill a server that was already running before kk-start.
 if [[ -f "$OLLAMA_PID_FILE" ]]; then
   OLLAMA_PID="$(cat "$OLLAMA_PID_FILE" 2>/dev/null || true)"

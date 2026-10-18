@@ -22,10 +22,16 @@ const cropTerminology = {
 
 type FarmFixture = { id: string; name: string; location?: string }
 
-async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1', name: 'Green Valley', location: 'Hyderabad' }]) {
+async function setupVoiceAgent(
+  page: Page,
+  farms: FarmFixture[] = [{ id: 'farm-1', name: 'Green Valley', location: 'Hyderabad' }],
+  marketplaceResources: { crops: Array<{ id: string; name: string }>; livestock: Array<{ id: string; name?: string; species?: string }> } = { crops: [], livestock: [] },
+) {
   const intakeCalls: Array<{ body: Record<string, unknown> }> = []
   const messageCalls: Array<{ body: Record<string, unknown> }> = []
   const responseCalls: Array<{ body: Record<string, unknown> }> = []
+  const factCandidateCalls: Array<Record<string, unknown>> = []
+  const factCandidates: Array<Record<string, unknown>> = []
 
   await page.addInitScript(() => {
     localStorage.setItem('accessToken', 'playwright-test-token')
@@ -86,6 +92,14 @@ async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1
       await route.fulfill({ json: farms })
       return
     }
+    if (pathname === '/crops') {
+      await route.fulfill({ json: marketplaceResources.crops })
+      return
+    }
+    if (pathname === '/livestock') {
+      await route.fulfill({ json: marketplaceResources.livestock })
+      return
+    }
     if (route.request().method() === 'POST' && pathname === '/ai/conversations') {
       await route.fulfill({ json: { id: 'conversation-test-1' } })
       return
@@ -102,6 +116,47 @@ async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1
         requiresValidation: true,
         requiresUserConfirmation: true,
       } })
+      return
+    }
+    if (pathname === '/ai/conversations/conversation-test-1/fact-candidates') {
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON() as Record<string, unknown>
+        factCandidateCalls.push(body)
+        const candidate = {
+          id: 'candidate-' + factCandidateCalls.length,
+          conversationId: 'conversation-test-1',
+          userId: 'farmer-test-1',
+          sessionId: body.sessionId,
+          moduleId: body.targetModuleId,
+          targetEntityType: body.targetEntityType,
+          targetEntityId: null,
+          targetFieldId: body.targetFieldId,
+          proposedValue: body.proposedValue,
+          previousValue: null,
+          confidence: 0.99,
+          source: 'VOICE',
+          status: 'VALIDATION_PENDING',
+          requiresConfirmation: true,
+          validationResult: { valid: true, errors: [] },
+          evidenceReference: body.evidenceMessageId,
+          provenance: { source: 'VOICE' },
+          createdAt: '2026-10-16T00:00:00.000Z',
+          updatedAt: '2026-10-16T00:00:00.000Z',
+          previewHash: 'preview-' + factCandidateCalls.length,
+        }
+        factCandidates.push(candidate)
+        await route.fulfill({ json: {
+          candidate,
+          previewHash: candidate.previewHash,
+          validation: { valid: true, errors: [], normalizedValue: body.proposedValue, requiresUserConfirmation: true, applied: false },
+        } })
+      } else {
+        await route.fulfill({ json: factCandidates })
+      }
+      return
+    }
+    if (pathname === '/ai/conversations/conversation-test-1/history') {
+      await route.fulfill({ json: messageCalls.map((item, index) => ({ id: 'message-' + (index + 1), role: 'USER', content: String(item.body.content ?? ''), language: String(item.body.language ?? 'en-IN'), createdAt: '2026-10-16T00:00:00.000Z' })) })
       return
     }
     if (route.request().method() === 'POST' && pathname === '/intake') {
@@ -125,8 +180,8 @@ async function setupVoiceAgent(page: Page, farms: FarmFixture[] = [{ id: 'farm-1
   await expect(page.getByRole('button', { name: 'Open voice assistant' })).toBeVisible()
   await page.getByRole('button', { name: 'Open voice assistant' }).click()
   await expect(page.getByRole('region', { name: 'KrishiKendram voice assistant' })).toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Spoken language' })).toBeVisible()
-  return { intakeCalls, messageCalls, responseCalls }
+  await expect(page.getByText(/Language analysis: automatic/)).toBeVisible()
+  return { intakeCalls, messageCalls, responseCalls, factCandidateCalls }
 }
 
 async function typeCommand(page: Page, content: string) {
@@ -289,6 +344,45 @@ test('voice session automatically listens again after Krishi finishes speaking',
   await expect(page.getByText(/Recording sowing dates helps you track crop age/).last()).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as Window & { __kkFakeRecognitionStartCount?: number }).__kkFakeRecognitionStartCount ?? 0)).toBeGreaterThan(startsBefore)
   expect(responseCalls).toHaveLength(1)
+})
+
+test('marketplace voice intent creates a reviewed multi-field draft from an owned crop without publishing it', async ({ page }) => {
+  const { factCandidateCalls } = await setupVoiceAgent(page, undefined, {
+    crops: [{ id: 'crop-paddy-1', name: 'Paddy' }],
+    livestock: [],
+  })
+  await typeCommand(page, 'List my paddy for sale, 50 kg at ₹30')
+  await expect(page.getByText(/prepared a marketplacelisting draft/i).last()).toBeVisible()
+  expect(factCandidateCalls).toHaveLength(7)
+  expect(factCandidateCalls.every(item => item.targetModuleId === 'KK-MARKETPLACE-001' && item.targetEntityType === 'MarketplaceListing')).toBe(true)
+  expect(Object.fromEntries(factCandidateCalls.map(item => [String(item.targetFieldId), item.proposedValue]))).toMatchObject({
+    resourceType: 'crop',
+    resourceId: 'crop-paddy-1',
+    title: 'Paddy for sale',
+    quantity: 50,
+    unit: 'kg',
+    price: 30,
+    currency: 'INR',
+  })
+  await expect(page.getByRole('region', { name: 'KrishiKendram voice assistant' }).getByText('MarketplaceListing.title')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Confirm all fields in this record' })).toBeVisible()
+})
+
+test('Telugu marketplace requests keep context and ask which owned crop to list', async ({ page }) => {
+  const { factCandidateCalls } = await setupVoiceAgent(page, undefined, {
+    crops: [{ id: 'crop-paddy-1', name: 'Paddy' }],
+    livestock: [],
+  })
+  await typeCommand(page, 'నా వరి అమ్మాలి')
+  await expect(page.getByLabel('Live conversation subtitles').getByText(/Which crop or animal should I list/)).toBeVisible()
+  expect(factCandidateCalls).toHaveLength(0)
+
+  await typeCommand(page, 'Paddy')
+  await expect(page.getByText(/prepared a marketplacelisting draft/i).last()).toBeVisible()
+  expect(factCandidateCalls).toHaveLength(3)
+  expect(Object.fromEntries(factCandidateCalls.map(item => [String(item.targetFieldId), item.proposedValue]))).toMatchObject({
+    resourceType: 'crop', resourceId: 'crop-paddy-1', title: 'Paddy for sale',
+  })
 })
 
 test('provider status clearly marks the local model as evaluation-only rather than production-approved', async ({ page }) => {

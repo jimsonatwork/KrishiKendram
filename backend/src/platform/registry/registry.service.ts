@@ -112,6 +112,16 @@ export class RegistryService implements OnModuleInit {
       }
     }
 
+    if (definition.parentId && !this.modules.has(definition.parentId)) {
+      throw new Error(
+        `Module '${definition.id}' references unregistered parent '${definition.parentId}'.`,
+      );
+    }
+
+    if (definition.parentId === definition.id) {
+      throw new Error(`Module '${definition.id}' cannot be its own parent.`);
+    }
+
     if (definition.dependencies?.includes(definition.id)) {
       throw new Error(
         `Module '${definition.id}' cannot depend on itself.`,
@@ -175,6 +185,7 @@ export class RegistryService implements OnModuleInit {
   ): ModuleDefinition {
     return {
       ...definition,
+      parentId: definition.parentId,
       dependencies: definition.dependencies
         ? [...definition.dependencies]
         : undefined,

@@ -13,7 +13,13 @@ describe('AiModelLinkRegistryService', () => {
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'kk-model-links-'));
     filePath = join(directory, 'model-link-registry.json');
-    writeFileSync(filePath, readFileSync(resolve(process.cwd(), '../ai/providers/model-link-registry.json'), 'utf8'));
+    const fixture = JSON.parse(readFileSync(resolve(process.cwd(), '../ai/providers/model-link-registry.json'), 'utf8'));
+    // Tests start from a predictable catalogue regardless of the live registry's current link selections.
+    fixture.evaluationModelId = null;
+    fixture.models = fixture.models.map((model: any) => model.modelId === fixture.activeModelId
+      ? { ...model, linked: true, role: 'ACTIVE_BASELINE' }
+      : { ...model, linked: false, role: 'EVALUATION_CANDIDATE' });
+    writeFileSync(filePath, JSON.stringify(fixture, null, 2));
     const registry = { getLinkedFilePath: jest.fn(() => filePath), getRegistryId: jest.fn(() => 'KK-AI-REGISTRY-001') };
     service = new AiModelLinkRegistryService(registry as any);
     originalFetch = global.fetch;

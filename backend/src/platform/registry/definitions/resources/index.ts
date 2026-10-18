@@ -5,6 +5,19 @@ import { cropResource } from './crop.resource';
 import { conversationResource } from './conversation.resource';
 import { livestockResource } from './livestock.resource';
 import { marketplaceListingResource } from './marketplace-listing.resource';
+import { marketplaceRFQResponseResource } from './marketplace-rfq-response.resource';
+import { marketplaceRFQResource } from './marketplace-rfq.resource';
+import { marketplaceMessageResource } from './marketplace-message.resource';
+import { marketplaceFavoriteResource } from './marketplace-favorite.resource';
+import { marketplaceSellerProfileResource } from './marketplace-seller-profile.resource';
+import { marketplaceOrderResource } from './marketplace-order.resource';
+import { marketplaceFeatureFlagResource } from './marketplace-feature-flag.resource';
+import { marketplaceTrustCaseResource } from './marketplace-trust-case.resource';
+import { marketplaceRestrictionResource } from './marketplace-restriction.resource';
+import { marketplaceTaxProfileResource } from './marketplace-tax-profile.resource';
+import { inventoryItemResource } from './inventory-item.resource';
+import { financialRecordResource } from './financial-record.resource';
+import { livestockRecordResource } from './livestock-record.resource';
 import { farmAssetResource } from './farm-asset.resource';
 import { farmRecordResource } from './farm-record.resource';
 import { farmResource } from './farm.resource';
@@ -20,6 +33,19 @@ export const RESOURCE_DEFINITIONS: ResourceDefinition[] = [
   cropResource,
   livestockResource,
   marketplaceListingResource,
+  marketplaceRFQResponseResource,
+  marketplaceRFQResource,
+  marketplaceMessageResource,
+  marketplaceFavoriteResource,
+  marketplaceSellerProfileResource,
+  marketplaceOrderResource,
+  marketplaceFeatureFlagResource,
+  marketplaceTrustCaseResource,
+  marketplaceRestrictionResource,
+  marketplaceTaxProfileResource,
+  inventoryItemResource,
+  financialRecordResource,
+  livestockRecordResource,
   farmAssetResource,
   farmRecordResource,
 ];
@@ -29,6 +55,19 @@ export {
   cropResource,
   livestockResource,
   marketplaceListingResource,
+  marketplaceRFQResponseResource,
+  marketplaceRFQResource,
+  marketplaceMessageResource,
+  marketplaceFavoriteResource,
+  marketplaceSellerProfileResource,
+  marketplaceOrderResource,
+  marketplaceFeatureFlagResource,
+  marketplaceTrustCaseResource,
+  marketplaceRestrictionResource,
+  marketplaceTaxProfileResource,
+  inventoryItemResource,
+  financialRecordResource,
+  livestockRecordResource,
   farmAssetResource,
   farmRecordResource,
   farmResource,

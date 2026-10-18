@@ -1,7 +1,7 @@
 {
   "registryId": "KK-AI-REGISTRY-001",
   "inventoryId": "KK-AI-MODEL-LINKS-001",
-  "version": 2,
+  "version": 5,
   "status": "CANONICAL",
   "purpose": "Central model link catalogue. Linking makes a model available; activation is separate. Model links never alter module contracts.",
   "activeModelId": "qwen3:1.7b",
@@ -23,8 +23,8 @@
       "displayName": "Qwen3.5 0.8B",
       "providerId": "KK-AI-LLM-OLLAMA-LOCAL",
       "runtime": "OLLAMA_LOCAL",
-      "linked": false,
-      "role": "EVALUATION_CANDIDATE",
+      "linked": true,
+      "role": "LINKED_CANDIDATE",
       "source": "https://ollama.com/library/qwen3.5:0.8b",
       "productionReady": false
     },
@@ -33,8 +33,8 @@
       "displayName": "Qwen3.5 2B",
       "providerId": "KK-AI-LLM-OLLAMA-LOCAL",
       "runtime": "OLLAMA_LOCAL",
-      "linked": false,
-      "role": "EVALUATION_CANDIDATE",
+      "linked": true,
+      "role": "LINKED_CANDIDATE",
       "source": "https://ollama.com/library/qwen3.5:2b",
       "productionReady": false
     }
@@ -50,5 +50,5 @@
     "evaluationSelectionChangesActiveModel": false,
     "activateOnlyProductionApprovedModels": true
   },
-  "evaluationModelId": null
+  "evaluationModelId": "qwen3.5:0.8b"
 }

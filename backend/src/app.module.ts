@@ -25,6 +25,9 @@ import { IntakeModule } from './intake/intake.module';
 import { CropsModule } from './crops/crops.module';
 import { LivestockModule } from './livestock/livestock.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { FinanceModule } from './finance/finance.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { AiModule } from './ai/ai.module';
 
 @Module({
@@ -44,6 +47,9 @@ import { AiModule } from './ai/ai.module';
     CropsModule,
     LivestockModule,
     MarketplaceModule,
+    InventoryModule,
+    FinanceModule,
+    NotificationsModule,
     AiModule,
     GodModeModule,
   ],

@@ -14,12 +14,14 @@ type SpeechWindow = Window & { SpeechRecognition?: new () => Recognition; webkit
 type VoiceTurn = { id: number; speaker: 'You' | 'Krishi'; text: string; at: string }
 type VoiceFarm = { id: string; name: string; location?: string }
 type VoiceRecordDraftField = { value: unknown; evidenceMessageId: string }
+type VoiceMarketResource = { id: string; name: string; resourceType: 'crop' | 'livestock' }
 type VoiceRecordCreationDraft = {
-  kind: 'FARM' | 'LIVESTOCK'
+  kind: 'FARM' | 'LIVESTOCK' | 'MARKETPLACE'
   sessionId: string
-  phase: 'NEEDS_NAME' | 'NEEDS_FARM' | 'NEEDS_SPECIES' | 'NEEDS_COUNT'
+  phase: 'NEEDS_NAME' | 'NEEDS_FARM' | 'NEEDS_SPECIES' | 'NEEDS_COUNT' | 'NEEDS_RESOURCE'
   fields: Record<string, VoiceRecordDraftField>
   farms: VoiceFarm[]
+  resources?: VoiceMarketResource[]
 }
 type VoiceCropIntakeDraft = {
   content: string
@@ -80,6 +82,11 @@ const isLivestockCreationRequest = (text: string) =>
   !/^\s*(what|why|when|where|how|which|who|can|could|should|would|do|does|did|is|are|explain|tell me)\b/i.test(text) &&
   /(\b(add|create|register|record|save|track|enter)\b|\b(i have|we have|my farm has)\b)/i.test(text) &&
   Boolean(parseLivestockSpecies(text))
+
+const isMarketplaceCreationRequest = (text: string) =>
+  !/^\s*(what|why|when|where|how|which|who|can|could|should|would|do|does|did|is|are|explain|tell me)\b/i.test(text) &&
+  (/\b(list|sell|selling|offer|post)\b/i.test(text) || /అమ్మ|విక్రయ|మార్కెట్|बेच|बिक्री|विक्रय|விற்பனை|ಮಾರಾಟ|വിൽക്ക|বিক্রি|વેચ|ਵੇਚ/.test(text)) &&
+  (/\b(my|for sale|marketplace|listing|crop|paddy|rice|maize|cotton|livestock|goat|cow|buffalo|animal|produce)\b/i.test(text) || /వరి|పంట|ఆవు|మేక|పశువు|ధాన్యం|धान|फसल|गाय|बकरी|पशु|பயிர்|மாடு|ஆடு|ಬೆಳೆ|ಹಸು|ಮೇಕೆ|വിള|പശു|ধান|ফসল|গরু|પાક|ગાય|ਫਸਲ|ਗਾਂ/.test(text))
 
 const parseSpokenArea = (text: string, vocabulary: VoiceCropTerminology | null): { area?: number; unit?: string } => {
   if (!vocabulary) return {}
@@ -270,7 +277,11 @@ export function VoiceAgent({ role }: { role: string }) {
   const [open,setOpen] = useState(false)
   const [listening,setListening] = useState(false)
   const [spoken,setSpoken] = useState(true)
-  const [lang,setLang] = useState(() => { try { return localStorage.getItem('kk-voice-language') || 'en-IN' } catch { return 'en-IN' } })
+  const [lang,setLang] = useState(() => {
+    const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-IN'
+    return LANGUAGES.find(([code]) => code.toLowerCase() === browserLocale.toLowerCase()
+      || code.slice(0, 2).toLowerCase() === browserLocale.slice(0, 2).toLowerCase())?.[0] ?? 'en-IN'
+  })
   const [transcript,setTranscript] = useState('')
   const [message,setMessage] = useState('Open Voice Agent and start speaking. I will listen between turns until you press Stop.')
   const [turns,setTurns] = useState<VoiceTurn[]>([])
@@ -882,8 +893,8 @@ export function VoiceAgent({ role }: { role: string }) {
 
     setDraftBusy(true)
     try {
-      const moduleId = draft.kind === 'FARM' ? 'KK-FARM-001' : 'KK-LIVESTOCK-001'
-      const targetEntityType = draft.kind === 'FARM' ? 'Farm' : 'Livestock'
+      const moduleId = draft.kind === 'FARM' ? 'KK-FARM-001' : draft.kind === 'LIVESTOCK' ? 'KK-LIVESTOCK-001' : 'KK-MARKETPLACE-001'
+      const targetEntityType = draft.kind === 'FARM' ? 'Farm' : draft.kind === 'LIVESTOCK' ? 'Livestock' : 'MarketplaceListing'
       const results = []
       for (const [targetFieldId, field] of fields) {
         results.push(await api.createAiFactCandidate(token, id, {
@@ -920,7 +931,7 @@ export function VoiceAgent({ role }: { role: string }) {
       } catch {
         // Keep the original save failure visible below.
       }
-      say('I could not prepare every field of this record draft. No farm or livestock record was created. Review any saved draft fields before trying again.')
+      say('I could not prepare every field of this record draft. No record was created or listing published. Review any saved draft fields before trying again.')
     } finally {
       setDraftBusy(false)
     }
@@ -953,6 +964,62 @@ export function VoiceAgent({ role }: { role: string }) {
         return
       }
       await createRecordDraftCandidates({ kind: 'FARM', sessionId, phase: 'NEEDS_NAME', fields, farms: [] })
+      return
+    }
+
+    if (isMarketplaceCreationRequest(original)) {
+      const token = accessToken
+      if (!token) {
+        say('Please sign in again before I can prepare a marketplace listing. Nothing was created or published.')
+        return
+      }
+      let resources: VoiceMarketResource[]
+      try {
+        const [crops, livestock] = await Promise.all([api.crops(token), api.livestock(token)])
+        resources = [
+          ...crops.map((item) => ({ id: String(item.id ?? ''), name: String(item.name ?? '').trim(), resourceType: 'crop' as const })),
+          ...livestock.map((item) => ({ id: String(item.id ?? ''), name: String(item.name ?? item.species ?? '').trim(), resourceType: 'livestock' as const })),
+        ].filter((item) => item.id && item.name)
+      } catch {
+        say('I could not load the crops and livestock you are authorized to list. Nothing was created or published.')
+        return
+      }
+      if (epoch !== turnEpoch.current) return
+      if (!resources.length) {
+        say('I could not find an existing crop or livestock record to attach to a listing. Register the resource first; nothing was created.')
+        return
+      }
+
+      const fields: VoiceRecordCreationDraft['fields'] = {}
+      const quantityMatch = original.match(/\b(\d+(?:\.\d+)?)\s*(kg|kgs|kilograms?|quintals?|tonnes?|tons?|bags?|units?)\b/i)
+      if (quantityMatch) {
+        fields.quantity = { value: Number(quantityMatch[1]), evidenceMessageId }
+        fields.unit = { value: quantityMatch[2].toLocaleLowerCase(), evidenceMessageId }
+      }
+      const priceMatch = original.match(/₹\s*(\d+(?:\.\d+)?)/i) ?? original.match(/\b(?:rs\.?|rupees?)\s*(\d+(?:\.\d+)?)/i)
+      if (priceMatch) {
+        fields.price = { value: Number(priceMatch[1]), evidenceMessageId }
+        fields.currency = { value: 'INR', evidenceMessageId }
+      }
+      const knownCrop = findKnownCrop(original, cropTerminology)?.toLocaleLowerCase()
+      const knownSpecies = parseLivestockSpecies(original)?.toLocaleLowerCase()
+      const matching = resources.filter((resource) => {
+        const name = resource.name.toLocaleLowerCase()
+        return original.toLocaleLowerCase().includes(name) ||
+          (resource.resourceType === 'crop' && Boolean(knownCrop) && name.includes(knownCrop!)) ||
+          (resource.resourceType === 'livestock' && Boolean(knownSpecies) && name.includes(knownSpecies!))
+      })
+      if (matching.length === 1) {
+        const resource = matching[0]
+        fields.resourceType = { value: resource.resourceType, evidenceMessageId }
+        fields.resourceId = { value: resource.id, evidenceMessageId }
+        fields.title = { value: resource.name + ' for sale', evidenceMessageId }
+        await createRecordDraftCandidates({ kind: 'MARKETPLACE', sessionId, phase: 'NEEDS_RESOURCE', fields, farms: [], resources })
+        return
+      }
+      const options = matching.length ? matching : resources
+      setRecordCreationDraft({ kind: 'MARKETPLACE', sessionId, phase: 'NEEDS_RESOURCE', fields, farms: [], resources: options })
+      say('Which crop or animal should I list? Say its name or number: ' + options.map((resource, index) => (index + 1) + ', ' + resource.name + ' (' + resource.resourceType + ')').join('; ') + '. Nothing has been created or published.')
       return
     }
 
@@ -1022,7 +1089,7 @@ export function VoiceAgent({ role }: { role: string }) {
   ) => {
     if (/^(cancel|cancel draft|discard|no|do not save|don't save|stop)$/i.test(q)) {
       setRecordCreationDraft(null)
-      say('Record draft discarded. No farm or livestock record was created.')
+      say('Record draft discarded. No record was created or listing published.')
       return
     }
     const evidenceMessageId = lastEvidenceMessageId.current
@@ -1033,6 +1100,24 @@ export function VoiceAgent({ role }: { role: string }) {
     const fields = { ...draft.fields }
     const addField = (field: string, value: unknown) => {
       fields[field] = { value, evidenceMessageId }
+    }
+
+    if (draft.kind === 'MARKETPLACE') {
+      const resources = draft.resources ?? []
+      const numberedResource = q.match(/^(?:item\s+|option\s+)?(\d+|first|second|third|fourth|fifth|one|two|three|four|five)\b/i)
+      const ordinal: Record<string, number> = { first: 1, one: 1, second: 2, two: 2, third: 3, three: 3, fourth: 4, four: 4, fifth: 5, five: 5 }
+      const selectedIndex = numberedResource ? Number(ordinal[numberedResource[1].toLocaleLowerCase()] ?? numberedResource[1]) - 1 : -1
+      const resource = selectedIndex >= 0 ? resources[selectedIndex] : resources.find((item) => q.includes(item.name.toLocaleLowerCase()))
+      if (!resource) {
+        say('I could not match that to one of your crops or animals. Please say one of these names: ' + resources.map((item) => item.name).join(', ') + '.')
+        return
+      }
+      addField('resourceType', resource.resourceType)
+      addField('resourceId', resource.id)
+      addField('title', resource.name + ' for sale')
+      if (epoch !== turnEpoch.current) return
+      await createRecordDraftCandidates({ ...draft, fields })
+      return
     }
 
     if (draft.kind === 'FARM') {
@@ -1110,7 +1195,7 @@ export function VoiceAgent({ role }: { role: string }) {
     const controller = new AbortController()
     activeRequest.current = controller
     setTurns(previous => [...previous, { id: ++turnId.current, speaker: 'You' as const, text: original, at: formatTurnTimestamp() }].slice(-60))
-    const turnLanguage = source === 'VOICE' ? lang : inferTextLanguage(original, lang)
+    const turnLanguage = inferTextLanguage(original, lang)
     const persistence = persistUserMessage(original, source, turnLanguage)
     // Weather intent is recognized explicitly, but fails closed until a
     // production-ready weather provider is registered and verified.
@@ -1199,7 +1284,7 @@ export function VoiceAgent({ role }: { role: string }) {
       return
     }
 
-    if (isFarmCreationRequest(original) || isLivestockCreationRequest(original)) {
+    if (isFarmCreationRequest(original) || isLivestockCreationRequest(original) || isMarketplaceCreationRequest(original)) {
       const savedId = await persistence
       if (controller.signal.aborted || epoch !== turnEpoch.current) return
       if (!savedId) {
@@ -1307,6 +1392,10 @@ export function VoiceAgent({ role }: { role: string }) {
         setTranscript(finalText || partial)
         if (finalText.trim() && !submitted) {
           submitted = true
+          const detectedLanguage = inferTextLanguage(finalText.trim(), lang)
+          // Learn from the recognized script and use it for the reply and next turn.
+          // Native browser ASR still uses a locale for its first recognition pass.
+          setLang(detectedLanguage)
           const normalized = finalText.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
           const previous = lastVoiceSubmission.current
           const now = Date.now()
@@ -1387,8 +1476,7 @@ export function VoiceAgent({ role }: { role: string }) {
             </article>
           })}
         </section>}
-        <label htmlFor="kk-voice-language" className="block text-xs font-medium text-muted-foreground">Spoken language</label>
-        <select id="kk-voice-language" value={lang} onChange={e=>{setLang(e.target.value);try{localStorage.setItem('kk-voice-language',e.target.value)}catch{/* Language preference is optional. */}}} className="h-9 w-full rounded-lg border bg-background px-2 text-xs">{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+        <p className="text-[11px] text-muted-foreground" aria-live="polite">Language analysis: automatic | Current detected language: {LANGUAGES.find(([code]) => code === lang)?.[1] ?? 'Detecting from speech'}. No language selection needed.</p>
         <div aria-live="polite" className="min-h-12 rounded-lg bg-muted/60 p-2 text-xs"><p>{message}</p>{transcript&&<p className="mt-2 border-t pt-2 text-muted-foreground">Heard: {transcript}</p>}</div>
         <div className="flex gap-2"><button type="button" onClick={listen} className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-semibold ${listening?'border border-destructive bg-background text-destructive':'bg-primary text-primary-foreground'}`}>{listening?<MicOff size={17}/>:<Mic size={17}/>} {listening?'Stop listening':'Speak'}</button><button type="button" aria-label={spoken?'Mute spoken replies':'Enable spoken replies'} onClick={()=>{setSpoken(v=>!v);if(spoken)window.speechSynthesis?.cancel()}} className="flex size-9 items-center justify-center rounded-lg border">{spoken?<Volume2 size={17}/>:<VolumeX size={17}/>}</button><button type="button" onClick={stopConversation} aria-label="Stop conversation" title="Stop listening, generation and speech" className="flex size-9 items-center justify-center rounded-lg border text-destructive"><Square size={15}/></button></div>
         <button type="button" disabled={draftBusy} onClick={() => void loadFactDrafts()} className="h-8 w-full rounded-lg border text-xs disabled:opacity-40">{draftBusy ? 'Loading drafts…' : 'Review saved fact drafts'}</button>

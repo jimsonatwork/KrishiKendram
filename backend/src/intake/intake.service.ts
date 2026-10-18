@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -69,13 +70,36 @@ export class IntakeService {
       ownerId: farm.ownerId,
     });
 
-    const extracted = await this.extractor.extract(
-      dto.content,
+    const originalLanguage = dto.originalLanguage ?? 'en';
+    const originalContent = dto.originalContent?.trim() || dto.content.trim();
+    const englishTranslation = dto.englishTranslation?.trim() || (
+      originalLanguage === 'en' ? dto.content.trim() : ''
     );
+
+    // Server-side enforcement is mandatory: client-side checkbox state is not trusted.
+    if (originalLanguage !== 'en' && (!englishTranslation || dto.translationConfirmed !== true)) {
+      throw new BadRequestException(
+        'A non-English intake requires a reviewed English meaning and explicit confirmation.',
+      );
+    }
+
+    const extracted = await this.extractor.extract(englishTranslation);
+
+    const extractedWithProvenance = {
+      ...extracted,
+      intakeMetadata: {
+        originalContent,
+        originalLanguage,
+        englishTranslation,
+        translationStatus: originalLanguage === 'en' ? 'NOT_REQUIRED' : 'CONFIRMED',
+        inputMethod: dto.inputMethod,
+        capturedAt: new Date().toISOString(),
+      },
+    };
 
     const jsonData =
       JSON.parse(
-        JSON.stringify(extracted),
+        JSON.stringify(extractedWithProvenance),
       ) as Prisma.InputJsonValue;
 
     /*

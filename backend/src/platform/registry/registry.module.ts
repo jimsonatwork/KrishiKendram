@@ -14,6 +14,9 @@ import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definiti
 import { FARM_ASSET_FIELD_DEFINITIONS } from './definitions/fields/farm-asset-field-definitions';
 import { LIVESTOCK_FIELD_DEFINITIONS } from './definitions/fields/livestock-field-definitions';
 import { MARKETPLACE_FIELD_DEFINITIONS } from './definitions/fields/marketplace-field-definitions';
+import { INVENTORY_FIELD_DEFINITIONS } from './definitions/fields/inventory-field-definitions';
+import { FINANCE_FIELD_DEFINITIONS } from './definitions/fields/finance-field-definitions';
+import { LIVESTOCK_RECORD_FIELD_DEFINITIONS } from './definitions/fields/livestock-record-field-definitions';
 
 import { MODULE_DEFINITIONS } from './definitions/modules';
 import { RESOURCE_DEFINITIONS } from './definitions/resources';
@@ -108,6 +111,18 @@ export class RegistryModule {
     }
 
     for (const definition of MARKETPLACE_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
+
+    for (const definition of INVENTORY_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
+
+    for (const definition of FINANCE_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
+
+    for (const definition of LIVESTOCK_RECORD_FIELD_DEFINITIONS) {
       this.registry.registerField(definition);
     }
 

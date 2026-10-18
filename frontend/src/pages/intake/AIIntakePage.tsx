@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
+  Mic,
+  MicOff,
   Send,
   Sparkles,
   Sprout,
@@ -51,13 +53,37 @@ type IntakeResult = {
   createdAt?: string
 }
 
-const INPUT_METHODS = [
-  {
-    value: 'MANUAL',
-    label: 'Text',
-    description: 'Describe what happened in your own words.',
-  },
+const SPEECH_LANGUAGES = [
+  { value: 'en-IN', label: 'English', code: 'en' },
+  { value: 'te-IN', label: 'తెలుగు (Telugu)', code: 'te' },
+  { value: 'hi-IN', label: 'हिन्दी (Hindi)', code: 'hi' },
+  { value: 'ta-IN', label: 'தமிழ் (Tamil)', code: 'ta' },
+  { value: 'kn-IN', label: 'ಕನ್ನಡ (Kannada)', code: 'kn' },
+  { value: 'ml-IN', label: 'മലയാളം (Malayalam)', code: 'ml' },
+  { value: 'bn-IN', label: 'বাংলা (Bengali)', code: 'bn' },
+  { value: 'mr-IN', label: 'मराठी (Marathi)', code: 'mr' },
+  { value: 'gu-IN', label: 'ગુજરાતી (Gujarati)', code: 'gu' },
+  { value: 'pa-IN', label: 'ਪੰਜਾਬੀ (Punjabi)', code: 'pa' },
 ] as const
+
+function detectSpeechLocale(text: string, fallback = 'en-IN') {
+  const ranges: Array<[number, number, string]> = [
+    [0x0c00, 0x0c7f, 'te-IN'],
+    [0x0b80, 0x0bff, 'ta-IN'],
+    [0x0c80, 0x0cff, 'kn-IN'],
+    [0x0d00, 0x0d7f, 'ml-IN'],
+    [0x0980, 0x09ff, 'bn-IN'],
+    [0x0a80, 0x0aff, 'gu-IN'],
+    [0x0a00, 0x0a7f, 'pa-IN'],
+    [0x0900, 0x097f, 'hi-IN'],
+  ]
+  const points = Array.from(text, (char) => char.codePointAt(0) ?? 0)
+  for (const [startCode, endCode, locale] of ranges) {
+    if (points.some((point) => point >= startCode && point <= endCode)) return locale
+  }
+  if (/[A-Za-z]/.test(text)) return 'en-IN'
+  return fallback
+}
 
 function formatEnum(value?: string) {
   if (!value) return 'Unknown'
@@ -76,7 +102,20 @@ export function AIIntakePage() {
   const [farms, setFarms] = useState<Farm[]>([])
   const [farmId, setFarmId] = useState('')
   const [content, setContent] = useState('')
+  const [englishTranslation, setEnglishTranslation] = useState('')
+  const [speechLanguage, setSpeechLanguage] = useState('en-IN')
   const [inputMethod, setInputMethod] = useState('MANUAL')
+  const [listening, setListening] = useState(false)
+  const [translationConfirmed, setTranslationConfirmed] = useState(false)
+  const [translationLoading, setTranslationLoading] = useState(false)
+  const [translationConfidence, setTranslationConfidence] = useState<number | null>(null)
+  const [translationReviewNotes, setTranslationReviewNotes] = useState<string[]>([])
+  const [translationBelowThreshold, setTranslationBelowThreshold] = useState(false)
+  const [translationNumericMismatch, setTranslationNumericMismatch] = useState(false)
+  const [translationUnitMismatch, setTranslationUnitMismatch] = useState(false)
+  const [translationPlantingActionMismatch, setTranslationPlantingActionMismatch] = useState(false)
+  const [translationError, setTranslationError] = useState('')
+  const [speechNotice, setSpeechNotice] = useState('')
   const [loadingFarms, setLoadingFarms] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -132,12 +171,93 @@ export function AIIntakePage() {
   }, [])
 
   const selectedFarm = useMemo(
-    () =>
-      farms.find((farm) => farm.id === farmId) ?? null,
+    () => farms.find((farm) => farm.id === farmId) ?? null,
     [farmId, farms],
   )
 
-  async function handleSubmit(
+  function startSpeechCapture() {
+    const speechWindow = window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }
+    const Recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
+    if (!Recognition) {
+      setSpeechNotice('Voice input is not available in this browser. Try Chrome or Edge, or type your answer.')
+      return
+    }
+    try {
+      const recognition = new Recognition()
+      recognition.lang = speechLanguage
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.onresult = (event: any) => {
+        const finalText: string[] = []
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          if (event.results[i].isFinal) {
+            const transcript = String(event.results[i][0]?.transcript || '').trim()
+            if (transcript) finalText.push(transcript)
+          }
+        }
+        const text = finalText.join(' ').trim()
+        if (text) {
+          const combinedTranscript = [content, text].filter(Boolean).join(' ')
+          setSpeechLanguage(detectSpeechLocale(combinedTranscript, speechLanguage))
+          setContent((previous) => previous ? previous.replace(/\s+$/, '') + ' ' + text : text)
+          setInputMethod('VOICE')
+          setEnglishTranslation('')
+          setTranslationConfirmed(false)
+          setResult(null)
+        }
+      }
+      recognition.onerror = (event: any) => {
+        setSpeechNotice('Voice input issue: ' + String(event.error || 'unknown error') + '. You can type instead.')
+        setListening(false)
+      }
+      recognition.onend = () => setListening(false)
+      recognition.start()
+      ;(window as any).__kkIntakeRecognition = recognition
+      setListening(true)
+      setSpeechNotice('Listening. Press Stop listening when you have finished speaking.')
+    } catch {
+      setListening(false)
+      setSpeechNotice('Could not start microphone. Check browser microphone permission and retry.')
+    }
+  }
+
+  function stopSpeechCapture() {
+    const recognition = (window as any).__kkIntakeRecognition
+    if (recognition) recognition.stop()
+    setListening(false)
+    setSpeechNotice('Voice capture stopped. Review the original transcript and English meaning before processing.')
+  }
+
+  const handleLocalTranslation = async () => {
+    const token = localStorage.getItem('accessToken')
+    const detectedSourceLocale = detectSpeechLocale(content, speechLanguage)
+    const sourceLanguage = SPEECH_LANGUAGES.find((language) => language.value === detectedSourceLocale)?.code || 'en'
+    if (!token) { setTranslationError('Your session has expired. Please sign in again.'); return }
+    if (sourceLanguage === 'en') { setEnglishTranslation(content); setTranslationConfirmed(false); return }
+    if (!content.trim()) { setTranslationError('Capture or enter the original statement first.'); return }
+    setTranslationLoading(true)
+    setTranslationError('')
+    setTranslationConfirmed(false)
+    setTranslationReviewNotes([])
+    try {
+      const result = await api.translateIntake({ sourceText: content.trim(), sourceLanguage }, token)
+      setEnglishTranslation(result.englishTranslation)
+      setTranslationConfidence(result.confidence)
+      setTranslationReviewNotes(result.reviewNotes || [])
+      setTranslationBelowThreshold(result.belowConfidenceThreshold)
+      setTranslationNumericMismatch(result.numericMismatch)
+      setTranslationUnitMismatch(result.unitMismatch)
+      setTranslationPlantingActionMismatch(result.plantingActionMismatch)
+      setTranslationConfirmed(false)
+      setSpeechNotice('Local translation prepared. Check the English meaning and confirm it yourself before processing.')
+    } catch (err) {
+      setTranslationError(err instanceof Error ? err.message : 'Local translation is unavailable. You can enter the English meaning manually.')
+    } finally {
+      setTranslationLoading(false)
+    }
+  }
+
+async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault()
@@ -168,7 +288,11 @@ export function AIIntakePage() {
         {
           farmId,
           inputMethod,
-          content: content.trim(),
+          content: (speechLanguage === 'en-IN' ? content : englishTranslation).trim(),
+          originalContent: content.trim(),
+          originalLanguage: SPEECH_LANGUAGES.find((language) => language.value === speechLanguage)?.code || 'en',
+          englishTranslation: (speechLanguage === 'en-IN' ? content : englishTranslation).trim(),
+          translationConfirmed: speechLanguage === 'en-IN' || translationConfirmed,
         },
         token,
       )
@@ -273,38 +397,21 @@ export function AIIntakePage() {
               </select>
             </div>
 
-            <div>
-              <div className="text-sm font-medium">
-                Input method
+            <div className="space-y-3">
+              <div className="text-sm font-medium">How would you like to tell us?</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button type="button" onClick={() => { setInputMethod('MANUAL'); setSpeechNotice(''); }} disabled={submitting} className="rounded-xl border p-3 text-left hover:bg-muted/50">
+                  <div className="font-medium">Type a message</div><div className="mt-1 text-xs text-muted-foreground">Use the keyboard</div>
+                </button>
+                <button type="button" onClick={startSpeechCapture} disabled={submitting || listening} className="rounded-xl border p-3 text-left hover:bg-muted/50">
+                  <div className="flex items-center gap-2 font-medium"><Mic className="size-4" /> Speak naturally</div><div className="mt-1 text-xs text-muted-foreground">Speak in your language</div>
+                </button>
               </div>
-
-              <div className="mt-2 grid gap-2 sm:grid-cols-1">
-                {INPUT_METHODS.map((method) => (
-                  <button
-                    key={method.value}
-                    type="button"
-                    onClick={() => {
-                      setInputMethod(method.value)
-                      setResult(null)
-                    }}
-                    disabled={submitting}
-                    className={[
-                      'rounded-xl border p-3 text-left transition',
-                      inputMethod === method.value
-                        ? 'border-primary bg-primary/5'
-                        : 'hover:bg-muted/50',
-                    ].join(' ')}
-                  >
-                    <div className="font-medium">
-                      {method.label}
-                    </div>
-
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {method.description}
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs text-muted-foreground" aria-live="polite">Language analysis: automatic | Detected: {SPEECH_LANGUAGES.find((language) => language.value === detectSpeechLocale(content, speechLanguage))?.label ?? 'Listening for language cues'}. No language selection needed.</p>
+              <button type="button" onClick={listening ? stopSpeechCapture : startSpeechCapture} disabled={submitting} className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium">
+                {listening ? <><MicOff className="size-4" /> Stop listening</> : <><Mic className="size-4" /> Start listening</>}
+              </button>
+              {speechNotice && <p role="status" className="text-xs leading-5 text-muted-foreground">{speechNotice}</p>}
             </div>
 
             <div>
@@ -320,6 +427,15 @@ export function AIIntakePage() {
                 value={content}
                 onChange={(event) => {
                   setContent(event.target.value)
+                  setSpeechLanguage(detectSpeechLocale(event.target.value, speechLanguage))
+                  setTranslationConfirmed(false)
+                  setTranslationConfidence(null)
+                  setTranslationReviewNotes([])
+                  setTranslationBelowThreshold(false)
+                  setTranslationNumericMismatch(false)
+                  setTranslationUnitMismatch(false)
+                  setTranslationPlantingActionMismatch(false)
+                  setTranslationError('')
                   setResult(null)
                 }}
                 disabled={submitting}
@@ -329,10 +445,32 @@ export function AIIntakePage() {
               />
 
               <div className="mt-2 text-xs text-muted-foreground">
-                Include useful details such as crop, area,
-                livestock, equipment, expense, or activity.
+                Include useful details such as crop, area, livestock, equipment, expense, or activity. The original transcript is preserved separately.
               </div>
             </div>
+
+            {speechLanguage !== 'en-IN' ? (
+              <div>
+                <label htmlFor="intake-english" className="text-sm font-medium">English meaning (review or correct)</label>
+                <textarea id="intake-english" value={englishTranslation} onChange={(event) => { setEnglishTranslation(event.target.value); setTranslationConfirmed(false); setTranslationConfidence(null); setTranslationReviewNotes([]); setTranslationBelowThreshold(false); setTranslationNumericMismatch(false); setTranslationUnitMismatch(false); setTranslationPlantingActionMismatch(false); setTranslationError(''); setResult(null); }} disabled={submitting} rows={4} placeholder="Enter the English meaning. Check crop names, numbers, units and dates carefully." className="mt-2 w-full resize-y rounded-xl border bg-background px-3 py-3 text-sm leading-6 outline-none focus:ring-2 focus:ring-ring" />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={handleLocalTranslation} disabled={submitting || translationLoading || listening || !content.trim()} className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium disabled:opacity-50">
+                    {translationLoading ? <><Loader2 className="size-4 animate-spin" /> Translating locally…</> : <><Sparkles className="size-4" /> Translate with local AI</>}
+                  </button>
+                  <span className="text-xs text-muted-foreground">Uses only the registry-authorized local model; no cloud fallback.</span>
+                </div>
+                {translationError && <p role="alert" className="mt-2 text-sm text-destructive">{translationError}</p>}
+                {translationConfidence !== null && <p role="status" className={translationBelowThreshold || translationNumericMismatch || translationUnitMismatch || translationPlantingActionMismatch ? 'mt-2 text-xs leading-5 text-destructive' : 'mt-2 text-xs leading-5 text-muted-foreground'}>AI confidence estimate: {Math.round(translationConfidence * 100)}% (un-calibrated estimate, not a guarantee). {translationBelowThreshold ? 'Below the 85% review threshold—check every word carefully.' : 'Still review the original and English meaning carefully.'}</p>}
+                {translationNumericMismatch && <p className="mt-1 text-sm font-medium text-destructive">Numbers differ from the original transcript. Correct quantities, dates, and units before continuing.</p>}
+                {translationUnitMismatch && <p className="mt-1 text-sm font-medium text-destructive">Measurement unit mismatch detected (for example, acres versus hectares). Correct the unit before continuing.</p>}
+                {translationPlantingActionMismatch && <p className="mt-1 text-sm font-medium text-destructive">The English meaning may have lost the planting/sowing action. Correct the meaning before continuing.</p>}
+                {translationReviewNotes.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">{translationReviewNotes.map((note, index) => <li key={index}>{note}</li>)}</ul>}
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">The original transcript is preserved. Translation confidence is only a model estimate; your confirmation is always required, especially for crop names, quantities, units and dates.</p>
+                <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={translationConfirmed} onChange={(event) => setTranslationConfirmed(event.target.checked)} disabled={submitting || !englishTranslation.trim()} /><span>I reviewed the English meaning against the original and confirm names, quantities, units and dates are correct.</span></label>
+              </div>
+            ) : (
+              <div className="rounded-lg border p-3 text-sm text-muted-foreground">English is selected. The original text is also used as the English version; review it before processing.</div>
+            )}
 
             <button
               type="submit"
@@ -340,7 +478,8 @@ export function AIIntakePage() {
                 submitting ||
                 loadingFarms ||
                 farms.length === 0 ||
-                !content.trim()
+                !content.trim() ||
+                (speechLanguage !== 'en-IN' && (!englishTranslation.trim() || !translationConfirmed))
               }
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:pointer-events-none disabled:opacity-50"
             >

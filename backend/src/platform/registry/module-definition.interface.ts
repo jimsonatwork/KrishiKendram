@@ -13,6 +13,11 @@ export interface ModuleDefinition {
   id: string;
 
   /**
+   * Optional parent module for UI/workspace hierarchy. Distinct from dependencies.
+   */
+  parentId?: string;
+
+  /**
    * Human-readable module name.
    */
   name: string;

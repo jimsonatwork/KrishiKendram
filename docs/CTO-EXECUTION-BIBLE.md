@@ -1557,3 +1557,363 @@ See docs/AI-TOOLCHAIN-ADOPTION-REVIEW.md for the full candidate matrix and secur
 5. Only then extend governed multi-field AI application through each module's own authorized service/API; keep provider benchmark, Indic ASR/TTS and weather as separate gated tasks.
 
 For each workstream, require service tests, build, authorization/audit checks and a frontend/runtime acceptance result. Do not mark a module COMPLETE because its backend service or route exists. Preserve `.cto-backup/` and the existing untracked handoff/status notes; stage only reviewed source, tests and this tracked execution record.
+
+
+## 2026-10-16 — Bilingual AI Intake enforcement and module regression
+
+- The frontend contract carries originalContent, originalLanguage, englishTranslation and translationConfirmed; English text is used as its own English representation.
+- Backend CreateIntakeDto validates the optional bilingual fields. IntakeService enforces non-English confirmation server-side before calling the extractor and records the bilingual pair, status, input method and timestamp in the existing FarmRecord JSON.
+- This is a provenance/persistence increment, not automatic translation. The current UI explicitly requires manual review/entry of the English meaning for non-English transcripts; do not represent it as a completed translation model.
+- Verification on 2026-10-16 22:27:40 IST: frontend production build PASS; focused Intake/Livestock/Marketplace tests 3 suites / 32 tests PASS; /api/v1/health HTTP 200; git diff --check PASS. Backend build has no reported errors and is being separately rechecked.
+- Remaining closure gates: integrate a replaceable, locally deployable translation provider under the central AI registry; confidence/deviation detection must ask a focused question and block material writes until resolved; run authenticated browser tests and assert actual Crop and FarmRecord rows; finish seller/buyer Marketplace lifecycle and Livestock CRUD/history acceptance before marking either module COMPLETE.
+
+
+## 2026-10-16 — Livestock archive recovery and Marketplace resource selection
+
+- Livestock UI now supports editing, ownership-history inspection and restore of archived livestock. GET /livestock/archived resolves the latest OWNER relationship including its ended record, so archive/restore does not require hard deletion or discarding provenance.
+- Marketplace create-listing UX now derives resource choices from the farmer's owned crop/livestock records and assets attached to their accessible farms; archived assets are excluded. The backend remains authoritative for ownership and registry validation.
+- Final focused verification: Intake/Livestock/Marketplace 3 suites / 33 tests PASS; backend build PASS; frontend TypeScript/Vite production build PASS; API health HTTP 200; frontend HTTP 200; git diff --check PASS.
+- Remaining: authenticated browser acceptance for archive/restore, ownership history, and seller listing lifecycle; buyer inquiry/transaction workflows are not implemented by these UI changes. Keep module acceptance PARTIAL until all module gates pass.
+
+
+## 2026-10-17 — Ollama native-store and live-provider verification
+
+The managed local Ollama runtime is version 0.40.3 and is reachable at 127.0.0.1:11434 with cloud disabled. The runtime launcher now defaults to the native WSL model store at /home/jj/.local/share/krishikendram/ollama-models, while preserving the KK_AI_OLLAMA_MODELS_DIR override. The original D: model store remains intact as a recovery copy. The copied store contains all three installed Qwen models, and all three model manifests match the source SHA-256 hashes.
+
+Live provider smoke test passed through OllamaTextGenerationProvider using qwen3:1.7b and its recorded digest. A warm synthetic request returned OK in 1.83 seconds, with 0.011 seconds model load, 1.647 seconds prompt evaluation, and 0.133 seconds generation. A separate cold load still took about 45.93 seconds; cold-start latency remains open. The response remains a proposal requiring canonical validation and user confirmation.
+
+The current active model remains qwen3:1.7b. Qwen3.5 0.8B remains selected for evaluation and Qwen3.5 2B remains a linked installed candidate; neither is production-approved. The read-only preflight found eight benchmark cases and no blockers, but the full benchmark was not run because it intentionally unloads/reloads the model and is gated to a maintenance window. No cloud fallback, production promotion, database mutation, or Docker volume change occurred.
+
+Verification: Ollama model inventory returned all three models; API health at /api/v1/health and UI health at port 4000 returned HTTP 200; focused provider/registry/text-generation tests passed 3 suites and 21 tests; shell syntax and git diff checks passed. Mocked Voice Agent E2E passed 12 of 12 tests; authenticated live-browser acceptance, multilingual translation/confidence handling, and candidate benchmark remain outstanding.
+
+
+## 2026-10-17 - Local Intake translation implementation (2026-10-17T17:37:28+05:30)
+- Added authenticated local Intake translation via the governed TextGenerationService; no cloud fallback and no direct database write.
+- Output confidence is explicitly uncalibrated. A 0.85 review threshold, visible-number check, multilingual acre/hectare check, and planting-action preservation check flag likely material drift; detected drift caps confidence at 0.5. Explicit user review and confirmation remain mandatory.
+- Focused tests pass: 3 suites / 19 tests; backend and frontend builds pass; mocked translation UI E2E passes 1/1. Route is registered; unauthenticated POST returns 401. Authenticated live-backend browser acceptance remains open.
+- Live Telugu smoke demonstrated remaining model-quality limitations: it returned 'I have 2 acres of rice' and omitted the planting action. The action guard caught it. A warm request took about 15 seconds; a later request under startup/model contention took about 87 seconds.
+- Model remains evaluation-only. Do not promote based on this smoke. Multilingual quality benchmarks and authenticated browser acceptance remain open.
+
+
+## 2026-10-17 - Cross-module regression sweep (2026-10-17T17:42:55+05:30)
+- Cross-module regression sweep passed: 7 suites / 57 tests across Intake, Livestock, Marketplace, Ollama provider and AI model-link registry. Backend and frontend builds pass; mocked Intake translation UI E2E passes 1/1.
+- Local translation still requires human review: a live Telugu smoke omitted the planting action, which the new guard caught. Model remains evaluation-only; language quality, cold latency and authenticated browser acceptance remain open.
+
+## 2026-10-17 — Central Registry, Administration Parity and Inclusive Marketplace Requirements
+
+### Non-negotiable architecture contract
+- Every module field, validation rule, category/option set, required-field policy, and configurable workflow must originate from the central Registry or versioned central configuration files. DTO validation may reject malformed transport input early, but must not become a second source of business truth. All create/update/import/AI/image/voice/API paths must pass the same registry validation and authorization policies before persistence.
+- Modules must be attachable, enableable, suspendable, upgradeable, and detachable through authorized configuration rather than hard-coded UI switches. Dependency checks, data-retention/export rules, compatibility checks, migration status, audit trail, and recovery/rollback gates are mandatory. Detach must not silently delete module data.
+- God Mode is the ultimate governance surface. Super Admin must receive the operational approvals, module lifecycle/configuration, validation-policy, user/profile, marketplace moderation, upgrade and implementation controls needed to operate the platform, except explicitly platform-root-only destructive/security actions. Admin receives a configurable, auditable delegated subset. Capability enforcement is server-side; hiding a button is not authorization.
+- Maintain parity by defining capabilities once and presenting role-scoped actions in Admin, Super Admin and God Mode. Every approval records requester, reviewer, decision, reason, timestamps, before/after state, and linked evidence where applicable. Self-approval and separation-of-duties conflicts must be blocked for sensitive actions.
+
+### Inclusive user and seller profiles
+- A marketplace seller must be a registered user. A listing may use a generic title/name and need not be linked to a pre-existing crop, livestock or farm asset. When a listing claims to represent a managed farm resource, retain the resource relationship and ownership/authorization checks.
+- Expand user profiles for individuals, farmers, producer groups/FPOs, cooperatives, businesses, traders, service providers, buyers and other legitimate participant types. Support optional public display name, organization/business name, profile photo, biography, languages, location at appropriate granularity, contact preferences, seller/buyer roles, verification state and relevant credentials. Optional means optional; do not make digital literacy, email, or a formal business identity a prerequisite for a basic farmer listing. Private contact data must not be exposed by public listing APIs.
+
+### Marketplace requirements
+- Registry-controlled categories and field definitions; image-supported listings; optional links to the seller's crop/livestock/asset/farm history; explicit active/published state; owner profile preview; safe listing/order lifecycle; moderation/approval controls for authorized Admin+ roles; and complete audit/history.
+- Public browse filters must support category, newest/today, yesterday, day before yesterday, week-wise, and currently active listings. Define date boundaries in the application timezone and return stable newest-first ordering. Avoid treating all time periods as separate hard-coded modules; expose a reusable period filter.
+- Photos must be stored through an approved upload/storage path with content-type/size validation and safe access rules; do not persist temporary browser object URLs. Listing images are user-submitted content and must not bypass moderation or privacy policy.
+- A seller may optionally expose crop/livestock lifecycle information when authorized. Only share the selected, approved, non-sensitive fields and evidence; do not reveal unrelated farm data, private contact details, or other users' records. Clearly distinguish seller-entered claims from verified records.
+
+### Acceptance gates
+1. Registry definitions drive field presence, validation, category options and server validation across all write paths.
+2. Admin, Super Admin and God Mode capabilities are parity-reviewed against the central permission/capability matrix, with explicit root-only exceptions.
+3. Module lifecycle changes are audited, dependency-aware, reversible where possible, and preserve historical data.
+4. Marketplace supports generic user-owned listings and resource-linked listings, category/date/active filters, persisted images, privacy-safe seller profiles and explicit lifecycle sharing.
+5. Unit, integration, authorization, migration, build and browser end-to-end tests pass before a requirement is called complete.
+
+## Marketplace Commerce Platform Scope — 2026-10-17
+
+KrishiKendram Marketplace is a multi-sided agriculture commerce workflow, not a simple classified-listing page. It must provide buyer and seller workspaces, listing lifecycle and sold history, per-unit and bulk pricing, offers and price agreement, rich media/social links, orders, fulfilment, payment-provider adapters, seller reputation and privacy-safe traceability.
+
+### Core commerce capabilities
+- Seller: create/edit/draft/publish/pause/archive listings; stock and availability; unit, pack and bulk prices; minimum order quantity; offers received; order processing; sold/completed history; sales summaries; repeat customers.
+- Buyer: discover/search/filter, compare, save, enquire, request quotes, place quantity orders, make price offers, track order state, message sellers, review completed transactions, and report disputes.
+- Negotiation: buyer offer and seller accepted/agreed price are separately persisted. Future counteroffer flow must be a state machine with actor permissions, expiry, immutable history and audit; never silently overwrite the original listing price.
+- Rich content: multiple images, video URLs, external social/catalogue/Drive links. Outbound links use HTTPS validation and safe target attributes. Embed only official/publicly embeddable content. Do not bypass Drive permissions or scrape private content.
+- Fulfilment: pickup/delivery, shipment tracking adapters, receipts, cancellation/returns/disputes, payment adapters and settlement reconciliation. Payment webhooks require signature verification and idempotency. Do not store payment credentials.
+- Agriculture-native: batch/harvest availability, grade/variety/origin evidence, farm-service and equipment rental, RFQ/wholesale, FPO/co-op pooled supply, recurring orders and optional seller-consented crop/livestock lifecycle evidence.
+- Inclusion: low-literacy voice/photo/video intake, automatic language detection, local/open-source provider adapters, draft translation, quantity/unit/grade extraction with confidence and explicit seller confirmation. AI must not publish, set prices, accept offers, transact, or expose private records without explicit confirmation.
+
+### Architecture and technology review
+- Existing NestJS/Prisma Registry remains the authoritative business model and validation layer. Do not create a second source of truth for crops, livestock, stock or orders.
+- Evaluate reusable multi-vendor patterns from MercurJS/Medusa (https://github.com/mercurjs/mercur) for vendor workflows, offers, commissions and payouts; do not adopt a parallel commerce database without a compatibility and migration review.
+- Evaluate OpenShip conversational commerce and MCP patterns (https://github.com/openshiporg/marketplace) as a future AI-assisted discovery interface; authenticated KrishiKendram APIs and authorization remain authoritative.
+- Implement media through a storage adapter: S3-compatible object storage for durable deployments, local storage for development, generated object keys and metadata in PostgreSQL. Add file-size/type limits and a content-scanning policy before upload is considered production-ready.
+- Keep social/video/Drive integrations adapter-based. Public links are supported first; API/OAuth integrations require explicit user consent and provider-specific permission scopes.
+- Price suggestions must include source, market/region, timestamp, unit normalization and uncertainty; they are advisory, not automatic price writes.
+
+## 2026-10-17 — Marketplace financial, trust and governance requirements
+See `docs/MARKETPLACE-COMMERCE-GOVERNANCE-ROADMAP.md` for the detailed scope and release gates. Marketplace transactions must disclose buyer fees, seller commission, applicable tax lines, delivery/payment costs, gross/net settlement and rounding before confirmation; retain immutable versioned snapshots and use decimal-safe ledger amounts. Tax policy must be jurisdiction/product-aware and reviewed by qualified advisers; do not hardcode legal rates. Add payment adapter security, idempotency, refunds, disputes and reconciliation before live deductions. Add buyer and seller purchase/sales history, mutual verified-transaction reviews/comments, caution indicators, evidence-backed scoped restrictions, appeals and audited blacklist/reinstatement. Admin, Super Admin and God Mode need one Registry-backed feature catalogue with server-enforced capabilities, dependencies, rollout, audit and rollback. Disabling a feature must preserve history and refunds. Technology options must be continually evaluated against cost, license, security, self-hosting, data residency, farmer usability and migration risk.
+
+
+# Marketplace Commerce, Trust, Payment and Feature-Governance Execution Contract
+
+Updated: 2026-10-17 23:51:39 IST
+
+## Marketplace Commerce, Trust, Financial Controls and Feature Governance — 2026-10-18
+
+Updated: 2026-10-17 23:51:39 IST
+
+## Product objective
+
+Marketplace is a governed agricultural commerce workflow, not merely a listings page. It supports discovery, offers, transparent deal terms, fulfilment, transaction history, reviews, disputes, trust decisions and eventual payment/settlement. Each capability is independently feature-controlled without erasing historical records.
+
+## 1. Listing-to-deal flow
+
+Seller creates a generic or resource-linked listing; Registry validates fields; ownership, authorization and restrictions are checked; seller publishes; buyer browses and requests a quote; quote snapshots quantity, unit price, buyer fee, seller commission, tax status, buyer total, estimated seller net, currency and policy version; buyer submits order; seller accepts/rejects/proposes another price; changed price requires buyer confirmation; parties fulfil; completion updates tracked stock atomically; both parties can submit a verified review; history is retained.
+
+## 2. Fee and tax policy
+
+Buyer platform fee and seller commission are separate, configurable, versioned basis-point policies. Show subtotal, buyer fee, tax, configured shipping/payment costs, discounts, buyer payable total, seller gross, commission, seller net estimate, currency, rounding and quote time/expiry. Never invent statutory rates. Tax must eventually be jurisdiction/product/category/seller-type aware with effective dates, exemptions, invoice/credit-note references and qualified review. Until reviewed configuration exists, mark REVIEW_REQUIRED and keep the quote provisional; collect no money.
+
+## 3. Payment, ledger and settlement
+
+After provider selection, create payment intent against an immutable order quote; verify signed webhooks; use idempotency and replay protection; post balanced immutable ledger entries; track authorization/capture/failure/refund/partial refund/chargeback/payout; reconcile provider statements; calculate settlement after disclosed fees/tax/adjustments; support payout holds and disputes. Never store raw payment credentials or claim money moved without provider and ledger evidence.
+
+## 4. Buyer and seller histories
+
+Buyer view: orders, status timeline, seller, quantity, saved quote, offer/counter-offer, completion, invoices/receipts when available, refunds/disputes and review. Seller view: purchases and sales separately, listing, buyer under privacy rules, gross, commission, tax, net estimate, payment state, refunds, settlement/payout references and export. Historical quote snapshots are immutable; net is only an estimate until payment and reconciliation are live.
+
+## 5. Reports, evidence and dispute workflow
+
+Buyer or seller can report listing/transaction using controlled categories (fraud, misrepresentation, non-delivery, quality, harassment, payment dispute, safety, other), description and bounded evidence links. Transaction reports require participation; derive the counterparty server-side. Flow: OPEN → UNDER_REVIEW → RESOLVED or DISMISSED. Preserve reporter, target, case, evidence references, reviewer, timestamps, rationale and audit. Private evidence never appears on public profiles. Appeals are linked cases and should be independently reviewed where feasible.
+
+## 6. Caution ratings and scoped restrictions
+
+Caution is an evidence-backed risk signal, not a public accusation or automatic guilt. Separate scopes: CAUTION, LISTING_CREATE, ORDER_CREATE, MARKETPLACE_ALL. Every restriction needs reason, case/evidence, actor, start, optional expiry, status and appeal path. Expired restrictions cease to block actions; revocation is audited. Restrict only necessary Marketplace capabilities, preserve history and appeals, and never erase records. AI may flag patterns but cannot autonomously blacklist or permanently ban.
+
+## 7. Verified reviews and comments
+
+Only a participant in a completed order can review the counterparty, once per order. Reviews start PENDING; only PUBLISHED reviews are public. Preserve moderation history. Seller response is bounded and auditable and cannot rewrite the review. Provide abuse/report/appeal paths and show rating context/sample size.
+
+## 8. Admin, Super Admin and God Mode
+
+Admin handles assigned queues and routine cases within delegated permissions. Super Admin controls approved policy, escalations, scoped restrictions, moderation and feature configuration. God Mode has ultimate override and includes every operational approval available to Super Admin. Decisions require server authorization, actor, reason, before/after audit, effective time and safe reversibility. Do not infer God Mode from UI labels.
+
+## 9. Feature switchboard and dependencies
+
+Registry-backed feature catalogue: stable ID, owner, description, default/enabled state, role scope, dependencies, risk, rollout, version, last actor/time, approval and rollback plan. Features include listings, offers, buyer fees, seller commission, tax display, payments, refunds, settlement, reviews, comments, evidence, caution, reports, restrictions, appeals, history export, verification, media links, bulk pricing, delivery, RFQ and AI. Turning a feature off must not erase orders, evidence, invoices, ledger, audit or appeal rights. Drain in-flight payment/refund flows before disabling dependencies.
+
+## 10. Continuous technology evaluation
+
+Review open-source commerce engines, payment/tax adapters, object storage, identity/verification, fraud, agricultural market feeds, messaging, logistics, accessibility and low-bandwidth/offline support. Score licence, self-hosting, cost, data residency, Indian farmer usability, language support, API maturity, lock-in, maintenance, security, observability, recovery and exit strategy. Prototype behind adapters/feature flags; test failure/security; document decision, owner and date. No provider is trusted solely on an AI recommendation.
+
+## 11. Acceptance and safety gates
+
+No live deduction without reviewed fee/tax policy, explicit disclosure/consent, provider integration, signed webhook verification, idempotent ledger, refund/reconciliation tests, incident playbook and legal/accounting review. No permanent blacklist without documented evidence, authorized decision, notice and appeal. Protect private evidence. Test role boundaries, counterparty verification, expiry, concurrent stock, policy versions, webhook replay, partial refunds, appeals, feature dependencies and audit completeness.
+
+## 12. Current implementation boundary
+
+Implemented: versioned fee/commission policy, provisional quote breakdown, immutable quote snapshot, buyer confirmation of seller-changed price, transaction-verified reviews and moderation, trust-case/restriction persistence and endpoints, restriction checks on listing creation/publication and order creation, and buyer/seller history summary API. UI for trust queues/appeals, independent appeal review, feature switchboard integration, Registry resource definitions, media upload, provider payment, ledger, refunds and payouts remain follow-on work; never describe a planned adapter as live.
+
+## End-to-end execution flow
+
+1) Configure/review policy → 2) seller drafts/publishes after Registry, authorization and trust checks → 3) buyer requests versioned quote → 4) buyer places order → 5) seller accepts/rejects/proposes price → 6) buyer confirms changed price → 7) parties fulfil → 8) completion updates stock/order → 9) approved payment adapter captures/reconciles money → 10) histories/settlement show verified facts → 11) parties review/report → 12) authorized moderator investigates and records scoped expiring decision → 13) affected party appeals → 14) audit and metrics feed continuous evaluation.
+
+
+## Marketplace implementation checkpoint — 2026-10-18 00:09:58 IST
+
+### Implemented in code
+
+H2
+
+### Commerce quote and policy
+
+Buyer fee and seller commission are independent feature-gated quote lines. Quotes use integer minor-unit rounding, versioned policy snapshots, tax review state, buyer total and seller net estimate. A seller-proposed price change requires explicit buyer confirmation before ACCEPTED.
+
+### Trust reports and appeal
+
+Authenticated case intake supports controlled categories, bounded evidence URLs, listing/order association, server-derived transaction counterparty, case status and audit. Appeals are linked to a decided parent case; target users can see a redacted decided-case entry and appeal without exposing the reporter evidence. Appeal decisions are rejected when attempted by the original decision-maker.
+
+### Caution and restrictions
+
+Restrictions have separate CAUTION, LISTING_CREATE, ORDER_CREATE and MARKETPLACE_ALL scopes, case/evidence linkage, actor attribution and expiry. All new restrictions must expire within 1–365 days. Active restrictions are enforced at listing creation/publication and order creation; admins can review and revoke with a reason. Caution records do not automatically block transactions.
+
+### Reviews and history
+
+Only participants in completed orders can submit one review each; reviews start pending moderation. Authorized moderation is audited, and a review recipient can post a bounded, audited response after publication. Buyer purchase and seller sales summaries expose counts and completed quote totals with an explicit note that settlement remains estimated.
+
+### Feature switchboard and payment foundation
+
+Added persistent versioned feature flags, default catalogue, dependency checks, risk tiers, mandatory reason and audit; Admin can change non-critical flags, critical flags require Super Admin/God Mode authority. Listing/order/offer/review/report/history routes and financial quote lines respect flags. Added payment and ledger persistence models plus an intentionally disabled provider adapter contract. No live payment, deduction, refund or payout is active.
+
+### Central Registry
+
+Added Registry field definitions and resources for marketplace feature flags, trust cases and restrictions; trust category and feature-state writes use Registry validation.
+
+### Still open / safety boundary
+
+Provider selection and signed webhook implementation, idempotent posting of balanced ledger entries, payment intent/capture, refunds/chargebacks, reconciliation, seller payout/settlement, jurisdiction-aware reviewed tax configuration, persistent media upload, deeper Registry validation for every trust field, public caution presentation policy, authenticated browser E2E and dedicated appeal/moderation screens beyond the Marketplace panels remain due. Do not collect money until payment/tax/legal/security/reconciliation gates pass.
+
+This checkpoint supersedes earlier statements that the feature switchboard and trust UI were still only planned. The payment adapter contract and ledger schema are foundations only; provider-backed movement of money is not live.
+
+
+## Marketplace final validation addendum — 2026-10-18 00:23:48 IST
+
+Public feature-state API now drives UI visibility for listings, orders, reviews, reports and history. Public listings suppress sellers with active Marketplace-wide restrictions and expose only the moderated, unexpired caution rating/expiry without exposing evidence. Seller-side restriction checks also protect quote/order endpoints against stale direct requests. Admin cannot change tax settings; tax edits require Super Admin/God Mode and the UI preserves the configured review reference.
+
+
+## Marketplace wholesale minimum quantity — 2026-10-18
+
+Marketplace listings now support an optional minOrderQuantity in the listing unit. Registry field marketplaceListingMinimumOrderQuantity is the canonical validation source. Both quote and order creation reject requests below the seller threshold server-side; the frontend displays the minimum and validates before submission. Existing listings remain valid because the field is nullable. The additive migration is 20261018113000_marketplace_minimum_order_quantity; never reset the database to apply it.
+
+
+## Marketplace negotiation loop — 2026-10-18
+Marketplace negotiation supports iterative buyer counter-offers after a seller proposes a revised unit price. The authenticated buyer can counter from PRICE_CONFIRMATION_REQUIRED; the order returns to PENDING for the seller's next response. The service re-calculates the quote, persists the current policy version and pricing snapshot, records an audit event with negotiation context, and notifies the seller. Backend feature enforcement is authoritative; the UI only exposes the action when offers are enabled. No payment is initiated.
+
+## Marketplace delivery and receipt workflow — 2026-10-18
+
+Accepted Marketplace orders now support seller-maintained delivery status, carrier, tracking number, HTTPS tracking URL and estimated delivery date. Seller updates are authorized against the order seller, Registry-validated, transition-checked, audited and notify the buyer. Only the buyer may confirm receipt after dispatch/in-transit; if tracking has started, seller completion is blocked until buyer confirmation. The Registry-backed marketplace.delivery feature depends on marketplace.orders. No carrier-rate or label-purchase integration is implied.
+
+## Marketplace media upload and storage — 2026-10-18
+
+Authenticated Marketplace media upload supports JPEG/PNG/WebP/AVIF images up to 15 MiB and MP4/WebM videos up to 100 MiB. Temporary files are stored outside the public path with randomized names; file signatures are checked before moving to UUID-based final paths. Uploads require listing-create authorization, pass restriction and marketplace.media_uploads feature checks, and are audited. Internal uploaded paths are accepted by listing DTO/Registry validation and resolved to the API origin in the UI. Storage defaults to backend/uploads/marketplace and can be relocated with KK_MARKETPLACE_MEDIA_DIR. Git ignores uploaded media. This is a local-disk adapter, not yet a malware-scanned/object-storage/retention-complete production media service.
+
+## Marketplace wholesale price tiers — 2026-10-18
+
+Marketplace listings support up to 12 quantity-based wholesale tiers (minimum quantity and unit price). Central Registry fields validate tier quantities and prices; the service requires strictly increasing unique thresholds. Quote and order creation select the best eligible tier, but buyer offers remain a distinct negotiation price and the order retains its applicable listed/tier unit price. The marketplace.wholesale_pricing feature flag governs server quote behavior and UI visibility. Migration: 20261018120500_marketplace_wholesale_price_tiers.
+
+## 11. Wholesale price tiers (implemented slice - 2026-10-18)
+- Sellers can configure up to 12 quantity-based unit-price tiers using the compact minimum-quantity:unit-price format, for example 10:100, 25:90.
+- The central Registry validates each minimum quantity and unit price; thresholds must be positive, unique, and strictly increasing after normalization.
+- Quote and order creation choose the highest eligible tier for the requested quantity. A buyer's explicit offer remains a negotiation offer and does not silently replace the listed tier price.
+- The effective unit price is saved with the order and quote snapshot so transaction history remains stable if the seller edits future listing tiers.
+- The Registry-backed marketplace.wholesale_pricing feature switch gates tier configuration and display. Turning it off preserves stored tier data and existing orders.
+
+## 12. Signed payment sandbox (implemented slice - 2026-10-18)
+- The separate Registry-backed marketplace.payment_sandbox feature is disabled by default and requires Super Admin/God Mode approval. It does not turn on live provider payments.
+- Sandbox intent creation requires KK_MARKETPLACE_PAYMENT_MODE=sandbox, a sandbox webhook secret of at least 32 characters, a buyer-owned accepted order, a saved quote, and an idempotency key. The response explicitly states that no money is collected or transferred.
+- Webhooks verify HMAC-SHA256 against the exact raw request bytes using constant-time signature comparison. Events are persisted with a unique provider/event ID key and payload hash; exact replay is idempotent and event-ID reuse with a changed payload is rejected.
+- The allowed simulation state path is CREATED -> AUTHORIZED -> CAPTURED or FAILED; terminal states cannot be replayed into a new state. Amount and currency must exactly match the immutable payment intent, and capture is rejected if the order is no longer accepted.
+- A simulated capture writes two equal-and-opposite append-only ledger entries (PAYMENT_CLEARING debit and BUYER_FUNDS_HELD credit) with deterministic idempotency keys. This is test accounting only, not movement of funds.
+- Live payment-provider linking, refunds/chargebacks, payout/settlement, tax remittance and real collection remain disabled until provider, security, legal/accounting, reconciliation and end-to-end review gates pass.
+
+## 13. Next release gates
+1. Implement jurisdiction/product/category-aware tax profiles with effective dates and reviewed policy references; never hardcode tax law or infer jurisdiction from unverified input.
+2. Implement sandbox refunds/chargeback state, idempotency, ledger reversals, payout holds and reconciliation; keep real money movement disabled.
+3. Complete authenticated browser E2E across listing -> tiered quote -> offer/counter-offer -> accepted order -> sandbox intent -> signed event -> delivery -> completion -> review/dispute.
+4. Complete formal caution notice/appeal UX, media retention/scanning and a documented Admin/Super Admin/God Mode capability matrix.
+5. Run full regression, backend/frontend production builds, schema/migration checks and runtime health smoke checks.
+
+## Marketplace sandbox payment simulation — 2026-10-18
+
+The Marketplace has a sandbox-only payment intent and webhook flow. Payment intents require an accepted order owned by the buyer, an idempotency key, a saved immutable quote snapshot, and the critical marketplace.payment_sandbox flag. The server also requires KK_MARKETPLACE_PAYMENT_MODE=sandbox and a webhook secret of at least 32 characters; the flag defaults OFF. Webhooks verify HMAC-SHA256 over raw request bytes with timing-safe comparison, reject event-id reuse with changed payloads, match amount/currency, enforce status transitions and write balanced equal-value debit/credit ledger entries for simulated CAPTURED events. Every event is audited. This is accounting simulation only: no real funds move and live payment, refund, payout, reconciliation and tax-remittance paths remain disabled.
+
+## 14. Sandbox refunds and balanced reversals (implemented slice - 2026-10-18)
+- Sandbox refunds are a separate feature flag, disabled by default and dependent on sandbox payment simulation. They require an accepted/completed buyer-owned order and an already captured sandbox payment.
+- Each refund uses a stable idempotency key, immutable amount/currency/reason, and a unique sandbox refund identifier. Requested plus successful refunds reserve against the captured amount; an over-refund is rejected before persistence.
+- Refund outcomes are accepted only through a signed HMAC-SHA256 webhook over exact raw bytes. Event IDs share the unique provider-event replay store and payload hash, so identical events are idempotent and changed-payload re-use is rejected.
+- Only REQUESTED -> SUCCEEDED or FAILED is allowed. A successful simulated refund appends two equal entries reversing the original capture (BUYER_FUNDS_HELD debit and PAYMENT_CLEARING credit), with a refund-specific unique key and audit record.
+- The UI shows sandbox payment/refund history and lets the buyer request a partial or full simulated refund when the feature is enabled. A signed sandbox outcome is still required to mark it successful. No funds are moved.
+- Provider-backed refunds, chargebacks, dispute evidence/deadlines, payout holds, settlement and reconciliation remain disabled. These need a real provider adapter, verified signed events, legal/accounting review and end-to-end reconciliation before any live enablement.
+
+
+
+### Marketplace settlement and reconciliation controls (2026-10-18)
+- Seller-scoped statements report per-order gross, commission, net estimate, sandbox capture/refund totals, active payout holds and explicit NOT_PAID_OUT status.
+- Super Admin/God Mode can create/release payout-hold governance records for orders with captured-payment records, with reason, bounded optional expiry and audit. This does not hold or release funds.
+- Super Admin/God Mode can run persisted ledger reconciliation reports covering debit/credit totals by currency, invalid amounts/directions, captured payments missing ledger pairs, successful refunds missing reversal pairs, and exceptions. Runs are audited and never move money.
+- Jurisdiction-aware tax profiles remain drafts until qualified-review reference approval by Super Admin/God Mode; matching requires jurisdiction, category and effective date. Historical order quote snapshots remain immutable.
+- Release gate remains closed for real payment capture/refund, tax remittance and payout until provider integration, signed/idempotent webhooks, dispute/chargeback handling, reconciliation and qualified legal/accounting review pass authenticated end-to-end tests.
+
+
+### Marketplace seller profiles, saved listings, messaging and bulk RFQs (2026-10-18)
+- Seller profiles support display name, bio, coarse region, contact preference and explicit public-phone consent. Public responses redact phone unless showPhone is true; soft-deleted users are not exposed.
+- Favorites are private per user and removed by status transition rather than hard deletion.
+- Buyer/seller messages are participant-scoped, tied to a listing or order, length-bounded, and auditable. Listing inquiry routing requires the published seller; seller replies require an existing inquiry. Order messages can only go to the other transaction participant.
+- Bulk RFQs support category, quantity/unit, target price, region, needed-by date, seller quotations, validity, buyer accept/reject decisions and cancellation. RFQ award is not an order and cannot move money.
+- Central Registry now includes resource/capability definitions and field definitions for seller profiles, favorites, messages, RFQs and RFQ responses; feature flags control favorites, messaging and RFQs without deleting history.
+- Additive migration 20261018140000_marketplace_profiles_favorites_messages_rfqs creates the new tables and restrictive foreign keys. Do not reset or delete existing data.
+- Remaining release gates: authenticated E2E against migrated DB, complete regression suite, UI feature-toggle smoke, message/profile privacy checks, and live provider/compliance work remains disabled.
+
+
+### Regression and migration checkpoint — 2026-10-18 13:22 IST
+- [x] Prisma deploy applied all three pending Marketplace migrations: reviewed tax profiles, settlement/reconciliation controls, and seller profiles/favorites/messages/RFQs. No database or Docker volume reset.
+- [x] Full backend regression passed: 65 suites, 620 tests.
+- [x] Backend production build passed after Registry resource exports, seller profile privacy redaction and RFQ/message validation updates.
+- [ ] Final frontend production build and Marketplace Playwright journey are running/remaining; then verify live API/UI health and git diff check.
+- [ ] Existing DB history has a pre-existing applied migration named 20261004160000_god_mode_authority_tier that is absent from the local migrations directory. Do not erase or rewrite that history; it did not prevent the three additive Marketplace migrations from deploying.
+
+
+### Final Marketplace verification checkpoint — 2026-10-18 13:30 IST
+- [x] Full backend regression: 65 suites / 620 tests passed.
+- [x] Backend production build passed.
+- [x] Marketplace Playwright journey passed: profile privacy presentation, seller listing, favorites save, private buyer-to-seller message, bulk RFQ submission and settlement transparency.
+- [x] E2E caught and fixed a native HTML number-step issue for fractional RFQ quantities; quantity and minimum-order inputs now allow decimal values.
+- [x] Corrected additive migrations applied successfully; no database volume reset.
+- [ ] Final frontend production build, live service restart/health smoke, diff check and final runtime verification.
+
+
+### Final completed verification — 2026-10-18 13:36 IST
+- [x] Backend production build passed after RFQ quote-expiry enforcement.
+- [x] Frontend TypeScript/Vite production build passed after fractional quantity and quote-expiry UI updates. Existing non-blocking main chunk warning remains at approximately 516 KB minified.
+- [x] Full backend regression: 65 suites, 621 tests passed.
+- [x] Marketplace Playwright journey: 1 passed, covering seller profile/privacy presentation, listing, save/remove favorite, private message, RFQ submission and statement-only settlement.
+- [x] Prisma applied tax profile, settlement/reconciliation, and seller profile/favorites/messages/RFQ migrations. No volume reset or data deletion.
+- [x] User-level backend/frontend services restarted and active. Runtime smoke: API health, Marketplace categories, public feature flags, commerce policy and UI all HTTP 200. Protected profile/RFQ/settlement endpoints return expected HTTP 401 without a token.
+- [x] git diff --check passed; no commit/push performed.
+- [ ] Remaining external release gates only: real payment-provider implementation, real refunds/chargebacks/payouts, tax/legal/accounting review, object-storage production hardening and fully authenticated end-to-end testing with real roles.
+- [ ] Preserve the pre-existing database history discrepancy: applied migration 20261004160000_god_mode_authority_tier is absent from the local migration directory. Do not rewrite migration history or reset the database.
+
+
+
+
+### Final verification checkpoint — 2026-10-18 14:09 IST
+- [x] Full frontend Playwright suite passed: 15 tests, zero failures, including the new core farm journey, multilingual intake translation, Marketplace buyer/seller workflow and Voice Agent workflows. The core journey timeout was raised to 60 seconds because parallel browser load made its 30-second default too tight; the complete rerun passed.
+- [x] Full backend regression passed: 65 suites and 621 tests, zero failures.
+- [x] Backend Nest build and frontend TypeScript/Vite production build completed successfully. Existing non-blocking frontend main bundle warning remains at 516.45 kB minified.
+- [x] Prisma migration status: 48 migrations found; database schema is up to date. Existing note about the applied 20261004160000_god_mode_authority_tier history entry remains preserved; do not reset or rewrite migration history.
+- [x] Runtime smoke after builds: API health, Marketplace categories, commerce policy, public feature flags and frontend root returned HTTP 200. Protected Marketplace profile endpoint returned expected HTTP 401 without a token.
+- [x] git diff --check passed. Existing implementation changes remain uncommitted; no commit/push and no destructive database or Docker-volume operations.
+- [ ] Remaining external/release gates: real payment provider, real refunds/chargebacks/payouts, qualified tax/legal/accounting review, production object-storage hardening, and fully authenticated E2E with real roles. Live money movement and tax remittance remain disabled.
+- [ ] Next implementation focus: continue core-module workflows in sequence and prioritize confirmed gaps; do not drift into AI-only work or micro-management.
+\n\n
+### Marketplace trust hardening — 2026-10-18 14:12 IST
+- [x] Added explicit permanent Marketplace-wide blacklist support to trust-case resolution. An Admin/Super Admin can leave duration blank only for MARKETPLACE_ALL; narrower restrictions and caution ratings require a 1–365 day expiry.
+- [x] Marketplace UI now explains permanent versus temporary duration, labels a no-expiry restriction as a permanent blacklist, and exposes reason-required manual revocation.
+- [x] Active Marketplace-wide restrictions continue to hide the seller's published listings from public discovery and block Marketplace actions. No account or listing data is hard-deleted.
+- [x] MarketplaceService unit suite passed: 55 tests, including new permanent-blacklist and expiry-policy regressions. Dedicated Admin browser journey passed, covering apply, persistent active state and reasoned revocation.
+- [x] Backend Nest build passed after service changes; frontend TypeScript/Vite build passed after UI changes; git diff --check passed.
+- [ ] Final release gates remain real payment/refund/chargeback/payout provider integration, qualified tax/legal/accounting review, production object-storage hardening, and authenticated E2E with real roles. Live money movement and tax remittance remain disabled.
+\n\n
+### Final runtime verification — 2026-10-18 14:23 IST
+- [x] Full frontend Playwright suite passed: 16 tests, zero failures, including core farm workflows, multilingual Intake, Marketplace buyer/seller flows, permanent blacklist apply/revoke, and Voice Agent journeys.
+- [x] Full backend regression after permanent-blacklist implementation passed: 65 suites and 623 tests, zero failures. The focused MarketplaceService suite passed 55 tests.
+- [x] Backend production build passed after the service change. Frontend TypeScript/Vite production build passed after the Marketplace trust UI change; the existing non-blocking 516.45 kB main chunk warning remains.
+- [x] Prisma reports 48 migrations and an up-to-date database schema.
+- [x] Restarted the supervised backend and frontend services; both are active. Runtime smoke: API health, Marketplace categories, commerce policy, public feature flags and UI returned HTTP 200; protected Marketplace profile returned expected HTTP 401 without a token.
+- [x] PMD DOCX package and XML are valid; permanent blacklist governance details are included in the PMD, CTO Bible, Blueprint, Marketplace roadmap and timestamped execution plan.
+- [x] git diff --check passed. No commit/push, database reset, Docker volume deletion or hard deletion of user/listing data.
+- [ ] Remaining release gates: real payment/refund/chargeback/payout provider, qualified tax/legal/accounting review, production object-storage hardening, and fully authenticated E2E using real roles. Live money movement and tax remittance remain disabled.
+- [ ] Continue core modules in sequence and address confirmed workflow gaps rather than diverting back into AI-only work.
+
+
+## 13. Marketplace parent workspace: Inventory and Finance submodules (2026-10-18)
+- Marketplace is the parent commercial workspace. Its visible submodules are Marketplace operations, Inventory, and Finance; Inventory and Finance are no longer independent farmer sidebar destinations.
+- Legacy /app/inventory and /app/finance routes redirect to /app/marketplace?workspace=inventory and /app/marketplace?workspace=finance so saved links remain usable.
+- The central Registry represents Inventory and Finance with parentId=marketplace. Parent hierarchy is distinct from operational dependencies and is covered by a registry invariant test.
+- Sellers can create a listing linked to a farm-owned inventory item. Backend ownership checks, active-item checks and available-stock limits are authoritative; the listing quantity cannot exceed on-hand stock at creation.
+- On completion of a stock-linked Marketplace order, the same database transaction decrements the inventory item, writes a STOCK_OUT InventoryTransaction with order reference and before/after quantities, records an audit event, and raises the existing low-stock notification when crossing the reorder threshold. The Marketplace listing quantity is decremented in the same transaction.
+- Existing farm-scoped permissions, soft archive, stock movement history and the original inventory data remain in place. Marketplace loads inventory choices best-effort so lack of inventory read permission does not break the public Marketplace page.
+- Regression coverage includes linked stock decrement and ledger creation plus rejection of listing quantity above available stock. The full backend regression passed 65 suites and 626 tests; the focused MarketplaceService suite now has 57 tests, and the central Registry suite passed 44 tests including parent integrity. Backend and frontend production builds passed. The dedicated Marketplace browser journey passed, covering permanent blacklist apply/revoke, Inventory/Finance tabs, legacy route redirect, and creating a stock-linked inventory listing; the full browser suite is running for final cross-module regression.
+- Finance is presented inside the same Marketplace workspace. Existing buyer/seller order history, itemized provisional quotes, statement-only settlements, payout holds and reconciliation reports remain distinct from the farm income/expense ledger. Do not auto-book an order as cash income or move money until payment capture is verified and the accounting mapping is approved.
+- Release gates remain real provider-backed payments, refunds/chargebacks/payouts, qualified tax/legal/accounting review, durable media security, and authenticated end-to-end checks with real roles. Sandbox payment/refund flows must never be represented as real money movement.
+
+
+## Marketplace finance workspace consolidation — 2026-10-18
+- [x] Moved buyer/seller order history, seller settlement statement, ledger reconciliation, payout-hold review/release, jurisdiction-aware tax profiles and Marketplace fee/tax policy controls into the Finance submodule alongside the farm income/expense ledger.
+- [x] Marketplace tab remains focused on listing discovery/creation, seller profile, buyer/seller communication, RFQs, orders and trust governance. Finance uses the same existing APIs and records; no parallel ledger or duplicate transaction data was introduced.
+- [x] Updated Marketplace journey tests to navigate to Finance for settlement transparency and return to Marketplace for buyer/seller interactions. Dedicated tests verify that the Finance workspace shows settlement, history and tax/policy controls.
+- [x] Full backend regression passed 65 suites / 626 tests. Backend production build passed. Frontend production build passed. Full frontend Playwright suite passed 16 tests before Finance workspace consolidation; the two affected Marketplace browser journeys passed after consolidation.
+- [x] Permanent Marketplace-wide blacklist, inventory-backed listing, stock-out ledger, low-stock alert, audit trail, Finance navigation and legacy redirects are covered by backend and browser regressions.
+- [ ] External production release gates remain real payment/refund/chargeback/payout provider integration, qualified tax/legal/accounting approval, production media/object-storage hardening and authenticated end-to-end verification with real roles. Live money movement remains disabled.
+
+
+## Order dispute workflow (implemented local workflow)
+- Buyers and sellers can open an explicit DISPUTE against an order after the seller has acted on it. A dispute must reference the order; the server verifies the reporter is a participant and derives the counterparty from the order rather than trusting client-supplied identity.
+- Disputes use the existing persistent, audited Marketplace trust-case queue, keep evidence links private to authorized reviewers, and support review, resolution/dismissal, and the existing caution/restriction governance where warranted.
+- Admin/Super Admin can separately record payout holds only when a captured payment record exists. Holds and reconciliation remain statement/governance records, not actual fund movement.
+- UI explicitly states that an internal dispute is not a payment-provider chargeback and does not move funds. Provider-backed chargebacks, evidence deadlines, external arbitration, real settlement/payout, and compliance review remain production gates.

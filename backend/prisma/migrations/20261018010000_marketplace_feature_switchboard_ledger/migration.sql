@@ -1,0 +1,15 @@
+CREATE TABLE "MarketplaceFeatureFlag" ("key" TEXT NOT NULL, "title" TEXT NOT NULL, "description" TEXT NOT NULL, "enabled" BOOLEAN NOT NULL DEFAULT false, "riskLevel" TEXT NOT NULL DEFAULT 'LOW', "dependencies" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], "version" INTEGER NOT NULL DEFAULT 1, "updatedById" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, CONSTRAINT "MarketplaceFeatureFlag_pkey" PRIMARY KEY ("key"));
+CREATE INDEX "MarketplaceFeatureFlag_enabled_riskLevel_idx" ON "MarketplaceFeatureFlag"("enabled", "riskLevel");
+CREATE TABLE "MarketplacePayment" ("id" TEXT NOT NULL, "orderId" TEXT NOT NULL, "provider" TEXT NOT NULL, "providerPaymentId" TEXT, "idempotencyKey" TEXT NOT NULL, "externalEventId" TEXT, "status" TEXT NOT NULL DEFAULT 'CREATED', "amount" DECIMAL(14,2) NOT NULL, "currency" TEXT NOT NULL DEFAULT 'INR', "quoteSnapshot" JSONB NOT NULL, "authorizedAt" TIMESTAMP(3), "capturedAt" TIMESTAMP(3), "failedAt" TIMESTAMP(3), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, CONSTRAINT "MarketplacePayment_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "MarketplacePayment_idempotencyKey_key" ON "MarketplacePayment"("idempotencyKey");
+CREATE INDEX "MarketplacePayment_orderId_status_createdAt_idx" ON "MarketplacePayment"("orderId", "status", "createdAt");
+CREATE INDEX "MarketplacePayment_provider_providerPaymentId_idx" ON "MarketplacePayment"("provider", "providerPaymentId");
+CREATE INDEX "MarketplacePayment_externalEventId_idx" ON "MarketplacePayment"("externalEventId");
+CREATE TABLE "MarketplaceLedgerEntry" ("id" TEXT NOT NULL, "orderId" TEXT NOT NULL, "paymentId" TEXT, "entryKey" TEXT NOT NULL, "accountCode" TEXT NOT NULL, "direction" TEXT NOT NULL, "amount" DECIMAL(14,2) NOT NULL, "currency" TEXT NOT NULL DEFAULT 'INR', "entryType" TEXT NOT NULL, "metadata" JSONB, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "MarketplaceLedgerEntry_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "MarketplaceLedgerEntry_entryKey_key" ON "MarketplaceLedgerEntry"("entryKey");
+CREATE INDEX "MarketplaceLedgerEntry_orderId_createdAt_idx" ON "MarketplaceLedgerEntry"("orderId", "createdAt");
+CREATE INDEX "MarketplaceLedgerEntry_paymentId_idx" ON "MarketplaceLedgerEntry"("paymentId");
+CREATE INDEX "MarketplaceLedgerEntry_accountCode_createdAt_idx" ON "MarketplaceLedgerEntry"("accountCode", "createdAt");
+ALTER TABLE "MarketplacePayment" ADD CONSTRAINT "MarketplacePayment_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "MarketplaceOrder"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "MarketplaceLedgerEntry" ADD CONSTRAINT "MarketplaceLedgerEntry_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "MarketplaceOrder"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "MarketplaceLedgerEntry" ADD CONSTRAINT "MarketplaceLedgerEntry_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "MarketplacePayment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

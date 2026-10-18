@@ -456,4 +456,35 @@ describe('LivestockService', () => {
       orderBy: { createdAt: 'desc' },
     });
   });
+
+  it('lists archived livestock for its latest historical owner so it can be restored', async () => {
+    const archived = {
+      id: 'livestock-archived',
+      farmId: 'farm-1',
+      species: 'Cattle',
+      deletedAt: new Date('2026-10-15T10:00:00.000Z'),
+      farm: { id: 'farm-1', ownerId: 'farm-owner' },
+    };
+    prisma.livestock.findMany.mockResolvedValue([archived]);
+    prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'former-active-owner' });
+
+    const result = await service.findArchived('former-active-owner', UserRole.FARMER);
+
+    expect(result).toEqual([archived]);
+    expect(prisma.resourceRelationship.findFirst).toHaveBeenCalledWith({
+      where: {
+        resourceType: 'livestock',
+        resourceId: 'livestock-archived',
+        relationshipType: 'OWNER',
+      },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+    expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({
+      user: { userId: 'former-active-owner', role: UserRole.FARMER },
+      action: AuthorizationAction.READ,
+      ownerId: 'former-active-owner',
+    }));
+  });
+
 });

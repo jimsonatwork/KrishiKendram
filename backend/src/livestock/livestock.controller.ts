@@ -22,6 +22,11 @@ export class LivestockController {
     return this.service.findMine(req.user.userId, req.user.role);
   }
 
+  @Get('archived')
+  findArchived(@Req() req: any) {
+    return this.service.findArchived(req.user.userId, req.user.role);
+  }
+
   @Get(':id/relationships/history')
   history(@Req() req: any, @Param('id') id: string) {
     return this.service.relationshipHistory(req.user.userId, req.user.role, id);

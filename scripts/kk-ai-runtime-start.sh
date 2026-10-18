@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 OLLAMA_BIN="${KK_AI_OLLAMA_BIN:-/mnt/d/KrishiKendram/08-AI/Tools/Ollama/bin/ollama}"
-MODEL_DIR="${KK_AI_OLLAMA_MODELS_DIR:-/mnt/d/KrishiKendram/08-AI/KrishiKendram-AI/Models/Ollama}"
+MODEL_DIR="${KK_AI_OLLAMA_MODELS_DIR:-/home/jj/.local/share/krishikendram/ollama-models}"
 PID_FILE="${KK_AI_OLLAMA_PID_FILE:-/tmp/krishikendram-ollama.pid}"
 LOG_FILE="${KK_AI_OLLAMA_LOG_FILE:-/tmp/krishikendram-ollama.log}"
 HEALTH_URL="http://127.0.0.1:11434/api/tags"

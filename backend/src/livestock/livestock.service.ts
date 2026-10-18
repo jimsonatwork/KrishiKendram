@@ -40,7 +40,6 @@ export class LivestockService {
         resourceType: 'livestock',
         resourceId: id,
         relationshipType: 'OWNER',
-        endedAt: null,
       },
       orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
       select: { userId: true },
@@ -162,6 +161,28 @@ export class LivestockService {
       include: { farm: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async findArchived(userId: string, role: UserRole) {
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'livestock',
+      resource: 'livestock',
+      action: AuthorizationAction.READ,
+      ownerId: userId,
+    });
+    const archived = await this.prisma.livestock.findMany({
+      where: { deletedAt: { not: null } },
+      include: { farm: true },
+      orderBy: { deletedAt: 'desc' },
+    });
+    // Archive closes the active OWNER relationship. Resolve the most recent
+    // historical owner so the same owner can still restore the archived item.
+    const owned = await Promise.all(archived.map(async (item: any) => ({
+      item,
+      ownerId: await this.owner(item.id, item.farm.ownerId),
+    })));
+    return owned.filter(({ ownerId }) => ownerId === userId).map(({ item }) => item);
   }
 
   async findOne(userId: string, role: UserRole, id: string) {

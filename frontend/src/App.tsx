@@ -80,6 +80,8 @@ const FarmsPage = lazy(() => import('@/pages/farms/FarmsPage').then((m) => ({ de
 const CropsPage = lazy(() => import('@/pages/crops/CropsPage').then((m) => ({ default: m.CropsPage })))
 const LivestockPage = lazy(() => import('@/pages/livestock/LivestockPage').then((m) => ({ default: m.LivestockPage })))
 const MarketplacePage = lazy(() => import('@/pages/marketplace/MarketplacePage').then((m) => ({ default: m.MarketplacePage })))
+const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
+const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
 const ActivitiesPage = lazy(() => import('@/pages/activity/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })))
 const HistoryPage = lazy(() => import('@/pages/activity/HistoryPage').then((m) => ({ default: m.HistoryPage })))
 const AIIntakePage = lazy(() => import('@/pages/intake/AIIntakePage').then((m) => ({ default: m.AIIntakePage })))
@@ -881,6 +883,7 @@ function PortalLayout({
 }: {
   user: AuthUser
 }) {
+  const navigate = useNavigate()
   const location = useLocation()
   const currentRoute = routeForPath(location.pathname)
   const { logout } = useAuthStore()
@@ -994,6 +997,16 @@ function PortalLayout({
               icon: <Wheat />,
             },
             {
+              label: 'Reports',
+              href: '/app/reports',
+              icon: <FileText />,
+            },
+            {
+              label: 'Notifications',
+              href: '/app/notifications',
+              icon: <Bell />,
+            },
+            {
               label: 'Livestock',
               href: '/app/livestock',
               icon: <PawPrint />,
@@ -1042,6 +1055,14 @@ function PortalLayout({
     content = <FarmsPage />
   } else if (location.pathname === '/app/crops') {
     content = <CropsPage />
+  } else if (location.pathname === '/app/inventory') {
+    content = <Navigate to="/app/marketplace?workspace=inventory" replace />
+  } else if (location.pathname === '/app/finance') {
+    content = <Navigate to="/app/marketplace?workspace=finance" replace />
+  } else if (location.pathname === '/app/reports') {
+    content = <ReportsPage />
+  } else if (location.pathname === '/app/notifications') {
+    content = <NotificationsPage />
   } else if (location.pathname === '/app/livestock') {
     content = <LivestockPage />
   } else if (location.pathname === '/app/marketplace') {
@@ -1231,6 +1252,7 @@ function PortalLayout({
     variant="ghost"
     size="icon"
     aria-label="Notifications"
+    onClick={() => navigate('/app/notifications')}
   >
     <Bell />
   </Button>

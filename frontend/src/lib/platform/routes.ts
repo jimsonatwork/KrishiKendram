@@ -5,6 +5,8 @@ export type AppRouteDefinition = {
   path: string
   label: string
   audience: AppRouteAudience
+  /** Parent workspace for routes rendered as submodules. */
+  parentKey?: string
 }
 
 export const APP_ROUTES: readonly AppRouteDefinition[] = [
@@ -14,6 +16,10 @@ export const APP_ROUTES: readonly AppRouteDefinition[] = [
   { key: 'dashboard', path: '/app', label: 'Dashboard', audience: 'AUTHENTICATED' },
   { key: 'farms', path: '/app/farms', label: 'My Farms', audience: 'AUTHENTICATED' },
   { key: 'crops', path: '/app/crops', label: 'Crops', audience: 'AUTHENTICATED' },
+  { key: 'inventory', path: '/app/inventory', label: 'Inventory (Marketplace)', audience: 'AUTHENTICATED', parentKey: 'marketplace' },
+  { key: 'finance', path: '/app/finance', label: 'Finance (Marketplace)', audience: 'AUTHENTICATED', parentKey: 'marketplace' },
+  { key: 'reports', path: '/app/reports', label: 'Reports', audience: 'AUTHENTICATED' },
+  { key: 'notifications', path: '/app/notifications', label: 'Notifications', audience: 'AUTHENTICATED' },
   { key: 'livestock', path: '/app/livestock', label: 'Livestock', audience: 'AUTHENTICATED' },
   { key: 'marketplace', path: '/app/marketplace', label: 'Marketplace', audience: 'AUTHENTICATED' },
   { key: 'activities', path: '/app/activities', label: 'Activities', audience: 'AUTHENTICATED' },

@@ -234,7 +234,7 @@ Fact-draft creation is also atomic with `AI_FACT_DRAFT_CREATED` audit logging. I
 
 ## AI response latency follow-up
 
-The local Ollama model is kept resident for up to four hours after use to avoid cold-load latency during an active work session. General replies are capped at 64 generated tokens, and conversation history is limited to the latest two messages (400 characters each). Crop-list responses retain their dedicated output budget. Local-only generation and authorization-before-context safeguards remain unchanged.
+The local Ollama model is kept resident for up to four hours after use to avoid cold-load latency during an active work session. General replies are capped at 160 generated tokens, crop-list replies at 48 tokens, and conversation history is limited to the latest two messages (400 characters each). Local-only generation and authorization-before-context safeguards remain unchanged.
 
 
 ## Central model link/unlink control (2026-10-14)
@@ -249,3 +249,32 @@ God Mode-only endpoints are exposed at /api/v1/admin/ai/models: GET lists catalo
 The canonical platform registry now defines deterministic-first orchestration. Registered user-owned data intents should be resolved through the authorized module service before invoking a language model. The crop-list resolver returns a direct, provenance-tagged answer and does not call the LLM. The model catalogue separately tracks the live model and an evaluation-only selection. Selecting an evaluation candidate does not change live inference; production activation is rejected unless the catalogue explicitly marks that model production-ready. The full phased architecture, research sources, evaluation gates and acceptance criteria are maintained in docs/AI-PLATFORM-OPTIMIZATION-PLAN.md.
 
 Keep Ollama as the single runtime until same-model benchmarks demonstrate that another engine such as llama.cpp materially improves latency or memory. Prefer PostgreSQL-native retrieval over a new vector service, and defer pgvector until support in the existing PostgreSQL image is verified. Voice runtimes are separately evaluated against consented Indic-language samples; they are not installed as an automatic side effect of LLM work.
+
+
+## 2026-10-16 — Multilingual Intake persistence boundary
+
+The dedicated contract is docs/AI-INTAKE-MULTILINGUAL-CONTRACT.md. Intake preserves the source transcript and language separately from a user-reviewed English meaning, requires server-enforced confirmation for non-English extraction, and persists provenance alongside the existing extracted FarmRecord JSON. Browser SpeechRecognition is only an ASR/transcription facility; it is not a translation engine. The production translation adapter, confidence/deviation policy, stop-and-clarify loop, and authenticated end-to-end acceptance remain outstanding. No cloud fallback or AI-direct database writes are allowed.
+
+
+## 2026-10-17 — Ollama native-store and live-provider verification
+
+The managed local Ollama runtime is version 0.40.3 and is reachable at 127.0.0.1:11434 with cloud disabled. The runtime launcher now defaults to the native WSL model store at /home/jj/.local/share/krishikendram/ollama-models, while preserving the KK_AI_OLLAMA_MODELS_DIR override. The original D: model store remains intact as a recovery copy. The copied store contains all three installed Qwen models, and all three model manifests match the source SHA-256 hashes.
+
+Live provider smoke test passed through OllamaTextGenerationProvider using qwen3:1.7b and its recorded digest. A warm synthetic request returned OK in 1.83 seconds, with 0.011 seconds model load, 1.647 seconds prompt evaluation, and 0.133 seconds generation. A separate cold load still took about 45.93 seconds; cold-start latency remains open. The response remains a proposal requiring canonical validation and user confirmation.
+
+The current active model remains qwen3:1.7b. Qwen3.5 0.8B remains selected for evaluation and Qwen3.5 2B remains a linked installed candidate; neither is production-approved. The read-only preflight found eight benchmark cases and no blockers, but the full benchmark was not run because it intentionally unloads/reloads the model and is gated to a maintenance window. No cloud fallback, production promotion, database mutation, or Docker volume change occurred.
+
+Verification: Ollama model inventory returned all three models; API health at /api/v1/health and UI health at port 4000 returned HTTP 200; focused provider/registry/text-generation tests passed 3 suites and 21 tests; shell syntax and git diff checks passed. Mocked Voice Agent E2E passed 12 of 12 tests; authenticated live-browser acceptance, multilingual translation/confidence handling, and candidate benchmark remain outstanding.
+
+
+## 2026-10-17 - Local Intake translation implementation (2026-10-17T17:37:28+05:30)
+- Added authenticated local Intake translation via the governed TextGenerationService; no cloud fallback and no direct database write.
+- Output confidence is explicitly uncalibrated. A 0.85 review threshold, visible-number check, multilingual acre/hectare check, and planting-action preservation check flag likely material drift; detected drift caps confidence at 0.5. Explicit user review and confirmation remain mandatory.
+- Focused tests pass: 3 suites / 19 tests; backend and frontend builds pass; mocked translation UI E2E passes 1/1. Route is registered; unauthenticated POST returns 401. Authenticated live-backend browser acceptance remains open.
+- Live Telugu smoke demonstrated remaining model-quality limitations: it returned 'I have 2 acres of rice' and omitted the planting action. The action guard caught it. A warm request took about 15 seconds; a later request under startup/model contention took about 87 seconds.
+- Model remains evaluation-only. Do not promote based on this smoke. Multilingual quality benchmarks and authenticated browser acceptance remain open.
+
+
+## 2026-10-17 - Cross-module regression sweep (2026-10-17T17:42:55+05:30)
+- Cross-module regression sweep passed: 7 suites / 57 tests across Intake, Livestock, Marketplace, Ollama provider and AI model-link registry. Backend and frontend builds pass; mocked Intake translation UI E2E passes 1/1.
+- Local translation still requires human review: a live Telugu smoke omitted the planting action, which the new guard caught. Model remains evaluation-only; language quality, cold latency and authenticated browser acceptance remain open.

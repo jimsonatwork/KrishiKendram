@@ -15,6 +15,8 @@ export interface TextGenerationRequest {
   context?: UserAiContextEnvelope;
   /** Task hint for policy-controlled multi-model routing; never grants tool permissions. */
   task?: TextGenerationTask;
+  /** Optional per-task output cap, clamped to the selected provider's safe budget. */
+  maxOutputTokens?: number;
 }
 
 export interface TextGenerationResult {

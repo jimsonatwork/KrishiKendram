@@ -259,9 +259,26 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  farms               Farm[]
-  marketplaceListings MarketplaceListing[]
-  auditEvents         AuditEvent[]         @relation("AuditActor")
+  farms                         Farm[]
+  marketplaceListings           MarketplaceListing[]
+  marketplaceSellerProfile      MarketplaceSellerProfile?
+  marketplaceFavorites          MarketplaceFavorite[]
+  marketplaceMessagesSent       MarketplaceMessage[]      @relation("MarketplaceMessageSender")
+  marketplaceMessagesReceived   MarketplaceMessage[]      @relation("MarketplaceMessageRecipient")
+  marketplaceRFQs               MarketplaceRFQ[]          @relation("MarketplaceRFQBuyer")
+  marketplaceRFQResponses       MarketplaceRFQResponse[]  @relation("MarketplaceRFQSeller")
+  marketplaceOrdersAsBuyer      MarketplaceOrder[]        @relation("MarketplaceOrderBuyer")
+  marketplaceOrdersAsSeller     MarketplaceOrder[]        @relation("MarketplaceOrderSeller")
+  marketplaceReviewsGiven       MarketplaceReview[]       @relation("MarketplaceReviewReviewer")
+  marketplaceReviewsReceived    MarketplaceReview[]       @relation("MarketplaceReviewReviewee")
+  marketplaceTrustCasesReported MarketplaceTrustCase[]    @relation("MarketplaceTrustReporter")
+  marketplaceTrustCasesTargeted MarketplaceTrustCase[]    @relation("MarketplaceTrustTarget")
+  marketplaceRestrictions       MarketplaceRestriction[]
+  inventoryTransactions         InventoryTransaction[]
+  financialRecordsCreated       FarmFinancialRecord[]     @relation("FinancialRecordCreator")
+  notifications                 Notification[]
+  livestockRecordsCreated       LivestockRecord[]         @relation("LivestockRecordCreator")
+  auditEvents                   AuditEvent[]              @relation("AuditActor")
 
   userHistoryEntries       UserHistory[]      @relation("UserHistoryUser")
   userHistoryActions       UserHistory[]      @relation("UserHistoryActor")
@@ -324,10 +341,12 @@ model Farm {
   entityId String @unique
   entity   Entity @relation(fields: [entityId], references: [id])
 
-  assets    FarmAsset[]
-  records   FarmRecord[]
-  crops     Crop[]
-  livestock Livestock[]
+  assets           FarmAsset[]
+  records          FarmRecord[]
+  crops            Crop[]
+  livestock        Livestock[]
+  inventoryItems   InventoryItem[]
+  financialRecords FarmFinancialRecord[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -456,7 +475,8 @@ model Livestock {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farm    Farm              @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  records LivestockRecord[]
 
   @@index([farmId, deletedAt, createdAt])
   @@index([species])
@@ -473,27 +493,313 @@ model Livestock {
 // ============================================================
 
 model MarketplaceListing {
-  id           String    @id @default(cuid())
-  sellerId     String
-  resourceType String
-  resourceId   String
-  title        String
-  description  String?
-  quantity     Float?
-  unit         String?
-  price        Float?
-  currency     String    @default("INR")
-  status       String    @default("DRAFT")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  publishedAt  DateTime?
-  deletedAt    DateTime?
+  id                     String    @id @default(cuid())
+  sellerId               String
+  // Generic listings belong to the registered seller; linked farm resources are optional.
+  resourceType           String?
+  resourceId             String?
+  category               String    @default("OTHER")
+  title                  String
+  description            String?
+  imageUrls              String[]  @default([])
+  videoUrls              String[]  @default([])
+  externalLinks          String[]  @default([])
+  quantity               Float?
+  minOrderQuantity       Float?
+  priceTiers             Json?
+  sellerJurisdictionCode String?
+  unit                   String?
+  price                  Float?
+  currency               String    @default("INR")
+  status                 String    @default("DRAFT")
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  publishedAt            DateTime?
+  deletedAt              DateTime?
 
-  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller    User                  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orders    MarketplaceOrder[]
+  favorites MarketplaceFavorite[]
+  messages  MarketplaceMessage[]
 
   @@index([sellerId, deletedAt, createdAt])
   @@index([resourceType, resourceId])
+  @@index([category, status, publishedAt])
   @@index([status, publishedAt])
+}
+
+enum LivestockRecordType {
+  HEALTH
+  VACCINATION
+  TREATMENT
+  MILK_PRODUCTION
+  EGG_PRODUCTION
+  WEIGHT
+  BREEDING
+  FEEDING
+  OTHER
+}
+
+enum FinancialRecordType {
+  INCOME
+  EXPENSE
+}
+
+enum InventoryTransactionType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+}
+
+model MarketplaceOrder {
+  id                     String    @id @default(cuid())
+  listingId              String
+  buyerId                String
+  sellerId               String
+  quantity               Float
+  unitPrice              Float?
+  offerPrice             Float?
+  agreedUnitPrice        Float?
+  subtotal               Decimal?  @db.Decimal(14, 2)
+  buyerFeeAmount         Decimal?  @db.Decimal(14, 2)
+  sellerCommissionAmount Decimal?  @db.Decimal(14, 2)
+  taxAmount              Decimal?  @db.Decimal(14, 2)
+  buyerTotal             Decimal?  @db.Decimal(14, 2)
+  sellerNet              Decimal?  @db.Decimal(14, 2)
+  pricingPolicyVersion   Int?
+  pricingSnapshot        Json?
+  buyerJurisdictionCode  String?
+  currency               String    @default("INR")
+  status                 String    @default("PENDING")
+  note                   String?
+  sellerNote             String?
+  deliveryStatus         String?
+  deliveryCarrier        String?
+  deliveryTrackingNumber String?
+  deliveryTrackingUrl    String?
+  estimatedDeliveryAt    DateTime?
+  dispatchedAt           DateTime?
+  deliveredAt            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  acceptedAt             DateTime?
+  rejectedAt             DateTime?
+  cancelledAt            DateTime?
+  completedAt            DateTime?
+
+  listing             MarketplaceListing       @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  reviews             MarketplaceReview[]
+  payments            MarketplacePayment[]
+  refunds             MarketplaceRefund[]
+  ledgerEntries       MarketplaceLedgerEntry[]
+  buyer               User                     @relation("MarketplaceOrderBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  seller              User                     @relation("MarketplaceOrderSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  marketplaceMessages MarketplaceMessage[]
+
+  @@index([buyerId, status, createdAt])
+  @@index([sellerId, status, createdAt])
+  @@index([listingId, status])
+}
+
+model MarketplaceCommercePolicy {
+  id                          String   @id
+  version                     Int      @default(1)
+  feesEnabled                 Boolean  @default(false)
+  buyerFeeBasisPoints         Int      @default(0)
+  sellerCommissionBasisPoints Int      @default(0)
+  taxEnabled                  Boolean  @default(false)
+  taxBasisPoints              Int      @default(0)
+  taxReviewReference          String?
+  currency                    String   @default("INR")
+  updatedById                 String?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+model MarketplaceTrustCase {
+  id           String    @id @default(cuid())
+  caseNumber   String    @unique @default(cuid())
+  reporterId   String
+  targetUserId String?
+  parentCaseId String?
+  listingId    String?
+  orderId      String?
+  type         String    @default("REPORT")
+  category     String
+  description  String
+  evidenceUrls String[]  @default([])
+  status       String    @default("OPEN")
+  resolution   String?
+  assignedToId String?
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  reporter User                   @relation("MarketplaceTrustReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  target   User?                  @relation("MarketplaceTrustTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  parent   MarketplaceTrustCase?  @relation("MarketplaceTrustCaseAppeal", fields: [parentCaseId], references: [id], onDelete: Restrict)
+  appeals  MarketplaceTrustCase[] @relation("MarketplaceTrustCaseAppeal")
+
+  @@index([parentCaseId])
+  @@index([reporterId, createdAt])
+  @@index([targetUserId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([listingId])
+  @@index([orderId])
+}
+
+model MarketplaceRestriction {
+  id            String    @id @default(cuid())
+  userId        String
+  scope         String    @default("MARKETPLACE_ALL")
+  status        String    @default("ACTIVE")
+  reason        String
+  evidence      Json?
+  cautionRating Int?
+  startsAt      DateTime  @default(now())
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+  revokedById   String?
+  createdById   String
+  sourceCaseId  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, scope, status, expiresAt])
+  @@index([sourceCaseId])
+  @@index([createdById, createdAt])
+}
+
+model MarketplaceReview {
+  id             String    @id @default(cuid())
+  orderId        String
+  reviewerId     String
+  revieweeId     String
+  rating         Int
+  comment        String?
+  status         String    @default("PENDING")
+  sellerResponse String?
+  moderatedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  order    MarketplaceOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reviewer User             @relation("MarketplaceReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  reviewee User             @relation("MarketplaceReviewReviewee", fields: [revieweeId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, reviewerId])
+  @@index([revieweeId, status, createdAt])
+  @@index([orderId, status])
+}
+
+model LivestockRecord {
+  id          String              @id @default(cuid())
+  livestockId String
+  type        LivestockRecordType
+  description String
+  quantity    Float?
+  unit        String?
+  recordedAt  DateTime            @default(now())
+  nextDueAt   DateTime?
+  reference   String?
+  notes       String?
+  createdBy   String
+  createdAt   DateTime            @default(now())
+
+  livestock Livestock @relation(fields: [livestockId], references: [id], onDelete: Restrict)
+  creator   User      @relation("LivestockRecordCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([livestockId, recordedAt])
+  @@index([livestockId, type, recordedAt])
+  @@index([nextDueAt])
+  @@index([createdBy, createdAt])
+}
+
+model InventoryItem {
+  id             String    @id @default(cuid())
+  farmId         String
+  name           String
+  category       String
+  unit           String
+  quantityOnHand Float     @default(0)
+  reorderLevel   Float     @default(0)
+  supplier       String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  farm         Farm                   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  transactions InventoryTransaction[]
+
+  @@index([farmId, deletedAt, name])
+  @@index([category, deletedAt])
+}
+
+model InventoryTransaction {
+  id              String                   @id @default(cuid())
+  inventoryItemId String
+  actorId         String
+  type            InventoryTransactionType
+  quantity        Float
+  quantityBefore  Float
+  quantityAfter   Float
+  unitCost        Float?
+  reference       String?
+  notes           String?
+  createdAt       DateTime                 @default(now())
+
+  item  InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  actor User          @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([inventoryItemId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([type, createdAt])
+}
+
+model FarmFinancialRecord {
+  id         String              @id @default(cuid())
+  farmId     String
+  type       FinancialRecordType
+  category   String
+  amount     Float
+  currency   String              @default("INR")
+  occurredAt DateTime            @default(now())
+  reference  String?
+  notes      String?
+  createdBy  String
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  deletedAt  DateTime?
+
+  farm    Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  creator User @relation("FinancialRecordCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([farmId, deletedAt, occurredAt])
+  @@index([farmId, type, occurredAt])
+  @@index([category, occurredAt])
+  @@index([createdBy, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([type, createdAt])
 }
 
 model AuditEvent {
@@ -1245,4 +1551,261 @@ model ConversationAction {
   @@index([moduleId])
   @@index([status])
   @@index([targetEntityType, targetEntityId])
+}
+
+model MarketplaceTaxProfile {
+  id                     String    @id @default(cuid())
+  sellerJurisdictionCode String
+  buyerJurisdictionCode  String
+  category               String
+  taxCode                String
+  taxName                String
+  taxBase                String    @default("SUBTOTAL")
+  basisPoints            Int
+  effectiveFrom          DateTime
+  effectiveTo            DateTime?
+  reviewReference        String?
+  status                 String    @default("DRAFT")
+  version                Int       @default(1)
+  createdById            String
+  approvedById           String?
+  approvedAt             DateTime?
+  retiredAt              DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([sellerJurisdictionCode, buyerJurisdictionCode, category, effectiveFrom])
+  @@index([status, effectiveFrom, effectiveTo])
+  @@index([sellerJurisdictionCode, buyerJurisdictionCode, category, status])
+}
+
+model MarketplaceFeatureFlag {
+  key          String   @id
+  title        String
+  description  String
+  enabled      Boolean  @default(false)
+  riskLevel    String   @default("LOW")
+  dependencies String[] @default([])
+  version      Int      @default(1)
+  updatedById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([enabled, riskLevel])
+}
+
+model MarketplacePayment {
+  id                String    @id @default(cuid())
+  orderId           String
+  provider          String
+  providerPaymentId String?
+  idempotencyKey    String    @unique
+  externalEventId   String?
+  status            String    @default("CREATED")
+  amount            Decimal   @db.Decimal(14, 2)
+  currency          String    @default("INR")
+  quoteSnapshot     Json
+  authorizedAt      DateTime?
+  capturedAt        DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  order         MarketplaceOrder          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  ledgerEntries MarketplaceLedgerEntry[]
+  events        MarketplacePaymentEvent[]
+  refunds       MarketplaceRefund[]
+
+  @@index([orderId, status, createdAt])
+  @@index([provider, providerPaymentId])
+  @@index([externalEventId])
+}
+
+model MarketplacePaymentEvent {
+  id              String   @id @default(cuid())
+  paymentId       String
+  provider        String
+  externalEventId String
+  status          String
+  payloadHash     String
+  receivedAt      DateTime @default(now())
+
+  payment MarketplacePayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, externalEventId])
+  @@index([paymentId, receivedAt])
+}
+
+model MarketplaceRefund {
+  id               String   @id @default(cuid())
+  paymentId        String
+  orderId          String
+  createdById      String
+  idempotencyKey   String   @unique
+  providerRefundId String   @unique
+  status           String   @default("REQUESTED")
+  amount           Decimal  @db.Decimal(12, 2)
+  currency         String
+  reason           String
+  externalEventId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  payment       MarketplacePayment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  order         MarketplaceOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  ledgerEntries MarketplaceLedgerEntry[]
+
+  @@index([paymentId, status, createdAt])
+  @@index([orderId, createdAt])
+}
+
+model MarketplaceSellerProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  displayName       String?
+  bio               String?
+  regionLabel       String?
+  contactPreference String   @default("IN_APP")
+  publicPhone       String?
+  showPhone         Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model MarketplaceFavorite {
+  id        String             @id @default(cuid())
+  userId    String
+  listingId String
+  status    String             @default("ACTIVE")
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  user      User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, listingId])
+  @@index([userId, status, updatedAt])
+  @@index([listingId, status])
+}
+
+model MarketplaceMessage {
+  id          String              @id @default(cuid())
+  senderId    String
+  recipientId String
+  listingId   String?
+  orderId     String?
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime            @default(now())
+  sender      User                @relation("MarketplaceMessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  recipient   User                @relation("MarketplaceMessageRecipient", fields: [recipientId], references: [id], onDelete: Restrict)
+  listing     MarketplaceListing? @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  order       MarketplaceOrder?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([senderId, createdAt])
+  @@index([recipientId, readAt, createdAt])
+  @@index([listingId, createdAt])
+  @@index([orderId, createdAt])
+}
+
+model MarketplaceRFQ {
+  id              String                   @id @default(cuid())
+  buyerId         String
+  title           String
+  category        String
+  description     String
+  quantity        Float
+  unit            String
+  targetUnitPrice Decimal?                 @db.Decimal(14, 2)
+  currency        String                   @default("INR")
+  deliveryRegion  String?
+  neededBy        DateTime?
+  status          String                   @default("OPEN")
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  buyer           User                     @relation("MarketplaceRFQBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  responses       MarketplaceRFQResponse[]
+
+  @@index([status, category, createdAt])
+  @@index([buyerId, status, createdAt])
+}
+
+model MarketplaceRFQResponse {
+  id                String         @id @default(cuid())
+  rfqId             String
+  sellerId          String
+  unitPrice         Decimal        @db.Decimal(14, 2)
+  availableQuantity Float
+  note              String?
+  validUntil        DateTime?
+  status            String         @default("SUBMITTED")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  rfq               MarketplaceRFQ @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  seller            User           @relation("MarketplaceRFQSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+
+  @@unique([rfqId, sellerId])
+  @@index([sellerId, status, createdAt])
+  @@index([rfqId, status, createdAt])
+}
+
+model MarketplacePayoutHold {
+  id            String    @id @default(cuid())
+  sellerId      String
+  orderId       String
+  amount        Decimal   @db.Decimal(14, 2)
+  currency      String    @default("INR")
+  status        String    @default("ACTIVE")
+  reason        String
+  expiresAt     DateTime?
+  createdById   String
+  releasedById  String?
+  releasedAt    DateTime?
+  releaseReason String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([sellerId, status, expiresAt])
+  @@index([orderId, status])
+}
+
+model MarketplaceReconciliationRun {
+  id             String   @id @default(cuid())
+  createdById    String
+  status         String   @default("COMPLETED")
+  currency       String   @default("INR")
+  debitTotal     Decimal  @db.Decimal(16, 2)
+  creditTotal    Decimal  @db.Decimal(16, 2)
+  balanced       Boolean  @default(false)
+  exceptionCount Int      @default(0)
+  summary        Json
+  startedAt      DateTime @default(now())
+  completedAt    DateTime @default(now())
+
+  @@index([completedAt])
+  @@index([balanced, completedAt])
+}
+
+model MarketplaceLedgerEntry {
+  id          String   @id @default(cuid())
+  orderId     String
+  paymentId   String?
+  refundId    String?
+  entryKey    String   @unique
+  accountCode String
+  direction   String
+  amount      Decimal  @db.Decimal(14, 2)
+  currency    String   @default("INR")
+  entryType   String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  order   MarketplaceOrder    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  payment MarketplacePayment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  refund  MarketplaceRefund?  @relation(fields: [refundId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+  @@index([refundId])
+  @@index([paymentId])
+  @@index([accountCode, createdAt])
 }

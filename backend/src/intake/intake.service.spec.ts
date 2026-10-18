@@ -110,6 +110,14 @@ describe('IntakeService', () => {
         data: {
           raw: 'general farm observation',
           category: 'GENERAL',
+          intakeMetadata: expect.objectContaining({
+            originalContent: 'general farm observation',
+            originalLanguage: 'en',
+            englishTranslation: 'general farm observation',
+            translationStatus: 'NOT_REQUIRED',
+            inputMethod: InputMethod.MANUAL,
+            capturedAt: expect.any(String),
+          }),
         },
       },
       'user-1',
@@ -482,4 +490,66 @@ describe('IntakeService', () => {
       UserRole.FARMER,
     );
   });
+
+  it('rejects non-English intake before extraction unless English meaning is confirmed', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+
+    await expect(service.create('user-1', UserRole.FARMER, {
+      farmId: 'farm-1',
+      inputMethod: InputMethod.VOICE,
+      content: 'నేను రెండు ఎకరాల్లో వరి నాటాను',
+      originalContent: 'నేను రెండు ఎకరాల్లో వరి నాటాను',
+      originalLanguage: 'te',
+      englishTranslation: 'I planted paddy in two acres',
+      translationConfirmed: false,
+    })).rejects.toThrow('A non-English intake requires a reviewed English meaning');
+
+    expect(extractor.extract).not.toHaveBeenCalled();
+    expect(farmsService.addRecordInTransaction).not.toHaveBeenCalled();
+  });
+
+  it('extracts the confirmed English meaning and persists original-language provenance', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1',
+      ownerId: 'user-1',
+    });
+    extractor.extract.mockResolvedValue({
+      raw: 'I planted paddy in two acres',
+      category: 'GENERAL',
+    });
+    farmsService.addRecordInTransaction.mockResolvedValue({ id: 'record-1' });
+
+    await service.create('user-1', UserRole.FARMER, {
+      farmId: 'farm-1',
+      inputMethod: InputMethod.VOICE,
+      content: 'I planted paddy in two acres',
+      originalContent: 'నేను రెండు ఎకరాల్లో వరి నాటాను',
+      originalLanguage: 'te',
+      englishTranslation: 'I planted paddy in two acres',
+      translationConfirmed: true,
+    });
+
+    expect(extractor.extract).toHaveBeenCalledWith('I planted paddy in two acres');
+    expect(farmsService.addRecordInTransaction).toHaveBeenCalledWith(
+      transaction,
+      'farm-1',
+      expect.objectContaining({
+        data: expect.objectContaining({
+          intakeMetadata: expect.objectContaining({
+            originalContent: 'నేను రెండు ఎకరాల్లో వరి నాటాను',
+            originalLanguage: 'te',
+            englishTranslation: 'I planted paddy in two acres',
+            translationStatus: 'CONFIRMED',
+            inputMethod: InputMethod.VOICE,
+          }),
+        }),
+      }),
+      'user-1',
+      UserRole.FARMER,
+    );
+  });
+
 });
