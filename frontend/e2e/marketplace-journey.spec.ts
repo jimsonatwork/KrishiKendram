@@ -13,6 +13,8 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
   let favoriteCalls = 0
   let messageCalls = 0
   let rfqCalls = 0
+  let inventoryWorkspaceEnabled = true
+  let financeWorkspaceEnabled = true
   const indiaDateKey = (offsetDays = 0) => {
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
     const part = (type: string) => parts.find((item) => item.type === type)?.value || ''
@@ -38,7 +40,7 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
     if (path === '/marketplace/listings') return route.fulfill({ json: listings })
     if (path === '/marketplace/orders/mine') return route.fulfill({ json: [] })
     if (path === '/marketplace/commerce-policy') return route.fulfill({ json: { version: 1, currency: 'INR', feesEnabled: false, buyerFeeBasisPoints: 0, sellerCommissionBasisPoints: 0, taxEnabled: false, taxBasisPoints: 0, taxReviewReference: null } })
-    if (path === '/marketplace/features/public') return route.fulfill({ json: ['marketplace.listings','marketplace.favorites','marketplace.messaging','marketplace.rfq','marketplace.history'].map(key => ({ key, enabled: true })) })
+    if (path === '/marketplace/features/public') return route.fulfill({ json: ['marketplace.listings','marketplace.favorites','marketplace.messaging','marketplace.rfq','marketplace.history','marketplace.inventory_workspace','marketplace.finance_workspace'].map(key => ({ key, enabled: key === 'marketplace.inventory_workspace' ? inventoryWorkspaceEnabled : key === 'marketplace.finance_workspace' ? financeWorkspaceEnabled : true })) })
     if (path === '/marketplace/features') return route.fulfill({ json: [] })
     if (path === '/marketplace/history/mine') return route.fulfill({ json: { purchases: [], sales: [] } })
     if (path === '/marketplace/settlements/mine') return route.fulfill({ json: { mode: 'STATEMENT_ONLY', moneyMovementEnabled: false, currency: 'INR', lineCount: 0, totals: { gross:'0.00', commission:'0.00', sellerNetEstimate:'0.00', capturedSimulation:'0.00', refundedSimulation:'0.00', activePayoutHolds:'0.00' }, lines: [] } })
@@ -78,6 +80,8 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
   })
 
   await page.goto('/app/marketplace')
+  await expect(page.getByRole('tab', { name: /Inventory/ })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /Finance/ })).toBeVisible()
   await expect(page.getByText('Seller profile & buyer contact preferences')).toBeVisible()
   await page.getByLabel('Offering type').selectOption('SERVICE')
   await expect(page.getByLabel('Service delivery mode')).toBeVisible()
@@ -89,6 +93,12 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
   await page.goto('/app/marketplace?workspace=finance')
   await expect(page.getByText('Seller settlement statement')).toBeVisible()
   await expect(page.getByText('Buyer & seller history')).toBeVisible()
+
+  await page.goto('/app/marketplace?workspace=inventory')
+  await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Add inventory item' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Stock ledger' })).toBeVisible()
+
   await page.goto('/app/marketplace')
   await expect(page.getByText('Bulk buyer RFQ & seller quotations')).toBeVisible()
   await expect(page.getByRole('article').getByText('Fresh paddy seed')).toBeVisible()
@@ -125,4 +135,11 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
   await page.getByRole('button', { name: 'Publish bulk RFQ' }).click()
   await expect(page.getByText('Bulk paddy seed for FPO')).toBeVisible()
   expect(rfqCalls).toBe(1)
+
+  inventoryWorkspaceEnabled = false
+  await page.goto('/app/marketplace')
+  await expect(page.getByRole('tab', { name: /Inventory/ })).toHaveCount(0)
+  await page.goto('/app/marketplace?workspace=inventory')
+  await expect(page.getByRole('alert')).toContainText('disabled by an administrator')
+  await expect(page.getByRole('button', { name: 'Back to Marketplace' })).toBeVisible()
 })

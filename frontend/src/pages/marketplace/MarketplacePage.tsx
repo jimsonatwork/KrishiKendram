@@ -89,12 +89,13 @@ type MarketplaceOfferingDefinition = { type: string; label: string; description:
 
 type MarketplaceWorkspace = 'marketplace' | 'inventory' | 'finance'
 
-function MarketplaceWorkspaceTabs({ active, onSelect }: { active: MarketplaceWorkspace; onSelect: (workspace: MarketplaceWorkspace) => void }) {
-  const tabs: Array<{ id: MarketplaceWorkspace; label: string; description: string }> = [
+function MarketplaceWorkspaceTabs({ active, onSelect, inventoryEnabled, financeEnabled }: { active: MarketplaceWorkspace; onSelect: (workspace: MarketplaceWorkspace) => void; inventoryEnabled: boolean; financeEnabled: boolean }) {
+  const allTabs: Array<{ id: MarketplaceWorkspace; label: string; description: string }> = [
     { id: 'marketplace', label: 'Marketplace', description: 'Listings, orders, buyers and sellers' },
     { id: 'inventory', label: 'Inventory', description: 'Stock, movements and reorder levels' },
     { id: 'finance', label: 'Finance', description: 'Income, sales, settlements, tax and reconciliation' },
   ]
+  const tabs = allTabs.filter(tab => tab.id === 'marketplace' || (tab.id === 'inventory' ? inventoryEnabled : financeEnabled))
   return <nav aria-label="Marketplace workspaces" className="rounded-xl border bg-card p-2">
     <div role="tablist" aria-label="Marketplace submodules" className="flex flex-wrap gap-2">
       {tabs.map(tab => <button key={tab.id} type="button" role="tab" aria-selected={active === tab.id} onClick={() => onSelect(tab.id)} className={'min-w-[150px] flex-1 rounded-lg border px-3 py-2 text-left transition-colors ' + (active === tab.id ? 'border-primary bg-primary/5 text-foreground' : 'border-transparent hover:border-border hover:bg-muted/40')}>
@@ -303,7 +304,7 @@ export function MarketplacePage() {
   const featureEnabledForUi = (key: string) => {
     const saved = publicFeatureFlags.find((item: any) => item.key === key)
     if (saved) return Boolean(saved.enabled)
-    return ['marketplace.listings', 'marketplace.offers', 'marketplace.reviews', 'marketplace.trust_reports', 'marketplace.restrictions', 'marketplace.history', 'marketplace.orders', 'marketplace.favorites', 'marketplace.messaging', 'marketplace.rfq'].includes(key)
+    return ['marketplace.listings', 'marketplace.offers', 'marketplace.reviews', 'marketplace.trust_reports', 'marketplace.restrictions', 'marketplace.history', 'marketplace.orders', 'marketplace.favorites', 'marketplace.messaging', 'marketplace.rfq', 'marketplace.inventory_workspace', 'marketplace.finance_workspace'].includes(key)
   }
 
 
@@ -775,9 +776,16 @@ export function MarketplacePage() {
       : form.resourceType === 'inventoryItem' ? inventoryChoices : []
 
   if (activeWorkspace !== 'marketplace') {
+    const workspaceFlag = activeWorkspace === 'inventory' ? 'marketplace.inventory_workspace' : 'marketplace.finance_workspace'
+    if (!featureEnabledForUi(workspaceFlag)) {
+      return <div className="space-y-6 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-semibold">Marketplace workspace disabled</h1><Button variant="outline" onClick={() => selectWorkspace('marketplace')}>Back to Marketplace</Button></div>
+        <div role="alert" className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">This workspace is currently disabled by an administrator. Existing records are preserved.</div>
+      </div>
+    }
     return <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><Store className="h-6 w-6" />Marketplace</div><p className="mt-1 text-sm text-muted-foreground">One commercial workspace for listings, stock and finance. Inventory and finance use the existing authorized services and records.</p></div><Button variant="outline" onClick={() => selectWorkspace('marketplace')}>Back to Marketplace</Button></div>
-      <MarketplaceWorkspaceTabs active={activeWorkspace} onSelect={selectWorkspace} />
+      <MarketplaceWorkspaceTabs active={activeWorkspace} onSelect={selectWorkspace} inventoryEnabled={featureEnabledForUi('marketplace.inventory_workspace')} financeEnabled={featureEnabledForUi('marketplace.finance_workspace')} />
       {error && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">{error}</div>}
       {activeWorkspace === 'inventory' ? <InventoryPage /> : <>
         <FinancePage />
@@ -842,6 +850,8 @@ export function MarketplacePage() {
         </div>
         <div className="flex flex-wrap items-center gap-2"><LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></div>
       </div>
+
+      <MarketplaceWorkspaceTabs active={activeWorkspace} onSelect={selectWorkspace} inventoryEnabled={featureEnabledForUi('marketplace.inventory_workspace')} financeEnabled={featureEnabledForUi('marketplace.finance_workspace')} />
 
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => navigate('/app/inventory')}>Open Inventory module</Button>

@@ -760,6 +760,20 @@ describe('MarketplaceService', () => {
     expect(flags.find((item: any) => item.key === 'marketplace.listings')?.enabled).toBe(true);
     expect(flags.find((item: any) => item.key === 'marketplace.payments')?.enabled).toBe(false);
     expect(flags.find((item: any) => item.key === 'marketplace.refunds')?.enabled).toBe(false);
+    expect(flags.find((item: any) => item.key === 'marketplace.inventory_workspace')?.enabled).toBe(true);
+    expect(flags.find((item: any) => item.key === 'marketplace.finance_workspace')?.enabled).toBe(true);
   });
 
-});
+  it('allows Admin to turn off the Marketplace Inventory workspace with an audited reason', async () => {
+    const saved = await service.updateFeatureFlag('admin-1', UserRole.ADMIN, 'marketplace.inventory_workspace', {
+      enabled: false,
+      reason: 'Temporarily disable Inventory workspace for maintenance',
+    } as any);
+    expect(saved).toEqual(expect.objectContaining({ key: 'marketplace.inventory_workspace', enabled: false }));
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: 'TOGGLE_MARKETPLACE_FEATURE',
+      resourceId: 'marketplace.inventory_workspace',
+    }));
+  });
+
+});\n

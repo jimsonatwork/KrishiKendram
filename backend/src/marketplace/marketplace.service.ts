@@ -39,6 +39,8 @@ const RESOURCE_SOURCE_MODULES: Record<string, string> = { farmAsset: 'farms', cr
 
 const MARKETPLACE_FEATURES: Array<{ key: string; title: string; description: string; enabled: boolean; riskLevel: string; dependencies: string[] }> = [
   { key: 'marketplace.listings', title: 'Marketplace listings', description: 'Create, browse and publish listings.', enabled: true, riskLevel: 'MEDIUM', dependencies: [] },
+  { key: 'marketplace.inventory_workspace', title: 'Inventory workspace', description: 'Show Inventory as a Marketplace submodule; Inventory remains the stock source of truth.', enabled: true, riskLevel: 'MEDIUM', dependencies: ['marketplace.listings'] },
+  { key: 'marketplace.finance_workspace', title: 'Finance workspace', description: 'Show Finance and settlement views as a Marketplace submodule; live money movement remains separately gated.', enabled: true, riskLevel: 'MEDIUM', dependencies: ['marketplace.listings'] },
   { key: 'marketplace.media_uploads', title: 'Persistent media uploads', description: 'Upload validated Marketplace photos and short videos to local durable storage.', enabled: true, riskLevel: 'HIGH', dependencies: ['marketplace.listings'] },
   { key: 'marketplace.wholesale_pricing', title: 'Wholesale price tiers', description: 'Quantity-based unit prices for bulk agricultural orders.', enabled: true, riskLevel: 'MEDIUM', dependencies: ['marketplace.listings'] },
   { key: 'marketplace.offers', title: 'Buyer offers and revised prices', description: 'Offers, seller counter-prices and buyer confirmation.', enabled: true, riskLevel: 'MEDIUM', dependencies: ['marketplace.listings'] },
