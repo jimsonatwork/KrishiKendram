@@ -51,6 +51,7 @@ import {
   Shield,
   ShieldCheck,
   Store,
+  ShoppingBag,
   SlidersHorizontal,
   Sparkles,
   Sprout,
@@ -78,8 +79,11 @@ const ConnectionsPage = lazy(() => import('@/pages/admin/ConnectionsPage').then(
 const AccessPage = lazy(() => import('@/pages/admin/AccessPage').then((m) => ({ default: m.AccessPage })))
 const FarmsPage = lazy(() => import('@/pages/farms/FarmsPage').then((m) => ({ default: m.FarmsPage })))
 const CropsPage = lazy(() => import('@/pages/crops/CropsPage').then((m) => ({ default: m.CropsPage })))
+const InventoryPage = lazy(() => import('@/pages/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
+const FinancePage = lazy(() => import('@/pages/finance/FinancePage').then((m) => ({ default: m.FinancePage })))
 const LivestockPage = lazy(() => import('@/pages/livestock/LivestockPage').then((m) => ({ default: m.LivestockPage })))
 const MarketplacePage = lazy(() => import('@/pages/marketplace/MarketplacePage').then((m) => ({ default: m.MarketplacePage })))
+const ShoppingPage = lazy(() => import('@/pages/marketplace/ShoppingPage').then((m) => ({ default: m.ShoppingPage })))
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })))
 const ActivitiesPage = lazy(() => import('@/pages/activity/ActivitiesPage').then((m) => ({ default: m.ActivitiesPage })))
@@ -1017,6 +1021,21 @@ function PortalLayout({
               icon: <Store />,
             },
             {
+              label: 'Shop & Compare',
+              href: '/app/shop',
+              icon: <ShoppingBag />,
+            },
+            {
+              label: 'Inventory',
+              href: '/app/inventory',
+              icon: <Boxes />,
+            },
+            {
+              label: 'Finance',
+              href: '/app/finance',
+              icon: <BarChart3 />,
+            },
+            {
               label: 'Activities',
               href: '/app/activities',
               icon: <Activity />,
@@ -1056,9 +1075,9 @@ function PortalLayout({
   } else if (location.pathname === '/app/crops') {
     content = <CropsPage />
   } else if (location.pathname === '/app/inventory') {
-    content = <Navigate to="/app/marketplace?workspace=inventory" replace />
+    content = <InventoryPage />
   } else if (location.pathname === '/app/finance') {
-    content = <Navigate to="/app/marketplace?workspace=finance" replace />
+    content = <FinancePage />
   } else if (location.pathname === '/app/reports') {
     content = <ReportsPage />
   } else if (location.pathname === '/app/notifications') {
@@ -1067,6 +1086,8 @@ function PortalLayout({
     content = <LivestockPage />
   } else if (location.pathname === '/app/marketplace') {
     content = <MarketplacePage />
+  } else if (location.pathname === '/app/shop') {
+    content = <ShoppingPage />
   } else if (
     location.pathname === '/app/activities'
   ) {

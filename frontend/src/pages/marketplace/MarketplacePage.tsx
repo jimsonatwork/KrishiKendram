@@ -1,13 +1,14 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { InventoryPage } from '@/pages/inventory/InventoryPage'
 import { FinancePage } from '@/pages/finance/FinancePage'
 import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 import { Store, RefreshCw, Send, Archive, Pencil, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 
-type ResourceChoice = { id: string; label: string }
+type ResourceChoice = { id: string; label: string; farmId?: string }
 function parsePriceTiers(raw: string) {
   const text = raw.trim()
   if (!text) return []
@@ -25,6 +26,36 @@ function parsePriceTiers(raw: string) {
 const MARKETPLACE_API_ORIGIN = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1').replace(/\/api\/v1\/?$/, '')
 function marketplaceMediaSource(url: string) { return url.startsWith('/uploads/marketplace/') ? MARKETPLACE_API_ORIGIN + url : url }
 
+function indiaDateKey(value?: string | Date | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
+  const part = (type: string) => parts.find((item) => item.type === type)?.value || ''
+  return part('year') + '-' + part('month') + '-' + part('day')
+}
+
+function filterPublishedMarketplaceListings<T extends { category?: string; publishedAt?: string | null; createdAt?: string }>(
+  listings: T[], period: string, category: string, now = new Date(),
+): T[] {
+  const todayKey = indiaDateKey(now)
+  const todayUtc = Date.parse(todayKey + 'T00:00:00Z')
+  const weekday = new Date(todayKey + 'T00:00:00Z').getUTCDay()
+  const mondayKey = new Date(todayUtc - ((weekday + 6) % 7) * 86400000).toISOString().slice(0, 10)
+  return listings.filter((listing) => {
+    if (category && category !== 'ALL' && String(listing.category || 'OTHER').toUpperCase() !== category.toUpperCase()) return false
+    if (!period || period === 'active') return true
+    const listingKey = indiaDateKey(listing.publishedAt || listing.createdAt)
+    if (!listingKey) return false
+    if (period === 'week') return listingKey >= mondayKey && listingKey <= todayKey
+    const daysAgo = Math.round((todayUtc - Date.parse(listingKey + 'T00:00:00Z')) / 86400000)
+    if (period === 'today') return daysAgo === 0
+    if (period === 'yesterday') return daysAgo === 1
+    if (period === 'day-before-yesterday') return daysAgo === 2
+    return true
+  })
+}
+
 type Listing = {
   id: string
   resourceType: string
@@ -39,12 +70,22 @@ type Listing = {
   priceTiers?: Array<{ minQuantity: number; unitPrice: number }>
   currency: string
   status: string
+  publishedAt?: string | null
+  createdAt?: string
+  offeringType?: string
+  contextPolicyKey?: string | null
+  offeringDetails?: Record<string, unknown> | null
+  sourceModule?: string | null
+  sourceEntityId?: string | null
   category?: string
   imageUrls?: string[]
   videoUrls?: string[]
   externalLinks?: string[]
   seller?: { id: string; name: string; displayName?: string; profile?: { bio?: string | null; regionLabel?: string | null; contactPreference?: string; publicPhone?: string | null; showPhone?: boolean }; isVerified: boolean; userType: string; cautionRating?: number | null; cautionExpiresAt?: string | null }
 }
+
+type MarketplaceOfferingField = { key: string; label: string; type: 'text' | 'number' | 'boolean' | 'date' | 'url' | 'enum'; registryField: string; required?: boolean; options?: string[]; placeholder?: string; help?: string }
+type MarketplaceOfferingDefinition = { type: string; label: string; description: string; fields: MarketplaceOfferingField[] }
 
 type MarketplaceWorkspace = 'marketplace' | 'inventory' | 'finance'
 
@@ -73,7 +114,7 @@ export function MarketplacePage() {
   const tokenPayload = (() => { try { return JSON.parse(atob((token || '').split('.')[1] || '')) } catch { return {} } })()
   const currentUserId = tokenPayload.userId || tokenPayload.sub || ''
   const currentUserRole = tokenPayload.role || ''
-  const canManageCommercePolicy = currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN'
+  const canManageCommercePolicy = currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN' || tokenPayload.authorityTier === 'SYSTEM_GOD'
   const [published, setPublished] = useState<Listing[]>([])
   const [categoryOptions, setCategoryOptions] = useState<string[]>(['OTHER'])
   const [browsePeriod, setBrowsePeriod] = useState('active')
@@ -82,6 +123,8 @@ export function MarketplacePage() {
   const [orders, setOrders] = useState<any[]>([])
   const [orderQuantities, setOrderQuantities] = useState<Record<string, string>>({})
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({})
+  const [orderContextAnswers, setOrderContextAnswers] = useState<Record<string, Record<string, string>>>({})
+  const [orderContextLinks, setOrderContextLinks] = useState<Record<string, { consent: boolean; farmId: string; cropId: string }>>({})
   const [orderOfferPrices, setOrderOfferPrices] = useState<Record<string, string>>({})
   const [orderQuotes, setOrderQuotes] = useState<Record<string, { quantity: string; offerPrice: string; quote: any }>>({})
   const [quoteBusyIds, setQuoteBusyIds] = useState<string[]>([])
@@ -106,6 +149,10 @@ export function MarketplacePage() {
   const [sellerProfile, setSellerProfile] = useState<any>(null)
   const [sellerProfileBusy, setSellerProfileBusy] = useState(false)
   const [sellerProfileForm, setSellerProfileForm] = useState({ displayName:'', bio:'', regionLabel:'', contactPreference:'IN_APP', publicPhone:'', showPhone:false })
+  const [profileVisibilityPolicy, setProfileVisibilityPolicy] = useState<{defaultVisible:boolean;rules:any[]}>({defaultVisible:true,rules:[]})
+  const [visibilityRuleDraft, setVisibilityRuleDraft] = useState({visible:false,userIds:'',modules:'marketplace',categories:''})
+  const [visibilityReason, setVisibilityReason] = useState('')
+  const [visibilityBusy, setVisibilityBusy] = useState(false)
   const [favorites, setFavorites] = useState<any[]>([])
   const [favoriteBusyIds, setFavoriteBusyIds] = useState<string[]>([])
   const [messages, setMessages] = useState<any[]>([])
@@ -147,25 +194,42 @@ export function MarketplacePage() {
   const [sandboxChargebackEvidence, setSandboxChargebackEvidence] = useState<Record<string, string>>({})
   const [sandboxChargebackEvidenceBusyIds, setSandboxChargebackEvidenceBusyIds] = useState<string[]>([])
   const [cropChoices, setCropChoices] = useState<ResourceChoice[]>([])
+  const [farmChoices, setFarmChoices] = useState<ResourceChoice[]>([])
   const [livestockChoices, setLivestockChoices] = useState<ResourceChoice[]>([])
   const [assetChoices, setAssetChoices] = useState<ResourceChoice[]>([])
   const [inventoryChoices, setInventoryChoices] = useState<ResourceChoice[]>([])
-  const [form, setForm] = useState({ resourceType: 'generic', resourceId: '', category: 'PRODUCE', title: '', description: '', imageUrls: '', videoUrls: '', externalLinks: '', quantity: '', minOrderQuantity: '', unit: '', price: '', priceTiers: '' })
+  const [offeringDefinitions, setOfferingDefinitions] = useState<MarketplaceOfferingDefinition[]>([])
+  const [form, setForm] = useState({ resourceType: 'generic', resourceId: '', offeringType: 'PRODUCT', offeringDetails: {} as Record<string, string | boolean>, category: 'PRODUCE', title: '', description: '', imageUrls: '', videoUrls: '', externalLinks: '', quantity: '', minOrderQuantity: '', unit: '', price: '', priceTiers: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
   const [savingCreate, setSavingCreate] = useState(false)
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const createInFlight = useRef(false)
+  const editableFormsInitialized = useRef(false)
   const [busyListingIds, setBusyListingIds] = useState<string[]>([])
   const busyListingRef = useRef(new Set<string>())
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ title: '', category: 'OTHER', description: '', imageUrls: '', videoUrls: '', externalLinks: '', quantity: '', minOrderQuantity: '', unit: '', price: '', currency: 'INR', priceTiers: '' })
+  const [editForm, setEditForm] = useState({ offeringType: 'PRODUCT', offeringDetails: {} as Record<string, string | boolean>, title: '', category: 'OTHER', description: '', imageUrls: '', videoUrls: '', externalLinks: '', quantity: '', minOrderQuantity: '', unit: '', price: '', currency: 'INR', priceTiers: '' })
+  const activeOfferingDefinition = offeringDefinitions.find((definition) => definition.type === form.offeringType)
+  const activeEditOfferingDefinition = offeringDefinitions.find((definition) => definition.type === editForm.offeringType)
+
+  useEffect(() => {
+    let active = true
+    void api.marketplaceOfferingTypes().then((definitions) => {
+      if (active && Array.isArray(definitions)) setOfferingDefinitions(definitions)
+    }).catch(() => {
+      if (active) setOfferingDefinitions([])
+    })
+    return () => { active = false }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
     try {
-      const [publicListings, categories, ownListings, ownOrders, crops, livestock, farms, inventoryItems, policy, reviewQueue, history, cases, restrictions, flags, publicFlags, statement, holds, reconciliation, taxRows, profile, savedFavorites, inbox, myRFQRows, openRFQRows] = await Promise.all([
-        api.marketplaceListings({ period: browsePeriod, category: browseCategory }),
+      const [publicListings, categories, ownListings, ownOrders, crops, livestock, farms, inventoryItems, policy, reviewQueue, history, cases, restrictions, flags, publicFlags, statement, holds, reconciliation, taxRows, profile, visibilityPolicy, savedFavorites, inbox, myRFQRows, openRFQRows] = await Promise.all([
+        api.marketplaceListings(),
         api.marketplaceCategories(),
         token ? api.marketplaceMine(token) : Promise.resolve([]),
         token ? api.marketplaceOrders(token) : Promise.resolve([]),
@@ -185,6 +249,7 @@ export function MarketplacePage() {
         token && canManageCommercePolicy ? api.marketplaceReconciliationRuns(token) : Promise.resolve([]),
         token && canManageCommercePolicy ? api.marketplaceTaxProfiles(token) : Promise.resolve([]),
         token ? api.marketplaceSellerProfile(token) : Promise.resolve(null),
+        token && canManageCommercePolicy ? api.marketplaceSellerProfileVisibilityPolicy(token).catch(() => ({defaultVisible:true,rules:[]})) : Promise.resolve({defaultVisible:true,rules:[]}),
         token ? api.marketplaceFavorites(token) : Promise.resolve([]),
         token ? api.marketplaceMessages(token) : Promise.resolve([]),
         token ? api.marketplaceMyRFQs(token) : Promise.resolve([]),
@@ -203,7 +268,10 @@ export function MarketplacePage() {
       setReconciliationRuns(reconciliation)
       setTaxProfiles(taxRows)
       setSellerProfile(profile)
-      setSellerProfileForm({ displayName: profile?.profile?.displayName || '', bio: profile?.profile?.bio || '', regionLabel: profile?.profile?.regionLabel || '', contactPreference: profile?.profile?.contactPreference || 'IN_APP', publicPhone: profile?.profile?.publicPhone || '', showPhone: Boolean(profile?.profile?.showPhone) })
+      setProfileVisibilityPolicy(visibilityPolicy)
+      if (!editableFormsInitialized.current) {
+        setSellerProfileForm({ displayName: profile?.profile?.displayName || '', bio: profile?.profile?.bio || '', regionLabel: profile?.profile?.regionLabel || '', contactPreference: profile?.profile?.contactPreference || 'IN_APP', publicPhone: profile?.profile?.publicPhone || '', showPhone: Boolean(profile?.profile?.showPhone) })
+      }
       setFavorites(savedFavorites)
       setMessages(inbox)
       setMyRFQs(myRFQRows)
@@ -212,15 +280,25 @@ export function MarketplacePage() {
       setActiveRestrictions(restrictions)
       setFeatureFlags(flags)
       setPublicFeatureFlags(publicFlags)
-      setPolicyForm({ feesEnabled: Boolean(policy.feesEnabled), buyerFeePercent: String(policy.buyerFeePercent ?? 0), sellerCommissionPercent: String(policy.sellerCommissionPercent ?? 0), taxEnabled: Boolean(policy.taxEnabled), taxPercent: String(policy.taxPercent ?? 0), taxReviewReference: String(policy.taxReviewReference || '') })
-      setCropChoices(crops.map((item: any) => ({ id: item.id, label: [item.name || item.cropName || 'Crop', item.farm?.name].filter(Boolean).join(' · ') })))
+      if (!editableFormsInitialized.current) {
+        setPolicyForm({ feesEnabled: Boolean(policy.feesEnabled), buyerFeePercent: String(policy.buyerFeePercent ?? 0), sellerCommissionPercent: String(policy.sellerCommissionPercent ?? 0), taxEnabled: Boolean(policy.taxEnabled), taxPercent: String(policy.taxPercent ?? 0), taxReviewReference: String(policy.taxReviewReference || '') })
+        editableFormsInitialized.current = true
+      }
+      setCropChoices(crops.map((item: any) => ({ id: item.id, farmId: item.farmId, label: [item.name || item.cropName || 'Crop', item.farm?.name].filter(Boolean).join(' · ') })))
+      setFarmChoices(farms.filter((item: any) => !item.deletedAt).map((item: any) => ({ id: item.id, label: item.name || 'Farm' })))
       setLivestockChoices(livestock.map((item: any) => ({ id: item.id, label: [item.name || item.species || 'Livestock', item.farm?.name].filter(Boolean).join(' · ') })))
       setAssetChoices(farms.flatMap((farm: any) => (farm.assets || []).filter((item: any) => !item.deletedAt).map((item: any) => ({ id: item.id, label: [(item.name || item.type || 'Farm asset'), farm.name].filter(Boolean).join(' · ') }))))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load marketplace.')
     } finally { setLoading(false) }
-  }, [token, browsePeriod, browseCategory])
-  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 30_000, onWindowFocus: true })
+  }, [token])
+  useEffect(() => { void load() }, [load])
+  useLiveRefresh(load, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
+
+  const visiblePublished = useMemo(
+    () => filterPublishedMarketplaceListings(published, browsePeriod, browseCategory),
+    [published, browsePeriod, browseCategory],
+  )
 
   const featureEnabledForUi = (key: string) => {
     const saved = publicFeatureFlags.find((item: any) => item.key === key)
@@ -265,6 +343,24 @@ export function MarketplacePage() {
     try { await api.releaseMarketplacePayoutHold(hold.id, reason, token); setHoldReasons(prev => ({...prev,[hold.id]:''})); await load() }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to release payout hold.') }
     finally { setHoldBusyIds(prev => prev.filter(id => id !== hold.id)) }
+  }
+
+  async function saveProfileVisibilityPolicy() {
+    if (!token || !canManageCommercePolicy || visibilityBusy) return
+    if (!visibilityReason.trim()) { setError('Enter a reason for changing seller profile visibility.'); return }
+    setVisibilityBusy(true)
+    try {
+      const saved = await api.updateMarketplaceSellerProfileVisibilityPolicy({ ...profileVisibilityPolicy, reason: visibilityReason.trim() }, token)
+      setProfileVisibilityPolicy(saved)
+      setVisibilityReason('')
+      setError('')
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save seller profile visibility policy.') }
+    finally { setVisibilityBusy(false) }
+  }
+  function addProfileVisibilityRule() {
+    const split = (value:string) => value.split(',').map(part => part.trim()).filter(Boolean)
+    setProfileVisibilityPolicy(current => ({...current,rules:[...current.rules,{id:'rule-'+Date.now(),visible:visibilityRuleDraft.visible,userIds:split(visibilityRuleDraft.userIds),modules:split(visibilityRuleDraft.modules),categories:split(visibilityRuleDraft.categories)}]}))
+    setVisibilityRuleDraft({visible:false,userIds:'',modules:'marketplace',categories:''})
   }
 
   async function saveSellerProfile(event: React.FormEvent) {
@@ -368,15 +464,20 @@ export function MarketplacePage() {
     setSavingCreate(true)
     setError('')
     try {
+      const details = Object.fromEntries(Object.entries(form.offeringDetails)
+        .filter(([, value]) => value !== '' && value !== undefined && value !== null)
+        .map(([key, value]) => [key, activeOfferingDefinition?.fields.find((field) => field.key === key)?.type === 'number' ? Number(value) : value]))
       await api.createMarketplaceListing({
         resourceType: form.resourceType === 'generic' ? undefined : form.resourceType,
         resourceId: form.resourceType === 'generic' ? undefined : form.resourceId.trim(),
+        offeringType: form.offeringType,
+        offeringDetails: Object.keys(details).length ? details : undefined,
         category: form.category, imageUrls: form.imageUrls.split(',').map((url) => url.trim()).filter(Boolean), videoUrls: form.videoUrls.split(',').map((url) => url.trim()).filter(Boolean), externalLinks: form.externalLinks.split(',').map((url) => url.trim()).filter(Boolean),
         title: form.title.trim(), description: form.description.trim() || undefined, priceTiers: featureEnabledForUi('marketplace.wholesale_pricing') ? parsePriceTiers(form.priceTiers) : undefined,
         quantity: form.quantity ? Number(form.quantity) : undefined, minOrderQuantity: form.minOrderQuantity ? Number(form.minOrderQuantity) : undefined,
         unit: form.unit.trim() || undefined, price: form.price ? Number(form.price) : undefined,
       }, token)
-      setForm((v) => ({ ...v, resourceId: '', title: '', description: '', imageUrls: '', videoUrls: '', externalLinks: '', quantity: '', minOrderQuantity: '', unit: '', price: '', priceTiers: '' }))
+      setForm((v) => ({ ...v, resourceId: '', title: '', description: '', imageUrls: '', videoUrls: '', externalLinks: '', quantity: '', minOrderQuantity: '', unit: '', price: '', priceTiers: '', offeringDetails: {} }))
       await load()
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to create listing.') }
     finally { createInFlight.current = false; setSavingCreate(false) }
@@ -397,6 +498,23 @@ export function MarketplacePage() {
     finally { setQuoteBusyIds(previous => previous.filter(id => id !== item.id)) }
   }
 
+  async function shareListing(item: Listing, channel: 'copy' | 'whatsapp' | 'email') {
+    const url = window.location.origin + '/app/marketplace#listing-' + encodeURIComponent(item.id)
+    const text = item.title + (item.description ? ' — ' + item.description.slice(0, 180) : '') + ' | KrishiKendram: ' + url
+    try {
+      if (channel === 'copy') {
+        await navigator.clipboard.writeText(url)
+        setError('')
+      } else if (channel === 'whatsapp') {
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer')
+      } else {
+        window.location.href = 'mailto:?subject=' + encodeURIComponent(item.title) + '&body=' + encodeURIComponent(text)
+      }
+    } catch {
+      setError('Unable to copy the listing link here. Use the listing URL from your browser address bar.')
+    }
+  }
+
   async function placeOrder(item: Listing) {
     if (!token || orderBusyIds.includes(item.id)) return
     const quantity = Number(orderQuantities[item.id] || '1')
@@ -407,10 +525,31 @@ export function MarketplacePage() {
       const rawOffer = orderOfferPrices[item.id]?.trim() || ''
       const offerPrice = rawOffer ? Number(rawOffer) : undefined
       if (offerPrice !== undefined && (!Number.isFinite(offerPrice) || offerPrice < 0)) { setError('Offer price must be zero or greater.'); setOrderBusyIds(previous => previous.filter(id => id !== item.id)); return }
-      await api.createMarketplaceOrder(item.id, { quantity, offerPrice, note: orderNotes[item.id]?.trim() || undefined }, token)
+      const contextAnswers = orderContextAnswers[item.id] || {}
+      if (item.contextPolicyKey === 'AGRI_INPUT_USAGE' && (!contextAnswers.intendedCrop?.trim() || !contextAnswers.region?.trim())) {
+        setError('Before requesting this agricultural input, tell KK the intended crop and use location so product-use guidance can be relevant.')
+        setOrderBusyIds(previous => previous.filter(id => id !== item.id))
+        return
+      }
+      const contextLink = orderContextLinks[item.id]
+      if (item.contextPolicyKey === 'AGRI_INPUT_USAGE' && contextLink?.consent && !contextLink.farmId && !contextLink.cropId) {
+        setError('Choose a farm or crop record to link, or leave the optional link consent unchecked.')
+        setOrderBusyIds(previous => previous.filter(id => id !== item.id))
+        return
+      }
+      await api.createMarketplaceOrder(item.id, {
+        quantity, offerPrice, note: orderNotes[item.id]?.trim() || undefined,
+        ...(item.contextPolicyKey === 'AGRI_INPUT_USAGE' ? { contextAnswers: { ...contextAnswers } } : {}),
+        ...(item.contextPolicyKey === 'AGRI_INPUT_USAGE' && contextLink?.consent && (contextLink.farmId || contextLink.cropId) ? {
+          consentToLinkContext: true,
+          ...(contextLink.farmId ? { contextFarmId: contextLink.farmId } : {}),
+          ...(contextLink.cropId ? { contextCropId: contextLink.cropId } : {}),
+        } : {}),
+      }, token)
       setOrderQuantities(previous => ({ ...previous, [item.id]: '' }))
       setOrderNotes(previous => ({ ...previous, [item.id]: '' }))
       setOrderOfferPrices(previous => ({ ...previous, [item.id]: '' }))
+      setOrderContextLinks(previous => ({ ...previous, [item.id]: { consent: false, farmId: '', cropId: '' } }))
       setOrderQuotes(previous => { const next = { ...previous }; delete next[item.id]; return next })
       await load()
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to place order request.') }
@@ -580,7 +719,7 @@ export function MarketplacePage() {
 
   function beginEdit(item: Listing) {
     setEditingId(item.id)
-    setEditForm({ title: item.title, category: item.category || 'OTHER', description: item.description || '', imageUrls: item.imageUrls?.join(', ') || '', videoUrls: item.videoUrls?.join(', ') || '', externalLinks: item.externalLinks?.join(', ') || '', quantity: item.quantity?.toString() || '', minOrderQuantity: item.minOrderQuantity?.toString() || '', unit: item.unit || '', price: item.price?.toString() || '', currency: item.currency || 'INR', priceTiers: item.priceTiers?.map(t => t.minQuantity + ':' + t.unitPrice).join(', ') || '' })
+    setEditForm({ offeringType: item.offeringType || 'PRODUCT', offeringDetails: Object.fromEntries(Object.entries(item.offeringDetails || {}).map(([key, value]) => [key, typeof value === 'boolean' ? value : String(value)])), title: item.title, category: item.category || 'OTHER', description: item.description || '', imageUrls: item.imageUrls?.join(', ') || '', videoUrls: item.videoUrls?.join(', ') || '', externalLinks: item.externalLinks?.join(', ') || '', quantity: item.quantity?.toString() || '', minOrderQuantity: item.minOrderQuantity?.toString() || '', unit: item.unit || '', price: item.price?.toString() || '', currency: item.currency || 'INR', priceTiers: item.priceTiers?.map(t => t.minQuantity + ':' + t.unitPrice).join(', ') || '' })
   }
 
   async function saveEdit(id: string) {
@@ -589,7 +728,10 @@ export function MarketplacePage() {
     setBusyListingIds(previous => [...previous, id])
     setError('')
     try {
-      await api.updateMarketplaceListing(id, { title: editForm.title.trim(), category: editForm.category, priceTiers: featureEnabledForUi('marketplace.wholesale_pricing') ? parsePriceTiers(editForm.priceTiers) : undefined, imageUrls: editForm.imageUrls.split(',').map((url) => url.trim()).filter(Boolean), videoUrls: editForm.videoUrls.split(',').map((url) => url.trim()).filter(Boolean), externalLinks: editForm.externalLinks.split(',').map((url) => url.trim()).filter(Boolean), description: editForm.description.trim() || undefined, quantity: editForm.quantity ? Number(editForm.quantity) : undefined, minOrderQuantity: editForm.minOrderQuantity ? Number(editForm.minOrderQuantity) : undefined, unit: editForm.unit.trim() || undefined, price: editForm.price ? Number(editForm.price) : undefined, currency: editForm.currency.trim().toUpperCase() }, token)
+      const details = Object.fromEntries(Object.entries(editForm.offeringDetails)
+        .filter(([, value]) => value !== '' && value !== undefined && value !== null)
+        .map(([key, value]) => [key, activeEditOfferingDefinition?.fields.find((field) => field.key === key)?.type === 'number' ? Number(value) : value]))
+      await api.updateMarketplaceListing(id, { offeringType: editForm.offeringType, offeringDetails: details, title: editForm.title.trim(), category: editForm.category, priceTiers: featureEnabledForUi('marketplace.wholesale_pricing') ? parsePriceTiers(editForm.priceTiers) : undefined, imageUrls: editForm.imageUrls.split(',').map((url) => url.trim()).filter(Boolean), videoUrls: editForm.videoUrls.split(',').map((url) => url.trim()).filter(Boolean), externalLinks: editForm.externalLinks.split(',').map((url) => url.trim()).filter(Boolean), description: editForm.description.trim() || undefined, quantity: editForm.quantity ? Number(editForm.quantity) : undefined, minOrderQuantity: editForm.minOrderQuantity ? Number(editForm.minOrderQuantity) : undefined, unit: editForm.unit.trim() || undefined, price: editForm.price ? Number(editForm.price) : undefined, currency: editForm.currency.trim().toUpperCase() }, token)
       setEditingId(null)
       await load()
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to update listing.') }
@@ -696,16 +838,37 @@ export function MarketplacePage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-2xl font-semibold"><Store className="h-6 w-6" />Marketplace</div>
-          <p className="mt-1 text-sm text-muted-foreground">Publish farm-owned crops, assets, and livestock without creating a second inventory system.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Discover and offer products, services, rentals, bookings, knowledge and opportunities across KrishiKendram.</p>
         </div>
-        <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
+        <div className="flex flex-wrap items-center gap-2"><LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></div>
       </div>
 
-      <MarketplaceWorkspaceTabs active={activeWorkspace} onSelect={selectWorkspace} />
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => navigate('/app/inventory')}>Open Inventory module</Button>
+        <Button variant="outline" onClick={() => navigate('/app/finance')}>Open Finance module</Button>
+      </div>
 
       {error && <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">{error}</div>}
 
       {token && <section className="rounded-xl border bg-card p-4 shadow-sm">
+        {token && canManageCommercePolicy && <div className="mb-4 rounded-lg border bg-muted/20 p-3">
+          <h3 className="font-semibold">Seller profile visibility policy</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Default ON for everyone. Non-empty selectors in a rule must all match (user AND module AND category); later matching rules win. Phone publication still requires seller consent.</p>
+          <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={profileVisibilityPolicy.defaultVisible} onChange={e=>setProfileVisibilityPolicy(current=>({...current,defaultVisible:e.target.checked}))}/> Default visibility for all users: {profileVisibilityPolicy.defaultVisible?'ON':'OFF'}</label>
+          <div className="mt-2 space-y-2">{profileVisibilityPolicy.rules.map((rule,index)=><div key={rule.id||index} className="flex flex-wrap items-center justify-between gap-2 rounded border p-2 text-xs">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(rule.visible)} onChange={e=>setProfileVisibilityPolicy(current=>({...current,rules:current.rules.map((item,i)=>i===index?{...item,visible:e.target.checked}:item)}))}/>{rule.visible?'ON':'OFF'}</label>
+            <span className="min-w-0 flex-1 break-words">Users: {rule.userIds?.length?rule.userIds.join(', '):'all'} · Modules: {rule.modules?.length?rule.modules.join(', '):'all'} · Categories: {rule.categories?.length?rule.categories.join(', '):'all'}</span>
+            <Button type="button" size="sm" variant="outline" onClick={()=>setProfileVisibilityPolicy(current=>({...current,rules:current.rules.filter((_,i)=>i!==index)}))}>Remove</Button>
+          </div>)}</div>
+          <div className="mt-2 grid gap-2 md:grid-cols-2">
+            <input aria-label="Target user IDs" className="h-9 rounded border bg-background px-2 text-sm" placeholder="User IDs, comma-separated; blank = all" value={visibilityRuleDraft.userIds} onChange={e=>setVisibilityRuleDraft({...visibilityRuleDraft,userIds:e.target.value})}/>
+            <input aria-label="Target modules" className="h-9 rounded border bg-background px-2 text-sm" placeholder="Modules; blank = all" value={visibilityRuleDraft.modules} onChange={e=>setVisibilityRuleDraft({...visibilityRuleDraft,modules:e.target.value})}/>
+            <input aria-label="Target categories" className="h-9 rounded border bg-background px-2 text-sm" placeholder="Categories; blank = all" value={visibilityRuleDraft.categories} onChange={e=>setVisibilityRuleDraft({...visibilityRuleDraft,categories:e.target.value})}/>
+            <div className="flex items-center gap-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={visibilityRuleDraft.visible} onChange={e=>setVisibilityRuleDraft({...visibilityRuleDraft,visible:e.target.checked})}/> Rule ON</label><Button type="button" size="sm" variant="outline" onClick={addProfileVisibilityRule}>Add rule</Button></div>
+          </div>
+          <input aria-label="Visibility policy audit reason" className="mt-2 h-9 w-full rounded border bg-background px-2 text-sm" placeholder="Reason required; saved to audit history" value={visibilityReason} onChange={e=>setVisibilityReason(e.target.value)}/>
+          <Button type="button" className="mt-2" size="sm" disabled={visibilityBusy||!visibilityReason.trim()} onClick={()=>void saveProfileVisibilityPolicy()}>{visibilityBusy?'Saving…':'Save policy'}</Button>
+        </div>}
         <h2 className="font-semibold">Seller profile & buyer contact preferences</h2>{sellerProfile?.profile?.updatedAt && <p className="mt-1 text-xs text-muted-foreground">Last saved {new Date(sellerProfile.profile.updatedAt).toLocaleString()}</p>}<p className="mt-1 text-xs text-muted-foreground">Your name and verification status come from the account. Phone details remain private unless you explicitly enable public display.</p>
         <form onSubmit={saveSellerProfile} className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="text-sm">Public display name<input maxLength={100} className="mt-1 h-9 w-full rounded-md border bg-background px-3" value={sellerProfileForm.displayName} onChange={e=>setSellerProfileForm({...sellerProfileForm,displayName:e.target.value})}/></label>
@@ -785,6 +948,9 @@ export function MarketplacePage() {
             <option value="">{resourceChoices.length ? 'Select your resource…' : 'No owned resources available'}</option>
             {resourceChoices.map((resource) => <option key={resource.id} value={resource.id}>{resource.label}</option>)}
           </select>}
+          <select aria-label="Offering type" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.offeringType} onChange={(e) => setForm({ ...form, offeringType: e.target.value, offeringDetails: {} })}>
+            {offeringDefinitions.length ? offeringDefinitions.map((definition) => <option key={definition.type} value={definition.type}>{definition.label}</option>) : <><option value="PRODUCT">Physical product</option><option value="DIGITAL">Digital product</option><option value="SERVICE">Service / consultation</option><option value="RENTAL">Rental / lease</option><option value="BOOKING">Appointment / booking / event</option><option value="SUBSCRIPTION">Subscription / recurring service</option><option value="RFQ">Wholesale / request for quote</option><option value="PUBLIC_SERVICE">Public / government service</option><option value="KNOWLEDGE">Course / knowledge</option><option value="DONATION">Donation / community exchange</option><option value="JOB">Job / expertise / volunteer</option><option value="LOGISTICS">Transport / storage / logistics</option></>}
+          </select>
           <select aria-label="Listing category" className="h-10 rounded-md border bg-background px-3 text-sm" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
             {categoryOptions.map((category) => <option key={category} value={category}>{category.replace(/_/g, ' ')}</option>)}
           </select>
@@ -798,6 +964,19 @@ export function MarketplacePage() {
           <input className="h-10 rounded-md border bg-background px-3 text-sm" type="number" min="0" placeholder="Price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
 
         </div>
+        {activeOfferingDefinition && activeOfferingDefinition.fields.length > 0 && <section className="mt-4 rounded-lg border p-3" aria-label={activeOfferingDefinition.label + ' details'}>
+          <div className="font-medium">{activeOfferingDefinition.label} details</div>
+          <p className="mt-1 text-sm text-muted-foreground">{activeOfferingDefinition.description}</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {activeOfferingDefinition.fields.map((field) => {
+              const value = form.offeringDetails[field.key]
+              if (field.type === 'enum') return <label key={field.key} className="grid gap-1 text-sm"><span>{field.label}{field.required ? ' *' : ''}</span><select aria-label={field.label} required={field.required} className="h-10 rounded-md border bg-background px-3" value={typeof value === 'string' ? value : ''} onChange={(event) => setForm((previous) => ({ ...previous, offeringDetails: { ...previous.offeringDetails, [field.key]: event.target.value } }))}><option value="">Choose…</option>{(field.options || []).map((option) => <option key={option} value={option}>{option.replace(/_/g, ' ')}</option>)}</select>{field.help && <span className="text-xs text-muted-foreground">{field.help}</span>}</label>
+              if (field.type === 'boolean') return <label key={field.key} className="flex items-center gap-2 text-sm"><input aria-label={field.label} type="checkbox" checked={value === true} onChange={(event) => setForm((previous) => ({ ...previous, offeringDetails: { ...previous.offeringDetails, [field.key]: event.target.checked } }))} /><span>{field.label}</span></label>
+              const inputType = field.type === 'number' || field.type === 'date' || field.type === 'url' ? field.type : 'text'
+              return <label key={field.key} className="grid gap-1 text-sm"><span>{field.label}{field.required ? ' *' : ''}</span><input aria-label={field.label} required={field.required} type={inputType} min={field.type === 'number' ? 0 : undefined} step={field.type === 'number' ? 'any' : undefined} className="h-10 rounded-md border bg-background px-3" placeholder={field.placeholder || ''} value={typeof value === 'string' ? value : ''} onChange={(event) => setForm((previous) => ({ ...previous, offeringDetails: { ...previous.offeringDetails, [field.key]: event.target.value } }))} />{field.help && <span className="text-xs text-muted-foreground">{field.help}</span>}</label>
+            })}
+          </div>
+        </section>}
         <Button className="mt-4" type="submit" disabled={savingCreate || uploadingMedia || (form.resourceType !== 'generic' && !form.resourceId) || !form.title.trim()}>{uploadingMedia ? "Uploading media…" : savingCreate ? "Creating…" : "Create listing"}</Button>
       </form>}
 
@@ -807,8 +986,18 @@ export function MarketplacePage() {
           {mine.map((item) => <article key={item.id} className="rounded-xl border bg-card p-4">
             {editingId === item.id ? <div className="space-y-2">
               <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Title" />
+              <select aria-label="Edit offering type" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.offeringType} onChange={(e) => setEditForm({ ...editForm, offeringType: e.target.value, offeringDetails: {} })}>
+                {offeringDefinitions.length ? offeringDefinitions.map((definition) => <option key={definition.type} value={definition.type}>{definition.label}</option>) : <><option value="PRODUCT">Physical product</option><option value="DIGITAL">Digital product</option><option value="SERVICE">Service / consultation</option><option value="RENTAL">Rental / lease</option><option value="BOOKING">Appointment / booking / event</option><option value="SUBSCRIPTION">Subscription / recurring service</option><option value="RFQ">Wholesale / request for quote</option><option value="PUBLIC_SERVICE">Public / government service</option><option value="KNOWLEDGE">Course / knowledge</option><option value="DONATION">Donation / community exchange</option><option value="JOB">Job / expertise / volunteer</option><option value="LOGISTICS">Transport / storage / logistics</option></>}
+              </select>
               <select aria-label="Edit listing category" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}>{categoryOptions.map((category) => <option key={category} value={category}>{category.replace(/_/g, ' ')}</option>)}</select>
               <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+              {activeEditOfferingDefinition && activeEditOfferingDefinition.fields.length > 0 && <div className="rounded-lg border p-3"><div className="mb-2 text-sm font-medium">{activeEditOfferingDefinition.label} details</div><div className="grid gap-2 sm:grid-cols-2">{activeEditOfferingDefinition.fields.map((field) => {
+                const value = editForm.offeringDetails[field.key]
+                if (field.type === 'enum') return <label key={field.key} className="grid gap-1 text-xs"><span>{field.label}{field.required ? ' *' : ''}</span><select aria-label={'Edit ' + field.label} required={field.required} className="h-9 rounded-md border bg-background px-2 text-sm" value={typeof value === 'string' ? value : ''} onChange={(event) => setEditForm((previous) => ({ ...previous, offeringDetails: { ...previous.offeringDetails, [field.key]: event.target.value } }))}><option value="">Choose…</option>{(field.options || []).map((option) => <option key={option} value={option}>{option.replace(/_/g, ' ')}</option>)}</select></label>
+                if (field.type === 'boolean') return <label key={field.key} className="flex items-center gap-2 text-xs"><input aria-label={'Edit ' + field.label} type="checkbox" checked={value === true} onChange={(event) => setEditForm((previous) => ({ ...previous, offeringDetails: { ...previous.offeringDetails, [field.key]: event.target.checked } }))} />{field.label}</label>
+                const inputType = field.type === 'number' || field.type === 'date' || field.type === 'url' ? field.type : 'text'
+                return <label key={field.key} className="grid gap-1 text-xs"><span>{field.label}{field.required ? ' *' : ''}</span><input aria-label={'Edit ' + field.label} required={field.required} type={inputType} min={field.type === 'number' ? 0 : undefined} step={field.type === 'number' ? 'any' : undefined} className="h-9 rounded-md border bg-background px-2 text-sm" placeholder={field.placeholder || ''} value={typeof value === 'string' ? value : ''} onChange={(event) => setEditForm((previous) => ({ ...previous, offeringDetails: { ...previous.offeringDetails, [field.key]: event.target.value } }))} /></label>
+              })}</div></div>}
               <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.imageUrls} onChange={(e) => setEditForm({ ...editForm, imageUrls: e.target.value })} placeholder="Photo URLs (comma-separated image links)" />
               <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.videoUrls} onChange={(e) => setEditForm({ ...editForm, videoUrls: e.target.value })} placeholder="Video links (YouTube/public video)" />
               <input className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={editForm.externalLinks} onChange={(e) => setEditForm({ ...editForm, externalLinks: e.target.value })} placeholder="Social / Drive / catalogue links" />
@@ -879,7 +1068,7 @@ export function MarketplacePage() {
 
       <section>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Published listings</h2>
+          <h2 className="text-lg font-semibold">Published listings <span className="text-sm font-normal text-muted-foreground">({visiblePublished.length})</span></h2>
           <div className="flex flex-wrap gap-2">
             <select aria-label="Listing date range" className="h-9 rounded-md border bg-background px-3 text-sm" value={browsePeriod} onChange={(e) => setBrowsePeriod(e.target.value)}>
               <option value="active">Currently active</option><option value="today">Today / latest today</option><option value="yesterday">Yesterday</option><option value="day-before-yesterday">Day before yesterday</option><option value="week">This week</option>
@@ -889,28 +1078,51 @@ export function MarketplacePage() {
             </select>
           </div>
         </div>
-        {!featureEnabledForUi('marketplace.listings') ? <div className="rounded-xl border border-dashed p-8 text-sm text-muted-foreground">Marketplace listings are temporarily disabled by platform policy. Existing history is retained.</div> : published.length === 0 ? <div className="rounded-xl border border-dashed p-8 text-sm text-muted-foreground">No published listings yet.</div> :
+        {!featureEnabledForUi('marketplace.listings') ? <div className="rounded-xl border border-dashed p-8 text-sm text-muted-foreground">Marketplace listings are temporarily disabled by platform policy. Existing history is retained.</div> : visiblePublished.length === 0 ? <div className="rounded-xl border border-dashed p-8 text-sm text-muted-foreground">{published.length ? 'No listings match these filters.' : 'No published listings yet.'}</div> :
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {published.map((item) => <article key={item.id} className="rounded-xl border bg-card p-5 shadow-sm">
+            {visiblePublished.map((item) => <article id={'listing-' + item.id} key={item.id} className="rounded-xl border bg-card p-5 shadow-sm">
               {item.imageUrls && item.imageUrls.length > 0 && <div className="mb-3 grid grid-cols-2 gap-2">{item.imageUrls.slice(0, 4).map((url: string) => <img key={url} src={marketplaceMediaSource(url)} alt={item.title} loading="lazy" className="h-36 w-full rounded-md object-cover" />)}</div>}
               <div className="font-semibold">{item.title}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{item.category || 'OTHER'} · {item.resourceType || 'General listing'}{item.quantity !== undefined ? ' · ' + item.quantity + ' ' + (item.unit || '') : ''}{item.minOrderQuantity != null ? ' · Minimum order ' + item.minOrderQuantity + ' ' + (item.unit || '') : ''}</div>
-              {item.seller?.name && <div className="mt-1 text-xs text-muted-foreground">Seller: {item.seller.displayName || item.seller.name}{item.seller.isVerified ? ' · Verified' : ''}</div>}
+              <div className="mt-1 text-sm text-muted-foreground">{(item.offeringType || 'PRODUCT').replace(/_/g, ' ')} · {item.category || 'OTHER'} · {item.resourceType || item.sourceModule || 'General listing'}{item.quantity !== undefined ? ' · ' + item.quantity + ' ' + (item.unit || '') : ''}{item.minOrderQuantity != null ? ' · Minimum order ' + item.minOrderQuantity + ' ' + (item.unit || '') : ''}</div>
+              {item.seller?.name && <div className="mt-1 text-xs text-muted-foreground">{['SERVICE','RENTAL','BOOKING','SUBSCRIPTION','PUBLIC_SERVICE','KNOWLEDGE','JOB','LOGISTICS'].includes(item.offeringType || '') ? 'Provider: ' : 'Seller: '}{item.seller.displayName || item.seller.name}{item.seller.isVerified ? ' · Verified' : ''}</div>}
               {item.seller?.profile && <div className="mt-1 text-xs text-muted-foreground">{item.seller.profile.regionLabel || ''}{item.seller.profile.bio ? ' · ' + item.seller.profile.bio : ''}{item.seller.profile.showPhone && item.seller.profile.publicPhone ? ' · ' + item.seller.profile.publicPhone : ''}</div>}
+              {item.offeringDetails && Object.keys(item.offeringDetails).length > 0 && <dl className="mt-3 grid gap-2 rounded-lg border bg-muted/20 p-3 sm:grid-cols-2">{Object.entries(item.offeringDetails).map(([key, value]) => {
+                const label = offeringDefinitions.find((definition) => definition.type === (item.offeringType || 'PRODUCT'))?.fields.find((field) => field.key === key)?.label || key.replace(/([A-Z])/g, ' $1').replace(/^./, (first) => first.toUpperCase())
+                return <div key={key} className="min-w-0"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="break-words text-sm">{typeof value === 'boolean' ? value ? 'Yes' : 'No' : String(value)}</dd></div>
+              })}</dl>}
               {token && (featureEnabledForUi('marketplace.favorites') || featureEnabledForUi('marketplace.messaging')) && <div className="mt-2 flex flex-wrap gap-2">{featureEnabledForUi('marketplace.favorites') && <Button size="sm" variant="outline" disabled={favoriteBusyIds.includes(item.id)} onClick={()=>void toggleFavorite(item)}>{favorites.some((f:any)=>f.listingId===item.id&&f.status==='ACTIVE')?'Remove saved':'Save listing'}</Button>}{featureEnabledForUi('marketplace.messaging') && item.sellerId!==currentUserId && <Button size="sm" variant="ghost" onClick={()=>setMessageForm({recipientId:item.sellerId||'',listingId:item.id,orderId:'',body:''})}>Message seller</Button>}</div>}
               {item.seller?.cautionRating != null && <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs">Marketplace caution indicator: {item.seller.cautionRating}/5 · evidence reviewed · expires {item.seller.cautionExpiresAt ? new Date(item.seller.cautionExpiresAt).toLocaleDateString() : 'when reviewed'}<span className="block text-muted-foreground">This is a platform caution signal, not a final finding of guilt. The affected user can appeal.</span></div>}
               {item.description && <p className="mt-3 text-sm">{item.description}</p>}
               {item.videoUrls?.length ? <div className="mt-3 space-y-1">{item.videoUrls.map((url) => <a key={url} href={marketplaceMediaSource(url)} target="_blank" rel="noopener noreferrer" className="block text-sm text-primary underline">Watch product video</a>)}</div> : null}
               {item.externalLinks?.length ? <div className="mt-2 flex flex-wrap gap-2">{item.externalLinks.map((url) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="rounded-md border px-2 py-1 text-xs text-primary underline">Open seller link</a>)}</div> : null}
+              <div className="mt-3 flex flex-wrap gap-2" aria-label={'Share ' + item.title}>
+                <Button size="sm" variant="outline" onClick={() => void shareListing(item, 'copy')}>Copy link</Button>
+                <Button size="sm" variant="outline" onClick={() => void shareListing(item, 'whatsapp')}>WhatsApp</Button>
+                <Button size="sm" variant="outline" onClick={() => void shareListing(item, 'email')}>Email</Button>
+              </div>
               {item.price !== undefined && <div className="mt-4 text-lg font-semibold">{item.currency} {item.price}</div>}{featureEnabledForUi('marketplace.wholesale_pricing') && item.priceTiers?.length ? <div className="mt-2 rounded-md border p-2 text-xs"><div className="font-medium">Wholesale price breaks</div>{item.priceTiers.slice().sort((a,b) => a.minQuantity-b.minQuantity).map(tier => <div key={tier.minQuantity}>{tier.minQuantity}+ {item.unit || 'units'} · {item.currency} {tier.unitPrice} / unit</div>)}</div> : null}
 
               {token && featureEnabledForUi('marketplace.orders') && item.sellerId !== currentUserId && <div className="mt-4 space-y-2 border-t pt-3">
-                <input aria-label={'Order quantity for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" type="number" min="0.000001" step="any" placeholder="Quantity to request" value={orderQuantities[item.id] ?? '1'} onChange={(e) => setOrderQuantities(previous => ({ ...previous, [item.id]: e.target.value }))} />
+                <input aria-label={'Order quantity for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" type="number" min="0.000001" step="any" placeholder={item.offeringType === 'BOOKING' ? 'Seats / sessions / units to request' : item.offeringType === 'RENTAL' ? 'Quantity / rental units' : 'Quantity / units to request'} value={orderQuantities[item.id] ?? '1'} onChange={(e) => setOrderQuantities(previous => ({ ...previous, [item.id]: e.target.value }))} />
                 {featureEnabledForUi('marketplace.offers') && <input aria-label={'Offer unit price for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" type="number" min="0" step="0.01" placeholder="Your offer per unit (optional)" value={orderOfferPrices[item.id] || ''} onChange={(e) => setOrderOfferPrices(previous => ({ ...previous, [item.id]: e.target.value }))} />}
+                {item.contextPolicyKey === 'AGRI_INPUT_USAGE' && <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <div className="font-medium text-sm">A little context helps KK guide you safely</div>
+                  <p className="text-xs text-muted-foreground">Required for this agricultural input order. These answers are attached to this order and visible to its seller to help with relevant usage instructions and follow-up. They are not automatically shared with researchers or other organizations.</p>
+                  <input required aria-label={'Intended crop for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Which crop will you use it for? (required)" value={orderContextAnswers[item.id]?.intendedCrop || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),intendedCrop:e.target.value}}))} />
+                  <input required aria-label={'Use location for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Village / town / district of use (required)" value={orderContextAnswers[item.id]?.region || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),region:e.target.value}}))} />
+                  <div className="grid grid-cols-2 gap-2"><input aria-label={'Area for ' + item.title} type="number" min="0.0001" step="any" className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Area (optional)" value={orderContextAnswers[item.id]?.area || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),area:e.target.value}}))} /><input aria-label={'Area unit for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Unit: acre, hectare…" value={orderContextAnswers[item.id]?.areaUnit || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),areaUnit:e.target.value}}))} /></div>
+                  <input aria-label={'Crop stage for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Crop stage (optional)" value={orderContextAnswers[item.id]?.growthStage || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),growthStage:e.target.value}}))} />
+                  <input aria-label={'Intended purpose for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="What do you want to improve or treat? (optional)" value={orderContextAnswers[item.id]?.purpose || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),purpose:e.target.value}}))} />
+                  <div className="space-y-2 rounded-md border bg-background p-3">
+                    <label className="flex items-start gap-2 text-xs"><input type="checkbox" aria-label={'Consent to link context for ' + item.title} checked={Boolean(orderContextLinks[item.id]?.consent)} onChange={e => setOrderContextLinks(prev => ({...prev,[item.id]:{consent:e.target.checked,farmId:prev[item.id]?.farmId||'',cropId:prev[item.id]?.cropId||''}}))} /><span><span className="font-medium">Optional: link this order context to my existing farm/crop record.</span><span className="block text-muted-foreground">Only links records you own. This requires your explicit consent and does not edit your farm or crop data.</span></span></label>
+                    <select aria-label={'Context farm link for ' + item.title} disabled={!orderContextLinks[item.id]?.consent} className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={orderContextLinks[item.id]?.farmId || ''} onChange={e => setOrderContextLinks(prev => ({...prev,[item.id]:{consent:Boolean(prev[item.id]?.consent),farmId:e.target.value,cropId:prev[item.id]?.cropId||''}}))}><option value="">No farm link</option>{farmChoices.map(farm => <option key={farm.id} value={farm.id}>{farm.label}</option>)}</select>
+                    <select aria-label={'Context crop link for ' + item.title} disabled={!orderContextLinks[item.id]?.consent} className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={orderContextLinks[item.id]?.cropId || ''} onChange={e => setOrderContextLinks(prev => ({...prev,[item.id]:{consent:Boolean(prev[item.id]?.consent),farmId:prev[item.id]?.farmId||'',cropId:e.target.value}}))}><option value="">No crop link</option>{cropChoices.filter(crop => !orderContextLinks[item.id]?.farmId || crop.farmId === orderContextLinks[item.id]?.farmId).map(crop => <option key={crop.id} value={crop.id}>{crop.label}</option>)}</select>
+                  </div>
+                </div>}
                 <input aria-label={'Order note for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Message to seller (optional)" value={orderNotes[item.id] || ''} onChange={(e) => setOrderNotes(previous => ({ ...previous, [item.id]: e.target.value }))} />
                 {featureEnabledForUi('marketplace.orders') && <Button size="sm" variant="outline" disabled={quoteBusyIds.includes(item.id)} onClick={() => void calculateOrderQuote(item)}>{quoteBusyIds.includes(item.id) ? 'Calculating…' : 'Calculate deal breakdown'}</Button>}
                 {orderQuotes[item.id] && orderQuotes[item.id].quantity === (orderQuantities[item.id] || '1').trim() && orderQuotes[item.id].offerPrice === (orderOfferPrices[item.id] || '').trim() && <div className="rounded-md border p-3 text-xs"><div className="font-medium">Deal breakdown · provisional</div><div>Subtotal: {item.currency} {orderQuotes[item.id].quote.subtotal}</div><div>Buyer platform fee: {item.currency} {orderQuotes[item.id].quote.buyerFeeAmount}</div><div>Tax: {item.currency} {orderQuotes[item.id].quote.taxAmount} · {orderQuotes[item.id].quote.taxStatus === 'REVIEW_REQUIRED' ? 'review required' : 'configured policy'}</div><div className="font-semibold">Buyer total: {item.currency} {orderQuotes[item.id].quote.buyerTotal}</div><div>Seller commission: {item.currency} {orderQuotes[item.id].quote.sellerCommissionAmount}</div><div>Seller net estimate: {item.currency} {orderQuotes[item.id].quote.sellerNet}</div><p className="mt-1 text-muted-foreground">{orderQuotes[item.id].quote.notice}</p></div>}
-                <Button size="sm" disabled={orderBusyIds.includes(item.id)} onClick={() => void placeOrder(item)}>{orderBusyIds.includes(item.id) ? 'Sending…' : 'Request to buy'}</Button>
+                <Button size="sm" disabled={orderBusyIds.includes(item.id)} onClick={() => void placeOrder(item)}>{orderBusyIds.includes(item.id) ? 'Sending…' : ({ PRODUCT: 'Request to buy', DIGITAL: 'Request digital product', SERVICE: 'Request service', RENTAL: 'Request rental', BOOKING: 'Request booking', SUBSCRIPTION: 'Request subscription', RFQ: 'Request a quote', PUBLIC_SERVICE: 'Start service request', KNOWLEDGE: 'Enquire / enrol', DONATION: 'Request / offer support', JOB: 'Apply / enquire', LOGISTICS: 'Request logistics quote' } as Record<string, string>)[item.offeringType || 'PRODUCT'] || 'Send request'}</Button>
               </div>}
             </article>)}
           </div>}

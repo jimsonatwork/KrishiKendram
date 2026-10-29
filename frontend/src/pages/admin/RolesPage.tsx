@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Search, Shield, UsersRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -49,7 +48,6 @@ export function RolesPage() {
     }
   }
   useEffect(() => { void loadPermissions() }, [token])
-  useLiveRefresh(loadPermissions, { enabled: Boolean(token) })
 
   const rows = useMemo(() => roleRows(permissions), [permissions])
   const filtered = rows.filter((row) => row.role.toLowerCase().includes(query.toLowerCase()))

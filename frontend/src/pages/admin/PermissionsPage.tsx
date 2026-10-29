@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { KeyRound, RefreshCw, Search, ShieldCheck, GitCompareArrows } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import {
   api,
   type PlatformPermission,
@@ -67,7 +66,6 @@ export function PermissionsPage() {
   }
 
   useEffect(() => { void loadPermissions() }, [token])
-  useLiveRefresh(loadPermissions, { enabled: Boolean(token) })
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

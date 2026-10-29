@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, Boxes, CheckCircle2, KeyRound, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { api, type PlatformAuditEvent, type PlatformPermissionReconciliation } from '@/lib/api'
 import { platformRegistry } from '@/lib/platform/registry'
 import type { ModuleDefinition, ModuleLifecycleStatus, ResourceDefinition } from '@/lib/platform/contracts'
@@ -64,7 +63,6 @@ export function PlatformDashboardPage() {
   }
 
   useEffect(() => { void loadDashboard() }, [token])
-  useLiveRefresh(loadDashboard, { enabled: Boolean(token) })
 
   const activeModules = statuses.filter((item) => item.lifecycle === 'ACTIVE').length
   const operationalModules = statuses.filter((item) => item.operational).length

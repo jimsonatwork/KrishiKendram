@@ -1,7 +1,7 @@
 export const DATA_REFRESH_POLICY = {
   staleAfterMs: 30_000,
-  refetchOnWindowFocus: true,
-  refetchOnRouteReturn: true,
+  refetchOnWindowFocus: false,
+  refetchOnRouteReturn: false,
   manualRefreshAlwaysAvailable: true,
 } as const
 
@@ -281,7 +281,28 @@ export type PlatformPermission = {
   fieldPermissions: { field: string; effect: string }[]
 }
 
+export type UserAccessMatrix = {
+  user: { id: string; name: string | null; email: string; role: string; status: string; authorityTier: string }
+  generatedAt: string
+  note: string
+  permissions: Array<{ module: string; section: string | null; resource: string | null; action: string; scope: string; roleGranted: boolean; userGrants: Array<{ effect: string; subjectType: string }> }>
+}
+
 export const api = {
+  userAccessMatrixSettings: (token: string) =>
+    request<{ enabled: boolean }>('/platform/permissions/access-matrix/settings', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
+  setUserAccessMatrixSettings: (token: string, enabled: boolean, reason: string) =>
+    request<{ enabled: boolean }>('/platform/permissions/access-matrix/settings', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ enabled, reason }),
+    }),
+  userAccessMatrix: (userId: string, token: string) =>
+    request<UserAccessMatrix>('/platform/permissions/users/' + encodeURIComponent(userId) + '/access-matrix', {
+      headers: { Authorization: 'Bearer ' + token },
+    }),
   platformPermissions: (token: string) =>
     request<PlatformPermission[]>('/platform/permissions', {
       headers: { Authorization: 'Bearer ' + token },
@@ -808,6 +829,7 @@ export const api = {
     }),
 
   marketplaceCategories: () => request<string[]>('/marketplace/categories'),
+  marketplaceOfferingTypes: () => request<Array<{ type: string; label: string; description: string; fields: Array<{ key: string; label: string; type: 'text' | 'number' | 'boolean' | 'date' | 'url' | 'enum'; registryField: string; required?: boolean; options?: string[]; placeholder?: string; help?: string }> }>>('/marketplace/offering-types'),
   marketplaceListings: (filters?: { period?: string; category?: string }) => {
     const params = new URLSearchParams()
     if (filters?.period) params.set('period', filters.period)
@@ -819,6 +841,13 @@ export const api = {
     headers: { Authorization: 'Bearer ' + token },
   }),
 
+  marketplaceBuyerProfile: (token: string) => request<any>('/marketplace/buyer-profile/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceBuyerProfileContext: (module: string, token: string) => request<any>('/marketplace/buyer-profile/context/' + encodeURIComponent(module), { headers: { Authorization: 'Bearer ' + token } }),
+  saveMarketplaceBuyerProfile: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/buyer-profile/mine', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  revokeMarketplaceBuyerProfileConsent: (token: string) => request<any>('/marketplace/buyer-profile/mine/revoke-cross-module-consent', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({}) }),
+  marketplaceListingViewCounts: () => request<any>('/marketplace/views/last-hour'),
+  recordMarketplaceListingView: (id: string, sessionKey: string) => request<any>('/marketplace/listings/' + encodeURIComponent(id) + '/views', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionKey }) }),
+  marketplaceListingViewCount: (id: string) => request<any>('/marketplace/listings/' + encodeURIComponent(id) + '/views'),
   marketplaceCommercePolicy: () => request<any>('/marketplace/commerce-policy'),
   marketplacePublicFeatureFlags: () => request<any[]>('/marketplace/features/public'),
   marketplaceFeatureFlags: (token: string) => request<any[]>('/marketplace/features', { headers: { Authorization: 'Bearer ' + token } }),
@@ -827,6 +856,8 @@ export const api = {
   marketplaceSettlementStatement: (token: string) => request<any>('/marketplace/settlements/mine', { headers: { Authorization: 'Bearer ' + token } }),
   marketplaceTaxProfiles: (token: string) => request<any[]>('/marketplace/tax-profiles', { headers: { Authorization: 'Bearer ' + token } }),
   marketplaceSellerProfile: (token: string) => request<any>('/marketplace/profile/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  marketplaceSellerProfileVisibilityPolicy: (token: string) => request<any>('/marketplace/seller-profile-visibility', { headers: { Authorization: 'Bearer ' + token } }),
+  updateMarketplaceSellerProfileVisibilityPolicy: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/seller-profile-visibility', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
   updateMarketplaceSellerProfile: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/profile/mine', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
   marketplaceFavorites: (token: string) => request<any[]>('/marketplace/favorites/mine', { headers: { Authorization: 'Bearer ' + token } }),
   addMarketplaceFavorite: (listingId: string, token: string) => request<any>('/marketplace/listings/' + encodeURIComponent(listingId) + '/favorite', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),
@@ -951,6 +982,15 @@ export const api = {
   notificationUnreadCount: (token: string) => request<{ unreadCount: number }>('/notifications/unread-count', { headers: { Authorization: 'Bearer ' + token } }),
   markNotificationRead: (id: string, token: string) => request<any>('/notifications/' + id + '/read', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token } }),
   markAllNotificationsRead: (token: string) => request<{ markedRead: number }>('/notifications/read-all', { method: 'POST', headers: { Authorization: 'Bearer ' + token } }),
+  messagingIntegrations: (token: string) => request<any>('/notifications/messaging-integrations', { headers: { Authorization: 'Bearer ' + token } }),
+  connectArattaiMessaging: (body: { accessToken: string; displayName?: string }, token: string) => request<any>('/notifications/messaging-integrations/arattai/connect', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  disconnectMessagingProvider: (provider: string, token: string) => request<any>('/notifications/messaging-integrations/' + encodeURIComponent(provider), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }),
+  messagingRecipientConsents: (token: string) => request<any[]>('/notifications/messaging-integrations/arattai/consents', { headers: { Authorization: 'Bearer ' + token } }),
+  recordMessagingRecipientConsent: (body: { phoneNumber: string; confirmed: boolean; source: string; purpose?: string; note?: string }, token: string) => request<any>('/notifications/messaging-integrations/arattai/consents', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  revokeMessagingRecipientConsent: (id: string, token: string) => request<any>('/notifications/messaging-integrations/arattai/consents/' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }),
+  sendArattaiTestPromotion: (body: { phoneNumber: string; templateId: string; language?: string; variables?: Record<string, string> }, token: string) => request<any>('/notifications/messaging-integrations/arattai/test-promotion', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  sendArattaiTransactional: (body: { consentId: string; templateId: string; language?: string; variables?: Record<string, string> }, token: string) => request<any>('/notifications/messaging-integrations/arattai/transactional', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  sendArattaiPromotion: (body: { consentId: string; templateId: string; language?: string; variables?: Record<string, string> }, token: string) => request<any>('/notifications/messaging-integrations/arattai/promotional', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
 
   reportsOverview: (token: string, filters?: { farmId?: string; fromDate?: string; toDate?: string }) => {
     const params = new URLSearchParams()

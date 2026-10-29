@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Archive, BarChart3, Pencil, Plus, RefreshCw, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { MarketplaceBuyerContextNotice } from '@/components/marketplace/MarketplaceBuyerContextNotice'
 import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 
 type RecordItem = { id: string; farmId: string; type: 'INCOME' | 'EXPENSE'; category: string; amount: number; currency: string; occurredAt: string; reference?: string | null; notes?: string | null; farm?: { id: string; name: string } }
 export function FinancePage() {
@@ -14,6 +16,8 @@ export function FinancePage() {
   const [editForm, setEditForm] = useState({ type: 'EXPENSE' as 'INCOME' | 'EXPENSE', category: '', amount: '', occurredAt: '', reference: '', notes: '' })
   const [busy, setBusy] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const load = useCallback(async () => {
@@ -25,7 +29,8 @@ export function FinancePage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load farm finances.') }
     finally { setLoading(false) }
   }, [token])
-  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 30_000, onWindowFocus: true })
+  useEffect(() => { void load() }, [load])
+  useLiveRefresh(load, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
   async function createRecord(event: React.FormEvent) {
     event.preventDefault(); if (!token || !form.farmId || !form.category.trim() || !form.amount) return
     setBusy(previous => [...previous, 'create']); setError(''); setNotice('')
@@ -54,7 +59,8 @@ export function FinancePage() {
   const expense = records.filter(record => record.type === 'EXPENSE').reduce((sum, record) => sum + record.amount, 0)
   const money = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(value)
   return <div className="space-y-6 p-4 sm:p-6">
-    <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><BarChart3 className="size-6" />Farm Finance</div><p className="mt-1 text-sm text-muted-foreground">Track income, expenses, references and farm-level financial history. This is a record ledger, not a payment processor.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 size-4" />Refresh</Button></header>
+    <MarketplaceBuyerContextNotice module="finance" />
+    <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><BarChart3 className="size-6" />Finance</div><p className="mt-1 text-sm text-muted-foreground">Independent finance module for domain financial records. Marketplace commercial statements remain separately linked and are not treated as settled cash.</p></div><div className="flex flex-wrap gap-2"><a href="/app/marketplace?workspace=finance" className="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">Marketplace commercial finance</a><LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 size-4" />Refresh</Button></div></header>
     {error && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">{error}</div>}{notice && <div role="status" className="rounded-lg border p-3 text-sm">{notice}</div>}
     <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Total income</div><div className="mt-1 text-2xl font-semibold">{money(income)}</div></div><div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Total expenses</div><div className="mt-1 text-2xl font-semibold">{money(expense)}</div></div><div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Net recorded</div><div className={'mt-1 text-2xl font-semibold ' + (income - expense < 0 ? 'text-destructive' : '')}>{money(income - expense)}</div></div></div>
     <form onSubmit={createRecord} className="space-y-4 rounded-xl border bg-card p-4"><h2 className="flex items-center gap-2 font-semibold"><Plus className="size-4" />Add income or expense</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

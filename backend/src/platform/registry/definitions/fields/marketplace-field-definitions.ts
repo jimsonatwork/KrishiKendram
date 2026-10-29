@@ -9,7 +9,12 @@ const text = (name: string, maxLength: number): FieldDefinition => ({
 export const MARKETPLACE_FIELD_DEFINITIONS: readonly FieldDefinition[] = [
   text('marketplaceResourceType', 40),
   text('marketplaceResourceId', 100),
-  { name: 'marketplaceListingCategory', type: 'enum', description: 'Marketplace category controlled by Registry.', validation: { required: true, enumValues: ['PRODUCE', 'SEEDS', 'LIVESTOCK', 'DAIRY', 'EQUIPMENT', 'FARM_INPUTS', 'SERVICES', 'LAND', 'OTHER'] }, overrideMode: 'FIXED' },
+  { name: 'marketplaceListingCategory', type: 'enum', description: 'Marketplace category controlled by Registry.', validation: { required: true, enumValues: ['PRODUCE', 'SEEDS', 'LIVESTOCK', 'DAIRY', 'EQUIPMENT', 'FARM_INPUTS', 'SERVICES', 'LAND', 'DIGITAL', 'EDUCATION', 'HEALTH', 'GOVERNMENT', 'LOGISTICS', 'RENTAL', 'KNOWLEDGE', 'COMMUNITY', 'OTHER'] }, overrideMode: 'FIXED' },
+  { name: 'marketplaceListingOfferingType', type: 'enum', description: 'Type-specific Marketplace listing workflow.', validation: { required: true, enumValues: ['PRODUCT', 'DIGITAL', 'SERVICE', 'RENTAL', 'BOOKING', 'SUBSCRIPTION', 'RFQ', 'PUBLIC_SERVICE', 'KNOWLEDGE', 'DONATION', 'JOB', 'LOGISTICS'] }, overrideMode: 'FIXED' },
+  text('marketplaceListingSourceModule', 80),
+  text('marketplaceListingSourceEntityId', 120),
+  text('marketplaceListingContextPolicyKey', 80),
+  { name: 'marketplaceListingOfferingDetails', type: 'object', description: 'Type-specific Marketplace listing details validated against the selected offering contract.', validation: { required: false }, overrideMode: 'FIXED' },
   { name: 'marketplaceListingImageUrl', type: 'string', description: 'Marketplace image URL or uploaded media path.', validation: { required: true, maxLength: 2048, pattern: '^(https?://[^\\s]+|/uploads/marketplace/[A-Za-z0-9._-]+)$' }, normalization: { trim: true }, overrideMode: 'FIXED' },
   { name: 'marketplaceListingVideoUrl', type: 'string', description: 'Marketplace video URL or uploaded media path.', validation: { required: true, maxLength: 2048, pattern: '^(https?://[^\\s]+|/uploads/marketplace/[A-Za-z0-9._-]+)$' }, normalization: { trim: true }, overrideMode: 'FIXED' },
   { name: 'marketplaceListingExternalLink', type: 'string', description: 'External catalogue, social, or drive link.', validation: { required: true, maxLength: 2048, pattern: '^https?://[^\\s]+$' }, normalization: { trim: true }, overrideMode: 'FIXED' },

@@ -19,7 +19,9 @@ import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { MarketplaceBuyerContextNotice } from '@/components/marketplace/MarketplaceBuyerContextNotice'
 import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 
 
 type Farm = {
@@ -290,6 +292,8 @@ export function CropsPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
   const [error, setError] = useState('')
 
   const [showForm, setShowForm] =
@@ -362,11 +366,8 @@ export function CropsPage() {
     }
   }, [showArchived, token])
 
-  useLiveRefresh(loadData, {
-    enabled: Boolean(token),
-    intervalMs: 30_000,
-    onWindowFocus: true,
-  })
+  useEffect(() => { void loadData() }, [loadData])
+  useLiveRefresh(loadData, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
 
   const filteredCrops = useMemo(() => {
     const query =
@@ -617,7 +618,8 @@ export function CropsPage() {
         title="Crops"
         description="Track cultivation across your connected farms."
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} />
             <Button
               variant="outline"
               onClick={() => void loadData()}
@@ -647,6 +649,8 @@ export function CropsPage() {
           </div>
         }
       />
+
+      <MarketplaceBuyerContextNotice module="crops" />
 
       {error && <ErrorMessage message={error} />}
 

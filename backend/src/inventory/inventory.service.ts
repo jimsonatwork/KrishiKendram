@@ -34,8 +34,18 @@ export class InventoryService {
     const farms = await this.prisma.farm.findMany({ where: { deletedAt: null, ownerId: userId }, select: { id: true, ownerId: true } });
     const allowedFarmIds: string[] = [];
     for (const farm of farms) {
-      await this.assertCan(userId, role, AuthorizationAction.READ, farm.id, farm.ownerId);
-      allowedFarmIds.push(farm.id);
+      // A user's legacy ownerId list can contain farms whose temporal
+      // ownership relationship has ended. Filter inaccessible farms rather
+      // than failing the entire inventory collection with a 403.
+      const allowed = await this.authorization.can({
+        user: { userId, role },
+        module: 'inventory',
+        resource: 'inventoryItem',
+        action: AuthorizationAction.READ,
+        farmId: farm.id,
+        ownerId: farm.ownerId,
+      });
+      if (allowed) allowedFarmIds.push(farm.id);
     }
     if (!allowedFarmIds.length) return [];
     return this.prisma.inventoryItem.findMany({ where: { farmId: { in: allowedFarmIds }, deletedAt: null }, include: { farm: { select: { id: true, name: true } } }, orderBy: [{ category: 'asc' }, { name: 'asc' }] });
@@ -109,6 +119,64 @@ export class InventoryService {
       if (before > item.reorderLevel && after <= item.reorderLevel) await NotificationsService.createInTransaction(tx, { userId: context.farm.ownerId, type: 'LOW_STOCK', title: 'Inventory reorder alert', message: item.name + ' has reached ' + after + ' ' + item.unit + '.', href: '/app/marketplace?workspace=inventory', severity: after <= 0 ? 'CRITICAL' : 'WARNING', source: 'inventory', dedupeKey: 'inventory-low-stock:' + id + ':' + transaction.id });
       return { item: { id, quantityOnHand: after, unit: item.unit }, transaction };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
+  /** Resolve a seller-owned inventory item for a Marketplace listing without exposing Inventory persistence to Marketplace. */
+  async getMarketplaceListingSource(userId: string, role: UserRole, itemId: string) {
+    const item = await this.prisma.inventoryItem.findFirst({
+      where: { id: itemId, deletedAt: null },
+      select: { id: true, farmId: true, name: true, quantityOnHand: true, unit: true, farm: { select: { ownerId: true } } },
+    });
+    if (!item || item.farm.ownerId !== userId) throw new NotFoundException('Marketplace resource not found.');
+    await this.assertCan(userId, role, AuthorizationAction.READ, item.farmId, item.farm.ownerId, item.id);
+    return { id: item.id, ownerId: item.farm.ownerId, quantityOnHand: Number(item.quantityOnHand), name: item.name, unit: item.unit };
+  }
+
+  /**
+   * Internal domain operation for a Marketplace sale. The caller supplies its
+   * active Prisma transaction so stock, order state and audit commit together,
+   * while Inventory retains ownership of its stock ledger and low-stock rules.
+   */
+  async decrementForMarketplaceSale(
+    tx: Prisma.TransactionClient,
+    input: { itemId: string; sellerId: string; actorId: string; role: UserRole; orderId: string; quantity: number },
+  ) {
+    if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new BadRequestException('Marketplace stock quantity must be positive.');
+    const item = await tx.inventoryItem.findFirst({
+      where: { id: input.itemId, deletedAt: null },
+      select: { id: true, farmId: true, name: true, quantityOnHand: true, reorderLevel: true, unit: true, farm: { select: { ownerId: true } } },
+    });
+    if (!item || item.farm.ownerId !== input.sellerId) throw new BadRequestException('The linked inventory item is unavailable or no longer owned by this seller.');
+    await this.assertCan(input.actorId, input.role, AuthorizationAction.UPDATE, item.farmId, item.farm.ownerId, item.id);
+    const before = Number(item.quantityOnHand);
+    if (before < input.quantity) throw new BadRequestException('Insufficient inventory stock to complete this Marketplace order.');
+    const changed = await tx.inventoryItem.updateMany({
+      where: { id: item.id, deletedAt: null, quantityOnHand: { equals: before, gte: input.quantity } },
+      data: { quantityOnHand: { decrement: input.quantity } },
+    });
+    if (changed.count !== 1) throw new BadRequestException('Inventory changed concurrently. Refresh and retry order completion.');
+    const after = before - input.quantity;
+    const transaction = await tx.inventoryTransaction.create({
+      data: {
+        inventoryItemId: item.id, actorId: input.actorId, type: InventoryTransactionType.STOCK_OUT,
+        quantity: input.quantity, quantityBefore: before, quantityAfter: after,
+        reference: 'marketplace-order:' + input.orderId, notes: 'Marketplace sale order ' + input.orderId,
+      },
+    });
+    await this.audit.createInTransaction(tx, {
+      actorId: input.actorId, action: 'STOCK_OUT', resourceType: 'inventoryItem', resourceId: item.id,
+      description: 'Inventory stock decremented by completed Marketplace sale',
+      metadata: { orderId: input.orderId, quantity: input.quantity, quantityBefore: before, quantityAfter: after, unit: item.unit },
+    });
+    if (before > item.reorderLevel && after <= item.reorderLevel) {
+      await NotificationsService.createInTransaction(tx, {
+        userId: item.farm.ownerId, type: 'LOW_STOCK', title: 'Marketplace sale reached reorder level',
+        message: item.name + ' has ' + after + ' ' + item.unit + ' remaining after order ' + input.orderId + '.',
+        href: '/app/inventory', severity: after <= 0 ? 'CRITICAL' : 'WARNING', source: 'inventory',
+        dedupeKey: 'marketplace-inventory-low-stock:' + input.orderId + ':' + item.id,
+      });
+    }
+    return { itemId: item.id, quantityBefore: before, quantityAfter: after, transaction };
   }
 
   async history(userId: string, role: UserRole, id: string) {

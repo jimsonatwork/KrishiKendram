@@ -25,13 +25,11 @@ export const MODULE_DEFINITIONS: ModuleDefinition[] = [
     id: 'inventory',
     name: 'Inventory',
     lifecycle: 'ACTIVE',
-    parentId: 'marketplace',
   },
   {
     id: 'finance',
     name: 'Finance',
     lifecycle: 'ACTIVE',
-    parentId: 'marketplace',
   },
   {
     id: 'notifications',

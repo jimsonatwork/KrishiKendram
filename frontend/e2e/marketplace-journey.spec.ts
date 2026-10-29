@@ -13,7 +13,15 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
   let favoriteCalls = 0
   let messageCalls = 0
   let rfqCalls = 0
-  const listing = { id: 'listing-1', sellerId: 'seller-1', title: 'Fresh paddy seed', description: 'Certified seed lots', category: 'PRODUCE', quantity: 200, minOrderQuantity: 1, unit: 'kg', price: 42, currency: 'INR', status: 'PUBLISHED', imageUrls: [], videoUrls: [], externalLinks: [], seller: { id: 'seller-1', name: 'Seed Seller', displayName: 'Green Seed Farm', isVerified: true, userType: 'FARMER', profile: { regionLabel: 'Warangal', bio: 'Seed producer', contactPreference: 'IN_APP', publicPhone: null, showPhone: false } } }
+  const indiaDateKey = (offsetDays = 0) => {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+    const part = (type: string) => parts.find((item) => item.type === type)?.value || ''
+    const key = part('year') + '-' + part('month') + '-' + part('day')
+    return new Date(Date.parse(key + 'T00:00:00Z') + offsetDays * 86400000).toISOString().slice(0, 10)
+  }
+  const listing = { id: 'listing-1', sellerId: 'seller-1', title: 'Fresh paddy seed', description: 'Certified seed lots', category: 'PRODUCE', quantity: 200, minOrderQuantity: 1, unit: 'kg', price: 42, currency: 'INR', status: 'PUBLISHED', publishedAt: new Date(indiaDateKey(0) + 'T09:00:00+05:30').toISOString(), createdAt: new Date().toISOString(), imageUrls: [], videoUrls: [], externalLinks: [], seller: { id: 'seller-1', name: 'Seed Seller', displayName: 'Green Seed Farm', isVerified: true, userType: 'FARMER', profile: { regionLabel: 'Warangal', bio: 'Seed producer', contactPreference: 'IN_APP', publicPhone: null, showPhone: false } } }
+  const olderListing = { ...listing, id: 'listing-2', title: 'Dairy cow', category: 'LIVESTOCK', publishedAt: new Date(indiaDateKey(-1) + 'T09:00:00+05:30').toISOString(), createdAt: new Date(indiaDateKey(-1) + 'T09:00:00+05:30').toISOString() }
+  const listings = [listing, olderListing]
 
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
@@ -23,7 +31,11 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
 
     if (path === '/auth/me') return route.fulfill({ json: { id: 'buyer-1', name: 'Buyer Farmer', role: 'FARMER', status: 'ACTIVE' } })
     if (path === '/marketplace/categories') return route.fulfill({ json: ['PRODUCE', 'LIVESTOCK', 'EQUIPMENT', 'INPUTS', 'OTHER'] })
-    if (path === '/marketplace/listings') return route.fulfill({ json: [listing] })
+    if (path === '/marketplace/offering-types') return route.fulfill({ json: [
+      { type: 'PRODUCT', label: 'Physical product', description: 'Goods and tangible items.', fields: [{ key: 'condition', label: 'Item condition', type: 'enum', registryField: 'marketplaceOfferingProductCondition', required: false, options: ['NEW', 'USED', 'REFURBISHED'] }] },
+      { type: 'SERVICE', label: 'Service', description: 'Professional and field services.', fields: [{ key: 'serviceMode', label: 'Service delivery mode', type: 'enum', registryField: 'marketplaceOfferingServiceMode', required: true, options: ['ONSITE', 'REMOTE', 'HYBRID'] }] },
+    ] })
+    if (path === '/marketplace/listings') return route.fulfill({ json: listings })
     if (path === '/marketplace/orders/mine') return route.fulfill({ json: [] })
     if (path === '/marketplace/commerce-policy') return route.fulfill({ json: { version: 1, currency: 'INR', feesEnabled: false, buyerFeeBasisPoints: 0, sellerCommissionBasisPoints: 0, taxEnabled: false, taxBasisPoints: 0, taxReviewReference: null } })
     if (path === '/marketplace/features/public') return route.fulfill({ json: ['marketplace.listings','marketplace.favorites','marketplace.messaging','marketplace.rfq','marketplace.history'].map(key => ({ key, enabled: true })) })
@@ -32,6 +44,7 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
     if (path === '/marketplace/settlements/mine') return route.fulfill({ json: { mode: 'STATEMENT_ONLY', moneyMovementEnabled: false, currency: 'INR', lineCount: 0, totals: { gross:'0.00', commission:'0.00', sellerNetEstimate:'0.00', capturedSimulation:'0.00', refundedSimulation:'0.00', activePayoutHolds:'0.00' }, lines: [] } })
     if (path === '/marketplace/tax-profiles') return route.fulfill({ json: [] })
     if (path === '/marketplace/profile/mine') return route.fulfill({ json: { user: { id:'buyer-1', name:'Buyer Farmer', isVerified:true, userType:'FARMER' }, profile: null, publicPhone: null } })
+    if (path === '/marketplace/seller-profile-visibility') return route.fulfill({ json: { defaultVisible: true, rules: [] } })
     if (path === '/marketplace/favorites/mine') return route.fulfill({ json: favorites })
     if (path === '/marketplace/messages/mine') return route.fulfill({ json: messages })
     if (path === '/marketplace/rfqs/mine') return route.fulfill({ json: rfqs })
@@ -66,20 +79,40 @@ test('Marketplace buyer/seller workspace exposes profiles, saved listings, priva
 
   await page.goto('/app/marketplace')
   await expect(page.getByText('Seller profile & buyer contact preferences')).toBeVisible()
-  await page.getByRole('tab', { name: /Finance/ }).click()
+  await page.getByLabel('Offering type').selectOption('SERVICE')
+  await expect(page.getByLabel('Service delivery mode')).toBeVisible()
+  await page.getByLabel('Offering type').selectOption('PRODUCT')
+  await expect(page.getByLabel('Item condition')).toBeVisible()
+  await page.getByRole('button', { name: 'Open Finance module' }).click()
+  await expect(page).toHaveURL(/\/app\/finance$/)
+  await expect(page.getByText('Financial history')).toBeVisible()
+  await page.goto('/app/marketplace?workspace=finance')
   await expect(page.getByText('Seller settlement statement')).toBeVisible()
   await expect(page.getByText('Buyer & seller history')).toBeVisible()
-  await page.getByRole('tab', { name: /Marketplace/ }).click()
+  await page.goto('/app/marketplace')
   await expect(page.getByText('Bulk buyer RFQ & seller quotations')).toBeVisible()
   await expect(page.getByRole('article').getByText('Fresh paddy seed')).toBeVisible()
-  await expect(page.getByText(/Seller: Green Seed Farm/)).toBeVisible()
-  await expect(page.getByText(/Warangal/)).toBeVisible()
+  await expect(page.locator('#listing-listing-1').getByText(/Seller: Green Seed Farm/)).toBeVisible()
+  await expect(page.locator('#listing-listing-1').getByText(/Warangal/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Save listing' }).click()
-  await expect(page.getByRole('button', { name: 'Remove saved' })).toBeVisible()
+  await expect(page.getByText('Published listings (2)')).toBeVisible()
+  await page.getByLabel('Browse category').selectOption('LIVESTOCK')
+  await expect(page.getByText('Published listings (1)')).toBeVisible()
+  await expect(page.locator('#listing-listing-2').getByText('Dairy cow')).toBeVisible()
+  await expect(page.locator('#listing-listing-1').getByText('Fresh paddy seed')).toHaveCount(0)
+  await page.getByLabel('Browse category').selectOption('ALL')
+  await page.getByLabel('Listing date range').selectOption('yesterday')
+  await expect(page.getByText('Published listings (1)')).toBeVisible()
+  await expect(page.locator('#listing-listing-2').getByText('Dairy cow')).toBeVisible()
+  await expect(page.locator('#listing-listing-1').getByText('Fresh paddy seed')).toHaveCount(0)
+  await page.getByLabel('Listing date range').selectOption('active')
+  await expect(page.getByText('Published listings (2)')).toBeVisible()
+
+  await page.locator('#listing-listing-1').getByRole('button', { name: 'Save listing' }).click()
+  await expect(page.locator('#listing-listing-1').getByRole('button', { name: 'Remove saved' })).toBeVisible()
   expect(favoriteCalls).toBe(1)
 
-  await page.getByRole('button', { name: 'Message seller' }).click()
+  await page.locator('#listing-listing-1').getByRole('button', { name: 'Message seller' }).click()
   await page.getByLabel('Marketplace message body').fill('Can you supply 50 kg next week?')
   await page.getByRole('button', { name: 'Send message' }).click()
   await expect(page.getByText('Can you supply 50 kg next week?')).toBeVisible()

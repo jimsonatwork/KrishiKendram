@@ -1984,3 +1984,105 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 
 ## Marketplace chargeback closure — 2026-10-18
 The sandbox chargeback lifecycle is intentionally separate from real provider chargebacks. It requires the marketplace.chargebacks_sandbox feature flag (off by default), sandbox runtime mode, and a 32+ character webhook secret. Buyer requests are scoped to their own captured-payment order; seller evidence is scoped to the seller on that order and bounded by a seven-day deadline. Amount reservations include refunds and other chargebacks to prevent duplicate claims. Opening a case records an audited, non-monetary payout hold. Signed HMAC outcome events are raw-body verified and replay protected; a simulated loss creates balanced append-only ledger reversals and both outcomes release the simulated hold. The migration is additive; never reset the database or rewrite migration history. Real provider integration, legal/accounting review, production storage/media hardening and authenticated end-to-end verification remain explicit launch gates; never describe sandbox records as money movement.
+
+
+## 2026-10-27 — Cross-module Marketplace and Context Capture Architecture
+
+Canonical detailed requirements: `docs/KK-CROSS-MODULE-MARKETPLACE-AND-CONTEXT-ARCHITECTURE.md`. PMD is updated in the same change set. This decision supersedes the older Marketplace workspace note that made Inventory and Finance Marketplace children.
+
+### Non-negotiable product decisions
+- KrishiKendram is a multi-domain platform for people and organizations, not only farmers. One account can participate in many modules, organizations and contextual roles; roles never grant unrelated access.
+- Marketplace, Inventory and Finance are independent modules. Marketplace is a cross-domain discovery, commerce, services and exchange layer; Inventory owns stock/movements; Finance owns books/accounting mappings. Integration is optional, explicit, authorized and reversible. Disable one module without disabling or erasing the others.
+- Suppliers/providers need not be farmers. Example: a fertilizer supplier can publish through Marketplace and optionally use Inventory/Finance without any Farm/Crop record. Customers may be farmers, businesses, institutions or other providers.
+- Marketplace offering types include goods, digital products, professional services, rentals, bookings/events, subscriptions/contracts, RFQs/wholesale, public services/tenders, knowledge/training, jobs/expertise, donations/barter/community offers, logistics, testing, repair and storage.
+- Marketplace supports internal KK sharing and safe external links/sharing (WhatsApp, email, SMS, QR/native share) plus references to approved social/content URLs. Never promise external-platform publishing/import unless API access and permission exist. Public previews cannot leak member-only data.
+
+### Context-aware commerce
+- Every listing type/action declares Registry-backed context and eligibility requirements. A central Context & Eligibility Engine checks existing authorized facts and asks only for missing relevant details.
+- Progressive levels: (1) optional gentle prompt, (2) guided completion for context-dependent advice/quote/booking/service, (3) mandatory legal/safety/eligibility checks where applicable. Optional profile enrichment must not block unrelated activity.
+- Example: farmer without crop/land details selects fertilizer; KK asks intended crop, region, planting status and other relevant fields before tailored advice, then offers to create/update authoritative Farm/Crops records after confirmation. Do not fabricate answers; support voice/text/photo, “unknown”, defer and resumable drafts when safe. Regulated/high-risk items may require stricter gates.
+- Persist confirmed facts in their owning module; link transactions by stable references. Record provenance (user-confirmed, document-verified, partner, AI-extracted, inferred, imported, unknown), confidence, source, timestamp and correction history. AI never silently turns an inference into a verified fact or overwrites canonical data.
+- Keep original-language wording/transcript separate from translation/normalization, with language, confidence and correction metadata. Explain why data is requested, where stored, who may access it, purpose and whether optional. Order fulfilment does not automatically authorize research, advertising, manufacturer or government reuse.
+
+### Integration map and governance
+- Identity/Organizations ↔ all modules; Marketplace ↔ Inventory (stock reservation/decrement/returns), Finance (quotes/receipts/settlement references), Farms/Crops/Livestock (authorized intended-use context), Education, Health/Veterinary, Government, Logistics/Storage, Labs/Research, Community/NGOs, Notifications/Activity/History, Reports/Analytics, AI Companion, Documents/Media and Search/Discovery.
+- Integrations use typed contracts/events, source/target authorization, idempotency, audit correlation and clear failure handling. Events never bypass domain APIs; private records are never indexed or shared by default.
+- Admin, Super Admin and God Mode use one Registry-backed policy/feature catalogue with dependencies, rollout, audit and rollback. Server authorization is mandatory. Turning a feature off blocks new use but preserves history and required dispute/refund/audit paths.
+- Existing commercial guardrails remain: immutable quote/fee/tax snapshots, decimal-safe money, append-only ledger, payment-provider verification, scoped buyer/seller histories, evidence-based restrictions/appeals and no live money movement until provider/security/legal/accounting/authenticated E2E gates pass.
+
+### Delivery sequence and evidence gate
+1. Update PMD, Bible, Blueprint, Marketplace roadmap and execution plan (this checkpoint).
+2. Correct Registry module parentage and tests; retain independent routes and legacy redirects; do not reset DB or delete data.
+3. Implement Registry context policy + Context & Eligibility Engine, first on Marketplace listing/order flows.
+4. Rebuild Marketplace UI around cross-domain listing types, provider storefronts, type-aware discovery/actions, visibility and safe sharing while preserving current commerce/trust functionality.
+5. Add optional Inventory/Finance integration contracts, followed by Education, professional services, Government, Logistics, Labs/Research and Community integrations.
+6. Run backend/frontend builds, focused tests, full regression and authenticated browser/runtime tests. Only mark verified features complete with evidence; external payment, tax/legal, durable-media and real-role release gates stay explicit.
+
+### Architectural correction required
+Current Registry definitions have `parentId: 'marketplace'` for Inventory and Finance and MarketplacePage embeds their screens as tabs. This conflicts with the product decision. Remove those parent IDs and expose each module independently; Marketplace may link to them contextually. Keep legacy URLs working. Update the old 2026-10-18 Marketplace parent workspace note as historical/ superseded rather than silently treating it as current architecture.
+
+
+## Application refresh and form-state safety (2026-10-27)
+
+- Never refresh or reload the whole website on a polling timer. Background refresh must update data state only; it must not call `window.location.reload()` or remount the active page.
+- Live polling is opt-in, off by default, and configurable at 10, 15, or 30 seconds from a compact **Live data** checkbox beside the relevant list/table refresh action.
+- Polling must not run on window focus, tab visibility, or page-show events. Those events are not consent to refresh active work.
+- Keep list/table data refresh separate from editable form state. A refresh must preserve typed-but-unsaved values, selected filters, search text, pagination, expanded rows, and current edit sessions. Do not rehydrate editable forms from server state after initial load unless the user explicitly reloads/reset the form or a save succeeds.
+- Keep manual Refresh available. Core domain list pages must continue to load once on entry and reload when their explicit filters change; opting into live data adds interval refresh only.
+- Admin configuration and sensitive views should remain manual-refresh unless a narrowly scoped, table-only live refresh is explicitly needed.
+- Regression checks: live data defaults off; 10/15/30 seconds are the only offered intervals; filters and unsaved form values survive an interval; switching tabs does not trigger refresh; no full-page reload is introduced.
+### Marketplace seller-profile authorization (2026-10-27)
+- Seller-profile writes use the central marketplace/marketplaceSellerProfile/UPDATE authorization capability with OWN scope; the service retains the ownership check and audit trail.
+- Registry declarations alone do not grant a role access. backend/prisma/seed.ts explicitly reconciles the seller-profile OWN capability to authenticated account roles, because Marketplace supports buyers and sellers across account types.
+- This is additive role-permission reconciliation. It does not grant GLOBAL access or permit users to update another user's profile.
+### User Access Matrix (2026-10-27)
+- User administration exposes an opt-in User Access Matrix sourced from Registry capability declarations and persisted role/user-specific grants.
+- Matrix visibility is a global platform setting controllable by Admin, Super Admin, and SYSTEM_GOD authority. Changes require a reason and are audit logged.
+- The matrix lists declared module/resource/action/scope rows even when no grant exists. It distinguishes configured grants from contextual enforcement (ownership, farm relationships, module switches, account state and field policy); it must never imply a displayed grant guarantees every request.
+- Turning matrix visibility off hides the UI and the API refuses matrix reads; it does not change authorization grants.
+
+### 27 Oct 2026 — Seller profile visibility policy
+- Public seller-profile visibility defaults ON for every user when no explicit platform policy exists.
+- Admin/Super Admin/God Mode can set a global default and add ordered override rules. Within each rule, every non-empty selector must match: user IDs AND module IDs AND categories. Later matching rules win, enabling global, selected-user, selected-module, selected-category, and combined targeting.
+- Policy is persisted in the central SystemSetting store and every change requires an audit reason. Enforcement occurs in public seller-profile and Marketplace listing responses, not only in the UI.
+- Visibility policy never overrides seller consent for public phone display; phone remains redacted unless the seller explicitly enables showPhone. Owner's own profile remains accessible to its owner.
+
+### 2026-10-27 — User-scoped messaging integrations
+- Messaging connections are owned by one KK user and may never be shared implicitly across users. Provider tokens are encrypted server-side with AES-256-GCM; the 32-byte key is supplied only through the ignored backend environment variable KK_MESSAGING_ENCRYPTION_KEY, never source control or browser storage.
+- Arattai Business is the first implemented provider. Use its official REST API root https://business.arattai.in/api/v1, OAuth Bearer access token, and approved template IDs. Test promotions use POST /promotions/test; real promotions use POST /promotions. Operational messages use POST /transactions and require a separate active TRANSACTIONAL consent record.
+- Promotional delivery requires a per-sender, per-recipient active consent record. Store recipient phone encrypted, index with a sender-scoped SHA-256 digest, mask in UI, and support explicit revocation. Never bulk-send or treat an unverified phone as opt-in.
+- WhatsApp Business and Telegram are registered as provider slots only; their connection/auth/send adapters must be implemented and verified before claiming support.
+- Marketplace browse filters load the published listing collection and filter it in the UI by category and India-local publication day/week. Display the matched count and an explicit no-match state.
+
+
+### Inventory-owned Marketplace stock integration — 2026-10-27
+Marketplace no longer reads/writes InventoryItem or InventoryTransaction tables directly. Inventory exposes a seller-owned listing-source resolver (with Inventory READ authorization) and an internal Marketplace sale operation (with Inventory UPDATE authorization) that owns compare-and-update stock decrement, stock-out ledger, audit, and low-stock notifications. Marketplace invokes the sale operation inside its existing order transaction so stock, listing quantity/status, order state, and audit still commit or roll back together. Real provider payments/payouts remain disabled.
+
+
+### Registry-backed offering details and canonical source references — 2026-10-27
+The public `GET /api/v1/marketplace/offering-types` contract now drives create/edit form fields for all 12 offering types. Field keys, labels, types, enum choices, and requiredness come from `backend/src/platform/registry/definitions/marketplace-offering-definitions.ts`; individual detail fields are registered centrally and server-validated on create/update. Persisted details live in nullable `MarketplaceListing.offeringDetails` JSONB added by migration `20261027160000_marketplace_offering_details`. Buyers see saved details using Registry labels. Source module/entity references are derived from owned resource type/ID and client-supplied mismatches are rejected. The PMD DOCX, CTO Bible, architecture and commerce roadmap are being kept aligned with this implementation; existing listings remain compatible with null details.
+
+## Marketplace context capture — sanitization and participant boundary tests (2026-10-27)
+- Agricultural-input orders require the Registry-backed AGRI_INPUT_USAGE policy's crop and region fields before order creation; optional area/stage/purpose fields are accepted only from the policy allow-list, normalized before persistence, and stored with a USER_CONFIRMED checkout provenance snapshot.
+- Regression tests now assert that unknown context keys are not persisted, user-entered values are trimmed/normalized, the policy version and capture provenance are snapshotted, and the order creation audit identifies the buyer and created order.
+- Order history access is explicitly tested to query only orders where the caller is the buyer or seller, with authorization checked before reading.
+- Verification: MarketplaceService suite passed 65/65; full backend regression before these two additional tests passed 69 suites / 673 tests; backend and frontend production builds passed. The two browser cases that timed out during the full run passed in an isolated Marketplace rerun (3/3). See the 2026-10-27 execution plan for exact evidence and remaining manual/authenticated gates.
+- Optional consent-aware Farm/Crop linking is now implemented for agricultural-input orders. The buyer must explicitly consent; the backend validates active ownership and Crop/Farm consistency, stores optional foreign keys plus an ORDER_CONTEXT_ONLY consent snapshot on MarketplaceOrder, and never edits Farm/Crop records or creates them as an AI side effect. Automated create/update of authoritative records remains a separate future action.
+
+
+## Shop & Compare storefront (2026-10-27)
+
+- The new /app/shop route is a separate shopper-first storefront. Keep /app/marketplace intact as the existing seller listing, order, finance/inventory submodule and governance workspace.
+- The storefront provides search, category/type filters, price sorting, responsive product cards, product detail view, compare up to four listings, saved listings, a device-persisted cart and multi-item order-request submission through the existing Marketplace order API.
+- The storefront now loads batch unique-session counts for the previous hour onto product cards and refreshes an item count when its detail view opens. A cart line can carry an optional per-unit offer. A persistent Marketplace buyer profile records buyer type (farmer, business, commission agent, broker, household, input retailer, service provider, other), purchase purpose, business name, region, scale and crop interests. Cross-module use is OFF by default. The user must explicitly consent and select module targets. The authenticated buyer-profile context endpoint returns context only to a selected module when consent is active; Farms, Crops, Livestock, Inventory and Finance now show a consent-gated context notice when the user selected that module. Revocation clears active module targets while retaining the Marketplace profile; do not share with external parties or mutate authoritative Farm/Crop records as a side effect.
+- Anonymous listing-view counts use a browser session key hashed server-side, aggregate unique sessions over the last 60 minutes, and do not store IP addresses or account identity. Treat as approximate visits, not verified human users; apply retention/cleanup as volume grows.
+- Cart checkout currently creates existing order requests only. Real provider-backed payment, capture, refund, payout and tax collection remain disabled until provider/webhook, ledger, reconciliation, legal/tax and security review gates pass. The UI must not claim money has moved.
+
+
+## 2026-10-29 — Shop & Compare storefront release checkpoint
+
+- The shopper storefront remains a separate `/app/shop` template; preserve the existing `/app/marketplace` seller/order and governance workspace.
+- Catalog results are grouped chronologically (Today, Yesterday, Day before yesterday, Earlier this week, Older) and retain search, category/type filtering, and price/date sorting.
+- Product detail supports bounded product-video previews and seller/document links only for valid HTTP(S) URLs. Last-hour counts are anonymous session aggregates, not identified viewers.
+- Frontend production build passed after these UI changes; Shop & Compare Playwright test passed 1/1. The wider focused browser set passed 4/4; targeted backend Marketplace/Inventory/context tests passed 89/89 and Nest build passed.
+- Real payment checkout remains disabled. Order requests do not move money. Live payment, tax remittance, refunds/chargebacks, payouts and settlement remain blocked until provider/security/legal/accounting and authenticated real-role acceptance gates pass.

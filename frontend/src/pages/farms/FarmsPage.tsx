@@ -2,7 +2,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import type { FormEvent } from 'react'
@@ -23,8 +22,10 @@ import { motion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { MarketplaceBuyerContextNotice } from '@/components/marketplace/MarketplaceBuyerContextNotice'
 import { useAuthStore } from '@/stores/auth.store'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 import { FarmAssetMergePanel } from './FarmAssetMergePanel'
 import { FarmAssetSplitPanel } from './FarmAssetSplitPanel'
 import { FarmAssetLeasePanel } from './FarmAssetLeasePanel'
@@ -1430,6 +1431,8 @@ export function FarmsPage() {
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
 
   const [assetForm, setAssetForm] =
     useState<AssetFormData>(EMPTY_ASSET_FORM)
@@ -1505,21 +1508,8 @@ export function FarmsPage() {
     }
   }, [token, showArchived])
 
-  useLiveRefresh(loadFarms, {
-    enabled: Boolean(token),
-    intervalMs: 30_000,
-    onWindowFocus: true,
-  })
-
-  // useLiveRefresh keeps the latest callback for timer/focus events, but does
-  // not rerun it when a filter changes. Reload immediately when switching
-  // between active and archived farms rather than waiting for the next timer.
-  const previousShowArchived = useRef(showArchived)
-  useEffect(() => {
-    if (previousShowArchived.current === showArchived) return
-    previousShowArchived.current = showArchived
-    void loadFarms()
-  }, [showArchived, loadFarms])
+  useEffect(() => { void loadFarms() }, [loadFarms])
+  useLiveRefresh(loadFarms, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
 
   const selectedFarm = useMemo(
     () => farms.find((farm) => farm.id === selectedFarmId) || null,
@@ -1872,7 +1862,8 @@ export function FarmsPage() {
         title="Farms"
         description="Manage the farms that form the operational foundation for crops, assets, records and future agricultural workflows."
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} />
             <Button variant="outline" onClick={() => void loadFarms()} disabled={loading} title="Refresh farms" aria-label="Refresh farms">
               <RefreshCw className={loading ? 'mr-2 h-4 w-4 animate-spin' : 'mr-2 h-4 w-4'} />
               Refresh
@@ -1889,6 +1880,8 @@ export function FarmsPage() {
           </div>
         }
       />
+
+      <MarketplaceBuyerContextNotice module="farms" />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <SummaryCard label="Farms" value={farms.length} icon={Sprout} />

@@ -1,4 +1,5 @@
 import { forwardRef, Global, Module } from '@nestjs/common';
+import { AuditModule } from '../audit/audit.module';
 import { PermissionAdminController } from './permission-admin.controller';
 
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -19,6 +20,7 @@ import { RelationshipAccessPolicy } from '../relationships/relationship-access.p
 @Module({
   controllers: [PermissionAdminController],
   imports: [
+    forwardRef(() => AuditModule),
     PrismaModule,
     forwardRef(() => RegistryModule),
     forwardRef(() => RelationshipsModule),

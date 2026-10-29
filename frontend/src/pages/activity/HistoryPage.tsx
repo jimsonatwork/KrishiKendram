@@ -16,7 +16,6 @@ import { motion } from 'motion/react'
 import { api, type TransferRequest } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth.store'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 type FarmAsset = {
   id: string
@@ -148,7 +147,6 @@ export function HistoryPage() {
   const [refreshNonce, setRefreshNonce] = useState(0)
 
   const refresh = () => setRefreshNonce((value) => value + 1)
-  useLiveRefresh(refresh, { enabled: Boolean(accessToken && currentUserId), intervalMs: 30000, minRefreshGapMs: 5000 })
 
   useEffect(() => {
     let cancelled = false

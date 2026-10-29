@@ -10,6 +10,7 @@ import {
   Activity,
   Loader2,
   Users,
+  ShieldCheck,
   X,
 } from 'lucide-react'
 
@@ -17,6 +18,7 @@ import type {
   AdminUser,
   AuditEvent,
   UserRelationshipHistory,
+  UserAccessMatrix,
 } from '@/lib/api'
 
 type UserActivityDialogProps = {
@@ -24,6 +26,10 @@ type UserActivityDialogProps = {
   activity: AuditEvent[]
   relationships: UserRelationshipHistory[]
   isLoading: boolean
+  accessMatrixEnabled: boolean
+  accessMatrix: UserAccessMatrix | null
+  accessMatrixLoading: boolean
+  onLoadAccessMatrix: () => void
   onClose: () => void
   formatRole: (value: string) => string
   formatDateTime: (
@@ -36,6 +42,10 @@ export function UserActivityDialog({
   activity,
   relationships,
   isLoading,
+  accessMatrixEnabled,
+  accessMatrix,
+  accessMatrixLoading,
+  onLoadAccessMatrix,
   onClose,
   formatRole,
   formatDateTime,
@@ -58,6 +68,45 @@ export function UserActivityDialog({
       ) : (
         <>
           <RelationshipHistorySection relationships={relationships} formatDateTime={formatDateTime} />
+          {accessMatrixEnabled && (
+            <section className="mb-5 rounded-lg border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">User Access Matrix</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Configured module, resource, action and scope grants for {user.name || user.email}.</p>
+                </div>
+                <button type="button" onClick={onLoadAccessMatrix} disabled={accessMatrixLoading} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium disabled:opacity-50">
+                  <ShieldCheck className="size-4" /> {accessMatrixLoading ? 'Loading…' : accessMatrix ? 'Refresh matrix' : 'Show access matrix'}
+                </button>
+              </div>
+              {accessMatrixLoading && <div className="mt-3 text-sm text-muted-foreground">Loading permission grants…</div>}
+              {accessMatrix && (
+                <>
+                  <p className="mt-3 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">{accessMatrix.note}</p>
+                  <div className="mt-3 max-h-[420px] overflow-auto rounded-md border">
+                    <table className="w-full min-w-[680px] text-left text-xs">
+                      <thead className="sticky top-0 bg-muted">
+                        <tr><th className="p-2">Module</th><th className="p-2">Resource</th><th className="p-2">Action</th><th className="p-2">Scope</th><th className="p-2">Role grant</th><th className="p-2">User grant</th></tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {accessMatrix.permissions.map((permission, index) => (
+                          <tr key={permission.module + ':' + permission.resource + ':' + permission.action + ':' + permission.scope + ':' + index}>
+                            <td className="p-2 font-medium">{permission.module}</td>
+                            <td className="p-2">{permission.resource || permission.section || 'Module-level'}</td>
+                            <td className="p-2">{permission.action}</td>
+                            <td className="p-2">{permission.scope}</td>
+                            <td className="p-2"><span className={permission.roleGranted ? 'rounded bg-emerald-100 px-2 py-1 text-emerald-800' : 'rounded bg-muted px-2 py-1'}>{permission.roleGranted ? 'Granted' : 'Not granted'}</span></td>
+                            <td className="p-2">{permission.userGrants.length ? permission.userGrants.map((grant, i) => <span key={grant.effect + grant.subjectType + i} className="mr-1 rounded bg-blue-100 px-2 py-1 text-blue-800">{grant.effect}</span>) : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Generated {new Date(accessMatrix.generatedAt).toLocaleString()}. Green means a role grant exists; it is not a promise that every request succeeds.</p>
+                </>
+              )}
+            </section>
+          )}
           {activity.length === 0 ? (
             <EmptyState
               title="No recent activity"

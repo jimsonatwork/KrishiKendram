@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Download, FileText, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 
 type FarmOption = { id: string; name: string; area?: number | null; unit?: string | null }
 type CurrencyTotal = { currency: string; income: number; expense: number; net: number }
@@ -23,6 +24,8 @@ export function ReportsPage() {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [loading, setLoading] = useState(false)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -39,14 +42,8 @@ export function ReportsPage() {
     }
   }, [token, farmFilter, fromDate, toDate])
 
-  const filterKey = [token || '', farmFilter, fromDate, toDate].join('|')
-  const lastFilterKey = useRef(filterKey)
-  useEffect(() => {
-    if (lastFilterKey.current === filterKey) return
-    lastFilterKey.current = filterKey
-    void load()
-  }, [filterKey, load])
-  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 60_000, onWindowFocus: true })
+  useEffect(() => { void load() }, [load])
+  useLiveRefresh(load, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
 
   function exportCsv() {
     if (!report) return
@@ -75,7 +72,7 @@ export function ReportsPage() {
 
   const totals = report?.totals
   return <div className="space-y-6 p-4 sm:p-6">
-    <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><FileText className="size-6" />Farm Reports &amp; Analytics</div><p className="mt-1 text-sm text-muted-foreground">A read-only, farm-scoped report assembled by the backend from authorized module services.</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 size-4" />Refresh</Button><Button onClick={exportCsv} disabled={!report || loading}><Download className="mr-2 size-4" />Export CSV</Button></div></header>
+    <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><FileText className="size-6" />Farm Reports &amp; Analytics</div><p className="mt-1 text-sm text-muted-foreground">A read-only, farm-scoped report assembled by the backend from authorized module services.</p></div><div className="flex flex-wrap items-center gap-2"><LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 size-4" />Refresh</Button><Button onClick={exportCsv} disabled={!report || loading}><Download className="mr-2 size-4" />Export CSV</Button></div></header>
     {error && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">{error}</div>}
     {(report?.warnings || []).length > 0 && <div role="status" className="rounded-lg border p-3 text-sm text-muted-foreground">Partial report: {(report?.warnings || []).join(' ')}</div>}
     <section className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4"><label className="grid gap-1 text-sm"><span className="text-muted-foreground">Farm</span><select aria-label="Report farm filter" value={farmFilter} onChange={event => setFarmFilter(event.target.value)} className="h-9 min-w-48 rounded-md border bg-background px-3"><option value="ALL">All my farms</option>{(report?.availableFarms || []).map(farm => <option key={farm.id} value={farm.id}>{farm.name}</option>)}</select></label><label className="grid gap-1 text-sm"><span className="text-muted-foreground">From date</span><input aria-label="Report start date" type="date" value={fromDate} onChange={event => setFromDate(event.target.value)} className="h-9 rounded-md border bg-background px-3" /></label><label className="grid gap-1 text-sm"><span className="text-muted-foreground">To date</span><input aria-label="Report end date" type="date" value={toDate} onChange={event => setToDate(event.target.value)} className="h-9 rounded-md border bg-background px-3" /></label><p className="max-w-md text-xs text-muted-foreground">Date filters apply to dated operational and financial records. Currency totals stay separate; no exchange-rate conversion is guessed.</p></section>

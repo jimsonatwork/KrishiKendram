@@ -9,7 +9,7 @@ describe('InventoryService', () => {
     inventoryTransaction: { findMany: jest.fn(), create: jest.fn() },
     $transaction: jest.fn(),
   };
-  const authorization: any = { assertCan: jest.fn() };
+  const authorization: any = { assertCan: jest.fn(), can: jest.fn() };
   const registry: any = { validateResourceField: jest.fn((_resource: string, _field: string, value: unknown) => ({ valid: true, value })) };
   const audit: any = { createInTransaction: jest.fn() };
   let service: InventoryService;
@@ -21,11 +21,34 @@ describe('InventoryService', () => {
     jest.clearAllMocks();
     prisma.$transaction.mockImplementation((callback: (tx: any) => Promise<unknown>) => callback(tx));
     registry.validateResourceField.mockImplementation((_resource: string, _field: string, value: unknown) => ({ valid: true, value }));
+    authorization.can.mockResolvedValue(true);
     prisma.inventoryItem.create.mockResolvedValue({ ...item, quantityOnHand: 10 });
     prisma.inventoryTransaction.create.mockResolvedValue({ id: 'movement-1' });
     prisma.inventoryItem.updateMany.mockResolvedValue({ count: 1 });
     prisma.inventoryItem.update.mockResolvedValue({ ...item, deletedAt: new Date() });
     service = new InventoryService(prisma, authorization, registry, audit);
+  });
+
+  it('skips farms whose current relationship denies access instead of failing the inventory collection', async () => {
+    prisma.farm.findMany.mockResolvedValue([
+      { id: 'farm-transferred', ownerId: 'farmer-1' },
+      { id: 'farm-current', ownerId: 'farmer-1' },
+    ]);
+    authorization.can.mockImplementation(async (request: any) => request.farmId === 'farm-current');
+    prisma.inventoryItem.findMany.mockResolvedValue([item]);
+
+    await expect(service.list('farmer-1', UserRole.FARMER)).resolves.toEqual([item]);
+    expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { farmId: { in: ['farm-current'] }, deletedAt: null },
+    }));
+  });
+
+  it('returns an empty list when no owned farm remains authorized', async () => {
+    prisma.farm.findMany.mockResolvedValue([{ id: 'farm-transferred', ownerId: 'farmer-1' }]);
+    authorization.can.mockResolvedValue(false);
+
+    await expect(service.list('farmer-1', UserRole.FARMER)).resolves.toEqual([]);
+    expect(prisma.inventoryItem.findMany).not.toHaveBeenCalled();
   });
 
   it('authorizes farm access before validating and creating an item', async () => {
@@ -57,6 +80,42 @@ describe('InventoryService', () => {
     prisma.inventoryItem.updateMany.mockResolvedValueOnce({ count: 0 });
     await expect(service.recordTransaction('farmer-1', UserRole.FARMER, 'item-1', { type: InventoryTransactionType.STOCK_IN, quantity: 2 })).rejects.toThrow('changed concurrently');
     expect(prisma.inventoryTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it('exposes only an authorized seller-owned inventory source to Marketplace', async () => {
+    prisma.inventoryItem.findFirst.mockResolvedValue(item);
+    await expect(service.getMarketplaceListingSource('farmer-1', UserRole.FARMER, 'item-1')).resolves.toEqual({
+      id: 'item-1', ownerId: 'farmer-1', quantityOnHand: 10, name: 'Paddy seed', unit: 'kg',
+    });
+    expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({
+      module: 'inventory', resource: 'inventoryItem', action: 'READ', farmId: 'farm-1', ownerId: 'farmer-1', resourceId: 'item-1',
+    }));
+  });
+
+  it('owns Marketplace sale stock decrements, authorization, ledger audit and low-stock notifications', async () => {
+    prisma.inventoryItem.findFirst.mockResolvedValue({ ...item, quantityOnHand: 10, reorderLevel: 2 });
+    await service.decrementForMarketplaceSale(tx, {
+      itemId: 'item-1', sellerId: 'farmer-1', actorId: 'farmer-1', role: UserRole.FARMER,
+      orderId: 'market-order-1', quantity: 8,
+    });
+    expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({
+      module: 'inventory', resource: 'inventoryItem', action: 'UPDATE', farmId: 'farm-1', ownerId: 'farmer-1', resourceId: 'item-1',
+    }));
+    expect(prisma.inventoryItem.updateMany).toHaveBeenCalledWith({
+      where: { id: 'item-1', deletedAt: null, quantityOnHand: { equals: 10, gte: 8 } },
+      data: { quantityOnHand: { decrement: 8 } },
+    });
+    expect(prisma.inventoryTransaction.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      inventoryItemId: 'item-1', actorId: 'farmer-1', type: 'STOCK_OUT', quantity: 8,
+      quantityBefore: 10, quantityAfter: 2, reference: 'marketplace-order:market-order-1',
+    }) });
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: 'STOCK_OUT', resourceType: 'inventoryItem', resourceId: 'item-1',
+    }));
+    expect(tx.notification.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ userId: 'farmer-1', type: 'LOW_STOCK', source: 'inventory' }),
+      skipDuplicates: true,
+    }));
   });
 
   it('notifies the farm owner when stock crosses below the reorder level', async () => {

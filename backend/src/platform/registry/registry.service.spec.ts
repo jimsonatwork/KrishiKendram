@@ -925,10 +925,11 @@ describe('RegistryService - platform coverage invariants', () => {
     const modules = new Set(MODULE_DEFINITIONS.map((module) => module.id));
     for (const resource of RESOURCE_DEFINITIONS) expect(modules.has(resource.module)).toBe(true);
   });
-  it('registers Inventory and Finance as Marketplace submodules in the central registry', () => {
+  it('keeps Marketplace, Inventory and Finance as independent top-level modules', () => {
     const modules = new Map(MODULE_DEFINITIONS.map((module) => [module.id, module]));
-    expect(modules.get('inventory')?.parentId).toBe('marketplace');
-    expect(modules.get('finance')?.parentId).toBe('marketplace');
+    expect(modules.get('marketplace')?.parentId).toBeUndefined();
+    expect(modules.get('inventory')?.parentId).toBeUndefined();
+    expect(modules.get('finance')?.parentId).toBeUndefined();
     for (const module of MODULE_DEFINITIONS) {
       if (module.parentId) expect(modules.has(module.parentId)).toBe(true);
     }

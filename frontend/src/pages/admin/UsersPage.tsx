@@ -24,10 +24,11 @@
 // Keep child components focused on presentation.
 // ============================================================
 
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FormEvent } from 'react'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 
 import {
   AlertTriangle,
@@ -46,6 +47,7 @@ import {
   type AuditEvent,
   type UserRelationshipHistory,
   type UpdateAdminUserData,
+  type UserAccessMatrix,
 } from '@/lib/api'
 
 import { useAuthStore } from '@/stores/auth.store'
@@ -215,6 +217,8 @@ export function UsersPage() {
 
   const [users, setUsers] = useState<AdminUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
   const [error, setError] = useState('')
 
   // ==========================================================
@@ -297,8 +301,11 @@ export function UsersPage() {
   // ACTIVITY
   // ==========================================================
 
-  const [activityUser, setActivityUser] =
-    useState<AdminUser | null>(null)
+  const [accessMatrixEnabled, setAccessMatrixEnabled] = useState(false)
+  const [accessMatrix, setAccessMatrix] = useState<UserAccessMatrix | null>(null)
+  const [accessMatrixLoading, setAccessMatrixLoading] = useState(false)
+  const [accessMatrixReason, setAccessMatrixReason] = useState('')
+  const [activityUser, setActivityUser] = useState<AdminUser | null>(null)
 
   const [activity, setActivity] =
     useState<AuditEvent[]>([])
@@ -375,15 +382,16 @@ export function UsersPage() {
     }
   }, [accessToken])
 
-  // ==========================================================
-  // LIVE / ROUTE-RETURN / FOCUS / BACKGROUND REFRESH
-  // ==========================================================
+  useEffect(() => { void loadUsers() }, [loadUsers])
 
-  useLiveRefresh(loadUsers, {
-    enabled: Boolean(accessToken),
-    intervalMs: 30_000,
-    onWindowFocus: true,
-  })
+  useEffect(() => {
+    if (!accessToken) return
+    void api.userAccessMatrixSettings(accessToken)
+      .then((result) => setAccessMatrixEnabled(result.enabled))
+      .catch(() => setAccessMatrixEnabled(false))
+  }, [accessToken])
+
+  useLiveRefresh(loadUsers, { enabled: Boolean(accessToken) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
 
   // ==========================================================
   // SEARCH & FILTERING
@@ -1081,6 +1089,37 @@ export function UsersPage() {
   // LOAD USER ACTIVITY
   // ==========================================================
 
+  const toggleAccessMatrix = async () => {
+    if (!accessToken) return
+    const reason = accessMatrixReason.trim()
+    if (!reason) {
+      setError('Enter a reason to change User Access Matrix visibility.')
+      return
+    }
+    try {
+      const result = await api.setUserAccessMatrixSettings(accessToken, !accessMatrixEnabled, reason)
+      setAccessMatrixEnabled(result.enabled)
+      setAccessMatrix(null)
+      setAccessMatrixReason('')
+      setNotice('User Access Matrix visibility turned ' + (result.enabled ? 'ON.' : 'OFF.'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update access matrix visibility.')
+    }
+  }
+
+  const loadAccessMatrix = async (user: AdminUser) => {
+    if (!accessToken || !accessMatrixEnabled) return
+    setAccessMatrixLoading(true)
+    setAccessMatrix(null)
+    try {
+      setAccessMatrix(await api.userAccessMatrix(user.id, accessToken))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load this user access matrix.')
+    } finally {
+      setAccessMatrixLoading(false)
+    }
+  }
+
   const openActivity = async (
     user: AdminUser,
   ) => {
@@ -1157,6 +1196,12 @@ export function UsersPage() {
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} />
+          <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+            <span className="text-xs font-medium">Access matrix: {accessMatrixEnabled ? 'ON' : 'OFF'}</span>
+            <input aria-label="Reason for access matrix visibility change" className="h-8 w-36 rounded border bg-background px-2 text-xs" placeholder="Reason to toggle" value={accessMatrixReason} onChange={(event) => setAccessMatrixReason(event.target.value)} />
+            <Button size="sm" variant="outline" onClick={() => void toggleAccessMatrix()}>{accessMatrixEnabled ? 'Turn off' : 'Turn on'}</Button>
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -1457,6 +1502,10 @@ export function UsersPage() {
         activity={activity}
         relationships={relationships}
         isLoading={isActivityLoading}
+        accessMatrixEnabled={accessMatrixEnabled}
+        accessMatrix={accessMatrix}
+        accessMatrixLoading={accessMatrixLoading}
+        onLoadAccessMatrix={() => activityUser && void loadAccessMatrix(activityUser)}
         onClose={closeActivity}
         formatRole={formatRole}
         formatDateTime={formatDateTime}

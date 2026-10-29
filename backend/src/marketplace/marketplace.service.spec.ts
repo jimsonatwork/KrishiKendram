@@ -10,6 +10,7 @@ describe('MarketplaceService', () => {
     resourceRelationship: { findFirst: jest.fn() },
     farmAsset: { findFirst: jest.fn(), findUnique: jest.fn() },
     crop: { findFirst: jest.fn(), findUnique: jest.fn() },
+    farm: { findFirst: jest.fn() },
     livestock: { findFirst: jest.fn(), findUnique: jest.fn() },
     inventoryItem: { findFirst: jest.fn(), updateMany: jest.fn() },
     inventoryTransaction: { create: jest.fn() },
@@ -28,6 +29,10 @@ describe('MarketplaceService', () => {
   const authorization: any = { assertCan: jest.fn() };
   const audit: any = { createInTransaction: jest.fn() };
   const registry: any = { validateResourceField: jest.fn(), validateField: jest.fn(), getField: jest.fn() };
+  const inventory: any = {
+    getMarketplaceListingSource: jest.fn().mockResolvedValue({ id: 'inventory-1', ownerId: 'owner-1', quantityOnHand: 5, name: 'Paddy seed', unit: 'kg' }),
+    decrementForMarketplaceSale: jest.fn().mockResolvedValue({ itemId: 'inventory-1', quantityBefore: 8, quantityAfter: 5 }),
+  };
   let service: MarketplaceService;
   let txLedgerEntryCreate: jest.Mock;
 
@@ -35,7 +40,7 @@ describe('MarketplaceService', () => {
     jest.clearAllMocks();
     prisma.marketplaceCommercePolicy.findUnique.mockResolvedValue(null);
     prisma.marketplaceFeatureFlag.findUnique.mockResolvedValue(null);
-    service = new MarketplaceService(prisma, authorization, audit, registry);
+    service = new MarketplaceService(prisma, authorization, audit, registry, inventory);
     txLedgerEntryCreate = jest.fn().mockResolvedValue({ id: 'ledger-entry-1' });
     prisma.$transaction.mockImplementation((cb: any) => cb({
       marketplaceListing: { create: jest.fn().mockResolvedValue({ id: 'listing-1', status: 'DRAFT' }), update: jest.fn().mockResolvedValue({ id: 'listing-1' }), findUnique: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
@@ -73,7 +78,7 @@ describe('MarketplaceService', () => {
   });
 
   it('links an inventory-backed listing to farm-owned stock and rejects over-listing', async () => {
-    prisma.inventoryItem.findFirst.mockResolvedValue({ id: 'inventory-1', quantityOnHand: 5, farm: { ownerId: 'owner-1' } });
+    inventory.getMarketplaceListingSource.mockResolvedValue({ id: 'inventory-1', ownerId: 'owner-1', quantityOnHand: 5, name: 'Paddy seed', unit: 'kg' });
     const result = await service.create('owner-1', UserRole.FARMER, {
       resourceType: 'inventoryItem', resourceId: 'inventory-1', title: 'Paddy seed',
       quantity: 4, unit: 'kg', price: 30, currency: 'INR',
@@ -82,12 +87,47 @@ describe('MarketplaceService', () => {
     expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({ ownerId: 'owner-1', resource: 'marketplaceListing', action: 'CREATE' }));
 
     jest.clearAllMocks();
-    prisma.inventoryItem.findFirst.mockResolvedValue({ id: 'inventory-1', quantityOnHand: 5, farm: { ownerId: 'owner-1' } });
+    inventory.getMarketplaceListingSource.mockResolvedValue({ id: 'inventory-1', ownerId: 'owner-1', quantityOnHand: 5, name: 'Paddy seed', unit: 'kg' });
     await expect(service.create('owner-1', UserRole.FARMER, {
       resourceType: 'inventoryItem', resourceId: 'inventory-1', title: 'Too much seed',
       quantity: 6, unit: 'kg', price: 30, currency: 'INR',
     })).rejects.toThrow('Listing quantity cannot exceed available inventory stock.');
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('publishes Registry-backed field contracts for all supported Marketplace offering types', () => {
+    const definitions = service.getOfferingTypes();
+    expect(definitions.map((definition) => definition.type)).toEqual([
+      'PRODUCT', 'DIGITAL', 'SERVICE', 'RENTAL', 'BOOKING', 'SUBSCRIPTION',
+      'RFQ', 'PUBLIC_SERVICE', 'KNOWLEDGE', 'DONATION', 'JOB', 'LOGISTICS',
+    ]);
+    expect(definitions.find((definition) => definition.type === 'SERVICE')?.fields.map((field) => field.key)).toContain('serviceMode');
+    expect(definitions.find((definition) => definition.type === 'DONATION')?.fields.some((field) => field.required)).toBe(true);
+  });
+
+  it('requires type-specific fields and rejects unknown offering detail keys before persistence', async () => {
+    await expect(service.create('seller-1', UserRole.FARMER, {
+      offeringType: 'SERVICE', category: 'SERVICES', title: 'Tractor repair',
+    } as any)).rejects.toThrow('Service delivery mode is required');
+    await expect(service.create('seller-1', UserRole.FARMER, {
+      offeringType: 'PRODUCT', category: 'PRODUCE', title: 'Seed', offeringDetails: { unregisteredField: 'bad' },
+    } as any)).rejects.toThrow('Unsupported Physical product detail field');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('persists canonical source references and validated offering details on linked listings', async () => {
+    const listingCreate = jest.fn().mockResolvedValue({ id: 'listing-linked-1', status: 'DRAFT' });
+    prisma.$transaction.mockImplementationOnce((cb: any) => cb({ marketplaceListing: { create: listingCreate } }));
+    inventory.getMarketplaceListingSource.mockResolvedValue({ id: 'inventory-1', ownerId: 'owner-1', quantityOnHand: 5, name: 'Paddy seed', unit: 'kg' });
+    await service.create('owner-1', UserRole.FARMER, {
+      resourceType: 'inventoryItem', resourceId: 'inventory-1', sourceModule: 'inventory', sourceEntityId: 'inventory-1',
+      offeringType: 'PRODUCT', offeringDetails: { condition: 'NEW', brand: 'KK Seed Co' },
+      category: 'PRODUCE', title: 'Paddy seed', quantity: 4, unit: 'kg', price: 30, currency: 'INR',
+    } as any);
+    expect(listingCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      sourceModule: 'inventory', sourceEntityId: 'inventory-1', offeringType: 'PRODUCT',
+      offeringDetails: { condition: 'NEW', brand: 'KK Seed Co' },
+    }) });
   });
 
   it('creates a generic user-owned listing without a linked farm resource', async () => {
@@ -108,7 +148,7 @@ describe('MarketplaceService', () => {
       resourceType: 'crop', resourceId: 'crop-1', title: 'Crop',
       description: 'Description', quantity: 4, unit: 'kg', price: 12, currency: 'INR',
     });
-    expect(registry.validateResourceField).toHaveBeenCalledTimes(9);
+    expect(registry.validateResourceField).toHaveBeenCalledTimes(11);
   });
 
   it('rejects invalid Registry fields before persistence', async () => {
@@ -181,6 +221,148 @@ describe('MarketplaceService', () => {
     expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({
       action: 'READ', ownerId: 'seller-1',
     }));
+  });
+
+  it('requires confirmed crop and location context for agricultural input orders', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({ id: 'listing-input-1', sellerId: 'seller-1', category: 'FARM_INPUTS', title: 'Urea fertilizer', description: 'Agricultural input', offeringType: 'PRODUCT', quantity: 20, price: 15, currency: 'INR', status: 'PUBLISHED' });
+    await expect(service.createOrder('buyer-1', UserRole.FARMER, 'listing-input-1', { quantity: 2 })).rejects.toMatchObject({
+      response: expect.objectContaining({ contextPolicyKey: 'AGRI_INPUT_USAGE', missingFields: ['intendedCrop', 'region'] }),
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('sanitizes agricultural context to allow-listed fields and records its confirmation provenance', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({
+      id: 'listing-input-1', sellerId: 'seller-1', category: 'FARM_INPUTS',
+      title: 'Urea fertilizer', description: 'Agricultural input', offeringType: 'PRODUCT',
+      quantity: 20, price: 15, currency: 'INR', status: 'PUBLISHED',
+    });
+    let createdData: any;
+    const orderCreate = jest.fn().mockImplementation(({ data }: any) => {
+      createdData = data;
+      return { id: 'order-context-1', status: 'PENDING', ...data };
+    });
+    prisma.$transaction.mockImplementationOnce((cb: any) => cb({
+      marketplaceOrder: { create: orderCreate },
+      notification: {
+        create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+      },
+    }));
+
+    await service.createOrder('buyer-1', UserRole.FARMER, 'listing-input-1', {
+      quantity: 2,
+      contextAnswers: {
+        intendedCrop: '  Paddy  ',
+        region: ' Krishna District ',
+        area: 2,
+        areaUnit: ' acre ',
+        growthStage: ' flowering ',
+        purpose: ' nutrient support ',
+        unregisteredField: 'must not persist',
+      },
+    } as any);
+
+    expect(createdData.contextAnswers).toEqual({
+      intendedCrop: 'Paddy',
+      region: 'Krishna District',
+      area: '2',
+      areaUnit: 'acre',
+      growthStage: 'flowering',
+      purpose: 'nutrient support',
+    });
+    expect(createdData.contextAnswers).not.toHaveProperty('unregisteredField');
+    expect(createdData.contextPolicySnapshot).toEqual(expect.objectContaining({
+      key: 'AGRI_INPUT_USAGE',
+      version: 1,
+      provenance: 'USER_CONFIRMED',
+      source: 'MARKETPLACE_CHECKOUT',
+      capturedAt: expect.any(String),
+    }));
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      actorId: 'buyer-1',
+      action: 'CREATE',
+      resourceType: 'marketplaceOrder',
+      resourceId: 'order-context-1',
+    }));
+  });
+
+  it('limits order history to orders where the caller is buyer or seller', async () => {
+    prisma.marketplaceOrder.findMany.mockResolvedValue([{ id: 'order-participant-1' }]);
+    await expect(service.findMyOrders('buyer-1', UserRole.FARMER)).resolves.toEqual([{ id: 'order-participant-1' }]);
+    expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({
+      user: { userId: 'buyer-1', role: UserRole.FARMER },
+      module: 'marketplace',
+      resource: 'marketplaceOrder',
+      action: 'READ',
+      ownerId: 'buyer-1',
+    }));
+    expect(prisma.marketplaceOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [{ buyerId: 'buyer-1' }, { sellerId: 'buyer-1' }] },
+      orderBy: { createdAt: 'desc' },
+    }));
+  });
+
+  it('requires explicit consent and buyer ownership before linking context to farm/crop records', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({
+      id: 'listing-input-1', sellerId: 'seller-1', category: 'FARM_INPUTS',
+      title: 'Urea fertilizer', description: 'Agricultural input', offeringType: 'PRODUCT',
+      quantity: 20, price: 15, currency: 'INR', status: 'PUBLISHED',
+    });
+    const contextAnswers = { intendedCrop: 'Paddy', region: 'Krishna District' };
+    await expect(service.createOrder('buyer-1', UserRole.FARMER, 'listing-input-1', {
+      quantity: 2, contextAnswers, contextFarmId: 'farm-1',
+    } as any)).rejects.toThrow('Explicit consent is required');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+
+    prisma.farm.findFirst.mockResolvedValue(null);
+    await expect(service.createOrder('buyer-1', UserRole.FARMER, 'listing-input-1', {
+      quantity: 2, contextAnswers, consentToLinkContext: true, contextFarmId: 'farm-not-owned',
+    } as any)).rejects.toThrow('active and owned by the buyer');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('persists a consented, owned crop/farm link only on the order snapshot', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({
+      id: 'listing-input-1', sellerId: 'seller-1', category: 'FARM_INPUTS',
+      title: 'Urea fertilizer', description: 'Agricultural input', offeringType: 'PRODUCT',
+      quantity: 20, price: 15, currency: 'INR', status: 'PUBLISHED',
+    });
+    prisma.farm.findFirst.mockResolvedValue({ id: 'farm-1' });
+    prisma.crop.findFirst.mockResolvedValue({ id: 'crop-1', farmId: 'farm-1', farm: { ownerId: 'buyer-1', deletedAt: null } });
+    let createdData: any;
+    const orderCreate = jest.fn().mockImplementation(({ data }: any) => {
+      createdData = data;
+      return { id: 'order-context-link-1', status: 'PENDING', ...data };
+    });
+    prisma.$transaction.mockImplementationOnce((cb: any) => cb({
+      marketplaceOrder: { create: orderCreate },
+      notification: {
+        create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+      },
+    }));
+    await service.createOrder('buyer-1', UserRole.FARMER, 'listing-input-1', {
+      quantity: 2,
+      contextAnswers: { intendedCrop: 'Paddy', region: 'Krishna District' },
+      consentToLinkContext: true,
+      contextFarmId: 'farm-1',
+      contextCropId: 'crop-1',
+    } as any);
+    expect(createdData.contextFarmId).toBe('farm-1');
+    expect(createdData.contextCropId).toBe('crop-1');
+    expect(createdData.contextPolicySnapshot.recordLinkConsent).toEqual(expect.objectContaining({
+      consented: true,
+      farmId: 'farm-1',
+      cropId: 'crop-1',
+      scope: 'ORDER_CONTEXT_ONLY',
+    }));
+    expect(prisma.farm.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'farm-1', ownerId: 'buyer-1', deletedAt: null },
+    }));
+    expect(prisma.crop.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'crop-1', deletedAt: null } }));
   });
 
   it('creates an order against a published listing and records audit', async () => {
@@ -443,23 +625,22 @@ describe('MarketplaceService', () => {
     expect(listingUpdate).toHaveBeenCalledWith({ where: { id: 'listing-1' }, data: { status: 'SOLD' } });
   });
 
-  it('decrements linked Inventory stock and writes a stock-out ledger entry when a Marketplace order completes', async () => {
+  it('delegates linked stock decrement to the Inventory domain within the order transaction', async () => {
     prisma.marketplaceOrder.findUnique.mockResolvedValue({ id: 'order-inventory-1', listingId: 'listing-inventory-1', buyerId: 'buyer-1', sellerId: 'seller-1', status: 'ACCEPTED', quantity: 3, unitPrice: 10 });
     const listingFindUnique = jest.fn().mockResolvedValueOnce({ id: 'listing-inventory-1', resourceType: 'inventoryItem', resourceId: 'inventory-1', quantity: 3, status: 'PUBLISHED' }).mockResolvedValueOnce({ quantity: 0 });
     const listingUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
-    const inventoryFindFirst = jest.fn().mockResolvedValue({ id: 'inventory-1', name: 'Paddy seed', quantityOnHand: 8, reorderLevel: 5, unit: 'kg', farm: { ownerId: 'seller-1' } });
-    const inventoryUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
-    const inventoryTransactionCreate = jest.fn().mockResolvedValue({ id: 'inventory-tx-1' });
-    prisma.$transaction.mockImplementationOnce((cb: any) => cb({
+    const tx = {
       marketplaceListing: { findUnique: listingFindUnique, updateMany: listingUpdateMany, update: jest.fn().mockResolvedValue({ id: 'listing-inventory-1', status: 'SOLD' }) },
-      inventoryItem: { findFirst: inventoryFindFirst, updateMany: inventoryUpdateMany },
-      inventoryTransaction: { create: inventoryTransactionCreate },
       marketplaceOrder: { update: jest.fn().mockResolvedValue({ id: 'order-inventory-1', status: 'COMPLETED' }) },
       notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
-    }));
+    };
+    prisma.$transaction.mockImplementationOnce((cb: any) => cb(tx));
     await service.completeOrder('seller-1', UserRole.FARMER, 'order-inventory-1', {});
-    expect(inventoryUpdateMany).toHaveBeenCalledWith({ where: { id: 'inventory-1', deletedAt: null, quantityOnHand: { equals: 8, gte: 3 } }, data: { quantityOnHand: { decrement: 3 } } });
-    expect(inventoryTransactionCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ inventoryItemId: 'inventory-1', type: 'STOCK_OUT', quantity: 3, quantityBefore: 8, quantityAfter: 5, reference: 'marketplace-order:order-inventory-1' }) });
+    expect(inventory.decrementForMarketplaceSale).toHaveBeenCalledWith(tx, {
+      itemId: 'inventory-1', sellerId: 'seller-1', actorId: 'seller-1', role: UserRole.FARMER,
+      orderId: 'order-inventory-1', quantity: 3,
+    });
+    expect(listingUpdateMany).toHaveBeenCalledWith({ where: { id: 'listing-inventory-1', status: 'PUBLISHED', deletedAt: null, quantity: { gte: 3 } }, data: { quantity: { decrement: 3 } } });
   });
 
   it('submits reviews only for completed orders and keeps them pending moderation', async () => {

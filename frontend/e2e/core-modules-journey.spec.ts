@@ -104,7 +104,7 @@ test('core farm workflows connect inventory ledger, finance records, notificatio
   await expect(page.getByText('10 → 13')).toBeVisible()
 
   await page.goto('/app/finance')
-  await expect(page.getByText('Farm Finance')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Add income or expense' })).toBeVisible()
   await page.getByLabel('Finance type').selectOption('INCOME')
   await page.getByLabel('Finance category').fill('Tomato sale')
   await page.getByLabel('Finance amount').fill('1250')

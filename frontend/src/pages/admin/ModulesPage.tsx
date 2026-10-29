@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Boxes, CheckCircle2, CircleOff, Network, RefreshCw } from 'lucide-react'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 import { Button } from '@/components/ui/button'
 import { platformRegistry } from '@/lib/platform/registry'
@@ -22,7 +21,6 @@ export function ModulesPage() {
   const [refreshNonce, setRefreshNonce] = useState(0)
 
   const refresh = () => setRefreshNonce((value) => value + 1)
-  useLiveRefresh(refresh, { enabled: Boolean(token), intervalMs: 30000 })
 
   useEffect(() => {
     if (!token) return

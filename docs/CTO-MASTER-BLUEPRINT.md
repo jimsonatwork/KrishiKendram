@@ -3476,3 +3476,30 @@ The canonical CropsService boundary enforces the active-parent predicate for dir
 
 ## Marketplace payment dispute boundary — 2026-10-18
 The commerce architecture now includes a feature-gated sandbox chargeback state machine alongside sandbox payments and refunds. The lifecycle captures idempotent requests, immutable amount/currency, a seven-day evidence deadline, seller evidence links, temporary audited payout-hold records, signed/replay-protected outcomes, and balanced ledger reversals for simulated losses. Refund and chargeback reservations share the captured-amount ceiling. All sandbox controls default off and require explicit sandbox environment configuration. Provider-backed chargebacks, evidence exchange, live payouts, tax remittance and real money movement remain blocked until provider/security/accounting/legal review and authenticated end-to-end release gates pass.
+
+
+## 2026-10-27 — Universal Marketplace and Cross-Module Context Architecture
+
+Canonical requirements: `docs/KK-CROSS-MODULE-MARKETPLACE-AND-CONTEXT-ARCHITECTURE.md`. This section supersedes older descriptions that put Inventory and Finance under Marketplace.
+
+### Product and module boundaries
+KrishiKendram serves people and organizations across many domains. A person can hold multiple contextual roles and use multiple modules under one identity; no fixed “farmer” role is required to buy/sell or provide a service. Marketplace is an independent cross-domain discovery, commerce, service and exchange module. Inventory (stock/movement source of truth) and Finance (books and approved accounting mappings) are independent, separately enabled modules connected through optional authorized integration contracts. Marketplace disablement must not disable them, and their disablement must not erase historical orders/listings.
+
+Marketplace listing types include physical/digital goods, services, rentals, bookings/events, subscriptions/contracts, wholesale/RFQ, public/government services, tenders, education/knowledge, professional appointments, jobs/expertise, donations/barter, logistics, storage, testing, repair and community offers. Provider examples include fertilizer suppliers without farms, universities, doctors/veterinarians, machinery owners, public agencies, labs, logistics firms, cooperatives and NGOs.
+
+### Context & Eligibility Engine
+Every listing/action has versioned Registry rules for required/recommended context, validation, sensitivity, authoritative module, purpose, consent and blocking severity. Reuse existing authorized facts and ask only for missing relevant information. Gentle optional prompts, guided context completion and mandatory safety/legal eligibility checks are distinct. Example: a fertilizer purchase can trigger a conversational crop/location/stage prompt before personalized use guidance; confirmed facts are written to Farms/Crops only after confirmation. Unrelated activity remains available, and a missing optional fact must not become a global lock.
+
+Context provenance includes user-confirmed, document-verified, partner-provided, AI-extracted, inferred, imported or unknown, with confidence/source/timestamp/correction history. Original-language transcript is preserved separately from translated/normalized derivative. AI does not silently overwrite canonical records. Research, manufacturer assessments, advertising and government reporting need purpose-specific lawful access/authorization; order fulfilment data is not blanket consent.
+
+### Integration architecture
+Use Identity & Organizations, independent domain modules, Marketplace, Registry-driven Context & Eligibility, typed Integration/Event Bridge, AI Companion, Notifications/Activity/History, Documents/Media, Search/Discovery and Reports/Analytics. Integrations must check source and target authorization, be idempotent and audited, handle disabled optional modules and never bypass domain APIs. Marketplace can integrate with Inventory, Finance, Farms/Crops/Livestock, Education, Health/Veterinary, Government/Public Services, Logistics/Storage, Labs/Research, Community/NGOs and future modules. Private records are not indexed/shared by default; public share previews must not leak protected data.
+
+### Rebuild and release plan
+A. Update PMD/Bible/Blueprint/roadmap and correct module parentage.
+B. Add Registry-backed listing types and context policies; implement progressive capture/resumable prompts.
+C. Rebuild Marketplace UI with provider storefronts, type-aware discovery/actions, visibility and internal/external sharing while preserving commerce/trust work.
+D. Connect Inventory stock operations and Finance accounting mappings through domain-owned APIs/events; extend integrations in measured phases.
+E. Validate multi-role authorization, module toggles, context gaps/corrections, privacy, audit, idempotency, share previews, failures, builds and authenticated end-to-end journeys.
+
+No production claim without code + persistence + server authorization + UI + tests + runtime evidence. Live payment/refund/chargeback/payout and tax remittance remain gated on provider, security, legal/accounting and authenticated role testing. Do not reset database/volumes or rewrite migration history.

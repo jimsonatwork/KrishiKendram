@@ -1,10 +1,15 @@
 import { Type } from 'class-transformer';
 import { ValidateNested } from 'class-validator';
 import { PriceTierDto } from './price-tier.dto';
-import { IsArray, IsIn, IsNumber, IsOptional, IsString, IsUrl, Min, MaxLength, ArrayMaxSize, Matches } from 'class-validator';
+import { IsArray, IsIn, IsNumber, IsOptional, IsString, IsUrl, IsObject, Min, MaxLength, ArrayMaxSize, Matches } from 'class-validator';
+import { MARKETPLACE_OFFERING_TYPES } from '../../platform/registry/definitions/marketplace-context-policies';
 export class CreateListingDto {
   @IsOptional() @IsIn(['farmAsset', 'crop', 'livestock', 'inventoryItem']) resourceType?: string;
   @IsOptional() @IsString() @MaxLength(100) resourceId?: string;
+  @IsOptional() @IsIn(MARKETPLACE_OFFERING_TYPES) offeringType?: string;
+  @IsOptional() @IsObject() offeringDetails?: Record<string, unknown>;
+  @IsOptional() @IsString() @MaxLength(80) sourceModule?: string;
+  @IsOptional() @IsString() @MaxLength(120) sourceEntityId?: string;
   @IsString() @MaxLength(40) category: string;
   @IsString() @MaxLength(200) title: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;

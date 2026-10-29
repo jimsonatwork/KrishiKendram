@@ -3,7 +3,6 @@ import { Database, Eye, EyeOff, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { request } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth.store'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 type DbInfo = { provider:string; host:string; port:string; database:string; username:string; password:string; databaseUrl:string; sensitiveRevealed:boolean; sensitiveViewEnabled:boolean }
 const auth = (token:string) => ({ headers: { Authorization: 'Bearer ' + token } })
@@ -32,7 +31,6 @@ export function DatabasePage() {
     finally { setLoading(false) }
   },[token])
   useEffect(() => { void load() },[load])
-  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 30000 })
   const reveal = async () => {
     if (!token) return
     setRevealing(true); setError(null)

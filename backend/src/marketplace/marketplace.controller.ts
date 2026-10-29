@@ -49,8 +49,16 @@ export class MarketplaceController {
     limits: { fileSize: 100 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => ['video/mp4', 'video/webm'].includes(file.mimetype) ? cb(null, true) : cb(new BadRequestException('Upload an MP4 or WebM video.'), false),
   })) uploadMarketplaceVideo(@Req() req: any, @UploadedFile() file: any) { return this.marketplace.saveMediaUpload(req.user.userId, req.user.role, file, 'video'); }
+  @Get('buyer-profile/mine') @UseGuards(JwtAuthGuard) getBuyerProfile(@Req() req: any) { return this.marketplace.getBuyerProfile(req.user.userId); }
+  @Get('buyer-profile/context/:module') @UseGuards(JwtAuthGuard) getBuyerProfileContext(@Req() req: any, @Param('module') module: string) { return this.marketplace.getBuyerProfileContext(req.user.userId, module); }
+  @Patch('buyer-profile/mine') @UseGuards(JwtAuthGuard) saveBuyerProfile(@Req() req: any, @Body() body: any) { return this.marketplace.saveBuyerProfile(req.user.userId, body); }
+  @Post('buyer-profile/mine/revoke-cross-module-consent') @UseGuards(JwtAuthGuard) revokeBuyerProfileCrossModuleConsent(@Req() req: any) { return this.marketplace.revokeBuyerProfileCrossModuleConsent(req.user.userId); }
+  @Get('views/last-hour') getListingViewCounts() { return this.marketplace.getListingViewCounts(); }
+  @Post('listings/:id/views') recordListingView(@Param('id') id: string, @Body('sessionKey') sessionKey: string) { return this.marketplace.recordListingView(id, sessionKey); }
+  @Get('listings/:id/views') getListingViewCount(@Param('id') id: string) { return this.marketplace.getListingViewCount(id); }
   @Get('commerce-policy') getCommercePolicy() { return this.marketplace.getCommercePolicy(); }
   @Get('features/public') getPublicFeatureFlags() { return this.marketplace.getPublicFeatureFlags(); }
+  @Get('offering-types') getOfferingTypes() { return this.marketplace.getOfferingTypes(); }
     @Get('features') @UseGuards(JwtAuthGuard) getFeatureFlags(@Req() req: any) { return this.marketplace.getFeatureFlags(req.user.userId, req.user.role); }
   @Patch('features/:key') @UseGuards(JwtAuthGuard) updateFeatureFlag(@Req() req: any, @Param('key') key: string, @Body() dto: UpdateFeatureFlagDto) { return this.marketplace.updateFeatureFlag(req.user.userId, req.user.role, key, dto); }
   @Get('tax-profiles') @UseGuards(JwtAuthGuard) listTaxProfiles(@Req() req: any) { return this.marketplace.listTaxProfiles(req.user.role); }
@@ -59,14 +67,17 @@ export class MarketplaceController {
   @Patch('tax-profiles/:id/retire') @UseGuards(JwtAuthGuard) retireTaxProfile(@Req() req: any, @Param('id') id: string, @Body() dto: RetireTaxProfileDto) { return this.marketplace.retireTaxProfile(req.user.userId, req.user.role, id, dto.reason); }
   @Patch('commerce-policy') @UseGuards(JwtAuthGuard) updateCommercePolicy(@Req() req: any, @Body() dto: UpdateCommercePolicyDto) { return this.marketplace.updateCommercePolicy(req.user.userId, req.user.role, dto); }
   @Post('listings/:id/quote') @UseGuards(JwtAuthGuard) quoteOrder(@Req() req: any, @Param('id') id: string, @Body() dto: QuoteOrderDto) { return this.marketplace.quoteOrder(req.user.userId, req.user.role, id, dto); }
+  @Get('context-policies/:key') getContextPolicy(@Param('key') key: string) { return this.marketplace.getContextPolicy(key); }
   @Get('categories') getCategories() { return this.marketplace.getCategories(); }
   @Get('listings') findPublished(@Query('period') period?: string, @Query('category') category?: string) { return this.marketplace.findPublished(period, category); }
   @Get('listings/mine') @UseGuards(JwtAuthGuard) findMine(@Req() req: any) { return this.marketplace.findMine(req.user.userId, req.user.role); }
   @Get('orders/mine') @UseGuards(JwtAuthGuard) findMyOrders(@Req() req: any) { return this.marketplace.findMyOrders(req.user.userId, req.user.role); }
   @Get('history/mine') @UseGuards(JwtAuthGuard) getCommerceHistory(@Req() req: any) { return this.marketplace.getCommerceHistory(req.user.userId, req.user.role); }
-  @Get('profile/mine') @UseGuards(JwtAuthGuard) getMySellerProfile(@Req() req:any) { return this.marketplace.getSellerProfile(req.user.userId); }
+  @Get('seller-profile-visibility') @UseGuards(JwtAuthGuard) getSellerProfileVisibilityPolicy(@Req() req:any) { return this.marketplace.getSellerProfileVisibilityPolicy(req.user.userId); }
+  @Patch('seller-profile-visibility') @UseGuards(JwtAuthGuard) updateSellerProfileVisibilityPolicy(@Req() req:any,@Body() body:any) { return this.marketplace.updateSellerProfileVisibilityPolicy(req.user.userId,body); }
+  @Get('profile/mine') @UseGuards(JwtAuthGuard) getMySellerProfile(@Req() req:any) { return this.marketplace.getSellerProfile(req.user.userId, 'marketplace', undefined, true); }
   @Patch('profile/mine') @UseGuards(JwtAuthGuard) updateMySellerProfile(@Req() req:any,@Body() dto:UpdateSellerProfileDto) { return this.marketplace.updateSellerProfile(req.user.userId,req.user.role,dto); }
-  @Get('sellers/:id/profile') getSellerProfile(@Param('id') id:string) { return this.marketplace.getSellerProfile(id); }
+  @Get('sellers/:id/profile') getSellerProfile(@Param('id') id:string,@Query('module') module?:string,@Query('category') category?:string) { return this.marketplace.getSellerProfile(id,module,category); }
   @Get('favorites/mine') @UseGuards(JwtAuthGuard) listFavorites(@Req() req:any) { return this.marketplace.listFavorites(req.user.userId); }
   @Post('listings/:id/favorite') @UseGuards(JwtAuthGuard) addFavorite(@Req() req:any,@Param('id') id:string) { return this.marketplace.addFavorite(req.user.userId,req.user.role,id); }
   @Delete('listings/:id/favorite') @UseGuards(JwtAuthGuard) removeFavorite(@Req() req:any,@Param('id') id:string) { return this.marketplace.removeFavorite(req.user.userId,id); }

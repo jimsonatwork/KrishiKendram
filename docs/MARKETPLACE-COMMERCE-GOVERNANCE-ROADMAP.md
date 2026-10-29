@@ -286,3 +286,45 @@ Documentation is not implementation. Mark each feature complete only when its se
 - A signed HMAC-SHA256 sandbox outcome (WON or LOST) is verified against exact raw request bytes, replay-protected by provider/event ID and payload hash, and must match the immutable amount/currency. A LOST outcome writes balanced append-only simulated reversal entries; both outcomes release the record-only payout hold and are audited.
 - All chargeback sandbox APIs require KK_MARKETPLACE_PAYMENT_MODE=sandbox, a sufficiently long sandbox webhook secret, and the feature flag. They never contact a payment processor, move money, or create a real chargeback. The additive migration is 20261018170000_marketplace_sandbox_chargebacks.
 - Production gates remain: a chosen/reviewed payment provider adapter, provider-specific signed dispute events and evidence submission, real dispute deadlines/arbitration, chargeback accounting approved by finance/legal advisers, live reconciliation and authenticated role-based end-to-end tests. Do not enable real collection, refunds, or payouts until these gates pass.
+
+
+## 2026-10-27 — Universal Marketplace architecture (supersedes parent-workspace assumption)
+
+The earlier section “Marketplace parent workspace: Inventory and Finance submodules” records a historical implementation choice and is **superseded as product architecture** by this section. Inventory and Finance must be independent modules, not children/tabs owned by Marketplace. Existing routes/data and stock/finance integrations should be preserved and refactored safely; legacy URLs must continue to resolve. The canonical detailed design is `docs/KK-CROSS-MODULE-MARKETPLACE-AND-CONTEXT-ARCHITECTURE.md`.
+
+Marketplace is a cross-domain platform for physical/digital products, services, rentals, bookings, events, subscriptions, RFQs/wholesale, public services/tenders, education/knowledge, professional appointments, jobs/expertise, donations/barter, logistics, storage, testing, repair and community offers. Any person or organization may act in multiple roles/modules. A fertilizer supplier does not need to register a farm; a farmer may use Farm/Crops without using Marketplace.
+
+A Registry-backed Context & Eligibility Engine must check listing/action requirements, reuse authorized facts and request only missing relevant context. Apply gentle optional prompts, guided completion for context-dependent advice/booking/quote, and mandatory safety/legal eligibility checks where required. Do not globally block unrelated actions. Store confirmed facts in authoritative modules with provenance, confidence, correction history and purpose/access rules. AI-extracted facts require confirmation before canonical writes. Preserve original-language transcript separately from translation/normalization. Order data does not automatically authorize research, advertising, manufacturer assessment or government reporting.
+
+Integrations: Identity/Organizations with all modules; Marketplace with Inventory (stock/returns), Finance (quotes/receipts/settlement references), Farms/Crops/Livestock, Education, Health/Veterinary, Government, Logistics/Storage, Labs/Research, Community/NGOs, Notifications/Activity/History, Reports/Analytics, AI, Documents/Media and Search/Discovery. Use typed authorized events/contracts, idempotency and audit; no bypass of domain APIs and no private-data leakage through public sharing.
+
+Implementation order: (1) correct Registry parentage and module navigation while retaining compatibility; (2) Registry listing types/context policies; (3) Context & Eligibility Engine and progressive capture; (4) rebuild Marketplace discovery/listing/provider storefront and type-specific actions/social sharing; (5) optional Inventory/Finance domain integration; (6) further module integrations and authenticated cross-role regression. Preserve current commerce/trust features. Live payments, refunds, chargebacks, payouts, tax remittance and production launch remain gated by provider integration, security, legal/accounting review, durable media hardening and authenticated E2E.
+
+### Messaging integration dependency
+Marketplace listing announcements and promotional campaigns must route through the user's own connected provider, not a shared platform credential. Require approved provider templates, per-recipient consent, revocation and send audit/acknowledgement tracking. Do not advertise automated campaigns to WhatsApp Business or Telegram until their connectors have passed provider-specific verification.
+
+
+### Inventory-owned Marketplace stock integration — 2026-10-27
+Marketplace no longer reads/writes InventoryItem or InventoryTransaction tables directly. Inventory exposes a seller-owned listing-source resolver (with Inventory READ authorization) and an internal Marketplace sale operation (with Inventory UPDATE authorization) that owns compare-and-update stock decrement, stock-out ledger, audit, and low-stock notifications. Marketplace invokes the sale operation inside its existing order transaction so stock, listing quantity/status, order state, and audit still commit or roll back together. Real provider payments/payouts remain disabled.
+
+
+### Registry-backed offering details and canonical source references — 2026-10-27
+The public `GET /api/v1/marketplace/offering-types` contract now drives create/edit form fields for all 12 offering types. Field keys, labels, types, enum choices, and requiredness come from `backend/src/platform/registry/definitions/marketplace-offering-definitions.ts`; individual detail fields are registered centrally and server-validated on create/update. Persisted details live in nullable `MarketplaceListing.offeringDetails` JSONB added by migration `20261027160000_marketplace_offering_details`. Buyers see saved details using Registry labels. Source module/entity references are derived from owned resource type/ID and client-supplied mismatches are rejected. The PMD DOCX, CTO Bible, architecture and commerce roadmap are being kept aligned with this implementation; existing listings remain compatible with null details.
+
+
+## Shopper-first storefront checkpoint — 2026-10-27
+
+- Implemented separate /app/shop template while retaining /app/marketplace unchanged for seller listings and operational workflows.
+- Shopper features: responsive catalog, search, category/type filters, price sorting, product details, compare up to four listings, saved listings, last-hour unique-session counts, editable per-unit offers in cart, quantity editing and order-request submission using the existing API.
+- Added persistent buyer-intent profile with farming/business/household/resale/broker/commission-agent personas, an authenticated consent-checked context endpoint and optional module-specific consent. Consent is off by default, can be revoked, and does not authorize automatic Farm/Crop changes.
+- Added anonymous hashed-session view tracking and last-hour unique session counts. No IP addresses are stored for this metric.
+- Payment UI explicitly identifies real payment as disabled. Cart submission creates order requests, not paid orders. Provider-backed payments remain a separate release gate.
+
+
+## 2026-10-29 — Shopper storefront acceptance checkpoint
+
+- Preserve the distinct shopper storefront at `/app/shop`; do not replace the existing seller/order workspace at `/app/marketplace`.
+- Shop discovery now groups listings into Today, Yesterday, Day before yesterday, Earlier this week and Older. Search, category/type filters and price/date sorting apply within the visible catalog.
+- Product details can show up to three videos plus seller/document links, restricted to valid HTTP(S) URLs. Do not render unsafe URL schemes. Anonymous visitor counts remain aggregate session counts for the previous 60 minutes.
+- Verified: frontend build passed, Shop & Compare Playwright passed after the grouping/media change, 4 focused core/Marketplace browser journeys passed, 89 targeted backend tests passed and Nest build passed.
+- Release boundary unchanged: the cart submits order requests only. No live money movement, tax remittance, payout, refund/chargeback or settlement is enabled without approved provider, security, legal/accounting and authenticated acceptance gates.

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Database, RefreshCw, ShieldCheck, SlidersHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 import { platformRegistry } from '@/lib/platform/registry'
 import { resolveFieldPolicy } from '@/lib/platform/field-policy'
 import type { FieldDefinition, ModuleDefinition, ResourceDefinition } from '@/lib/platform/contracts'
@@ -53,7 +52,6 @@ export function CapabilitiesPage() {
     }
   }
   useEffect(() => { void loadRegistry() }, [token])
-  useLiveRefresh(loadRegistry, { enabled: Boolean(token) })
 
   const selectedResource = resources.find((resource) => resource.name === selected) ?? null
   const moduleMap = useMemo(() => new Map(modules.map((module) => [module.id, module])), [modules])

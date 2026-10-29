@@ -9,6 +9,11 @@ export const marketplaceListingResource: ResourceDefinition = {
   fields: {
     resourceType: { definition: 'marketplaceResourceType' },
     resourceId: { definition: 'marketplaceResourceId' },
+    offeringType: { definition: 'marketplaceListingOfferingType' },
+    sourceModule: { definition: 'marketplaceListingSourceModule' },
+    sourceEntityId: { definition: 'marketplaceListingSourceEntityId' },
+    contextPolicyKey: { definition: 'marketplaceListingContextPolicyKey' },
+    offeringDetails: { definition: 'marketplaceListingOfferingDetails' },
     category: { definition: 'marketplaceListingCategory' },
     imageUrls: { definition: 'marketplaceListingImageUrl' },
     videoUrls: { definition: 'marketplaceListingVideoUrl' },

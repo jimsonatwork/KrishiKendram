@@ -1,11 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InventoryTransactionType, Prisma, UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { AuditService } from '../platform/audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthorizationService } from '../platform/authorization/authorization.service';
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegistryService } from '../platform/registry/registry.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { MARKETPLACE_CONTEXT_POLICIES, resolveMarketplaceContextPolicy, missingMarketplaceContextFields } from '../platform/registry/definitions/marketplace-context-policies';
+import { MARKETPLACE_OFFERING_DEFINITIONS } from '../platform/registry/definitions/marketplace-offering-definitions';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { UpdateSellerProfileDto } from './dto/update-seller-profile.dto';
@@ -32,6 +35,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 
 const RESOURCE_TYPES = ['farmAsset', 'crop', 'livestock', 'inventoryItem'] as const;
 const LISTING_PERIODS = ['today', 'yesterday', 'day-before-yesterday', 'week', 'active'] as const;
+const RESOURCE_SOURCE_MODULES: Record<string, string> = { farmAsset: 'farms', crop: 'farms', livestock: 'livestock', inventoryItem: 'inventory' };
 
 const MARKETPLACE_FEATURES: Array<{ key: string; title: string; description: string; enabled: boolean; riskLevel: string; dependencies: string[] }> = [
   { key: 'marketplace.listings', title: 'Marketplace listings', description: 'Create, browse and publish listings.', enabled: true, riskLevel: 'MEDIUM', dependencies: [] },
@@ -50,6 +54,7 @@ const MARKETPLACE_FEATURES: Array<{ key: string; title: string; description: str
   { key: 'marketplace.messaging', title: 'Buyer and seller messaging', description: 'Authenticated, participant-scoped Marketplace messages.', enabled: true, riskLevel: 'MEDIUM', dependencies: ['marketplace.listings'] },
   { key: 'marketplace.rfq', title: 'Bulk RFQ and quotations', description: 'Buyer requests and seller quantity/price responses.', enabled: true, riskLevel: 'MEDIUM', dependencies: ['marketplace.listings'] },
   { key: 'marketplace.orders', title: 'Order workflow', description: 'Buyer requests, seller decisions and fulfilment states.', enabled: true, riskLevel: 'HIGH', dependencies: ['marketplace.listings'] },
+  { key: 'marketplace.context_capture', title: 'Context-aware purchase guidance', description: 'Capture relevant user-confirmed context before context-dependent agricultural input orders; do not bypass required safety context.', enabled: true, riskLevel: 'HIGH', dependencies: ['marketplace.orders'] },
   { key: 'marketplace.delivery', title: 'Delivery and tracking', description: 'Seller tracking updates and buyer delivery confirmation.', enabled: true, riskLevel: 'HIGH', dependencies: ['marketplace.orders'] },
   { key: 'marketplace.payment_sandbox', title: 'Sandbox payment simulation', description: 'Signed, replay-protected simulated payment events; never moves money.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.orders'] },
   { key: 'marketplace.payments', title: 'Provider-backed payments', description: 'Disabled until provider, webhook, ledger and reconciliation review passes.', enabled: false, riskLevel: 'CRITICAL', dependencies: ['marketplace.orders'] },
@@ -62,6 +67,11 @@ const MARKETPLACE_FEATURES: Array<{ key: string; title: string; description: str
 type MarketplaceValidatedFields = {
   title?: string;
   category?: string;
+  offeringType?: string;
+  sourceModule?: string | null;
+  sourceEntityId?: string | null;
+  contextPolicyKey?: string | null;
+  offeringDetails?: Record<string, unknown> | null;
   description?: string | null;
   quantity?: number | null;
   minOrderQuantity?: number | null;
@@ -78,12 +88,118 @@ export class MarketplaceService {
     private readonly authorization: AuthorizationService,
     private readonly audit: AuditService,
     private readonly registry: RegistryService,
+    private readonly inventory: InventoryService,
   ) {}
+
+  async getBuyerProfile(userId: string) {
+    const profile = await this.prisma.marketplaceBuyerProfile.findUnique({ where: { userId } });
+    if (!profile) return { profile: null, crossModuleConsent: false };
+    return { profile: { ...profile, moduleTargets: profile.crossModuleConsent ? profile.moduleTargets : [] }, crossModuleConsent: profile.crossModuleConsent };
+  }
+
+  async getBuyerProfileContext(userId: string, module: string) {
+    const allowedModules = ['marketplace', 'farms', 'crops', 'livestock', 'inventory', 'finance'];
+    if (!allowedModules.includes(module)) throw new BadRequestException('Unknown KK module for buyer-profile context.');
+    const profile = await this.prisma.marketplaceBuyerProfile.findUnique({ where: { userId } });
+    if (!profile || !profile.crossModuleConsent || !profile.moduleTargets.includes(module)) {
+      return { available: false, module, reason: 'The user has not enabled sharing to this module.' };
+    }
+    return {
+      available: true,
+      module,
+      context: {
+        buyerType: profile.buyerType,
+        purchasePurpose: profile.purchasePurpose,
+        businessName: profile.businessName,
+        regionLabel: profile.regionLabel,
+        operationScale: profile.operationScale,
+        cropInterests: profile.cropInterests,
+      },
+    };
+  }
+
+  async saveBuyerProfile(userId: string, body: any) {
+    const allowedTypes = ['FARMER', 'BUSINESS', 'COMMISSION_AGENT', 'BROKER', 'HOUSEHOLD', 'INPUT_RETAILER', 'SERVICE_PROVIDER', 'OTHER'];
+    const allowedPurposes = ['FARMING', 'BUSINESS_USE', 'RESALE', 'COMMISSION', 'BROKERAGE', 'HOUSEHOLD', 'MIXED'];
+    const allowedModules = ['marketplace', 'farms', 'crops', 'livestock', 'inventory', 'finance'];
+    const buyerType = String(body?.buyerType || 'FARMER').toUpperCase();
+    const purchasePurpose = String(body?.purchasePurpose || 'FARMING').toUpperCase();
+    if (!allowedTypes.includes(buyerType) || !allowedPurposes.includes(purchasePurpose)) throw new BadRequestException('Select a supported buyer type and purchase purpose.');
+    const crossModuleConsent = body?.crossModuleConsent === true;
+    const moduleTargets: string[] = crossModuleConsent && Array.isArray(body?.moduleTargets)
+      ? [...new Set<string>(body.moduleTargets.map((value: unknown) => String(value)).filter((value: string) => allowedModules.includes(value)))]
+      : [];
+    const cropInterests: string[] = Array.isArray(body?.cropInterests)
+      ? [...new Set<string>(body.cropInterests.map((value: unknown) => String(value).trim().slice(0, 80)).filter((value: string) => value.length > 0))].slice(0, 30)
+      : [];
+    const previous = await this.prisma.marketplaceBuyerProfile.findUnique({ where: { userId } });
+    const now = new Date();
+    const data = {
+      buyerType, purchasePurpose,
+      businessName: typeof body?.businessName === 'string' ? body.businessName.trim().slice(0, 160) || null : null,
+      regionLabel: typeof body?.regionLabel === 'string' ? body.regionLabel.trim().slice(0, 160) || null : null,
+      operationScale: typeof body?.operationScale === 'string' ? body.operationScale.trim().slice(0, 80) || null : null,
+      cropInterests, moduleTargets, crossModuleConsent,
+      consentAt: crossModuleConsent ? now : (previous?.consentAt ?? null),
+      consentRevokedAt: !crossModuleConsent && previous?.crossModuleConsent ? now : (crossModuleConsent ? null : (previous?.consentRevokedAt ?? null)),
+    };
+    const profile = await this.prisma.marketplaceBuyerProfile.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+    await this.audit.create({ actorId: userId, action: 'MARKETPLACE_BUYER_PROFILE_UPDATED', resourceType: 'MarketplaceBuyerProfile', resourceId: profile.id, metadata: { buyerType, purchasePurpose, crossModuleConsent, moduleTargets } as any }).catch(() => undefined);
+    return { profile: { ...profile, moduleTargets: crossModuleConsent ? profile.moduleTargets : [] }, crossModuleConsent };
+  }
+
+  async revokeBuyerProfileCrossModuleConsent(userId: string) {
+    const profile = await this.prisma.marketplaceBuyerProfile.findUnique({ where: { userId } });
+    if (!profile) throw new NotFoundException('Buyer profile not found.');
+    const updated = await this.prisma.marketplaceBuyerProfile.update({ where: { userId }, data: { crossModuleConsent: false, moduleTargets: [], consentRevokedAt: new Date() } });
+    return { profile: { ...updated, moduleTargets: [] }, crossModuleConsent: false, message: 'Cross-module sharing consent revoked. Your Marketplace profile remains available.' };
+  }
+
+  async recordListingView(listingId: string, sessionKey: string) {
+    if (!sessionKey || sessionKey.length < 16 || sessionKey.length > 200) throw new BadRequestException('A valid anonymous storefront session key is required.');
+    const listing = await this.prisma.marketplaceListing.findFirst({ where: { id: listingId, status: 'PUBLISHED', deletedAt: null }, select: { id: true } });
+    if (!listing) throw new NotFoundException('Published listing not found.');
+    const sessionHash = createHash('sha256').update(sessionKey).digest('hex');
+    const viewedAt = new Date();
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+    const seenRecently = await this.prisma.marketplaceListingViewEvent.findFirst({ where: { listingId, sessionHash, viewedAt: { gte: since } }, select: { id: true } });
+    if (!seenRecently) await this.prisma.marketplaceListingViewEvent.create({ data: { listingId, sessionHash, viewedAt } });
+    const visitors = await this.prisma.marketplaceListingViewEvent.findMany({ where: { listingId, viewedAt: { gte: since } }, distinct: ['sessionHash'], select: { sessionHash: true } });
+    return { listingId, visitorsLastHour: visitors.length, windowMinutes: 60, privacy: 'Anonymous session count; no IP address or account identity stored.' };
+  }
+
+  async getListingViewCounts() {
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+    const events = await this.prisma.marketplaceListingViewEvent.findMany({
+      where: { viewedAt: { gte: since }, listing: { status: 'PUBLISHED', deletedAt: null } },
+      distinct: ['listingId', 'sessionHash'],
+      select: { listingId: true, sessionHash: true },
+      take: 10000,
+    });
+    const counts: Record<string, number> = {};
+    for (const event of events) counts[event.listingId] = (counts[event.listingId] || 0) + 1;
+    return { counts, windowMinutes: 60, privacy: 'Approximate unique anonymous sessions; no IP address or account identity stored.' };
+  }
+
+  async getListingViewCount(listingId: string) {
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+    const visitors = await this.prisma.marketplaceListingViewEvent.findMany({ where: { listingId, viewedAt: { gte: since } }, distinct: ['sessionHash'], select: { sessionHash: true } });
+    return { listingId, visitorsLastHour: visitors.length, windowMinutes: 60, privacy: 'Anonymous session count; no IP address or account identity stored.' };
+  }
 
   async getPublicFeatureFlags() {
     const stored = await this.prisma.marketplaceFeatureFlag.findMany({ select: { key: true, enabled: true } });
     const state = new Map((stored || []).map((item: any) => [item.key, item.enabled]));
     return MARKETPLACE_FEATURES.map((feature) => ({ key: feature.key, enabled: state.has(feature.key) ? state.get(feature.key) : feature.enabled }));
+  }
+
+  getOfferingTypes() {
+    return MARKETPLACE_OFFERING_DEFINITIONS.map((definition) => ({
+      type: definition.type,
+      label: definition.label,
+      description: definition.description,
+      fields: definition.fields.map((field) => ({ ...field, ...(field.options ? { options: [...field.options] } : {}) })),
+    }));
   }
 
   async getFeatureFlags(userId: string, role: UserRole) {
@@ -225,10 +341,77 @@ export class MarketplaceService {
     });
   }
 
-  async getSellerProfile(userId:string) {
+  private readonly sellerProfileVisibilityKey = 'marketplace.sellerProfileVisibility.policy';
+
+  private async readSellerProfileVisibilityPolicy(): Promise<{ defaultVisible: boolean; rules: Array<{ id?: string; visible: boolean; userIds?: string[]; modules?: string[]; categories?: string[] }> }> {
+    if (!this.prisma.systemSetting?.findUnique) return { defaultVisible: true, rules: [] };
+    const stored = await this.prisma.systemSetting.findUnique({ where: { key: this.sellerProfileVisibilityKey } });
+    const value: any = stored?.value;
+    if (!value || typeof value !== 'object' || typeof value.defaultVisible !== 'boolean' || !Array.isArray(value.rules)) {
+      return { defaultVisible: true, rules: [] };
+    }
+    return { defaultVisible: value.defaultVisible, rules: value.rules.filter((rule: any) => rule && typeof rule.visible === 'boolean') };
+  }
+
+  private evaluateSellerProfileVisibility(policy: { defaultVisible: boolean; rules: Array<{ visible: boolean; userIds?: string[]; modules?: string[]; categories?: string[] }> }, userId: string, module = 'marketplace', category?: string) {
+    let visible = policy.defaultVisible;
+    for (const rule of policy.rules) {
+      const users = Array.isArray(rule.userIds) ? rule.userIds : [];
+      const modules = Array.isArray(rule.modules) ? rule.modules : [];
+      const categories = Array.isArray(rule.categories) ? rule.categories : [];
+      if (users.length && !users.includes(userId)) continue;
+      if (modules.length && !modules.includes(module)) continue;
+      if (categories.length && (!category || !categories.includes(category))) continue;
+      visible = rule.visible;
+    }
+    return visible;
+  }
+
+  private async isSellerProfileVisible(userId: string, module = 'marketplace', category?: string) {
+    return this.evaluateSellerProfileVisibility(await this.readSellerProfileVisibilityPolicy(), userId, module, category);
+  }
+
+  async getSellerProfileVisibilityPolicy(actorId: string) {
+    const actor = await this.prisma.user.findUnique({ where: { id: actorId }, select: { role: true, authorityTier: true, status: true } });
+    if (!actor || actor.status !== 'ACTIVE' || (actor.role !== UserRole.ADMIN && actor.role !== UserRole.SUPER_ADMIN && actor.authorityTier !== 'SYSTEM_GOD')) throw new UnauthorizedException('Admin, Super Admin, or God Mode authority is required.');
+    return this.readSellerProfileVisibilityPolicy();
+  }
+
+  async updateSellerProfileVisibilityPolicy(actorId: string, body: any) {
+    const actor = await this.prisma.user.findUnique({ where: { id: actorId }, select: { role: true, authorityTier: true, status: true } });
+    if (!actor || actor.status !== 'ACTIVE' || (actor.role !== UserRole.ADMIN && actor.role !== UserRole.SUPER_ADMIN && actor.authorityTier !== 'SYSTEM_GOD')) throw new UnauthorizedException('Admin, Super Admin, or God Mode authority is required.');
+    if (!body || typeof body.defaultVisible !== 'boolean' || !Array.isArray(body.rules) || typeof body.reason !== 'string' || !body.reason.trim()) throw new BadRequestException('Provide defaultVisible, a rules array, and an audit reason.');
+    if (body.rules.length > 200) throw new BadRequestException('At most 200 visibility rules may be configured.');
+    const rules = body.rules.map((rule: any, index: number) => {
+      if (!rule || typeof rule.visible !== 'boolean') throw new BadRequestException('Every visibility rule must have a visible boolean.');
+      const normalize = (items: any, label: string, max: number) => {
+        if (items === undefined || items === null || items === '') return [];
+        const list = Array.isArray(items) ? items : String(items).split(',');
+        const values = [...new Set(list.map((item: any) => String(item).trim()).filter(Boolean))];
+        if (values.length > max || values.some((item: string) => item.length > 120)) throw new BadRequestException('Invalid ' + label + ' selector in rule ' + (index + 1) + '.');
+        return values;
+      };
+      return { id: String(rule.id || 'rule-' + (index + 1)), visible: rule.visible, userIds: normalize(rule.userIds, 'user', 500), modules: normalize(rule.modules, 'module', 100), categories: normalize(rule.categories, 'category', 200) };
+    });
+    const previous = await this.readSellerProfileVisibilityPolicy();
+    const value = { defaultVisible: body.defaultVisible, rules, reason: body.reason.trim(), changedBy: actorId, changedAt: new Date().toISOString() };
+    await this.prisma.systemSetting.upsert({
+      where: { key: this.sellerProfileVisibilityKey },
+      create: { id: 'marketplace-seller-profile-visibility', key: this.sellerProfileVisibilityKey, value, category: 'marketplace', label: 'Seller profile visibility policy', editable: true },
+      update: { value, category: 'marketplace', label: 'Seller profile visibility policy', editable: true },
+    });
+    await this.audit.create({ actorId, action: 'UPDATE_SELLER_PROFILE_VISIBILITY_POLICY', resourceType: 'SystemSetting', resourceId: this.sellerProfileVisibilityKey, description: 'Updated Marketplace seller profile visibility policy.', metadata: { previous, defaultVisible: body.defaultVisible, rules, reason: body.reason.trim() } });
+    return { defaultVisible: body.defaultVisible, rules };
+  }
+
+  async getSellerProfile(userId:string, module = 'marketplace', category?: string, own = false) {
     const profile=await this.prisma.marketplaceSellerProfile.findUnique({where:{userId},include:{user:{select:{id:true,name:true,isVerified:true,userType:true,deletedAt:true}}}});
-    if(!profile){const user=await this.prisma.user.findUnique({where:{id:userId},select:{id:true,name:true,isVerified:true,userType:true,deletedAt:true}});if(!user||user.deletedAt)throw new NotFoundException('Marketplace seller not found.');const {deletedAt,...publicUser}=user;return {user:publicUser,profile:null,publicPhone:null};}
-    if(!profile.user||profile.user.deletedAt)throw new NotFoundException('Marketplace seller not found.');const {deletedAt,...publicUser}=profile.user;return {user:publicUser,profile:{...profile,publicPhone:profile.showPhone?profile.publicPhone:null},publicPhone:profile.showPhone?profile.publicPhone:null};
+    if(!profile){const user=await this.prisma.user.findUnique({where:{id:userId},select:{id:true,name:true,isVerified:true,userType:true,deletedAt:true}});if(!user||user.deletedAt)throw new NotFoundException('Marketplace seller not found.');const {deletedAt,...publicUser}=user;const visible=own||await this.isSellerProfileVisible(userId,module,category);return {user:publicUser,profile:null,publicPhone:null,visible};}
+    if(!profile.user||profile.user.deletedAt)throw new NotFoundException('Marketplace seller not found.');
+    const {deletedAt,...publicUser}=profile.user;
+    const visible=own||await this.isSellerProfileVisible(userId,module,category);
+    const safeProfile = visible ? { ...profile, publicPhone: profile.showPhone ? profile.publicPhone : null } : null;
+    return {user:publicUser,profile:safeProfile,publicPhone:visible&&profile.showPhone?profile.publicPhone:null,visible};
   }
   async updateSellerProfile(userId:string,role:UserRole,dto:UpdateSellerProfileDto){
     await this.authorization.assertCan({user:{userId,role},module:'marketplace',resource:'marketplaceSellerProfile',action:AuthorizationAction.UPDATE,ownerId:userId});
@@ -456,8 +639,7 @@ export class MarketplaceService {
   private async resourceOwner(resourceType: string, resourceId: string) {
     if (!RESOURCE_TYPES.includes(resourceType as typeof RESOURCE_TYPES[number])) throw new BadRequestException('Unsupported marketplace resource.');
     if (resourceType === 'inventoryItem') {
-      const item = await this.prisma.inventoryItem.findFirst({ where: { id: resourceId, deletedAt: null }, select: { farm: { select: { ownerId: true } } } });
-      return item?.farm.ownerId;
+      throw new BadRequestException('Inventory listing sources must be resolved by the Inventory module.');
     }
     const relationship = await this.prisma.resourceRelationship.findFirst({ where: { resourceType, resourceId, relationshipType: 'OWNER', endedAt: null }, select: { userId: true } });
     if (relationship) return relationship.userId;
@@ -496,6 +678,50 @@ export class MarketplaceService {
     return data;
   }
 
+  private validateOfferingDetails(offeringType: string, details: unknown): Record<string, unknown> | null {
+    const definition = MARKETPLACE_OFFERING_DEFINITIONS.find((item) => item.type === offeringType);
+    if (!definition) throw new BadRequestException('Unsupported Marketplace offering type.');
+    if (details !== undefined && details !== null && (typeof details !== 'object' || Array.isArray(details))) {
+      throw new BadRequestException('Offering details must be an object.');
+    }
+    const input = (details ?? {}) as Record<string, unknown>;
+    const objectValidation = this.registry.validateResourceField('marketplaceListing', 'offeringDetails', input);
+    if (!objectValidation.valid) throw new BadRequestException({ message: 'Invalid Marketplace offering details.', errors: objectValidation.errors });
+    const allowed = new Set(definition.fields.map((field) => field.key));
+    const unknown = Object.keys(input).filter((key) => !allowed.has(key));
+    if (unknown.length) throw new BadRequestException('Unsupported ' + definition.label + ' detail field(s): ' + unknown.join(', ') + '.');
+    const output: Record<string, unknown> = {};
+    for (const field of definition.fields) {
+      const value = input[field.key];
+      const empty = value === undefined || value === null || value === '';
+      if (empty) {
+        if (field.required) throw new BadRequestException(field.label + ' is required for ' + definition.label + ' listings.');
+        continue;
+      }
+      if (field.type === 'number') {
+        const numberValue = typeof value === 'number' ? value : Number(value);
+        if (!Number.isFinite(numberValue)) throw new BadRequestException(field.label + ' must be a valid number.');
+        const validation = this.registry.validateField(field.registryField, numberValue);
+        if (!validation.valid) throw new BadRequestException({ message: 'Invalid ' + field.label + '.', errors: validation.errors });
+        output[field.key] = validation.value;
+      } else if (field.type === 'boolean') {
+        if (typeof value !== 'boolean') throw new BadRequestException(field.label + ' must be true or false.');
+        const validation = this.registry.validateField(field.registryField, value);
+        if (!validation.valid) throw new BadRequestException({ message: 'Invalid ' + field.label + '.', errors: validation.errors });
+        output[field.key] = validation.value;
+      } else {
+        if (typeof value !== 'string') throw new BadRequestException(field.label + ' must be text.');
+        const validation = this.registry.validateField(field.registryField, value);
+        if (!validation.valid) throw new BadRequestException({ message: 'Invalid ' + field.label + '.', errors: validation.errors });
+        output[field.key] = validation.value;
+      }
+    }
+    if (output.availableFrom && output.availableUntil && Date.parse(String(output.availableFrom)) > Date.parse(String(output.availableUntil))) {
+      throw new BadRequestException('Booking availability end must be on or after its start.');
+    }
+    return Object.keys(output).length ? output : null;
+  }
+
   private validatePriceTiers(input?: Array<{ minQuantity: number; unitPrice: number }>) {
     if (input === undefined) return undefined;
     if (!Array.isArray(input) || input.length > 12) throw new BadRequestException('Provide at most 12 wholesale price tiers.');
@@ -528,6 +754,10 @@ export class MarketplaceService {
     const validated = this.validateFields({
       resourceType: dto.resourceType,
       resourceId: dto.resourceId,
+      offeringType: dto.offeringType || 'PRODUCT',
+      sourceModule: dto.sourceModule,
+      sourceEntityId: dto.sourceEntityId,
+      offeringDetails: dto.offeringDetails,
       category: dto.category || 'OTHER',
       title: dto.title,
       description: dto.description,
@@ -545,7 +775,19 @@ export class MarketplaceService {
     const externalLinks = (dto.externalLinks ?? []).map((url) => this.validateMediaUrl('marketplaceListingExternalLink', url, 'external'));
     const linkedResource = Boolean(dto.resourceType || dto.resourceId);
     if (linkedResource && (!dto.resourceType || !dto.resourceId)) throw new BadRequestException('Choose both resource type and resource, or leave both empty for a generic listing.');
-    const ownerId = linkedResource ? await this.resourceOwner(dto.resourceType!, dto.resourceId!) : userId;
+    if (!linkedResource && (dto.sourceModule || dto.sourceEntityId)) throw new BadRequestException('Source module/entity references require an owned linked resource.');
+    const sourceModule = linkedResource ? RESOURCE_SOURCE_MODULES[dto.resourceType!] : null;
+    const sourceEntityId = linkedResource ? dto.resourceId! : null;
+    if (dto.sourceModule && dto.sourceModule !== sourceModule) throw new BadRequestException('Source module must match the linked resource module.');
+    if (dto.sourceEntityId && dto.sourceEntityId !== sourceEntityId) throw new BadRequestException('Source entity must match the linked resource ID.');
+    const offeringType = String(validated.offeringType || 'PRODUCT');
+    const offeringDetails = this.validateOfferingDetails(offeringType, dto.offeringDetails);
+    const linkedInventory = linkedResource && dto.resourceType === 'inventoryItem'
+      ? await this.inventory.getMarketplaceListingSource(userId, role, dto.resourceId!)
+      : null;
+    const ownerId = linkedResource
+      ? (linkedInventory?.ownerId ?? await this.resourceOwner(dto.resourceType!, dto.resourceId!))
+      : userId;
     if (!ownerId) throw new NotFoundException('Marketplace resource not found.');
     if (linkedResource && dto.resourceType === 'farmAsset') {
       const asset = await this.prisma.farmAsset.findFirst({ where: { id: dto.resourceId }, select: { id: true } });
@@ -554,10 +796,8 @@ export class MarketplaceService {
       const crop = await this.prisma.crop.findFirst({ where: { id: dto.resourceId }, select: { id: true } });
       if (!crop) throw new NotFoundException('Marketplace resource not found.');
     } else if (linkedResource && dto.resourceType === 'inventoryItem') {
-      const item = await this.prisma.inventoryItem.findFirst({ where: { id: dto.resourceId, deletedAt: null }, select: { id: true, quantityOnHand: true, farm: { select: { ownerId: true } } } });
-      if (!item) throw new NotFoundException('Marketplace inventory item not found.');
-      if (item.farm.ownerId !== userId) throw new NotFoundException('Marketplace resource not found.');
-      if (dto.quantity !== undefined && dto.quantity > item.quantityOnHand) throw new BadRequestException('Listing quantity cannot exceed available inventory stock.');
+      if (!linkedInventory) throw new NotFoundException('Marketplace resource not found.');
+      if (dto.quantity !== undefined && dto.quantity > linkedInventory.quantityOnHand) throw new BadRequestException('Listing quantity cannot exceed available inventory stock.');
     } else if (linkedResource) {
       const livestock = await this.prisma.livestock.findFirst({ where: { id: dto.resourceId }, select: { id: true } });
       if (!livestock) throw new NotFoundException('Marketplace resource not found.');
@@ -569,8 +809,26 @@ export class MarketplaceService {
       action: AuthorizationAction.CREATE,
       ownerId,
     });
+    const contextPolicy = resolveMarketplaceContextPolicy({ category: String(validated.category || 'OTHER'), title: String(validated.title || ''), description: validated.description, offeringType: String(validated.offeringType || 'PRODUCT') });
     const createInTransaction = async (tx: Prisma.TransactionClient) => {
-      const listing = await tx.marketplaceListing.create({ data: { sellerId: userId, resourceType: dto.resourceType || null, resourceId: dto.resourceId || null, category: String(validated.category || 'OTHER'), imageUrls, videoUrls, externalLinks, title: validated.title!, description: validated.description, quantity: validated.quantity, minOrderQuantity: validated.minOrderQuantity, sellerJurisdictionCode: validated.sellerJurisdictionCode || null, ...(priceTiers !== undefined ? { priceTiers: priceTiers as Prisma.InputJsonValue } : {}), unit: validated.unit, price: validated.price, currency: String(validated.currency || 'INR').toUpperCase() } });
+      const listing = await tx.marketplaceListing.create({ data: {
+        sellerId: userId,
+        resourceType: dto.resourceType || null,
+        resourceId: dto.resourceId || null,
+        sourceModule,
+        sourceEntityId,
+        offeringType,
+        offeringDetails: offeringDetails ? offeringDetails as Prisma.InputJsonValue : Prisma.DbNull,
+        contextPolicyKey: contextPolicy?.key || null,
+        category: String(validated.category || 'OTHER'),
+        imageUrls, videoUrls, externalLinks,
+        title: validated.title!, description: validated.description,
+        quantity: validated.quantity, minOrderQuantity: validated.minOrderQuantity,
+        sellerJurisdictionCode: validated.sellerJurisdictionCode || null,
+        ...(priceTiers !== undefined ? { priceTiers: priceTiers as Prisma.InputJsonValue } : {}),
+        unit: validated.unit, price: validated.price,
+        currency: String(validated.currency || 'INR').toUpperCase(),
+      } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE', resourceType: 'marketplaceListing', resourceId: listing.id, description: 'Marketplace listing created' });
       return listing;
     };
@@ -663,14 +921,16 @@ export class MarketplaceService {
         where.publishedAt = { gte: start, lt: end };
       }
     }
+    const visibilityPolicy = await this.readSellerProfileVisibilityPolicy();
     const listings = await this.prisma.marketplaceListing.findMany({ where, include: { seller: { select: { id: true, name: true, isVerified: true, userType: true, marketplaceSellerProfile: { select: { displayName: true, bio: true, regionLabel: true, contactPreference: true, publicPhone: true, showPhone: true } }, marketplaceRestrictions: { where: { scope: 'CAUTION', status: 'ACTIVE', startsAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }, select: { cautionRating: true, expiresAt: true }, orderBy: { createdAt: 'desc' }, take: 1 } } } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }] });
-    return listings.map((listing: any) => {
+    return Promise.all(listings.map(async (listing: any) => {
       if (!listing.seller) return listing;
       const { marketplaceRestrictions, marketplaceSellerProfile, ...seller } = listing.seller;
       const caution = marketplaceRestrictions?.[0];
-      const publicProfile = marketplaceSellerProfile ? { ...marketplaceSellerProfile, publicPhone: marketplaceSellerProfile.showPhone ? marketplaceSellerProfile.publicPhone : null } : null;
+      const profileVisible = this.evaluateSellerProfileVisibility(visibilityPolicy, listing.sellerId, listing.sourceModule || 'marketplace', listing.category);
+      const publicProfile = profileVisible && marketplaceSellerProfile ? { ...marketplaceSellerProfile, publicPhone: marketplaceSellerProfile.showPhone ? marketplaceSellerProfile.publicPhone : null } : null;
       return { ...listing, seller: { ...seller, displayName: publicProfile?.displayName || seller.name, profile: publicProfile, cautionRating: caution?.cautionRating ?? null, cautionExpiresAt: caution?.expiresAt ?? null } };
-    });
+    }));
   }
 
   async findMine(userId: string, role: UserRole) {
@@ -824,6 +1084,12 @@ export class MarketplaceService {
     return { ...quote, notice: quote.taxStatus !== 'CONFIGURED_BY_REVIEW_REFERENCE' ? 'Tax configuration or jurisdiction review is required. This is a provisional quote, not a tax determination or payment request.' : 'Tax line uses a dated, approved profile and review reference; confirm jurisdiction and applicability with a qualified adviser before live collection. No payment or deduction has been made.' };
   }
 
+  getContextPolicy(key: string) {
+    const found = MARKETPLACE_CONTEXT_POLICIES[key];
+    if (!found) throw new NotFoundException('Marketplace context policy not found.');
+    return found;
+  }
+
   async createOrder(userId: string, role: UserRole, listingId: string, dto: CreateOrderDto) {
     await this.assertFeatureEnabled('marketplace.orders');
     if (dto.offerPrice !== undefined) await this.assertFeatureEnabled('marketplace.offers');
@@ -835,6 +1101,51 @@ export class MarketplaceService {
     if (listing.sellerId === userId) throw new BadRequestException('You cannot place an order on your own listing.');
     if (listing.minOrderQuantity != null && dto.quantity < listing.minOrderQuantity) throw new BadRequestException('Order quantity is below the seller minimum of ' + listing.minOrderQuantity + ' ' + (listing.unit || 'units') + '.');
     if (listing.quantity != null && dto.quantity > listing.quantity) throw new BadRequestException('Requested quantity exceeds the listed quantity.');
+    const contextPolicy = resolveMarketplaceContextPolicy({ category: listing.category, title: listing.title, description: listing.description, offeringType: listing.offeringType });
+    if (contextPolicy) await this.assertFeatureEnabled('marketplace.context_capture');
+    const missingContext = contextPolicy ? missingMarketplaceContextFields(contextPolicy, dto.contextAnswers) : [];
+    if (missingContext.length) throw new BadRequestException({ message: 'Complete the required product-use context before requesting this order.', contextPolicyKey: contextPolicy?.key, missingFields: missingContext, requiredFields: contextPolicy?.requiredFields });
+    const safeContextAnswers: Record<string, string> = {};
+    if (contextPolicy && dto.contextAnswers) {
+      const allowedFields = [...contextPolicy.requiredFields, ...contextPolicy.recommendedFields];
+      for (const field of allowedFields) {
+        const value = dto.contextAnswers[field.key];
+        if (value === undefined || value === null || value === '') continue;
+        if (typeof value !== 'string' && typeof value !== 'number') throw new BadRequestException('Context field ' + field.key + ' must be text or a number.');
+        const normalized = String(value).trim();
+        if (normalized.length > 160) throw new BadRequestException('Context field ' + field.key + ' is too long.');
+        if (field.key === 'area' && (!Number.isFinite(Number(normalized)) || Number(normalized) <= 0)) throw new BadRequestException('Area must be a positive number.');
+        safeContextAnswers[field.key] = normalized;
+      }
+    }
+    const requestedContextFarmId = dto.contextFarmId?.trim() || undefined;
+    const requestedContextCropId = dto.contextCropId?.trim() || undefined;
+    const hasContextRecordLink = Boolean(requestedContextFarmId || requestedContextCropId);
+    if (hasContextRecordLink && (!contextPolicy || dto.consentToLinkContext !== true)) {
+      throw new BadRequestException('Explicit consent is required to link agricultural context to an existing farm or crop record.');
+    }
+    let contextFarmId = requestedContextFarmId;
+    let contextCropId = requestedContextCropId;
+    if (contextFarmId) {
+      const ownedFarm = await this.prisma.farm.findFirst({
+        where: { id: contextFarmId, ownerId: userId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!ownedFarm) throw new BadRequestException('Selected farm must be active and owned by the buyer.');
+    }
+    if (contextCropId) {
+      const ownedCrop = await this.prisma.crop.findFirst({
+        where: { id: contextCropId, deletedAt: null },
+        select: { id: true, farmId: true, farm: { select: { ownerId: true, deletedAt: true } } },
+      });
+      if (!ownedCrop || ownedCrop.farm?.ownerId !== userId || ownedCrop.farm?.deletedAt) {
+        throw new BadRequestException('Selected crop must be active and belong to a farm owned by the buyer.');
+      }
+      if (contextFarmId && ownedCrop.farmId !== contextFarmId) {
+        throw new BadRequestException('Selected crop does not belong to the selected farm.');
+      }
+      contextFarmId = contextFarmId || ownedCrop.farmId;
+    }
     let offerPrice: number | undefined;
     if (dto.offerPrice !== undefined) {
       const validation = this.registry.validateResourceField('marketplaceOrder', 'offerPrice', dto.offerPrice);
@@ -845,7 +1156,8 @@ export class MarketplaceService {
     const listedUnitPrice = await this.isFeatureEnabled('marketplace.wholesale_pricing') ? this.tierPrice(listing, dto.quantity) : listing.price ?? undefined;
     const quote = await this.calculateQuote(listing, dto.quantity, offerPrice ?? listedUnitPrice, dto.buyerJurisdictionCode);
     return this.prisma.$transaction(async (tx) => {
-      const order = await tx.marketplaceOrder.create({ data: { listingId, buyerId: userId, sellerId: listing.sellerId, quantity: dto.quantity, unitPrice: listedUnitPrice ?? quote.unitPrice, buyerJurisdictionCode: dto.buyerJurisdictionCode || null, ...(offerPrice !== undefined ? { offerPrice } : {}), currency: listing.currency || 'INR', subtotal: quote.subtotal, buyerFeeAmount: quote.buyerFeeAmount, sellerCommissionAmount: quote.sellerCommissionAmount, taxAmount: quote.taxAmount, buyerTotal: quote.buyerTotal, sellerNet: quote.sellerNet, pricingPolicyVersion: quote.pricingPolicyVersion, pricingSnapshot: quote.pricingSnapshot, note: dto.note?.trim() || null, status: 'PENDING' } });
+      const contextCapturedAt = new Date().toISOString();
+      const order = await tx.marketplaceOrder.create({ data: { listingId, buyerId: userId, sellerId: listing.sellerId, quantity: dto.quantity, unitPrice: listedUnitPrice ?? quote.unitPrice, buyerJurisdictionCode: dto.buyerJurisdictionCode || null, ...(offerPrice !== undefined ? { offerPrice } : {}), currency: listing.currency || 'INR', subtotal: quote.subtotal, buyerFeeAmount: quote.buyerFeeAmount, sellerCommissionAmount: quote.sellerCommissionAmount, taxAmount: quote.taxAmount, buyerTotal: quote.buyerTotal, sellerNet: quote.sellerNet, pricingPolicyVersion: quote.pricingPolicyVersion, pricingSnapshot: quote.pricingSnapshot, ...(contextPolicy ? { contextAnswers: safeContextAnswers as Prisma.InputJsonValue, contextPolicySnapshot: { key: contextPolicy.key, version: contextPolicy.version, purpose: contextPolicy.purpose, capturedAt: contextCapturedAt, provenance: 'USER_CONFIRMED', source: 'MARKETPLACE_CHECKOUT', ...(hasContextRecordLink ? { recordLinkConsent: { consented: true, consentedAt: contextCapturedAt, farmId: contextFarmId || null, cropId: contextCropId || null, scope: 'ORDER_CONTEXT_ONLY' } } : {}) } as Prisma.InputJsonValue } : {}), ...(contextFarmId ? { contextFarmId } : {}), ...(contextCropId ? { contextCropId } : {}), note: dto.note?.trim() || null, status: 'PENDING' } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'CREATE', resourceType: 'marketplaceOrder', resourceId: order.id, description: 'Marketplace order request created' });
       await NotificationsService.createInTransaction(tx, { userId: listing.sellerId, type: 'MARKETPLACE_ORDER', title: 'New marketplace order', message: 'A buyer requested ' + dto.quantity + ' ' + (listing.unit || 'units') + ' of ' + listing.title + '.', href: '/app/marketplace', severity: 'INFO', source: 'marketplace', dedupeKey: 'marketplace-order-created:' + order.id });
       return order;
@@ -938,16 +1250,10 @@ export class MarketplaceService {
       if (transition === 'COMPLETE') {
         const listing = await tx.marketplaceListing.findUnique({ where: { id: order.listingId } });
         if (listing?.resourceType === 'inventoryItem' && listing.resourceId) {
-          const item = await tx.inventoryItem.findFirst({ where: { id: listing.resourceId, deletedAt: null }, select: { id: true, name: true, quantityOnHand: true, reorderLevel: true, unit: true, farm: { select: { ownerId: true } } } });
-          if (!item || item.farm.ownerId !== order.sellerId) throw new BadRequestException('The linked inventory item is unavailable or no longer owned by this seller.');
-          const before = item.quantityOnHand;
-          if (before < order.quantity) throw new BadRequestException('Insufficient inventory stock to complete this Marketplace order.');
-          const stockUpdate = await tx.inventoryItem.updateMany({ where: { id: item.id, deletedAt: null, quantityOnHand: { equals: before, gte: order.quantity } }, data: { quantityOnHand: { decrement: order.quantity } } });
-          if (stockUpdate.count !== 1) throw new BadRequestException('Inventory changed concurrently. Refresh and retry order completion.');
-          const after = before - order.quantity;
-          await tx.inventoryTransaction.create({ data: { inventoryItemId: item.id, actorId: userId, type: InventoryTransactionType.STOCK_OUT, quantity: order.quantity, quantityBefore: before, quantityAfter: after, reference: 'marketplace-order:' + order.id, notes: 'Marketplace sale order ' + order.id } });
-          await this.audit.createInTransaction(tx, { actorId: userId, action: 'STOCK_OUT', resourceType: 'inventoryItem', resourceId: item.id, description: 'Inventory stock decremented by completed Marketplace sale', metadata: { orderId: order.id, quantity: order.quantity, quantityBefore: before, quantityAfter: after, unit: item.unit } });
-          if (before > item.reorderLevel && after <= item.reorderLevel) await NotificationsService.createInTransaction(tx, { userId: item.farm.ownerId, type: 'LOW_STOCK', title: 'Marketplace sale reached reorder level', message: item.name + ' has ' + after + ' ' + item.unit + ' remaining after order ' + order.id + '.', href: '/app/marketplace?workspace=inventory', severity: after <= 0 ? 'CRITICAL' : 'WARNING', source: 'inventory', dedupeKey: 'marketplace-inventory-low-stock:' + order.id + ':' + item.id });
+          await this.inventory.decrementForMarketplaceSale(tx, {
+            itemId: listing.resourceId, sellerId: order.sellerId, actorId: userId, role,
+            orderId: order.id, quantity: Number(order.quantity),
+          });
         }
         if (listing && listing.quantity !== null && listing.quantity !== undefined) {
           const stockUpdate = await tx.marketplaceListing.updateMany({
@@ -1369,6 +1675,8 @@ export class MarketplaceService {
   async update(userId: string, role: UserRole, id: string, dto: UpdateListingDto, transaction?: Prisma.TransactionClient) {
     await this.assertListing(userId, role, id, AuthorizationAction.UPDATE);
     const validated = this.validateFields({
+      offeringType: dto.offeringType,
+      offeringDetails: dto.offeringDetails,
       category: dto.category,
       title: dto.title,
       description: dto.description,
@@ -1385,7 +1693,22 @@ export class MarketplaceService {
     const videoUrls = dto.videoUrls?.map((url) => this.validateMediaUrl('marketplaceListingVideoUrl', url, 'video'));
     const externalLinks = dto.externalLinks?.map((url) => this.validateMediaUrl('marketplaceListingExternalLink', url, 'external'));
     const performUpdate = async (tx: Prisma.TransactionClient) => {
-      const listing = await tx.marketplaceListing.update({ where: { id }, data: { category: validated.category as string | undefined, title: validated.title, description: validated.description, quantity: validated.quantity, minOrderQuantity: validated.minOrderQuantity, sellerJurisdictionCode: validated.sellerJurisdictionCode, ...(priceTiers !== undefined ? { priceTiers: priceTiers as Prisma.InputJsonValue } : {}), unit: validated.unit, price: validated.price, currency: validated.currency, ...(imageUrls ? { imageUrls } : {}), ...(videoUrls ? { videoUrls } : {}), ...(externalLinks ? { externalLinks } : {}) } });
+      const existing = await tx.marketplaceListing.findUnique({ where: { id }, select: { offeringType: true, offeringDetails: true, category: true, title: true, description: true } });
+      const offeringType = String(validated.offeringType || existing?.offeringType || 'PRODUCT');
+      const detailsToValidate = dto.offeringDetails !== undefined ? dto.offeringDetails : existing?.offeringDetails;
+      const offeringDetails = this.validateOfferingDetails(offeringType, detailsToValidate);
+      const contextPolicy = resolveMarketplaceContextPolicy({ category: String(validated.category || existing?.category || 'OTHER'), title: String(validated.title || existing?.title || ''), description: validated.description ?? existing?.description, offeringType });
+      const listing = await tx.marketplaceListing.update({ where: { id }, data: {
+        offeringType,
+        contextPolicyKey: contextPolicy?.key || null,
+        ...(dto.offeringDetails !== undefined || dto.offeringType !== undefined ? { offeringDetails: offeringDetails ? offeringDetails as Prisma.InputJsonValue : Prisma.DbNull } : {}),
+        category: validated.category as string | undefined, title: validated.title, description: validated.description,
+        quantity: validated.quantity, minOrderQuantity: validated.minOrderQuantity,
+        sellerJurisdictionCode: validated.sellerJurisdictionCode,
+        ...(priceTiers !== undefined ? { priceTiers: priceTiers as Prisma.InputJsonValue } : {}),
+        unit: validated.unit, price: validated.price, currency: validated.currency,
+        ...(imageUrls ? { imageUrls } : {}), ...(videoUrls ? { videoUrls } : {}), ...(externalLinks ? { externalLinks } : {}),
+      } });
       await this.audit.createInTransaction(tx, { actorId: userId, action: 'UPDATE', resourceType: 'marketplaceListing', resourceId: id, description: 'Marketplace listing updated' });
       return listing;
     };

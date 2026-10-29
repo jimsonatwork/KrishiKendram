@@ -151,6 +151,14 @@ async function seedResourceCapabilities() {
           continue;
         }
 
+        // Marketplace is open to buyers and sellers across account types.
+        // Seller profiles are personal account data: granting the OWN scope
+        // to authenticated roles still requires ownerId === userId at runtime.
+        if (resource.name === 'marketplaceSellerProfile' && scope === 'OWN') {
+          await reconcileRolePermissions(permission.id, ALL_USER_ROLES);
+          continue;
+        }
+
         // FARMER role assignment remains an explicit seed policy for domain data.
         // Registry scopes do NOT automatically grant every supported scope.
         const farmerScope = getFarmerScope(resource);

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, RefreshCw, Search, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
 
 import { Input } from '@/components/ui/input'
 import { api, type PlatformAuditEvent } from '@/lib/api'
@@ -27,7 +26,6 @@ export function AuditPage() {
     finally { setLoading(false) }
   }
   useEffect(() => { void loadAudit() }, [token])
-  useLiveRefresh(loadAudit, { enabled: Boolean(token), intervalMs: 15000 })
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, Boxes, History, Pencil, Plus, RefreshCw, Save, TrendingDown, TrendingUp, Wrench, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { MarketplaceBuyerContextNotice } from '@/components/marketplace/MarketplaceBuyerContextNotice'
 import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 
 type InventoryItem = { id: string; farmId: string; name: string; category: string; unit: string; quantityOnHand: number; reorderLevel: number; supplier?: string | null; notes?: string | null; farm?: { id: string; name: string } }
 const categories = ['SEED', 'FERTILIZER', 'PESTICIDE', 'FEED', 'FUEL', 'EQUIPMENT', 'OTHER']
@@ -19,6 +21,8 @@ export function InventoryPage() {
   const [movement, setMovement] = useState<Record<string, Movement>>({})
   const [busy, setBusy] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -32,7 +36,8 @@ export function InventoryPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load inventory.') }
     finally { setLoading(false) }
   }, [token])
-  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 30_000, onWindowFocus: true })
+  useEffect(() => { void load() }, [load])
+  useLiveRefresh(load, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
 
   async function createItem(event: React.FormEvent) {
     event.preventDefault()
@@ -93,7 +98,8 @@ export function InventoryPage() {
 
   const lowStock = items.filter(item => item.quantityOnHand <= item.reorderLevel)
   return <div className="space-y-6 p-4 sm:p-6">
-    <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><Boxes className="size-6" />Inventory</div><p className="mt-1 text-sm text-muted-foreground">Track farm supplies, stock in/out, reorder levels and a permanent movement history.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 size-4" />Refresh</Button></header>
+    <MarketplaceBuyerContextNotice module="inventory" />
+    <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><Boxes className="size-6" />Inventory</div><p className="mt-1 text-sm text-muted-foreground">Independent stock and movement ledger. Marketplace listings can reference eligible stock through authorized integration; inventory remains the stock source of truth.</p></div><div className="flex flex-wrap gap-2"><a href="/app/marketplace" className="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">Marketplace listings</a><a href="/app/finance" className="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">Finance</a><LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 size-4" />Refresh</Button></div></header>
     {error && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">{error}</div>}
     {notice && <div role="status" className="rounded-lg border p-3 text-sm">{notice}</div>}
     <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Inventory items</div><div className="mt-1 text-2xl font-semibold">{items.length}</div></div><div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Low / reorder stock</div><div className="mt-1 flex items-center gap-2 text-2xl font-semibold"><AlertTriangle className="size-5" />{lowStock.length}</div></div><div className="rounded-xl border bg-card p-4"><div className="text-sm text-muted-foreground">Farms available</div><div className="mt-1 text-2xl font-semibold">{farms.length}</div></div></div>

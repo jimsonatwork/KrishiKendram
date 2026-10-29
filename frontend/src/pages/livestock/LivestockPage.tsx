@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useState } from 'react'
-import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import { PawPrint, Plus, Archive, RefreshCw, ClipboardList, CalendarClock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
+import { MarketplaceBuyerContextNotice } from '@/components/marketplace/MarketplaceBuyerContextNotice'
+import { useLiveRefresh } from '@/hooks/use-live-refresh'
+import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components/ui/LiveDataRefreshControl'
 
 type Farm = { id: string; name: string }
 type Livestock = {
@@ -18,6 +20,8 @@ export function LivestockPage() {
   const [archivedItems, setArchivedItems] = useState<Livestock[]>([])
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
+  const [liveRefreshEnabled, setLiveRefreshEnabled] = useState(false)
+  const [liveRefreshIntervalMs, setLiveRefreshIntervalMs] = useState<LiveRefreshIntervalMs>(15_000)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -50,7 +54,8 @@ export function LivestockPage() {
       setError(cause instanceof Error ? cause.message : 'Unable to load livestock.')
     } finally { setLoading(false) }
   }, [token])
-  useLiveRefresh(load, { enabled: Boolean(token), intervalMs: 30_000, onWindowFocus: true })
+  useEffect(() => { void load() }, [load])
+  useLiveRefresh(load, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
 
   async function create(event: React.FormEvent) {
     event.preventDefault()
@@ -166,12 +171,13 @@ export function LivestockPage() {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
+      <MarketplaceBuyerContextNotice module="livestock" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-2xl font-semibold"><PawPrint className="h-6 w-6" />Livestock</div>
           <p className="mt-1 text-sm text-muted-foreground">Farm-owned livestock with canonical ownership history.</p>
         </div>
-        <Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
+        <div className="flex flex-wrap items-center gap-2"><LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></div>
       </div>
       {error && <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">{error}</div>}
 
