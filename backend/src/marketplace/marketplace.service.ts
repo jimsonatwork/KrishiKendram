@@ -1116,9 +1116,17 @@ export class MarketplaceService {
         if (typeof value !== 'string' && typeof value !== 'number') throw new BadRequestException('Context field ' + field.key + ' must be text or a number.');
         const normalized = String(value).trim();
         if (normalized.length > 160) throw new BadRequestException('Context field ' + field.key + ' is too long.');
-        if (field.key === 'area' && (!Number.isFinite(Number(normalized)) || Number(normalized) <= 0)) throw new BadRequestException('Area must be a positive number.');
+        if (field.type === 'number' && (!Number.isFinite(Number(normalized)) || (field.key === 'area' || field.key === 'attendeeCount' || field.key === 'estimatedWeight' ? Number(normalized) <= 0 : Number(normalized) < 0))) {
+          throw new BadRequestException('Context field ' + field.key + ' must be a valid number.');
+        }
+        if (field.type === 'date' && (!/^\d{4}-\d{2}-\d{2}$/.test(normalized) || Number.isNaN(Date.parse(normalized + 'T00:00:00Z')))) {
+          throw new BadRequestException('Context field ' + field.key + ' must be a valid date.');
+        }
         safeContextAnswers[field.key] = normalized;
       }
+    }
+    if (contextPolicy?.key === 'RENTAL_BOOKING' && safeContextAnswers.startDate > safeContextAnswers.endDate) {
+      throw new BadRequestException('Rental end date must be on or after the start date.');
     }
     const requestedContextFarmId = dto.contextFarmId?.trim() || undefined;
     const requestedContextCropId = dto.contextCropId?.trim() || undefined;

@@ -86,6 +86,8 @@ type Listing = {
 
 type MarketplaceOfferingField = { key: string; label: string; type: 'text' | 'number' | 'boolean' | 'date' | 'url' | 'enum'; registryField: string; required?: boolean; options?: string[]; placeholder?: string; help?: string }
 type MarketplaceOfferingDefinition = { type: string; label: string; description: string; fields: MarketplaceOfferingField[] }
+type MarketplaceContextField = { key: string; label: string; prompt: string; required: boolean; type: 'text' | 'number' | 'date'; reason: string }
+type MarketplaceContextPolicy = { key: string; version: number; title: string; purpose: string; blockingAction: 'ORDER_CREATE' | 'ADVICE_ONLY' | 'BOOKING_CREATE'; requiredFields: MarketplaceContextField[]; recommendedFields: MarketplaceContextField[]; noAdviceUntilComplete: boolean }
 
 type MarketplaceWorkspace = 'marketplace' | 'inventory' | 'finance'
 
@@ -125,6 +127,7 @@ export function MarketplacePage() {
   const [orderQuantities, setOrderQuantities] = useState<Record<string, string>>({})
   const [orderNotes, setOrderNotes] = useState<Record<string, string>>({})
   const [orderContextAnswers, setOrderContextAnswers] = useState<Record<string, Record<string, string>>>({})
+  const [contextPolicies, setContextPolicies] = useState<Record<string, MarketplaceContextPolicy>>({})
   const [orderContextLinks, setOrderContextLinks] = useState<Record<string, { consent: boolean; farmId: string; cropId: string }>>({})
   const [orderOfferPrices, setOrderOfferPrices] = useState<Record<string, string>>({})
   const [orderQuotes, setOrderQuotes] = useState<Record<string, { quantity: string; offerPrice: string; quote: any }>>({})
@@ -257,6 +260,12 @@ export function MarketplacePage() {
         token ? api.marketplaceOpenRFQs(token) : Promise.resolve([]),
       ])
       setPublished(publicListings)
+      const policyKeys = [...new Set(publicListings.map((listing: Listing) => listing.contextPolicyKey).filter((key): key is string => Boolean(key)))]
+      const resolvedPolicies: Record<string, MarketplaceContextPolicy> = {}
+      await Promise.all(policyKeys.map(async (key) => {
+        try { resolvedPolicies[key] = await api.marketplaceContextPolicy(key) } catch { /* A missing optional policy must not break catalog browsing. */ }
+      }))
+      setContextPolicies(resolvedPolicies)
       setCategoryOptions(categories)
       setInventoryChoices(inventoryItems.map((item: any) => ({ id: item.id, label: item.name + ' · ' + item.quantityOnHand + ' ' + item.unit + ' available' })))
       setMine(ownListings)
@@ -527,21 +536,23 @@ export function MarketplacePage() {
       const offerPrice = rawOffer ? Number(rawOffer) : undefined
       if (offerPrice !== undefined && (!Number.isFinite(offerPrice) || offerPrice < 0)) { setError('Offer price must be zero or greater.'); setOrderBusyIds(previous => previous.filter(id => id !== item.id)); return }
       const contextAnswers = orderContextAnswers[item.id] || {}
-      if (item.contextPolicyKey === 'AGRI_INPUT_USAGE' && (!contextAnswers.intendedCrop?.trim() || !contextAnswers.region?.trim())) {
-        setError('Before requesting this agricultural input, tell KK the intended crop and use location so product-use guidance can be relevant.')
+      const contextPolicy = item.contextPolicyKey ? contextPolicies[item.contextPolicyKey] : undefined
+      const missingFields = contextPolicy?.requiredFields.filter((field) => !String(contextAnswers[field.key] || '').trim()) || []
+      if (missingFields.length) {
+        setError('Complete these details before continuing: ' + missingFields.map((field) => field.label).join(', ') + '.')
         setOrderBusyIds(previous => previous.filter(id => id !== item.id))
         return
       }
       const contextLink = orderContextLinks[item.id]
-      if (item.contextPolicyKey === 'AGRI_INPUT_USAGE' && contextLink?.consent && !contextLink.farmId && !contextLink.cropId) {
+      if (contextPolicy?.key === 'AGRI_INPUT_USAGE' && contextLink?.consent && !contextLink.farmId && !contextLink.cropId) {
         setError('Choose a farm or crop record to link, or leave the optional link consent unchecked.')
         setOrderBusyIds(previous => previous.filter(id => id !== item.id))
         return
       }
       await api.createMarketplaceOrder(item.id, {
         quantity, offerPrice, note: orderNotes[item.id]?.trim() || undefined,
-        ...(item.contextPolicyKey === 'AGRI_INPUT_USAGE' ? { contextAnswers: { ...contextAnswers } } : {}),
-        ...(item.contextPolicyKey === 'AGRI_INPUT_USAGE' && contextLink?.consent && (contextLink.farmId || contextLink.cropId) ? {
+        ...(contextPolicy ? { contextAnswers: { ...contextAnswers } } : {}),
+        ...(contextPolicy?.key === 'AGRI_INPUT_USAGE' && contextLink?.consent && (contextLink.farmId || contextLink.cropId) ? {
           consentToLinkContext: true,
           ...(contextLink.farmId ? { contextFarmId: contextLink.farmId } : {}),
           ...(contextLink.cropId ? { contextCropId: contextLink.cropId } : {}),
@@ -1115,19 +1126,19 @@ export function MarketplacePage() {
               {token && featureEnabledForUi('marketplace.orders') && item.sellerId !== currentUserId && <div className="mt-4 space-y-2 border-t pt-3">
                 <input aria-label={'Order quantity for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" type="number" min="0.000001" step="any" placeholder={item.offeringType === 'BOOKING' ? 'Seats / sessions / units to request' : item.offeringType === 'RENTAL' ? 'Quantity / rental units' : 'Quantity / units to request'} value={orderQuantities[item.id] ?? '1'} onChange={(e) => setOrderQuantities(previous => ({ ...previous, [item.id]: e.target.value }))} />
                 {featureEnabledForUi('marketplace.offers') && <input aria-label={'Offer unit price for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" type="number" min="0" step="0.01" placeholder="Your offer per unit (optional)" value={orderOfferPrices[item.id] || ''} onChange={(e) => setOrderOfferPrices(previous => ({ ...previous, [item.id]: e.target.value }))} />}
-                {item.contextPolicyKey === 'AGRI_INPUT_USAGE' && <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                  <div className="font-medium text-sm">A little context helps KK guide you safely</div>
-                  <p className="text-xs text-muted-foreground">Required for this agricultural input order. These answers are attached to this order and visible to its seller to help with relevant usage instructions and follow-up. They are not automatically shared with researchers or other organizations.</p>
-                  <input required aria-label={'Intended crop for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Which crop will you use it for? (required)" value={orderContextAnswers[item.id]?.intendedCrop || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),intendedCrop:e.target.value}}))} />
-                  <input required aria-label={'Use location for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Village / town / district of use (required)" value={orderContextAnswers[item.id]?.region || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),region:e.target.value}}))} />
-                  <div className="grid grid-cols-2 gap-2"><input aria-label={'Area for ' + item.title} type="number" min="0.0001" step="any" className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Area (optional)" value={orderContextAnswers[item.id]?.area || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),area:e.target.value}}))} /><input aria-label={'Area unit for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Unit: acre, hectare…" value={orderContextAnswers[item.id]?.areaUnit || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),areaUnit:e.target.value}}))} /></div>
-                  <input aria-label={'Crop stage for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Crop stage (optional)" value={orderContextAnswers[item.id]?.growthStage || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),growthStage:e.target.value}}))} />
-                  <input aria-label={'Intended purpose for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="What do you want to improve or treat? (optional)" value={orderContextAnswers[item.id]?.purpose || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),purpose:e.target.value}}))} />
-                  <div className="space-y-2 rounded-md border bg-background p-3">
+                {item.contextPolicyKey && contextPolicies[item.contextPolicyKey] && <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <div className="font-medium text-sm">{contextPolicies[item.contextPolicyKey].title}</div>
+                  <p className="text-xs text-muted-foreground">{contextPolicies[item.contextPolicyKey].purpose} Required answers are attached to this request and shared with its provider for this transaction only.</p>
+                  {[...contextPolicies[item.contextPolicyKey].requiredFields, ...contextPolicies[item.contextPolicyKey].recommendedFields].map((field) => <label key={field.key} className="block space-y-1 text-sm">
+                    <span className="font-medium">{field.label}{field.required ? ' · Required' : ' · Optional'}</span>
+                    <input aria-label={(field.key === 'intendedCrop' ? 'Intended crop' : contextPolicies[item.contextPolicyKey!].key === 'AGRI_INPUT_USAGE' && field.key === 'region' ? 'Use location' : field.label) + ' for ' + item.title} type={field.type} required={field.required} min={field.type === 'number' ? '0' : undefined} step={field.type === 'number' ? 'any' : undefined} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder={field.type === 'date' ? undefined : field.prompt} value={orderContextAnswers[item.id]?.[field.key] || ''} onChange={e => setOrderContextAnswers(prev => ({...prev,[item.id]:{...(prev[item.id]||{}),[field.key]:e.target.value}}))} />
+                    <span className="block text-xs text-muted-foreground">{field.reason}</span>
+                  </label>)}
+                  {contextPolicies[item.contextPolicyKey].key === 'AGRI_INPUT_USAGE' && <div className="space-y-2 rounded-md border bg-background p-3">
                     <label className="flex items-start gap-2 text-xs"><input type="checkbox" aria-label={'Consent to link context for ' + item.title} checked={Boolean(orderContextLinks[item.id]?.consent)} onChange={e => setOrderContextLinks(prev => ({...prev,[item.id]:{consent:e.target.checked,farmId:prev[item.id]?.farmId||'',cropId:prev[item.id]?.cropId||''}}))} /><span><span className="font-medium">Optional: link this order context to my existing farm/crop record.</span><span className="block text-muted-foreground">Only links records you own. This requires your explicit consent and does not edit your farm or crop data.</span></span></label>
                     <select aria-label={'Context farm link for ' + item.title} disabled={!orderContextLinks[item.id]?.consent} className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={orderContextLinks[item.id]?.farmId || ''} onChange={e => setOrderContextLinks(prev => ({...prev,[item.id]:{consent:Boolean(prev[item.id]?.consent),farmId:e.target.value,cropId:prev[item.id]?.cropId||''}}))}><option value="">No farm link</option>{farmChoices.map(farm => <option key={farm.id} value={farm.id}>{farm.label}</option>)}</select>
                     <select aria-label={'Context crop link for ' + item.title} disabled={!orderContextLinks[item.id]?.consent} className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={orderContextLinks[item.id]?.cropId || ''} onChange={e => setOrderContextLinks(prev => ({...prev,[item.id]:{consent:Boolean(prev[item.id]?.consent),farmId:prev[item.id]?.farmId||'',cropId:e.target.value}}))}><option value="">No crop link</option>{cropChoices.filter(crop => !orderContextLinks[item.id]?.farmId || crop.farmId === orderContextLinks[item.id]?.farmId).map(crop => <option key={crop.id} value={crop.id}>{crop.label}</option>)}</select>
-                  </div>
+                  </div>}
                 </div>}
                 <input aria-label={'Order note for ' + item.title} className="h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Message to seller (optional)" value={orderNotes[item.id] || ''} onChange={(e) => setOrderNotes(previous => ({ ...previous, [item.id]: e.target.value }))} />
                 {featureEnabledForUi('marketplace.orders') && <Button size="sm" variant="outline" disabled={quoteBusyIds.includes(item.id)} onClick={() => void calculateOrderQuote(item)}>{quoteBusyIds.includes(item.id) ? 'Calculating…' : 'Calculate deal breakdown'}</Button>}

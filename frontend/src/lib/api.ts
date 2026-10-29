@@ -830,6 +830,7 @@ export const api = {
 
   marketplaceCategories: () => request<string[]>('/marketplace/categories'),
   marketplaceOfferingTypes: () => request<Array<{ type: string; label: string; description: string; fields: Array<{ key: string; label: string; type: 'text' | 'number' | 'boolean' | 'date' | 'url' | 'enum'; registryField: string; required?: boolean; options?: string[]; placeholder?: string; help?: string }> }>>('/marketplace/offering-types'),
+  marketplaceContextPolicy: (key: string) => request<any>('/marketplace/context-policies/' + encodeURIComponent(key)),
   marketplaceListings: (filters?: { period?: string; category?: string }) => {
     const params = new URLSearchParams()
     if (filters?.period) params.set('period', filters.period)

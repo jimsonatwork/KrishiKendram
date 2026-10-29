@@ -231,6 +231,23 @@ describe('MarketplaceService', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('requires rental context and rejects an end date before the start date', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({
+      id: 'listing-rental-1', sellerId: 'seller-1', category: 'EQUIPMENT',
+      title: 'Tractor rental', description: 'Daily rental', offeringType: 'RENTAL',
+      quantity: 2, price: 2500, currency: 'INR', status: 'PUBLISHED',
+    });
+    await expect(service.createOrder('buyer-1', UserRole.FARMER, 'listing-rental-1', { quantity: 1 }))
+      .rejects.toMatchObject({
+        response: expect.objectContaining({ contextPolicyKey: 'RENTAL_BOOKING', missingFields: ['startDate', 'endDate', 'useLocation'] }),
+      });
+    await expect(service.createOrder('buyer-1', UserRole.FARMER, 'listing-rental-1', {
+      quantity: 1,
+      contextAnswers: { startDate: '2026-11-05', endDate: '2026-11-03', useLocation: 'Warangal' },
+    } as any)).rejects.toThrow('Rental end date must be on or after the start date.');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('sanitizes agricultural context to allow-listed fields and records its confirmation provenance', async () => {
     prisma.marketplaceListing.findFirst.mockResolvedValue({
       id: 'listing-input-1', sellerId: 'seller-1', category: 'FARM_INPUTS',
@@ -776,4 +793,4 @@ describe('MarketplaceService', () => {
     }));
   });
 
-});\n
+});
