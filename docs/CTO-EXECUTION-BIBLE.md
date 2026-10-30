@@ -2268,3 +2268,14 @@ The sequence is: close the active Store + Farm release candidate; Platform/Regis
 - Release safety remains: real payment capture/refund/payout, tax remittance and production external-provider activation are disabled pending qualified provider/security/legal/accounting review. This does not block the verified code-only CBA promotion.
 - No database writes or migrations were performed in this continuation. No Docker reset or volume operation. No recovery backup was staged.
 - CBA is the remaining promotion step for this working-tree delta. Stage only the nine intended tracked files plus this checkpoint and required canonical documentation; exclude .cto-backup and *.cto-backup-* artifacts.\n
+
+## Store and Farm CBA promotion completed - 2026-10-30 23:23:17 IST
+
+- C development commit: 2382200b9755ec6cad24fb02fefb5a5a6bf55366 on branch cto/shop-finance-density-20261030; implementation commit message: feat(shop): optimize catalog density and secure finance views.
+- C branch pushed to the KrishiKendram-Integration remote. B Integration checkout fast-forwarded main from 765216a to 2382200b9755ec6cad24fb02fefb5a5a6bf55366, validated and pushed its main branch.
+- B validation on the promoted tree: backend Jest 71 suites / 711 tests passed; backend Nest build passed; frontend TypeScript/Vite production build passed; full Playwright browser regression 27/27 passed; Prisma migrate status reports 59 migrations and database schema up to date; git diff --check passed.
+- A canonical origin/main was fast-forwarded from 765216a to 2382200b9755ec6cad24fb02fefb5a5a6bf55366. Final C branch HEAD, integration/main, origin/main and the C feature branch remote all resolve to the same commit hash.
+- CBA promotion is complete for this verified Store/Shop/Finance delta. The separate Store/Farm module acceptance evidence remains 4 authenticated DB-backed suites / 28 tests and 10/10 Store/Farm browser journeys as recorded in the 09:40 checkpoint.
+- Next active work package is Gate 1: Platform / Registry / Authorization / Admin, per the canonical module execution plan. Do not divert to AI or later breadth before Gate 1 closure.
+- Live payment capture, refunds, payouts and tax remittance remain disabled pending provider, security, legal and accounting review; code promotion does not authorize real money movement.
+- Existing .cto-backup/ and source-level recovery files remain preserved and were not included in the commit.\n
