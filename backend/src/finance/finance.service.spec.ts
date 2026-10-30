@@ -6,7 +6,7 @@ describe('FinanceService', () => {
   const transactionKey = String.fromCharCode(36) + 'transaction';
   const prisma: any = { farm: { findMany: jest.fn(), findFirst: jest.fn() }, farmFinancialRecord: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() } };
   prisma[transactionKey] = jest.fn();
-  const authorization: any = { assertCan: jest.fn() };
+  const authorization: any = { assertCan: jest.fn(), can: jest.fn() };
   const registry: any = { validateResourceField: jest.fn((_resource: string, _field: string, value: unknown) => ({ valid: true, value })) };
   const audit: any = { createInTransaction: jest.fn() };
   const tx: any = { farmFinancialRecord: prisma.farmFinancialRecord };
@@ -14,11 +14,29 @@ describe('FinanceService', () => {
   const farm = { id: 'farm-1', ownerId: 'farmer-1' };
   beforeEach(() => {
     jest.clearAllMocks();
+    authorization.can.mockResolvedValue(true);
     prisma[transactionKey].mockImplementation((callback: (tx: any) => Promise<unknown>) => callback(tx));
     registry.validateResourceField.mockImplementation((_resource: string, _field: string, value: unknown) => ({ valid: true, value }));
     prisma.farmFinancialRecord.create.mockResolvedValue({ id: 'record-1', type: 'EXPENSE', amount: 250 });
     prisma.farmFinancialRecord.update.mockResolvedValue({ id: 'record-1', deletedAt: new Date() });
     service = new FinanceService(prisma, authorization, registry, audit);
+  });
+  it('lists only farms with an explicit READ decision and skips inaccessible legacy owner rows', async () => {
+    prisma.farm.findMany.mockResolvedValue([
+      { id: 'farm-1', ownerId: 'farmer-1' },
+      { id: 'farm-2', ownerId: 'farmer-1' },
+    ]);
+    authorization.can.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    prisma.farmFinancialRecord.findMany.mockResolvedValue([]);
+
+    await expect(service.list('farmer-1', UserRole.FARMER)).resolves.toEqual([]);
+
+    expect(authorization.can).toHaveBeenCalledTimes(2);
+    expect(prisma.farmFinancialRecord.findMany).toHaveBeenCalledWith({
+      where: { farmId: { in: ['farm-1'] }, deletedAt: null },
+      include: { farm: { select: { id: true, name: true } }, creator: { select: { id: true, name: true } } },
+      orderBy: { occurredAt: 'desc' },
+    });
   });
   it('authorizes the farm before creating and audit-records an expense', async () => {
     prisma.farm.findFirst.mockResolvedValue(farm);

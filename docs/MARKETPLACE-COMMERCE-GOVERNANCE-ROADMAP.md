@@ -438,3 +438,16 @@ Release blocker remains: the DB contains successful 20261004110000_god_mode_auth
 - Marketplace/Shop browser acceptance passed: buyer/seller workspace, Shop browse/compare/cart/profile, non-product discovery, external-content controls, Admin blacklist, sandbox chargeback buyer/seller evidence and consented Farm/Crop context linking.
 - Live PostgreSQL Marketplace Q&A E2E passed: public product question, private sample request, participant-only buyer/seller views and seller answer. Booking request schema is deployed and service-level booking creation tests pass.
 - Payment capture, payouts, refunds and tax remittance remain disabled outside sandbox until provider, security, legal/accounting and reconciliation gates are met.
+
+## Store and Shop final regression and release checkpoint - 2026-10-30 23:07:39 IST
+
+- Full backend Jest regression: 71 suites / 711 tests passed, including Finance authorization and audit coverage.
+- Full frontend Playwright regression: 27/27 passed, including Shop buyer/cart/profile, non-product discovery, external-media policy, responsive 10/8/2-column layout, 50-listing progressive loading, Marketplace journeys and core module/voice journeys.
+- Focused Finance service regression: 5/5 passed. Backend Nest build passed. Frontend production build passed; main bundle 522.86 kB (162.04 kB gzip), with the existing non-fatal >500 kB chunk warning.
+- Shop-specific browser acceptance: 4/4 passed. Prisma migrate status: 59 migrations found; database schema is up to date. The canonical module execution plan records migration reconciliation, authenticated database-backed acceptance (4 suites / 28 tests) and Store/Farm browser acceptance (10/10) as complete.
+- Runtime: Docker Server 29.8.2 responds; krishikendram-postgres is Up and accepting connections; API /api/v1/health and frontend root return HTTP 200.
+- The old early-00:xx / 04:xx notes describing the duplicate failed migration and pending Store migrations are historical checkpoints, superseded by the later 09:34/09:40 reconciliation and acceptance record. Preserve the old entries as history; do not treat them as current blockers.
+- Store/Shop compact catalog requirement: 2/3/6/8/10 responsive columns, lazy media, 24-item progressive loading and manual fallback. The full browser suite verifies actual rendered columns and all 50 sample listings.
+- Release safety remains: real payment capture/refund/payout, tax remittance and production external-provider activation are disabled pending qualified provider/security/legal/accounting review. This does not block the verified code-only CBA promotion.
+- No database writes or migrations were performed in this continuation. No Docker reset or volume operation. No recovery backup was staged.
+- CBA is the remaining promotion step for this working-tree delta. Stage only the nine intended tracked files plus this checkpoint and required canonical documentation; exclude .cto-backup and *.cto-backup-* artifacts.\n

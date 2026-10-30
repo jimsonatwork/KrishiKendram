@@ -201,3 +201,27 @@ Canonical module order, work-package boundaries, module completion gate, reposit
 - Backend and frontend production builds passed; frontend has a non-fatal large-main-chunk warning.
 - Prisma reports 59 migrations and the live schema up to date. Full pre-migration database backup retained and verified.
 - Store + Farm are ready for CBA promotion. Next execution package: Platform / Registry / Authorization / Admin closure.
+
+## Shop storefront compact discovery and progressive-scroll standard - 2026-10-30 22:54:05 IST
+
+- Keep /app/shop as the shopper-first storefront and /app/marketplace as the separate seller/provider, operations and governance workspace. Do not replace or disrupt individual listing detail pages or seller workflows.
+- Large-catalog density is a product acceptance requirement: responsive grid is 2 columns by default/mobile, 3 at small screens, 6 at large screens, 8 at XL, and 10 at 2XL. The wide-screen 8-10 column target must not be forced onto narrow screens. Cards stay compact with lazy-loaded media, concise title/seller/price/actions, and a grid/list view switch.
+- Listings remain grouped by Today, Yesterday, Day before yesterday, This week, Last week and Older. Search/category/type/sort filters reset the visible window.
+- Progressive discovery loads the next 24 items when the scroll sentinel approaches the viewport (500px root margin), while retaining a manual "Load 24 more" fallback for accessibility and deterministic navigation. Do not eagerly render an unbounded catalogue in one batch.
+- Acceptance must verify computed column counts at 1600px (10), 1280px (8) and mobile 390px (2), plus a 50-listing catalogue loading progressively to all 50 without repeated manual page navigation. Preserve external-content policy: when disabled, external media/embeds/link-outs remain suppressed while approved local uploads continue to render.
+- 2026-10-30 verification: frontend production build passed (main bundle 522.86 kB, 162.04 kB gzip; existing >500 kB chunk warning remains non-fatal); Shop Playwright acceptance passed 4/4, including buyer profile/cart, non-product workflow, external-media-off/local-upload behavior, responsive 10/8/2-column rendering and progressive 50-item loading; git diff --check passed.
+- Runtime recovery verification: Docker Server 29.8.2 responds; krishikendram-postgres is Up; pg_isready accepts connections; read-only SELECT confirms database krishikendram; API /api/v1/health and UI root return HTTP 200. No database writes, schema changes, migrations, Docker resets or volume operations were performed in this continuation.
+- This is a verified Shop UI refinement, not a declaration that the entire Store/Marketplace module is production COMPLETE. Existing Finance/Marketplace working-tree changes and backups remain preserved; no commit or push was performed. Continue the CBA review only after reviewing all intended diffs and the module's remaining release gates.
+
+## Store and Shop final regression and release checkpoint - 2026-10-30 23:07:39 IST
+
+- Full backend Jest regression: 71 suites / 711 tests passed, including Finance authorization and audit coverage.
+- Full frontend Playwright regression: 27/27 passed, including Shop buyer/cart/profile, non-product discovery, external-media policy, responsive 10/8/2-column layout, 50-listing progressive loading, Marketplace journeys and core module/voice journeys.
+- Focused Finance service regression: 5/5 passed. Backend Nest build passed. Frontend production build passed; main bundle 522.86 kB (162.04 kB gzip), with the existing non-fatal >500 kB chunk warning.
+- Shop-specific browser acceptance: 4/4 passed. Prisma migrate status: 59 migrations found; database schema is up to date. The canonical module execution plan records migration reconciliation, authenticated database-backed acceptance (4 suites / 28 tests) and Store/Farm browser acceptance (10/10) as complete.
+- Runtime: Docker Server 29.8.2 responds; krishikendram-postgres is Up and accepting connections; API /api/v1/health and frontend root return HTTP 200.
+- The old early-00:xx / 04:xx notes describing the duplicate failed migration and pending Store migrations are historical checkpoints, superseded by the later 09:34/09:40 reconciliation and acceptance record. Preserve the old entries as history; do not treat them as current blockers.
+- Store/Shop compact catalog requirement: 2/3/6/8/10 responsive columns, lazy media, 24-item progressive loading and manual fallback. The full browser suite verifies actual rendered columns and all 50 sample listings.
+- Release safety remains: real payment capture/refund/payout, tax remittance and production external-provider activation are disabled pending qualified provider/security/legal/accounting review. This does not block the verified code-only CBA promotion.
+- No database writes or migrations were performed in this continuation. No Docker reset or volume operation. No recovery backup was staged.
+- CBA is the remaining promotion step for this working-tree delta. Stage only the nine intended tracked files plus this checkpoint and required canonical documentation; exclude .cto-backup and *.cto-backup-* artifacts.\n

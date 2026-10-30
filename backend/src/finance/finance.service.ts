@@ -26,8 +26,14 @@ export class FinanceService {
   }
   async list(userId: string, role: UserRole) {
     const farms = await this.prisma.farm.findMany({ where: { ownerId: userId, deletedAt: null }, select: { id: true, ownerId: true } });
-    const farmIds: string[] = [];
-    for (const farm of farms) { await this.assertCan(userId, role, AuthorizationAction.READ, farm.id, farm.ownerId); farmIds.push(farm.id); }
+    const decisions = await Promise.all(farms.map(async (farm) => ({
+      farmId: farm.id,
+      allowed: await this.authorization.can({
+        user: { userId, role }, module: 'finance', resource: 'financialRecord',
+        action: AuthorizationAction.READ, farmId: farm.id, ownerId: farm.ownerId,
+      }),
+    })));
+    const farmIds = decisions.filter((decision) => decision.allowed).map((decision) => decision.farmId);
     if (!farmIds.length) return [];
     return this.prisma.farmFinancialRecord.findMany({ where: { farmId: { in: farmIds }, deletedAt: null }, include: { farm: { select: { id: true, name: true } }, creator: { select: { id: true, name: true } } }, orderBy: { occurredAt: 'desc' } });
   }

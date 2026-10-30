@@ -9,6 +9,8 @@ import { LiveDataRefreshControl, type LiveRefreshIntervalMs } from '@/components
 type RecordItem = { id: string; farmId: string; type: 'INCOME' | 'EXPENSE'; category: string; amount: number; currency: string; occurredAt: string; reference?: string | null; notes?: string | null; farm?: { id: string; name: string } }
 export function FinancePage() {
   const token = localStorage.getItem('accessToken')
+  const tokenPayload = (() => { try { return JSON.parse(atob((token || '').split('.')[1] || '')) } catch { return {} } })()
+  const canViewFarmFinance = ['FARMER', 'ADMIN', 'SUPER_ADMIN'].includes(tokenPayload.role)
   const [records, setRecords] = useState<RecordItem[]>([])
   const [farms, setFarms] = useState<any[]>([])
   const [form, setForm] = useState({ farmId: '', type: 'EXPENSE' as 'INCOME' | 'EXPENSE', category: '', amount: '', occurredAt: new Date().toISOString().slice(0, 10), reference: '', notes: '' })
@@ -21,6 +23,7 @@ export function FinancePage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const load = useCallback(async () => {
+    if (!canViewFarmFinance) { setRecords([]); setFarms([]); setError(''); return }
     if (!token) { setRecords([]); setFarms([]); return }
     setLoading(true); setError('')
     try {
@@ -28,7 +31,7 @@ export function FinancePage() {
       setRecords(recordList); setFarms(farmList); setForm(previous => ({ ...previous, farmId: previous.farmId || farmList[0]?.id || '' }))
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load farm finances.') }
     finally { setLoading(false) }
-  }, [token])
+  }, [token, canViewFarmFinance])
   useEffect(() => { void load() }, [load])
   useLiveRefresh(load, { enabled: Boolean(token) && liveRefreshEnabled, intervalMs: liveRefreshIntervalMs })
   async function createRecord(event: React.FormEvent) {
@@ -58,6 +61,7 @@ export function FinancePage() {
   const income = records.filter(record => record.type === 'INCOME').reduce((sum, record) => sum + record.amount, 0)
   const expense = records.filter(record => record.type === 'EXPENSE').reduce((sum, record) => sum + record.amount, 0)
   const money = (value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(value)
+  if (!canViewFarmFinance) return <div className="rounded-xl border bg-card p-5 sm:p-6"><h2 className="font-semibold">Farm finance is not part of this account</h2><p className="mt-2 text-sm text-muted-foreground">The farm income and expense ledger is available to farmers and authorized administrators. Use Marketplace → Finance for your buying, selling, order and settlement history.</p><a href="/app/marketplace?workspace=finance" className="mt-3 inline-flex text-sm font-medium text-primary underline">Open Marketplace Finance</a></div>
   return <div className="space-y-6 p-4 sm:p-6">
     <MarketplaceBuyerContextNotice module="finance" />
     <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-2xl font-semibold"><BarChart3 className="size-6" />Finance</div><p className="mt-1 text-sm text-muted-foreground">Independent finance module for domain financial records. Marketplace commercial statements remain separately linked and are not treated as settled cash.</p></div><div className="flex flex-wrap gap-2"><a href="/app/marketplace?workspace=finance" className="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">Marketplace commercial finance</a><LiveDataRefreshControl enabled={liveRefreshEnabled} intervalMs={liveRefreshIntervalMs} onEnabledChange={setLiveRefreshEnabled} onIntervalChange={setLiveRefreshIntervalMs} /><Button variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className="mr-2 size-4" />Refresh</Button></div></header>
