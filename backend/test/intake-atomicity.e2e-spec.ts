@@ -10,7 +10,7 @@ describe('Intake transaction atomicity (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule =
       await Test.createTestingModule({
         imports: [AppModule],
@@ -27,7 +27,7 @@ describe('Intake transaction atomicity (e2e)', () => {
     prisma = app.get(PrismaService);
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
   });
 
@@ -108,7 +108,7 @@ describe('Intake transaction atomicity (e2e)', () => {
           {
             farmId: farm!.id,
             inputMethod: 'MIXED',
-            content: `${uniqueName} rice 2 acres`,
+            content: "planting rice 2 acres " + uniqueName,
           },
         ),
       ).rejects.toThrow();

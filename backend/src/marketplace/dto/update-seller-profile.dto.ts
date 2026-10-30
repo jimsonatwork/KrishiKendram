@@ -6,4 +6,5 @@ export class UpdateSellerProfileDto {
  @IsOptional() @IsIn(['IN_APP','PHONE','WHATSAPP']) contactPreference?: string;
  @IsOptional() @IsString() @MaxLength(30) @Matches(/^[+0-9 ()-]*$/) publicPhone?: string;
  @IsOptional() @IsBoolean() showPhone?: boolean;
+ @IsOptional() @IsBoolean() showPublicStats?: boolean;
 }

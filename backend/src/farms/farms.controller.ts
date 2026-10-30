@@ -142,6 +142,18 @@ create(
     );
   }
 
+  @Get(':farmId/assets/archived')
+  archivedAssets(
+    @Param('farmId') farmId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.findArchivedFarmAssets(
+      farmId,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
   @Post(':id/assets')
   addAsset(
     @Param('id') id: string,
@@ -331,6 +343,20 @@ create(
     @CurrentUser() user: any,
   ) {
     return this.farmsService.removeAsset(
+      farmId,
+      assetId,
+      user.userId,
+      user.role as UserRole,
+    );
+  }
+
+  @Post(':farmId/assets/:assetId/restore')
+  restoreAsset(
+    @Param('farmId') farmId: string,
+    @Param('assetId') assetId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.farmsService.restoreAsset(
       farmId,
       assetId,
       user.userId,

@@ -25,6 +25,7 @@ import { ApproveTaxProfileDto } from './dto/approve-tax-profile.dto';
 import { RetireTaxProfileDto } from './dto/retire-tax-profile.dto';
 import { UpdateSellerProfileDto } from './dto/update-seller-profile.dto';
 import { SendMarketplaceMessageDto } from './dto/send-marketplace-message.dto';
+import { CreateMarketplaceListingQuestionDto } from './dto/create-marketplace-listing-question.dto';
 import { CreateMarketplaceRfqDto } from './dto/create-marketplace-rfq.dto';
 import { RespondMarketplaceRfqDto } from './dto/respond-marketplace-rfq.dto';
 import { DecideMarketplaceRfqResponseDto } from './dto/decide-marketplace-rfq-response.dto';
@@ -59,8 +60,8 @@ export class MarketplaceController {
   @Get('commerce-policy') getCommercePolicy() { return this.marketplace.getCommercePolicy(); }
   @Get('features/public') getPublicFeatureFlags() { return this.marketplace.getPublicFeatureFlags(); }
   @Get('offering-types') getOfferingTypes() { return this.marketplace.getOfferingTypes(); }
-    @Get('features') @UseGuards(JwtAuthGuard) getFeatureFlags(@Req() req: any) { return this.marketplace.getFeatureFlags(req.user.userId, req.user.role); }
-  @Patch('features/:key') @UseGuards(JwtAuthGuard) updateFeatureFlag(@Req() req: any, @Param('key') key: string, @Body() dto: UpdateFeatureFlagDto) { return this.marketplace.updateFeatureFlag(req.user.userId, req.user.role, key, dto); }
+    @Get('features') @UseGuards(JwtAuthGuard) getFeatureFlags(@Req() req: any) { return this.marketplace.getFeatureFlags(req.user.userId, req.user.role, req.user.authorityTier); }
+  @Patch('features/:key') @UseGuards(JwtAuthGuard) updateFeatureFlag(@Req() req: any, @Param('key') key: string, @Body() dto: UpdateFeatureFlagDto) { return this.marketplace.updateFeatureFlag(req.user.userId, req.user.role, key, dto, req.user.authorityTier); }
   @Get('tax-profiles') @UseGuards(JwtAuthGuard) listTaxProfiles(@Req() req: any) { return this.marketplace.listTaxProfiles(req.user.role); }
   @Post('tax-profiles') @UseGuards(JwtAuthGuard) createTaxProfile(@Req() req: any, @Body() dto: CreateTaxProfileDto) { return this.marketplace.createTaxProfile(req.user.userId, req.user.role, dto); }
   @Patch('tax-profiles/:id/approve') @UseGuards(JwtAuthGuard) approveTaxProfile(@Req() req: any, @Param('id') id: string, @Body() dto: ApproveTaxProfileDto) { return this.marketplace.approveTaxProfile(req.user.userId, req.user.role, id, dto.reviewReference); }
@@ -70,6 +71,10 @@ export class MarketplaceController {
   @Get('context-policies/:key') getContextPolicy(@Param('key') key: string) { return this.marketplace.getContextPolicy(key); }
   @Get('categories') getCategories() { return this.marketplace.getCategories(); }
   @Get('listings') findPublished(@Query('period') period?: string, @Query('category') category?: string) { return this.marketplace.findPublished(period, category); }
+  @Get('listings/:id/questions') listListingQuestions(@Param('id') id: string) { return this.marketplace.listListingQuestions(id); }
+  @Get('listings/:id/questions/mine') @UseGuards(JwtAuthGuard) listMyListingQuestions(@Req() req: any, @Param('id') id: string) { return this.marketplace.listListingQuestions(id, req.user.userId); }
+  @Post('listings/:id/questions') @UseGuards(JwtAuthGuard) createListingQuestion(@Req() req: any, @Param('id') id: string, @Body() dto: CreateMarketplaceListingQuestionDto) { return this.marketplace.createListingQuestion(req.user.userId, req.user.role, id, dto); }
+  @Patch('listings/:listingId/questions/:questionId/answer') @UseGuards(JwtAuthGuard) answerListingQuestion(@Req() req: any, @Param('listingId') listingId: string, @Param('questionId') questionId: string, @Body('answer') answer: string) { return this.marketplace.answerListingQuestion(req.user.userId, req.user.role, listingId, questionId, answer); }
   @Get('listings/mine') @UseGuards(JwtAuthGuard) findMine(@Req() req: any) { return this.marketplace.findMine(req.user.userId, req.user.role); }
   @Get('orders/mine') @UseGuards(JwtAuthGuard) findMyOrders(@Req() req: any) { return this.marketplace.findMyOrders(req.user.userId, req.user.role); }
   @Get('history/mine') @UseGuards(JwtAuthGuard) getCommerceHistory(@Req() req: any) { return this.marketplace.getCommerceHistory(req.user.userId, req.user.role); }

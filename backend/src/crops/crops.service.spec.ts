@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { CropStatus, UserRole } from '@prisma/client';
 
 import { AuthorizationAction } from '../platform/authorization/authorization.types';
 
@@ -651,6 +651,7 @@ describe('CropsService', () => {
       select: {
         id: true,
         farmId: true,
+        status: true,
         farm: {
           select: {
             id: true,
@@ -842,6 +843,63 @@ describe('CropsService', () => {
     ).rejects.toThrow('Access denied');
 
     expect(prisma.crop.update).not.toHaveBeenCalled();
+  });
+
+  it('validates and audits forward crop lifecycle transitions', async () => {
+    prisma.crop.findFirst.mockResolvedValueOnce({
+      id: 'crop-1',
+      farmId: 'farm-1',
+      status: CropStatus.PLANNED,
+      farm: { id: 'farm-1', ownerId: 'user-1', deletedAt: null },
+    });
+    prisma.crop.update.mockResolvedValueOnce({ id: 'crop-1', status: CropStatus.SOWN });
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: CropStatus.SOWN,
+      errors: [],
+    });
+
+    await service.update('user-1', UserRole.FARMER, 'crop-1', {
+      status: CropStatus.SOWN,
+    });
+
+    expect(registry.validateResourceField).toHaveBeenCalledWith(
+      'crop', 'status', CropStatus.SOWN,
+    );
+    expect(prisma.crop.update).toHaveBeenCalledWith({
+      where: { id: 'crop-1' },
+      data: expect.objectContaining({ status: CropStatus.SOWN }),
+    });
+    expect(audit.createInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        description: 'Crop lifecycle advanced from PLANNED to SOWN',
+        metadata: expect.objectContaining({
+          statusTransition: { from: CropStatus.PLANNED, to: CropStatus.SOWN },
+        }),
+      }),
+    );
+  });
+
+  it('rejects backward crop lifecycle transitions before mutation', async () => {
+    prisma.crop.findFirst.mockResolvedValueOnce({
+      id: 'crop-1',
+      farmId: 'farm-1',
+      status: CropStatus.FLOWERING,
+      farm: { id: 'farm-1', ownerId: 'user-1', deletedAt: null },
+    });
+    registry.validateResourceField.mockReturnValue({
+      valid: true,
+      value: CropStatus.GROWING,
+      errors: [],
+    });
+
+    await expect(service.update('user-1', UserRole.FARMER, 'crop-1', {
+      status: CropStatus.GROWING,
+    })).rejects.toThrow('Crop status cannot move from FLOWERING to GROWING');
+
+    expect(prisma.crop.update).not.toHaveBeenCalled();
+    expect(audit.createInTransaction).not.toHaveBeenCalled();
   });
 
   it('keeps authorization before crop name validation', async () => {

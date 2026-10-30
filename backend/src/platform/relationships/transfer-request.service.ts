@@ -220,6 +220,16 @@ export class ResourceTransferRequestService {
     if (effectiveAt > now) throw new BadRequestException('Transfer cannot be completed before its effective time.');
 
     return this.prisma.$transaction(async (tx) => {
+      if (request.resourceType === 'farmAsset') {
+        const activeAsset = await tx.farmAsset.findUnique({
+          where: { id: request.resourceId },
+          select: { deletedAt: true, farm: { select: { deletedAt: true } } },
+        });
+        if (!activeAsset || activeAsset.deletedAt || activeAsset.farm?.deletedAt) {
+          throw new NotFoundException('Farm asset not found or archived.');
+        }
+      }
+
       const claimed = await tx.resourceTransferRequest.updateMany({
         where: {
           id,

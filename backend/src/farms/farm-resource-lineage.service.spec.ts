@@ -133,7 +133,7 @@ describe('FarmResourceLineageService', () => {
     tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });
     tx.farmAsset.findUniqueOrThrow.mockResolvedValue({ id: 'asset-1', farmId: 'farm-1', quantity: 75, unit: 'kg' });
     expect(tx.farmAsset.updateMany).toHaveBeenCalledWith({
-      where: { id: 'asset-1', quantity: 100 },
+      where: { id: 'asset-1', quantity: 100, deletedAt: null },
       data: { quantity: 75 },
     });
     tx.farmAsset.updateMany.mockResolvedValue({ count: 1 });

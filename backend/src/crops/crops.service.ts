@@ -26,6 +26,7 @@ import {
 
 import { CreateCropDto } from './dto/create-crop.dto';
 import { UpdateCropDto } from './dto/update-crop.dto';
+import { isCropStatusTransitionAllowed } from './crop-lifecycle.policy';
 
 @Injectable()
 export class CropsService {
@@ -220,6 +221,14 @@ export class CropsService {
     });
 
     const normalizedName = this.validateCropName(input.name);
+    const normalizedSeason = this.validateCropField(
+      'season',
+      input.season ?? options.defaultSeason,
+    );
+    const requestedStatus = input.status ?? options.defaultStatus;
+    const normalizedStatus = requestedStatus === undefined
+      ? undefined
+      : this.validateCropField('status', requestedStatus);
     const sowingDate =
       input.sowingDate ??
       options.defaultSowingDate;
@@ -276,12 +285,8 @@ export class CropsService {
           farmId: farm.id,
           name: normalizedName,
           variety: input.variety,
-          season:
-            input.season ??
-            options.defaultSeason,
-          status:
-            input.status ??
-            options.defaultStatus,
+          season: normalizedSeason,
+          status: normalizedStatus,
           sowingDate:
             sowingDate ??
             (options.preserveNullDates ? null : undefined),
@@ -321,12 +326,8 @@ export class CropsService {
           farmId: farm.id,
           name: normalizedName,
           variety: input.variety,
-          season:
-            input.season ??
-            options.defaultSeason,
-          status:
-            input.status ??
-            options.defaultStatus,
+          season: normalizedSeason,
+          status: normalizedStatus,
           sowingDate:
             sowingDate ??
             (options.preserveNullDates ? null : undefined),
@@ -553,9 +554,8 @@ export class CropsService {
     transaction?: Prisma.TransactionClient,
   ) {
     /*
-     * Only load the minimum Crop/Farm context needed to authorize the update.
-     * Full protected Crop data is unnecessary because the mutation operates
-     * directly on the supplied resource ID and update DTO.
+     * Load only the Crop/Farm context needed for authorization and lifecycle
+     * transition validation; the protected Crop payload remains unloaded.
      */
     const cropContext = await this.prisma.crop.findFirst({
       where: {
@@ -565,6 +565,7 @@ export class CropsService {
       select: {
         id: true,
         farmId: true,
+        status: true,
         farm: {
           select: {
             id: true,
@@ -612,6 +613,33 @@ export class CropsService {
       };
     }
 
+    let statusTransition: { from: CropStatus; to: CropStatus } | undefined;
+    if (dto.status !== undefined) {
+      const statusResult = this.registry.validateResourceField(
+        'crop',
+        'status',
+        dto.status,
+      );
+      if (!statusResult.valid) {
+        throw new BadRequestException({
+          message: 'Invalid crop status.',
+          errors: statusResult.errors,
+        });
+      }
+
+      const nextStatus = statusResult.value as CropStatus;
+      if (!isCropStatusTransitionAllowed(cropContext.status, nextStatus)) {
+        throw new BadRequestException(
+          `Crop status cannot move from ${cropContext.status} to ${nextStatus}.`,
+        );
+      }
+
+      updateData = { ...updateData, status: nextStatus };
+      if (nextStatus !== cropContext.status) {
+        statusTransition = { from: cropContext.status, to: nextStatus };
+      }
+    }
+
     const performUpdate = async (tx: Prisma.TransactionClient) => {
       await assertFarmActive(tx, cropContext.farmId);
       const updated = await tx.crop.update({
@@ -626,13 +654,32 @@ export class CropsService {
         action: 'UPDATE',
         resourceType: 'crop',
         resourceId: cropId,
-        description: 'Crop updated',
-        metadata: { fields: Object.keys(dto) },
+        description: statusTransition
+          ? `Crop lifecycle advanced from ${statusTransition.from} to ${statusTransition.to}`
+          : 'Crop updated',
+        metadata: {
+          fields: Object.keys(dto),
+          ...(statusTransition ? { statusTransition } : {}),
+        },
       });
 
       return updated;
     };
     return transaction ? performUpdate(transaction) : this.prisma.$transaction(performUpdate);
+  }
+
+  private validateCropField<T extends string>(
+    field: 'season' | 'status',
+    value: T,
+  ): T {
+    const result = this.registry.validateResourceField('crop', field, value);
+    if (!result.valid) {
+      throw new BadRequestException({
+        message: `Invalid crop ${field}.`,
+        errors: result.errors,
+      });
+    }
+    return result.value as T;
   }
 
   private validateCropName(name: string): string {

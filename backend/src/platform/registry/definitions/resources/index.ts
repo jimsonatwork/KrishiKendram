@@ -8,6 +8,7 @@ import { marketplaceListingResource } from './marketplace-listing.resource';
 import { marketplaceRFQResponseResource } from './marketplace-rfq-response.resource';
 import { marketplaceRFQResource } from './marketplace-rfq.resource';
 import { marketplaceMessageResource } from './marketplace-message.resource';
+import { marketplaceListingQuestionResource } from './marketplace-listing-question.resource';
 import { marketplaceFavoriteResource } from './marketplace-favorite.resource';
 import { marketplaceSellerProfileResource } from './marketplace-seller-profile.resource';
 import { marketplaceOrderResource } from './marketplace-order.resource';
@@ -39,6 +40,7 @@ export const RESOURCE_DEFINITIONS: ResourceDefinition[] = [
   marketplaceRFQResponseResource,
   marketplaceRFQResource,
   marketplaceMessageResource,
+  marketplaceListingQuestionResource,
   marketplaceFavoriteResource,
   marketplaceSellerProfileResource,
   marketplaceOrderResource,
@@ -64,6 +66,7 @@ export {
   marketplaceRFQResponseResource,
   marketplaceRFQResource,
   marketplaceMessageResource,
+  marketplaceListingQuestionResource,
   marketplaceFavoriteResource,
   marketplaceSellerProfileResource,
   marketplaceOrderResource,

@@ -10,7 +10,7 @@ describe('Livestock lifecycle (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
@@ -19,7 +19,7 @@ describe('Livestock lifecycle (e2e)', () => {
     prisma = app.get(PrismaService);
   });
 
-  afterEach(async () => { await app.close(); });
+  afterAll(async () => { await app.close(); });
 
   it('persists create -> archive -> restore with relationship and audit lifecycle', async () => {
     const farm = await prisma.farm.findFirst({

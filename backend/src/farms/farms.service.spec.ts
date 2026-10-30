@@ -24,6 +24,7 @@ describe('FarmsService', () => {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
     },
     crop: {
@@ -168,7 +169,7 @@ describe('FarmsService', () => {
         id: 'farm-1',
       },
       include: {
-        assets: true,
+        assets: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
         records: true,
         owner: {
           select: {
@@ -296,7 +297,7 @@ describe('FarmsService', () => {
         deletedAt: null,
       },
       include: {
-        assets: true,
+        assets: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
         records: true,
       },
       orderBy: {
@@ -1199,6 +1200,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         farmId: true,
+        deletedAt: true,
         farm: {
           select: {
             id: true,
@@ -1329,7 +1331,7 @@ describe('FarmsService', () => {
     expect(prisma.farmAsset.update).not.toHaveBeenCalled();
   });
 
-  it('authorizes farm asset removal using minimal context before deletion', async () => {
+  it('authorizes farm asset archival using minimal context while preserving the asset row', async () => {
     prisma.farmAsset.findUnique.mockResolvedValue({
       id: 'asset-1',
       farmId: 'farm-1',
@@ -1339,8 +1341,9 @@ describe('FarmsService', () => {
       },
     });
 
-    prisma.farmAsset.delete.mockResolvedValue({
+    prisma.farmAsset.update.mockResolvedValue({
       id: 'asset-1',
+      deletedAt: new Date('2026-10-30T00:00:00.000Z'),
     });
 
     await service.removeAsset(
@@ -1355,6 +1358,7 @@ describe('FarmsService', () => {
       select: {
         id: true,
         farmId: true,
+        deletedAt: true,
         farm: {
           select: {
             id: true,
@@ -1381,7 +1385,7 @@ describe('FarmsService', () => {
     expect(
       authorization.assertCan.mock.invocationCallOrder[0],
     ).toBeLessThan(
-      prisma.farmAsset.delete.mock.invocationCallOrder[0],
+      prisma.farmAsset.update.mock.invocationCallOrder[0],
     );
   });
 
@@ -1408,7 +1412,7 @@ describe('FarmsService', () => {
       ),
     ).rejects.toThrow('Forbidden');
 
-    expect(prisma.farmAsset.delete).not.toHaveBeenCalled();
+    expect(prisma.farmAsset.update).not.toHaveBeenCalled();
   });
 
   it('rejects cross-farm asset removal before authorization or deletion', async () => {
@@ -1431,7 +1435,53 @@ describe('FarmsService', () => {
     ).rejects.toThrow('Asset not found');
 
     expect(authorization.assertCan).not.toHaveBeenCalled();
-    expect(prisma.farmAsset.delete).not.toHaveBeenCalled();
+    expect(prisma.farmAsset.update).not.toHaveBeenCalled();
+  });
+
+  it('restores an archived farm asset with a new temporal owner relationship and audit entry', async () => {
+    const archived = {
+      id: 'asset-1', farmId: 'farm-1', deletedAt: new Date('2026-10-20T00:00:00.000Z'),
+      farm: { id: 'farm-1', ownerId: 'farm-owner', deletedAt: null },
+    };
+    const restored = { id: 'asset-1', farmId: 'farm-1', deletedAt: null };
+    prisma.farmAsset.findUnique
+      .mockResolvedValueOnce(archived)
+      .mockResolvedValueOnce(restored);
+    prisma.resourceRelationship.findFirst.mockResolvedValueOnce({ userId: 'asset-owner' });
+    prisma.farmAsset.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.restoreAsset('farm-1', 'asset-1', 'asset-owner', UserRole.FARMER);
+
+    expect(result).toEqual(restored);
+    expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({
+      resource: 'farmAsset', action: AuthorizationAction.RESTORE, ownerId: 'asset-owner',
+    }));
+    expect(prisma.farmAsset.updateMany).toHaveBeenCalledWith({
+      where: { id: 'asset-1', farmId: 'farm-1', deletedAt: { not: null } },
+      data: { deletedAt: null },
+    });
+    expect(relationships.createOwnerRelationship).toHaveBeenCalledWith(
+      expect.anything(), 'farmAsset', 'asset-1', 'asset-owner', expect.any(Date),
+    );
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: 'RESTORE', resourceType: 'farmAsset', resourceId: 'asset-1',
+    }));
+  });
+
+  it('lists archived farm assets only after farm read authorization', async () => {
+    prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', ownerId: 'user-1', deletedAt: null });
+    prisma.farmAsset.findMany.mockResolvedValue([{ id: 'asset-archived' }]);
+
+    const result = await service.findArchivedFarmAssets('farm-1', 'user-1', UserRole.FARMER);
+
+    expect(result).toEqual([{ id: 'asset-archived' }]);
+    expect(prisma.farmAsset.findMany).toHaveBeenCalledWith({
+      where: { farmId: 'farm-1', deletedAt: { not: null } },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(authorization.assertCan).toHaveBeenCalledWith(expect.objectContaining({
+      resource: 'farm', action: AuthorizationAction.READ,
+    }));
   });
 
   it('uses central Registry values for farm asset fields when updating an asset', async () => {

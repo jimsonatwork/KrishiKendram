@@ -33,11 +33,12 @@ export class FarmAssetCustodyService {
         id: true,
         farmId: true,
         createdAt: true,
+        deletedAt: true,
         farm: { select: { ownerId: true, deletedAt: true } },
       },
     });
 
-    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
+    if (!asset || asset.deletedAt || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -132,11 +133,12 @@ export class FarmAssetCustodyService {
         id: true,
         farmId: true,
         createdAt: true,
+        deletedAt: true,
         farm: { select: { ownerId: true, deletedAt: true } },
       },
     });
 
-    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
+    if (!asset || asset.deletedAt || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 

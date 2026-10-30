@@ -29,9 +29,9 @@ export class FarmAssetLeaseService {
   ) {
     const asset = await this.prisma.farmAsset.findUnique({
       where: { id: assetId },
-      select: { id: true, farmId: true, createdAt: true, farm: { select: { ownerId: true, deletedAt: true } } },
+      select: { id: true, farmId: true, createdAt: true, deletedAt: true, farm: { select: { ownerId: true, deletedAt: true } } },
     });
-    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) throw new NotFoundException('Asset not found');
+    if (!asset || asset.deletedAt || asset.farmId !== farmId || asset.farm.deletedAt) throw new NotFoundException('Asset not found');
 
     const owner = await this.prisma.resourceRelationship.findFirst({
       where: { resourceType: 'farmAsset', resourceId: assetId, relationshipType: 'OWNER', endedAt: null },
@@ -112,9 +112,9 @@ export class FarmAssetLeaseService {
   ) {
     const asset = await this.prisma.farmAsset.findUnique({
       where: { id: assetId },
-      select: { id: true, farmId: true, createdAt: true, farm: { select: { ownerId: true, deletedAt: true } } },
+      select: { id: true, farmId: true, createdAt: true, deletedAt: true, farm: { select: { ownerId: true, deletedAt: true } } },
     });
-    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) throw new NotFoundException('Asset not found');
+    if (!asset || asset.deletedAt || asset.farmId !== farmId || asset.farm.deletedAt) throw new NotFoundException('Asset not found');
 
     const owner = await this.prisma.resourceRelationship.findFirst({
       where: { resourceType: 'farmAsset', resourceId: assetId, relationshipType: 'OWNER', endedAt: null },

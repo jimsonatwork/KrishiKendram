@@ -82,6 +82,14 @@ export const farmAssetResource: ResourceDefinition = {
       ],
     },
     {
+      action: AuthorizationAction.RESTORE,
+      scopes: [
+        AuthorizationScope.OWN,
+        AuthorizationScope.FARM,
+        AuthorizationScope.GLOBAL,
+      ],
+    },
+    {
       action: AuthorizationAction.ASSIGN,
       scopes: [
         AuthorizationScope.OWN,
@@ -96,6 +104,7 @@ export const farmAssetResource: ResourceDefinition = {
     'CREATE',
     'UPDATE',
     'DELETE',
+    'RESTORE',
     'ASSIGN',
   ],
 
@@ -105,5 +114,5 @@ export const farmAssetResource: ResourceDefinition = {
     'GLOBAL',
   ],
 
-  softDelete: false,
+  softDelete: true,
 };

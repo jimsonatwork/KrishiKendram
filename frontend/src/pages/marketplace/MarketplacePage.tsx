@@ -134,6 +134,7 @@ export function MarketplacePage() {
   const [quoteBusyIds, setQuoteBusyIds] = useState<string[]>([])
   const [commercePolicy, setCommercePolicy] = useState<any>(null)
   const [featureFlags, setFeatureFlags] = useState<any[]>([])
+  const [featureConfigurations, setFeatureConfigurations] = useState<Record<string,string>>({})
   const [publicFeatureFlags, setPublicFeatureFlags] = useState<any[]>([])
   const [featureReasons, setFeatureReasons] = useState<Record<string, string>>({})
   const [featureBusyKeys, setFeatureBusyKeys] = useState<string[]>([])
@@ -152,7 +153,7 @@ export function MarketplacePage() {
   const [taxProfiles, setTaxProfiles] = useState<any[]>([])
   const [sellerProfile, setSellerProfile] = useState<any>(null)
   const [sellerProfileBusy, setSellerProfileBusy] = useState(false)
-  const [sellerProfileForm, setSellerProfileForm] = useState({ displayName:'', bio:'', regionLabel:'', contactPreference:'IN_APP', publicPhone:'', showPhone:false })
+  const [sellerProfileForm, setSellerProfileForm] = useState({ displayName:'', bio:'', regionLabel:'', contactPreference:'IN_APP', publicPhone:'', showPhone:false, showPublicStats:true })
   const [profileVisibilityPolicy, setProfileVisibilityPolicy] = useState<{defaultVisible:boolean;rules:any[]}>({defaultVisible:true,rules:[]})
   const [visibilityRuleDraft, setVisibilityRuleDraft] = useState({visible:false,userIds:'',modules:'marketplace',categories:''})
   const [visibilityReason, setVisibilityReason] = useState('')
@@ -280,7 +281,7 @@ export function MarketplacePage() {
       setSellerProfile(profile)
       setProfileVisibilityPolicy(visibilityPolicy)
       if (!editableFormsInitialized.current) {
-        setSellerProfileForm({ displayName: profile?.profile?.displayName || '', bio: profile?.profile?.bio || '', regionLabel: profile?.profile?.regionLabel || '', contactPreference: profile?.profile?.contactPreference || 'IN_APP', publicPhone: profile?.profile?.publicPhone || '', showPhone: Boolean(profile?.profile?.showPhone) })
+        setSellerProfileForm({ displayName: profile?.profile?.displayName || '', bio: profile?.profile?.bio || '', regionLabel: profile?.profile?.regionLabel || '', contactPreference: profile?.profile?.contactPreference || 'IN_APP', publicPhone: profile?.profile?.publicPhone || '', showPhone: Boolean(profile?.profile?.showPhone), showPublicStats: profile?.profile?.showPublicStats !== false })
       }
       setFavorites(savedFavorites)
       setMessages(inbox)
@@ -289,6 +290,7 @@ export function MarketplacePage() {
       setTrustCases(cases)
       setActiveRestrictions(restrictions)
       setFeatureFlags(flags)
+      setFeatureConfigurations(previous => Object.fromEntries(flags.filter((flag: any) => flag.configuration && Object.keys(flag.configuration).length).map((flag: any) => [flag.key, previous[flag.key] ?? JSON.stringify(flag.configuration, null, 2)])))
       setPublicFeatureFlags(publicFlags)
       if (!editableFormsInitialized.current) {
         setPolicyForm({ feesEnabled: Boolean(policy.feesEnabled), buyerFeePercent: String(policy.buyerFeePercent ?? 0), sellerCommissionPercent: String(policy.sellerCommissionPercent ?? 0), taxEnabled: Boolean(policy.taxEnabled), taxPercent: String(policy.taxPercent ?? 0), taxReviewReference: String(policy.taxReviewReference || '') })
@@ -324,6 +326,19 @@ export function MarketplacePage() {
     setFeatureBusyKeys(previous => [...previous, flag.key]); setError('')
     try { await api.updateMarketplaceFeatureFlag(flag.key, !flag.enabled, reason, token); setFeatureReasons(previous => ({ ...previous, [flag.key]: '' })); await load() }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to change Marketplace feature flag.') }
+    finally { setFeatureBusyKeys(previous => previous.filter(key => key !== flag.key)) }
+  }
+
+  async function saveMarketplaceFeatureConfiguration(flag: any) {
+    if (!token || !canManageCommercePolicy || featureBusyKeys.includes(flag.key)) return
+    const reason = (featureReasons[flag.key] || '').trim()
+    if (!reason) { setError('Enter a reason before changing limits for ' + flag.title + '.'); return }
+    let configuration: Record<string, unknown>
+    try { configuration = JSON.parse(featureConfigurations[flag.key] || '{}') } catch { setError('Feature limits must be valid JSON.'); return }
+    if (!configuration || typeof configuration !== 'object' || Array.isArray(configuration)) { setError('Feature limits must be a JSON object.'); return }
+    setFeatureBusyKeys(previous => [...previous, flag.key]); setError('')
+    try { await api.updateMarketplaceFeatureFlag(flag.key, flag.enabled, reason, token, configuration); setFeatureReasons(previous => ({ ...previous, [flag.key]: '' })); await load() }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save Marketplace feature limits.') }
     finally { setFeatureBusyKeys(previous => previous.filter(key => key !== flag.key)) }
   }
 
@@ -898,6 +913,7 @@ export function MarketplacePage() {
           <label className="text-sm">Contact preference<select className="mt-1 h-9 w-full rounded-md border bg-background px-3" value={sellerProfileForm.contactPreference} onChange={e=>setSellerProfileForm({...sellerProfileForm,contactPreference:e.target.value})}><option value="IN_APP">In-app messages</option><option value="PHONE">Phone (only if shared)</option><option value="WHATSAPP">WhatsApp (only if shared)</option></select></label>
           <label className="text-sm">Public phone (optional)<input maxLength={30} className="mt-1 h-9 w-full rounded-md border bg-background px-3" value={sellerProfileForm.publicPhone} onChange={e=>setSellerProfileForm({...sellerProfileForm,publicPhone:e.target.value})}/></label>
           <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={sellerProfileForm.showPhone} onChange={e=>setSellerProfileForm({...sellerProfileForm,showPhone:e.target.checked})}/>Allow this phone number to appear on my public seller profile</label>
+          <label className="flex items-start gap-2 text-sm sm:col-span-2"><input type="checkbox" className="mt-1" checked={sellerProfileForm.showPublicStats} onChange={e=>setSellerProfileForm({...sellerProfileForm,showPublicStats:e.target.checked})}/>Show aggregate member-since month, completed purchases, completed sales and published review statistics on my public seller profile</label>
           <Button type="submit" className="sm:w-fit" disabled={sellerProfileBusy}>{sellerProfileBusy?'Saving…':'Save seller profile'}</Button>
         </form>
       </section>}
@@ -949,7 +965,7 @@ export function MarketplacePage() {
           </div>
         )}
       </section>}
-      {token && canManageCommercePolicy && <section className="rounded-xl border bg-card p-4 shadow-sm"><h2 className="font-semibold">Marketplace feature switchboard</h2><p className="mt-1 text-xs text-muted-foreground">Every change is versioned and audited. Critical financial features require Super Admin/God Mode. Dependency checks protect active workflows; turning a feature off does not erase history.</p><div className="mt-3 grid gap-3 md:grid-cols-2">{featureFlags.map(flag => <div key={flag.key} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-2"><div><div className="font-medium">{flag.title}</div><p className="mt-1 text-xs text-muted-foreground">{flag.description}</p><div className="mt-1 text-[11px] text-muted-foreground">{flag.key} · {flag.riskLevel} · v{flag.version}</div>{flag.dependencies?.length > 0 && <div className="mt-1 text-[11px] text-muted-foreground">Depends on: {flag.dependencies.join(', ')}</div>}</div><span className={'rounded-full px-2 py-1 text-xs ' + (flag.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground')}>{flag.enabled ? 'ON' : 'OFF'}</span></div><input aria-label={'Reason for ' + flag.title} className="mt-3 h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Reason required for toggle" value={featureReasons[flag.key] || ''} onChange={e => setFeatureReasons(previous => ({ ...previous, [flag.key]: e.target.value }))} /><Button className="mt-2" size="sm" variant="outline" disabled={featureBusyKeys.includes(flag.key) || (flag.riskLevel === 'CRITICAL' && currentUserRole !== 'SUPER_ADMIN')} onClick={() => void toggleMarketplaceFeature(flag)}>{featureBusyKeys.includes(flag.key) ? 'Saving…' : 'Turn ' + (flag.enabled ? 'off' : 'on')}</Button>{flag.riskLevel === 'CRITICAL' && currentUserRole !== 'SUPER_ADMIN' && <p className="mt-1 text-xs text-muted-foreground">Super Admin/God Mode approval required.</p>}</div>)}</div></section>}
+      {token && canManageCommercePolicy && <section className="rounded-xl border bg-card p-4 shadow-sm"><h2 className="font-semibold">Marketplace feature switchboard</h2><p className="mt-1 text-xs text-muted-foreground">Every change is versioned and audited. Critical financial features require Super Admin/God Mode. Dependency checks protect active workflows; turning a feature off does not erase history.</p><div className="mt-3 grid gap-3 md:grid-cols-2">{featureFlags.map(flag => <div key={flag.key} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-2"><div><div className="font-medium">{flag.title}</div><p className="mt-1 text-xs text-muted-foreground">{flag.description}</p><div className="mt-1 text-[11px] text-muted-foreground">{flag.key} · {flag.riskLevel} · v{flag.version}</div>{flag.dependencies?.length > 0 && <div className="mt-1 text-[11px] text-muted-foreground">Depends on: {flag.dependencies.join(', ')}</div>}</div><span className={'rounded-full px-2 py-1 text-xs ' + (flag.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground')}>{flag.enabled ? 'ON' : 'OFF'}</span></div><input aria-label={'Reason for ' + flag.title} className="mt-3 h-9 w-full rounded-md border bg-background px-3 text-sm" placeholder="Reason required for toggle or limit change" value={featureReasons[flag.key] || ''} onChange={e => setFeatureReasons(previous => ({ ...previous, [flag.key]: e.target.value }))} /><Button className="mt-2" size="sm" variant="outline" disabled={featureBusyKeys.includes(flag.key) || (flag.riskLevel === 'CRITICAL' && currentUserRole !== 'SUPER_ADMIN' && tokenPayload.authorityTier !== 'SYSTEM_GOD')} onClick={() => void toggleMarketplaceFeature(flag)}>{featureBusyKeys.includes(flag.key) ? 'Saving…' : 'Turn ' + (flag.enabled ? 'off' : 'on')}</Button>{flag.configuration && Object.keys(flag.configuration).length > 0 && <div className="mt-3"><label className="block text-xs font-medium">Feature limits / options (JSON)</label><textarea aria-label={'Limits for ' + flag.title} className="mt-1 min-h-20 w-full rounded-md border bg-background p-2 font-mono text-xs" value={featureConfigurations[flag.key] ?? JSON.stringify(flag.configuration, null, 2)} onChange={e => setFeatureConfigurations(previous => ({ ...previous, [flag.key]: e.target.value }))}/><Button className="mt-2" size="sm" variant="outline" disabled={featureBusyKeys.includes(flag.key)} onClick={() => void saveMarketplaceFeatureConfiguration(flag)}>Save limits</Button></div>}{flag.riskLevel === 'CRITICAL' && currentUserRole !== 'SUPER_ADMIN' && tokenPayload.authorityTier !== 'SYSTEM_GOD' && <p className="mt-1 text-xs text-muted-foreground">Super Admin/God Mode approval required.</p>}</div>)}</div></section>}
 
       {token && canManageCommercePolicy && pendingReviews.length > 0 && <section className="rounded-xl border bg-card p-4"><div className="font-medium">Marketplace review moderation queue ({pendingReviews.length})</div><div className="mt-3 space-y-3">{pendingReviews.map(review => <div key={review.id} className="rounded-lg border p-3"><div className="text-sm font-medium">{review.rating}/5 · {review.order?.listing?.title || 'Completed transaction'}</div><div className="mt-1 text-xs text-muted-foreground">{review.reviewer?.name} reviewed {review.reviewee?.name}</div><p className="mt-2 text-sm">{review.comment || 'No written comment.'}</p><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" onClick={() => void moderateReview(review, 'PUBLISHED')}>Publish</Button><Button size="sm" variant="outline" onClick={() => void moderateReview(review, 'HIDDEN')}>Hide</Button><Button size="sm" variant="ghost" onClick={() => void moderateReview(review, 'REJECTED')}>Reject</Button></div></div>)}</div></section>}
 
@@ -1051,6 +1067,15 @@ export function MarketplacePage() {
               <div className="font-semibold">{order.listing?.title || 'Marketplace order'}</div>
               <div className="mt-1 text-sm text-muted-foreground">{isSeller ? 'Buyer request' : 'Your request'} · {order.status}</div>
               <div className="mt-2 text-sm">Quantity: {order.quantity} · Listed/unit: {order.currency} {order.unitPrice ?? 'Price to be agreed'}{order.offerPrice != null ? ' · Buyer offer/unit: ' + order.currency + ' ' + order.offerPrice : ''}{order.agreedUnitPrice != null ? ' · Agreed/unit: ' + order.currency + ' ' + order.agreedUnitPrice : ''}</div>
+              {order.bookingRequest && <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
+                <div className="font-medium">{order.bookingRequest.kind === 'RENTAL' ? 'Rental reservation' : 'Booking request'} · {order.bookingRequest.status}</div>
+                {order.bookingRequest.startDate && <div>Start date: {new Date(order.bookingRequest.startDate).toLocaleDateString()}</div>}
+                {order.bookingRequest.endDate && <div>End date: {new Date(order.bookingRequest.endDate).toLocaleDateString()}</div>}
+                {order.bookingRequest.preferredDate && <div>Preferred date: {new Date(order.bookingRequest.preferredDate).toLocaleDateString()}</div>}
+                {order.bookingRequest.preferredTime && <div>Preferred time: {order.bookingRequest.preferredTime}</div>}
+                {order.bookingRequest.useLocation && <div>Use / visit location: {order.bookingRequest.useLocation}</div>}
+                <div className="mt-1 text-muted-foreground">A request is not confirmed until the provider accepts it. Confirmed rental periods are checked against other reservations.</div>
+              </div>}
               {order.note && <p className="mt-2 text-sm text-muted-foreground">Note: {order.note}</p>}
               {order.deliveryStatus && <div className="mt-2 rounded-md border p-3 text-xs"><div className="font-medium">Delivery: {order.deliveryStatus.replaceAll('_', ' ')}</div>{order.deliveryCarrier && <div>Carrier: {order.deliveryCarrier}</div>}{order.deliveryTrackingNumber && <div>Tracking: {order.deliveryTrackingNumber}</div>}{order.deliveryTrackingUrl && <a className="mt-1 inline-block underline" href={order.deliveryTrackingUrl} target="_blank" rel="noreferrer">Open carrier tracking</a>}{order.estimatedDeliveryAt && <div>Estimated delivery: {new Date(order.estimatedDeliveryAt).toLocaleDateString()}</div>}</div>}
               {order.payments?.filter((p: any) => p.provider === 'sandbox').map((payment: any) => <div key={payment.id} className="mt-2 rounded-md border border-dashed p-2 text-xs"><div className="font-medium">Sandbox payment - {payment.status}</div><div>Amount: {payment.currency} {payment.amount}</div><div className="text-muted-foreground">Simulation only. No money has moved.</div></div>)}

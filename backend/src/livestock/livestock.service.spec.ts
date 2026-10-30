@@ -8,7 +8,7 @@ describe('LivestockService', () => {
   let service: LivestockService;
 
   const prisma = {
-    farm: { findUnique: jest.fn() },
+    farm: { findUnique: jest.fn(), findFirst: jest.fn() },
     livestock: {
       create: jest.fn(),
       findFirst: jest.fn(),
@@ -41,11 +41,13 @@ describe('LivestockService', () => {
     prisma.$transaction.mockImplementation(
       async (callback: (tx: any) => Promise<unknown>) =>
         callback({
+          farm: prisma.farm,
           livestock: prisma.livestock,
         }),
     );
 
     authorization.assertCan.mockResolvedValue(undefined);
+    prisma.farm.findFirst.mockResolvedValue({ id: 'farm-1' });
     relationships.createOwnerRelationship.mockResolvedValue(undefined);
     relationships.terminateResourceRelationships.mockResolvedValue(undefined);
     audit.createInTransaction.mockResolvedValue(undefined);
@@ -145,6 +147,19 @@ describe('LivestockService', () => {
         resourceId: 'livestock-1',
       }),
     );
+  });
+
+  it('rejects creation under an archived farm', async () => {
+    prisma.farm.findUnique.mockResolvedValue({
+      id: 'farm-1', ownerId: 'user-1', deletedAt: new Date('2026-10-01T00:00:00.000Z'),
+    });
+
+    await expect(service.create('user-1', UserRole.FARMER, {
+      farmId: 'farm-1', species: 'Cattle',
+    })).rejects.toThrow('Farm not found or archived');
+
+    expect(authorization.assertCan).not.toHaveBeenCalled();
+    expect(prisma.livestock.create).not.toHaveBeenCalled();
   });
 
   it('rejects creation when the farm does not exist', async () => {
@@ -276,6 +291,21 @@ describe('LivestockService', () => {
         resourceId: 'livestock-1',
       }),
     );
+  });
+
+  it('does not reset herd count or lifecycle status during a sparse update', async () => {
+    prisma.livestock.findFirst.mockResolvedValue({
+      id: 'livestock-1', farmId: 'farm-1', deletedAt: null,
+      farm: { ownerId: 'user-1', deletedAt: null },
+    });
+    prisma.livestock.update.mockResolvedValue({ id: 'livestock-1', notes: 'Checked' });
+
+    await service.update('user-1', UserRole.FARMER, 'livestock-1', { notes: 'Checked' });
+
+    expect(prisma.livestock.update).toHaveBeenCalledWith({
+      where: { id: 'livestock-1' },
+      data: { notes: 'Checked' },
+    });
   });
 
   it('archives livestock and terminates its active relationships atomically', async () => {

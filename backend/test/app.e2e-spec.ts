@@ -9,7 +9,7 @@ import { PrismaService } from './../src/prisma/prisma.service';
 describe('Application runtime smoke (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
@@ -353,7 +353,7 @@ describe('Application runtime smoke (e2e)', () => {
       .expect(({ body }) => expect(Array.isArray(body)).toBe(true));
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
   });
 });

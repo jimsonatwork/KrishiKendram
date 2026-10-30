@@ -246,11 +246,12 @@ export class FarmResourceLifecycleService {
       select: {
         id: true,
         farmId: true,
+        deletedAt: true,
         farm: { select: { id: true, ownerId: true, deletedAt: true } },
       },
     });
 
-    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
+    if (!asset || asset.deletedAt || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 

@@ -7,6 +7,7 @@ import { AuthorizationAction } from '../platform/authorization/authorization.typ
 import { RegistryService } from '../platform/registry/registry.service';
 import { ResourceRelationshipService } from '../platform/relationships/relationship.service';
 import { AuditService } from '../platform/audit/audit.service';
+import { assertFarmActive } from '../farms/farm-asset-active.guard';
 import { CreateLivestockDto } from './dto/create-livestock.dto';
 import { UpdateLivestockDto } from './dto/update-livestock.dto';
 
@@ -27,7 +28,7 @@ export class LivestockService {
         id: true,
         farmId: true,
         deletedAt: true,
-        farm: { select: { id: true, ownerId: true } },
+        farm: { select: { id: true, ownerId: true, deletedAt: true } },
       },
     });
     if (!item) throw new NotFoundException('Livestock not found.');
@@ -47,7 +48,10 @@ export class LivestockService {
     return relationship?.userId ?? fallback;
   }
 
-  private validate(input: Partial<CreateLivestockDto | UpdateLivestockDto>) {
+  private validate(
+    input: Partial<CreateLivestockDto | UpdateLivestockDto>,
+    applyCreateDefaults = false,
+  ) {
     const data: Record<string, unknown> = {};
     for (const [field, value] of Object.entries(input)) {
       if (value === undefined || field === 'farmId') continue;
@@ -60,8 +64,12 @@ export class LivestockService {
       }
       data[field] = result.value;
     }
-    if (data.count === undefined) data.count = 1;
-    if (data.status === undefined) data.status = 'ACTIVE';
+    // Defaults belong to creation only. A sparse PATCH must never reset an
+    // existing herd count or lifecycle status just because those fields were omitted.
+    if (applyCreateDefaults) {
+      if (data.count === undefined) data.count = 1;
+      if (data.status === undefined) data.status = 'ACTIVE';
+    }
     return data;
   }
 
@@ -89,9 +97,9 @@ export class LivestockService {
   ) {
     const farm = await this.prisma.farm.findUnique({
       where: { id: dto.farmId },
-      select: { id: true, ownerId: true },
+      select: { id: true, ownerId: true, deletedAt: true },
     });
-    if (!farm) throw new NotFoundException('Farm not found.');
+    if (!farm || farm.deletedAt) throw new NotFoundException('Farm not found or archived.');
 
     await this.authorization.assertCan({
       user: { userId, role },
@@ -102,9 +110,10 @@ export class LivestockService {
       ownerId: farm.ownerId,
     });
 
-    const data = this.validate(dto);
+    const data = this.validate(dto, true);
     delete data.farmId;
     const createInTransaction = async (client: Prisma.TransactionClient) => {
+      await assertFarmActive(client, farm.id);
       const livestock = await client.livestock.create({
         data: {
           farmId: farm.id,
@@ -209,10 +218,11 @@ export class LivestockService {
     const item = await this.context(id);
     await this.assert(userId, role, AuthorizationAction.UPDATE, item);
 
-    const data = this.validate(dto);
+    const data = this.validate(dto, false);
     delete data.farmId;
     delete data.acquiredAt;
     const performUpdate = async (tx: Prisma.TransactionClient) => {
+      await assertFarmActive(tx, item.farmId);
       const updated = await tx.livestock.update({
         where: { id },
         data: {
@@ -274,6 +284,7 @@ export class LivestockService {
     });
 
     return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, item.farmId);
       const restored = await tx.livestock.update({
         where: { id },
         data: { deletedAt: null },

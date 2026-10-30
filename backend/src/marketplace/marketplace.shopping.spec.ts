@@ -3,6 +3,7 @@ import { MarketplaceService } from './marketplace.service';
 
 describe('Marketplace shopping profile and visitor analytics', () => {
   const prisma: any = {
+    marketplaceFeatureFlag: { findUnique: jest.fn().mockResolvedValue({ enabled: true }) },
     marketplaceBuyerProfile: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
     marketplaceListing: { findFirst: jest.fn() },
     marketplaceListingViewEvent: { findFirst: jest.fn(), create: jest.fn(), findMany: jest.fn() },

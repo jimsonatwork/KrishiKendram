@@ -1870,7 +1870,9 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - [x] git diff --check passed. Existing implementation changes remain uncommitted; no commit/push and no destructive database or Docker-volume operations.
 - [ ] Remaining external/release gates: real payment provider, real refunds/chargebacks/payouts, qualified tax/legal/accounting review, production object-storage hardening, and fully authenticated E2E with real roles. Live money movement and tax remittance remain disabled.
 - [ ] Next implementation focus: continue core-module workflows in sequence and prioritize confirmed gaps; do not drift into AI-only work or micro-management.
-\n\n
+
+
+
 ### Marketplace trust hardening — 2026-10-18 14:12 IST
 - [x] Added explicit permanent Marketplace-wide blacklist support to trust-case resolution. An Admin/Super Admin can leave duration blank only for MARKETPLACE_ALL; narrower restrictions and caution ratings require a 1–365 day expiry.
 - [x] Marketplace UI now explains permanent versus temporary duration, labels a no-expiry restriction as a permanent blacklist, and exposes reason-required manual revocation.
@@ -1878,7 +1880,9 @@ The Marketplace has a sandbox-only payment intent and webhook flow. Payment inte
 - [x] MarketplaceService unit suite passed: 55 tests, including new permanent-blacklist and expiry-policy regressions. Dedicated Admin browser journey passed, covering apply, persistent active state and reasoned revocation.
 - [x] Backend Nest build passed after service changes; frontend TypeScript/Vite build passed after UI changes; git diff --check passed.
 - [ ] Final release gates remain real payment/refund/chargeback/payout provider integration, qualified tax/legal/accounting review, production object-storage hardening, and authenticated E2E with real roles. Live money movement and tax remittance remain disabled.
-\n\n
+
+
+
 ### Final runtime verification — 2026-10-18 14:23 IST
 - [x] Full frontend Playwright suite passed: 16 tests, zero failures, including core farm workflows, multilingual Intake, Marketplace buyer/seller flows, permanent blacklist apply/revoke, and Voice Agent journeys.
 - [x] Full backend regression after permanent-blacklist implementation passed: 65 suites and 623 tests, zero failures. The focused MarketplaceService suite passed 55 tests.
@@ -2086,3 +2090,157 @@ The public `GET /api/v1/marketplace/offering-types` contract now drives create/e
 - Product detail supports bounded product-video previews and seller/document links only for valid HTTP(S) URLs. Last-hour counts are anonymous session aggregates, not identified viewers.
 - Frontend production build passed after these UI changes; Shop & Compare Playwright test passed 1/1. The wider focused browser set passed 4/4; targeted backend Marketplace/Inventory/context tests passed 89/89 and Nest build passed.
 - Real payment checkout remains disabled. Order requests do not move money. Live payment, tax remittance, refunds/chargebacks, payouts and settlement remain blocked until provider/security/legal/accounting and authenticated real-role acceptance gates pass.
+
+## Canonical module-plan cross-check and Store experience standard — 2026-10-29 23:31:55 IST
+
+This standard is mandatory for new work and for every material change proposed in a chat, issue, roadmap, module plan or code review. The canonical module inventory is ; product intent and acceptance criteria belong in ; execution evidence, blockers, commands and resume position belong in this Bible and the timestamped execution plan. Keep all of them aligned. Do not invent a new module or divert to a deferred module when the request belongs to an existing core domain.
+
+### Required cross-check for every module plan/change
+1. Identify affected module(s), shared service(s), Registry contracts, data ownership and downstream consumers from the canonical inventory.
+2. Check central Registry field/resource/module definitions, shared field types/enums/defaults/requiredness/normalization/validation, capabilities, dependencies, lifecycle and feature flags before adding new definitions. Reuse or extend the canonical contract; do not duplicate rules in UI or domain-specific ad hoc lists.
+3. Check Authorization scope and field access, Admin/Super Admin/God Mode control exposure, server-side enforcement, feature-off behavior and dependency/rollback behavior.
+4. Check persistence/migrations, transactional invariants, audit actor attribution, History, Provenance, consent, privacy/retention, notifications and cross-module service/event contracts.
+5. Check UI states (loading/empty/error/disabled/denied/mobile/accessibility), API and DB integration, negative/security tests, authenticated role E2E, build/runtime and migration status.
+6. Update PMD acceptance requirements, this Bible, module roadmap, relevant domain architecture/governance docs, tests, and timestamped checkpoint when applicable. Update the status only to the level supported by evidence.
+7. Preserve existing changes and backups; run CBA review before commit/push. Never bypass migration discrepancies, claim external integration without verified adapter behavior, or treat a build/mock test as end-to-end acceptance.
+
+### Shop and Marketplace — customer trust and external content
+- Keep  as a shopper-first storefront and  as the seller/provider and governance workspace. Share contracts and services, not duplicated domain data.
+- Registry-driven controls must govern each feature's enabled state, risk level, limits, dependencies, rollout/effective dates, eligible roles, approval requirements and audit/rollback. Admin operates within delegated scope; Super Admin governs policy and approvals; God Mode retains ultimate override and recovery. UI visibility never substitutes for backend authorization. Turning a feature off blocks new use but preserves records, history, refunds/disputes and audit.
+- Product content supports either platform upload or an optional external URL/media reference so users can reduce storage use. Accept HTTPS links only, validate URL and allowed embed providers, protect against private-network/unsafe redirects and script injection, render a safe preview or an ordinary external link, and do not scrape login-protected content. Store source URL, provider, submitter, consent/rights declaration, validation state and timestamps. External deletion, changed content and access restrictions must degrade gracefully. Platform-hosted media requires size/type/signature checks, safe storage, access control, retention and future malware scanning/object-storage adapter gates.
+- Social product demos and reviews may link/embed from explicitly supported providers, subject to provider terms and safe embed allowlists. External ratings/reviews must be labelled as external and dated/source-attributed; never present them as verified KrishiKendram reviews. Do not download or mirror third-party media without rights/consent. Provide a direct-link fallback for blocked embeds and low-bandwidth users.
+- Supplier Q&A is a persistent, listing-linked workflow. Buyers can ask product/specification questions, request samples, or ask about bulk quantity/MOQ, lead time, delivery region and quotation validity. Suppliers answer through authenticated listing ownership. Store question/answer, actor, listing/version context, timestamps, moderation/report state, visibility, optional consented attachments and audit events. Notify participants. Q&A is not an order, quote acceptance or payment; converting a bulk enquiry to RFQ/offer/order requires a typed explicit action. Protect private contact details and moderate spam, unsafe links and abuse.
+- Keep a platform record of questions, supplier responses, RFQs, offers, order decisions, disputes and user-consented attachments for audit, customer support and authorized analytics. Do not claim to observe a negotiation, demo view, review, sample delivery or purchase that occurred only on an external site. Optional external contact/link-outs require consent and a clear notice that platform protection/evidence may not cover activity outside the platform. Where supported, allow the parties to attach receipts/evidence or mark externally completed outcomes with provenance, not as automatically verified facts.
+- Public trust indicators can include member-since month/year, verified completed purchase count, verified completed sales count, response rate/time, fulfilment/cancellation ratio and transaction-verified review summary when data quality permits. Counts must be calculated from authoritative records and clearly define their window and eligibility; exclude cancelled/test/duplicate orders and do not expose counterparties, private order details, exact spend, personal data or sensitive risk signals. Label self-reported versus verified information and show unavailable data as unavailable, not zero. Provide correction/report/appeal paths.
+- Buyer and seller protection includes clear itemized pre-commit quotes, evidence-backed dispute/refund/return workflows, delivery/receipt states, counterfeit/misrepresentation reporting, scoped and appealable restrictions, verified-transaction reviews, privacy controls, audit trails, fair notice and anti-retaliation moderation. Trust scores/risk models are advisory; no opaque score or AI signal may permanently blacklist an account without accountable review.
+- Store analytics use privacy-minimizing aggregate sessions and defined windows. A view count is approximate session activity, not a unique verified human or purchase intent. Do not retain raw IP addresses for storefront view counts. Explain which activity is platform-observed versus external.
+- Integrate Inventory for stock/reservations/movements, Finance for ledger/quotes/fees/tax/settlement, Users/Organizations for identity/profile and member tenure, Media for uploads/links, Notifications for events, Search for discovery, Authorization for access, Audit/History/Provenance for evidence, and Reports for authorized aggregate metrics. Domain services remain owners of their own data; cross-module writes use authorized service contracts/events, not direct table writes.
+- Feature switches and limits must be independently configurable for uploads, external links, social embeds, video previews, Q&A, sample requests, bulk/RFQ, public statistics, verified reviews, comments, favorites, comparison, recommendations, visitor analytics, messaging, delivery, disputes, fee/tax display, payment modes and moderation. Dependencies and safety-critical controls fail closed. Real payments, payouts, tax remittance and external-platform API integrations remain disabled until provider, security, legal/accounting and authenticated end-to-end gates pass.
+
+### Verification boundary
+A feature is not complete because it appears in PMD or a plan. Record evidence for Registry/authorization, persistence, service and UI, audit/history, tests, runtime and relevant role workflows. External providers and external user actions must be described as pending or externally observed unless verified through a working authorized integration.
+
+## Store Q&A, external demos and trust controls implementation checkpoint — 2026-10-29 23:41:48 IST
+
+Implemented in the working tree (not yet accepted as complete): persistent listing-linked question/answer records; public product questions; participant-private sample and bulk enquiries; seller-only answering; audit events and notifications; server-enforced per-listing daily question limits, per-buyer daily sample/bulk limits, and Registry-defined configuration defaults; Admin/Super Admin/God Mode feature switching and limit editing; HTTPS-only external link/media input policy; allowlisted YouTube/Vimeo embed previews with safe direct-link fallback; opt-out public profile statistics (member-since month/year, completed purchase/sale counts, published review count and average rating).
+
+Only the additive MarketplaceListingQuestion table migration is required for this slice and has NOT been applied. Feature limits and public-statistics consent are stored in existing SystemSetting records, so this slice does not add columns to existing tables. The pre-existing migration-history discrepancy remains a release blocker. Existing migration-history discrepancy remains a release blocker; do not deploy/resolve/reset/baseline until reconciled. Focused Marketplace service tests pass 75/75; Prisma schema validation passes; backend Nest build completes without TypeScript errors; frontend production build passes with a Vite warning that the main chunk exceeds 500 kB. Authenticated runtime/browser E2E remains pending because the additive Q&A migration is not applied and the pre-existing migration-history discrepancy remains unresolved. Do not commit/push until validation, role tests, migration review and CBA checks pass.
+
+## Verification update — 2026-10-29 23:54:16 IST
+- Prisma schema validation: passed.
+- Marketplace service tests: 75/75 passed.
+- Backend Nest build: completed without TypeScript errors.
+- Frontend production build: passed; Vite warns that the main chunk exceeds 500 kB, so code splitting remains a performance improvement.
+- Q&A table migration remains unapplied. The known missing migration-history entry still blocks safe migration deployment and authenticated DB-backed E2E. No commit/push performed.
+
+## Store feature-switch and verification update — 2026-10-30 00:06:10 IST
+
+Additional central switches now cover external media/site links, social demo embeds, anonymous visitor analytics, and public trust statistics. Admin/Super Admin/God Mode can turn these switches on/off; the backend blocks external-reference writes and visitor-event collection when those controls are off, and suppresses public statistics when disabled or user-opted-out. The Shop fails closed for external embeds/links until the public feature state is loaded. Local uploads continue to work when external content is disabled.
+
+Latest verification: Marketplace service tests 75/75 pass; Prisma schema validation passes; backend Nest build completes without TypeScript errors; frontend production build passes. Vite reports the existing main bundle exceeds 500 kB. Authenticated DB-backed E2E remains pending because the additive Q&A table migration is not applied and the existing migration-history discrepancy is unresolved. No commit/push.
+
+## Migration-history recovery finding — 2026-10-30 00:11:03 IST
+
+Read-only database inspection confirmed that the successful migration 20261004110000_god_mode_authority_tier exists in DB history and its SHA-256 checksum matches the historical SQL recovered from commit 0e91747. That canonical 11:00 migration file has been restored to the repository. The database also contains a separate 16:00 row for 20261004160000_god_mode_authority_tier with the same checksum, but that row is failed/rolled back because the AuthorityTier enum already existed. The AuthorityTier enum and User.authorityTier column are present in the live schema.
+
+After restoring the canonical 11:00 file, prisma migrate status still reports the failed 16:00 row as missing locally and identifies two pending additive migrations: 20261029221500_marketplace_booking_requests and 20261029233000_marketplace_listing_questions. No migration was applied and no migration metadata was changed. Do not deploy, resolve, reset, baseline, or fabricate an idempotent replacement; the duplicate failed row needs an owner-approved migration-history recovery before database-backed E2E or commit/push.
+
+## Store module verification and media-policy correction — 2026-10-30 04:48:26 IST
+
+A Shop storefront policy gap was found and corrected: product-card and cart thumbnails previously rendered the first external image URL without consulting marketplace.external_content. Both now use the same safeMediaUrl policy as product details. With external content disabled, HTTPS-hosted images, social video embeds and external seller links are suppressed; locally uploaded /uploads/marketplace media remains usable.
+
+Browser acceptance: frontend/e2e/marketplace-shopping.spec.ts now contains three Shop tests: Shop & Compare/cart/buyer profile; non-product listing discovery without generic checkout; and external-content-off with local-upload preservation. All 3/3 pass. Marketplace backend service tests pass 75/75. Frontend production build passes; current output warns that the main JS chunk is 522.68 kB (162.04 kB gzip), so code-splitting is a performance follow-up. Backend Nest build has generated backend/dist artifacts; final exit code is being captured separately and is not yet marked verified here.
+
+Store scope already implemented in the working tree includes Registry-controlled feature toggles/configuration, Admin/Super Admin/God Mode policy access, Inventory and Finance workspace integration through their existing services, user photo/video uploads, external HTTPS links, allowlisted YouTube/Vimeo demos, listing Q&A, private sample/bulk enquiries, notifications/audit, anonymous last-hour visitor counts, opt-in public trust aggregates, scoped trust cases/restrictions, and disabled live payment/tax activation pending required review.
+
+Release blocker remains: the DB contains successful 20261004110000_god_mode_authority_tier and a duplicate failed/rolled-back 20261004160000_god_mode_authority_tier row with the same SQL checksum. The canonical successful migration file is restored. Two additive Store migrations (20261029221500_marketplace_booking_requests and 20261029233000_marketplace_listing_questions) remain pending. No migration was applied and no _prisma_migrations metadata changed. Authenticated DB-backed E2E, final CBA and commit/push remain blocked until the duplicate rolled-back migration record is safely reconciled.
+
+## Final Store build and migration verification — 2026-10-30 04:49:15 IST
+
+- Backend Nest build exit code: 0; generated 758 backend/dist files including Marketplace service/controller outputs.
+- Prisma schema validation exit code: 0.
+- Frontend production build: passed; Vite warns main bundle 522.68 kB (162.04 kB gzip).
+- Marketplace service tests: 75/75 passed. Shop browser tests: 3/3 passed. git diff --check: passed.
+- Prisma migrate status exits 0 but explicitly reports history mismatch: successful 11:00 authority-tier migration is present; failed/rolled-back 16:00 duplicate is missing locally; booking and listing-question migrations are pending. No DB migration or migration metadata was changed.
+- Authenticated DB-backed E2E and CBA commit/push remain blocked until safe recovery of the duplicate rolled-back migration row.
+
+
+## Store + Farm Management completion sprint — 2026-10-30 07:55 IST
+
+### Execution scope and non-negotiable contracts
+
+This sprint closes two priorities together: (1) Store / Shop and its provider-side Marketplace integration, and (2) the complete Farm Management domain: Farms, Farm Assets, Farm Records, Crops/Crop Lifecycle, and Livestock/health-production records. Do not replace either domain with a generic CRUD page or duplicate domain data in Marketplace.
+
+**Store ownership boundaries**
+- Marketplace owns provider/seller listings, typed offering context, buyer enquiries/Q&A, booking requests, offers/RFQs, orders/requests, trust cases, reviews, moderation, disputes and settlement statements.
+- Shop is a separate shopper-first discovery template; it does not replace seller operations.
+- Inventory remains the only source of stock quantities, movements, reservations and valuation. Marketplace calls Inventory domain services; it must not decrement stock by direct table writes.
+- Finance remains the only source of financial records, fee/tax calculations, settlement and reconciliation. Order intent is not captured money. Buyer/seller fees and jurisdiction-aware tax presentation must be transparent; actual charge, payout, refund, chargeback and tax remittance stay disabled until provider, security, legal/accounting and authenticated acceptance gates pass.
+- Listing uploads, externally hosted HTTPS photos/videos and link-outs must be safe, consent-aware and feature-gated. Link-outs must state that off-platform activity is outside KK dispute/protection visibility.
+- Listing Q&A public questions are visible to all; sample/bulk enquiries are private to asker and listing seller. Answers and notifications are transactionally audited. Public visitor statistics count anonymous sessions only and must be scoped to published, non-archived listings; never expose draft/rejected listing activity.
+
+**Farm domain ownership boundaries**
+- Farms own farm identity, location, area, ownership and archive/restore.
+- Farm Assets own equipment/resources and custody, lease, transfer, split/merge and lineage; Marketplace references assets by authorized resource contracts.
+- Farm Records are append-only operational history. No edit/delete path; corrections are new attributed records. Direct and composite writes must validate and audit atomically and re-check active parent farm state inside the transaction.
+- Crops own crop registration and lifecycle. Allowed observed progression is forward-only while allowing skipped intermediate observations; FAILED is reachable from an active stage; HARVESTED and FAILED are terminal; ARCHIVED is reserved for archive/restore endpoints. Validate season/status through Registry and audit exact before/after transition.
+- Livestock owns animal/herd records and its operational HEALTH, VACCINATION, TREATMENT, MILK_PRODUCTION, EGG_PRODUCTION, WEIGHT, BREEDING, FEEDING and OTHER records. Creation defaults (count=1/status=ACTIVE) must never be applied to sparse PATCH updates. Child writes, updates and restores must re-check that the parent farm remains active inside the transaction.
+
+### Cross-module completion checklist
+
+For every workflow: (1) Registry contract owns reusable field type, normalization, allowed values, requiredness and limits; (2) authorization occurs before protected validation/mutation; (3) parent/owner/relationship state is re-checked in the same transaction as writes; (4) domain service owns writes; (5) actor, source, timestamp, before/after state and correction trail are auditable; (6) feature-off preserves historical reads and audit while blocking new use; (7) tests cover positive, negative, race, authorization and archived-parent paths; (8) browser acceptance covers real roles, responsive/mobile, loading/empty/error/disabled states.
+
+### 2026-10-30 verified progress (not a completion declaration)
+
+- Crop lifecycle policy and focused service tests added; 27 tests passed across Crop service and lifecycle policy suites.
+- Farm/Livestock hardening: create-only defaults, active-parent transactional checks for livestock create/update/restore, and archived-parent protection for health/production record creation.
+- Marketplace public listing visitor count now filters to published, non-archived listings.
+- Combined focused Store/Farm regression run: 188 tests passed across 10 suites.
+- Backend build and frontend/browser acceptance are still pending fresh exit-code evidence. Store's two additive migrations remain unapplied until the previously documented Prisma history mismatch is reconciled safely. No database reset or destructive migration operation is permitted.
+- Do not mark Store or Farm COMPLETE until authenticated database-backed role E2E, migration reconciliation/deploy verification, frontend/browser acceptance, security checks and CBA commit/push evidence are recorded.
+
+## Store + Farm verification checkpoint — 2026-10-30 09:06 IST
+
+- Full backend regression: 71 suites, 710 tests passed. This includes Marketplace social/profile, visitor analytics, settlement/payment-sandbox/tax, Farm, Farm Asset custody/lease/lifecycle/lineage, Crop lifecycle, Livestock and Livestock records.
+- Backend Nest build exit 0; frontend TypeScript/Vite production build exit 0; Prisma schema validation passed; git diff --check passed.
+- Mocked browser journeys passed: Farm archive/restore 1/1; cross-module Inventory/Finance/Notifications/Reports 1/1; Marketplace buyer/seller workspace 1/1; Shop & Compare 3/3.
+- Store and Farm remain IN PROGRESS for release purposes. Prisma status reports three unapplied migrations (Marketplace booking requests, Marketplace listing questions, FarmAsset soft archive) and a database-only rolled-back duplicate authority-tier migration missing locally. No migration, DDL, DML or Prisma migration metadata was changed. Authenticated database-backed role E2E is pending.
+- Do not claim production completion or commit/push until migration history is reconciled through a Prisma-supported, audit-preserving procedure with explicit owner approval, the three reviewed migrations are deployed, and authenticated role acceptance passes.
+
+## Database migration reconciliation finding — 2026-10-30 09:08 IST
+
+- Read-only PostgreSQL inspection confirms the successful 20261004110000_god_mode_authority_tier row and the rolled-back 20261004160000_god_mode_authority_tier duplicate have identical SHA-256 checksums. The AuthorityTier schema is already present from the successful migration.
+- The live FarmAsset table does not yet contain deletedAt and still has the old FarmAsset_farmId_createdAt_idx index. MarketplaceBookingRequest and MarketplaceListingQuestion tables do not yet exist. This confirms all three pending migrations are required before those workflows can be accepted against the live database.
+- Installed Prisma CLI and client are 6.19.3. Prisma ORM v6 documentation describes migrate resolve --applied as marking a failed/manual-completed migration applied without executing its SQL. Candidate reconciliation: restore the missing duplicate migration folder with the exact historical SQL/checksum, then mark that already-schema-applied duplicate as applied. This changes migration metadata only; it must not execute the duplicate SQL.
+- After owner approval and a fresh backup/schema check, deploy only the three reviewed pending migrations. No database change has been performed. Do not reset, delete, or manually edit migration-history rows.
+
+### Additional browser acceptance — 2026-10-30 09:10 IST
+
+- Marketplace governance browser tests: 4/4 passed — Admin blacklist apply/revoke, buyer sandbox chargeback, seller HTTPS evidence submission, and explicit consent before linking order context to owned Farm/Crop records.
+- Selected mocked browser acceptance now totals 10/10 across Farm archive/restore, cross-module Inventory/Finance/Notifications/Reports, Marketplace buyer/seller workspace, Shop (3), and Marketplace governance (4).
+- Runtime health checks: UI HTTP 200 and API health HTTP 200. These are local development health checks, not production monitoring or DB-backed role acceptance.
+
+## Canonical sequential module execution standard — 2026-10-30
+
+The canonical order, work-package boundaries and current execution ledger are maintained in . The operating rule is one active module at a time: complete Registry, authorization, backend, transaction/lifecycle, audit/history/provenance, frontend states, authenticated DB-backed tests, cross-module regression, builds/runtime, documentation and CBA before moving on. Avoid routine permission loops and speculative detours. Preserve user data, DB volumes, migration history and backups. Clean only verified duplicates/generated clutter; archive unique historical checkpoints rather than discarding project history. Update the root timestamped execution checkpoint at least every 20 minutes and report verified evidence, not implied background progress.
+
+The sequence is: close the active Store + Farm release candidate; Platform/Registry/Authorization/Admin; Identity/Auth/Users/Organizations; Audit/History/Provenance; Farm stack; Inventory; Finance; Marketplace/Shop; shared product services; AI Platform; Security/Production Operations; then later Agri/Education breadth. The module-specific completion gate is defined in the canonical plan. Live money movement, irreversible deletion and external sharing remain gated by explicit safety/legal/compliance requirements.
+
+## Store + Farm database-backed acceptance — 2026-10-30 09:34 IST
+
+- Post-migration backend regression: 71 suites / 710 tests passed. Backend Nest build completed successfully; frontend TypeScript/Vite production build exit 0 (existing 522.89 kB main chunk warning remains).
+- Full backend DB E2E: 4 suites / 28 tests passed. This includes 25 existing authenticated Farm/Crop/Livestock/Intake/API journeys plus 3 new live-DB workflows: Farm create/archive/restore, FarmAsset create/archive/restore, and Marketplace public Q&A/private sample-request visibility and seller answers.
+- The DB E2E harness now creates one Nest application per suite and uses a 30-second integration timeout; the intake atomicity fixture now expresses an explicit planting intent rather than a bare crop mention.
+- FarmAsset Registry now declares RESTORE and softDelete semantics. God Mode audited capability policy enables FARM-scoped FARMER restore and GLOBAL ADMIN/SUPER_ADMIN restore. Marketplace listing-question CREATE/OWN is enabled for active participant roles via audited God Mode policy. Test fixture rows are cleaned up after each run.
+- Mocked browser acceptance previously passed 10/10 across Farm, cross-module services, Marketplace, Shop and governance. A final repeat is running after the migration deployment.
+- Prisma status is up to date at 59 migrations. No database reset or manual migration-history edits were performed. The old rolled-back migration row remains preserved.
+- Store + Farm are ready for CBA promotion once the final browser repeat and clean diff review are recorded. Next active work package after promotion: Platform / Registry / Authorization / Admin closure, per the canonical execution plan.
+
+## Final Store + Farm verification — 2026-10-30 09:40 IST
+
+- Post-migration backend unit suite: 71/71 suites, 710/710 tests passed.
+- Backend Nest build passed (the sequential build gate advanced to frontend). Frontend TypeScript/Vite production build exit 0; the 522.89 kB main chunk warning is non-fatal and tracked as a later performance task.
+- Authenticated live PostgreSQL E2E: 4/4 suites, 28/28 tests passed.
+- Final browser acceptance after migration deployment: 10/10 passed across Farm lifecycle, cross-module Inventory/Finance/Notifications/Reports, Marketplace buyer/seller workspace, Shop browse/compare/cart/buyer profile, listing discovery, Admin blacklist, sandbox chargeback buyer/seller evidence, and consented Farm/Crop context linking.
+- Prisma: 59 migrations found; schema up to date. Pre-migration full DB dump was verified readable. Historical rolled-back duplicate migration row remains intact; no reset or manual migration-history edits.
+- Store + Farm are READY FOR CBA PROMOTION. After promotion, next active module is Platform / Registry / Authorization / Admin. Do not divert to AI or later breadth until this module passes its own gate.

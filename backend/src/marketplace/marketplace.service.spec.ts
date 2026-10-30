@@ -15,6 +15,8 @@ describe('MarketplaceService', () => {
     inventoryItem: { findFirst: jest.fn(), updateMany: jest.fn() },
     inventoryTransaction: { create: jest.fn() },
     marketplaceListing: { findFirst: jest.fn(), findMany: jest.fn() },
+    marketplaceListingViewEvent: { findFirst: jest.fn(), findMany: jest.fn(), create: jest.fn() },
+    marketplaceListingQuestion: { findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), updateMany: jest.fn(), count: jest.fn().mockResolvedValue(0) },
     marketplaceOrder: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     marketplacePayment: { create: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     marketplacePaymentEvent: { findUnique: jest.fn(), create: jest.fn() },
@@ -35,6 +37,11 @@ describe('MarketplaceService', () => {
   };
   let service: MarketplaceService;
   let txLedgerEntryCreate: jest.Mock;
+  let txBookingRequestCreate: jest.Mock;
+  let txBookingRequestFindUnique: jest.Mock;
+  let txBookingRequestFindFirst: jest.Mock;
+  let txBookingRequestUpdate: jest.Mock;
+  let txQueryRawUnsafe: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -42,9 +49,17 @@ describe('MarketplaceService', () => {
     prisma.marketplaceFeatureFlag.findUnique.mockResolvedValue(null);
     service = new MarketplaceService(prisma, authorization, audit, registry, inventory);
     txLedgerEntryCreate = jest.fn().mockResolvedValue({ id: 'ledger-entry-1' });
+    txBookingRequestCreate = jest.fn().mockImplementation(({ data }: any) => ({ id: 'booking-1', ...data }));
+    txBookingRequestFindUnique = jest.fn().mockResolvedValue(null);
+    txBookingRequestFindFirst = jest.fn().mockResolvedValue(null);
+    txBookingRequestUpdate = jest.fn().mockImplementation(({ where, data }: any) => ({ id: where.id, ...data }));
+    txQueryRawUnsafe = jest.fn().mockResolvedValue([]);
     prisma.$transaction.mockImplementation((cb: any) => cb({
       marketplaceListing: { create: jest.fn().mockResolvedValue({ id: 'listing-1', status: 'DRAFT' }), update: jest.fn().mockResolvedValue({ id: 'listing-1' }), findUnique: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
       marketplaceOrder: { create: jest.fn().mockResolvedValue({ id: 'order-1', status: 'PENDING' }), findUnique: jest.fn(), update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'ACCEPTED' }) },
+      marketplaceBookingRequest: { create: txBookingRequestCreate, findUnique: txBookingRequestFindUnique, findFirst: txBookingRequestFindFirst, update: txBookingRequestUpdate },
+      marketplaceListingQuestion: { create: jest.fn().mockImplementation(({ data }: any) => ({ id: 'question-1', ...data, createdAt: new Date() })), findUnique: jest.fn().mockResolvedValue({ id: 'question-1', status: 'ANSWERED', answeredAt: new Date() }), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      $queryRawUnsafe: txQueryRawUnsafe,
       marketplacePayment: { create: jest.fn().mockImplementation(({ data }: any) => ({ id: 'payment-1', ...data, createdAt: new Date() })), update: jest.fn().mockImplementation(({ where, data }: any) => ({ id: where.id, orderId: 'order-1', provider: 'sandbox', amount: '123.45', currency: 'INR', ...data })) },
       marketplacePaymentEvent: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'payment-event-1' }) },
       marketplaceLedgerEntry: { create: txLedgerEntryCreate },
@@ -63,9 +78,24 @@ describe('MarketplaceService', () => {
     prisma.marketplacePayment.findFirst.mockResolvedValue(null);
     prisma.marketplacePaymentEvent.findUnique.mockResolvedValue(null);
   });
+  it('limits public last-hour visitor counts to currently published listings', async () => {
+    prisma.marketplaceListingViewEvent.findMany.mockResolvedValue([{ sessionHash: 'session-a' }, { sessionHash: 'session-b' }]);
+
+    const result = await service.getListingViewCount('listing-1');
+
+    expect(prisma.marketplaceListingViewEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        listingId: 'listing-1',
+        listing: { status: 'PUBLISHED', deletedAt: null },
+      }),
+      distinct: ['sessionHash'],
+    }));
+    expect(result).toMatchObject({ listingId: 'listing-1', visitorsLastHour: 2, windowMinutes: 60 });
+  });
+
   it('creates a listing only after resource ownership authorization', async () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'owner-1' });
-    prisma.farmAsset.findFirst.mockResolvedValue({ id: 'asset-1' });
+    prisma.farmAsset.findFirst.mockResolvedValue({ id: 'asset-1', farm: { deletedAt: null } });
     const result = await service.create('owner-1', UserRole.FARMER, {
       resourceType: 'farmAsset', resourceId: 'asset-1', title: ' Seed ',
       quantity: 10, unit: 'kg', price: 50, currency: 'inr',
@@ -143,7 +173,7 @@ describe('MarketplaceService', () => {
 
   it('validates all supplied listing fields through Registry', async () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'owner-1' });
-    prisma.crop.findFirst.mockResolvedValue({ id: 'crop-1' });
+    prisma.crop.findFirst.mockResolvedValue({ id: 'crop-1', farm: { deletedAt: null } });
     await service.create('owner-1', UserRole.FARMER, {
       resourceType: 'crop', resourceId: 'crop-1', title: 'Crop',
       description: 'Description', quantity: 4, unit: 'kg', price: 12, currency: 'INR',
@@ -152,6 +182,7 @@ describe('MarketplaceService', () => {
   });
 
   it('rejects invalid Registry fields before persistence', async () => {
+    prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'u1' });
     registry.validateResourceField.mockImplementation((_r: string, field: string) =>
       field === 'price' ? { valid: false, errors: ['min'] } : { valid: true, value: 'x' });
     await expect(service.create('u1', UserRole.FARMER, {
@@ -161,7 +192,7 @@ describe('MarketplaceService', () => {
   });
   it('rejects a missing marketplace resource', async () => {
     prisma.resourceRelationship.findFirst.mockResolvedValue(null);
-    prisma.crop.findUnique.mockResolvedValue(null);
+    prisma.crop.findFirst.mockResolvedValue(null);
     await expect(service.create('u1', UserRole.FARMER, {
       resourceType: 'crop', resourceId: 'missing', title: 'Crop',
     })).rejects.toThrow(NotFoundException);
@@ -246,6 +277,48 @@ describe('MarketplaceService', () => {
       contextAnswers: { startDate: '2026-11-05', endDate: '2026-11-03', useLocation: 'Warangal' },
     } as any)).rejects.toThrow('Rental end date must be on or after the start date.');
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('creates a typed rental request with the order and confirms it only after the seller accepts', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({
+      id: 'listing-rental-1', sellerId: 'seller-1', category: 'EQUIPMENT',
+      title: 'Tractor rental', description: 'Daily rental', offeringType: 'RENTAL',
+      quantity: 2, price: 2500, currency: 'INR', status: 'PUBLISHED',
+    });
+    const created = await service.createOrder('buyer-1', UserRole.FARMER, 'listing-rental-1', {
+      quantity: 1,
+      contextAnswers: { startDate: '2026-11-05', endDate: '2026-11-07', useLocation: 'Warangal' },
+    } as any);
+    expect(created).toMatchObject({ bookingRequest: { kind: 'RENTAL', status: 'REQUESTED', useLocation: 'Warangal' } });
+    expect(txBookingRequestCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ kind: 'RENTAL', startDate: new Date('2026-11-05T00:00:00.000Z'), endDate: new Date('2026-11-07T00:00:00.000Z') }) }));
+
+    prisma.marketplaceOrder.findUnique.mockResolvedValue({
+      id: 'order-rental-1', listingId: 'listing-rental-1', buyerId: 'buyer-1', sellerId: 'seller-1',
+      status: 'PENDING', quantity: 1, unitPrice: 2500, offerPrice: null, currency: 'INR',
+      pricingSnapshot: { category: 'EQUIPMENT' }, buyerJurisdictionCode: null,
+    });
+    txBookingRequestFindUnique.mockResolvedValue({
+      id: 'booking-1', orderId: 'order-rental-1', listingId: 'listing-rental-1', kind: 'RENTAL',
+      status: 'REQUESTED', startDate: new Date('2026-11-05T00:00:00.000Z'), endDate: new Date('2026-11-07T00:00:00.000Z'),
+    });
+    await service.acceptOrder('seller-1', UserRole.FARMER, 'order-rental-1', {});
+    expect(txQueryRawUnsafe).toHaveBeenCalled();
+    expect(txBookingRequestUpdate).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'booking-1' }, data: expect.objectContaining({ status: 'CONFIRMED' }) }));
+  });
+
+  it('rejects a rental acceptance when its dates overlap a confirmed reservation', async () => {
+    prisma.marketplaceOrder.findUnique.mockResolvedValue({
+      id: 'order-rental-2', listingId: 'listing-rental-1', buyerId: 'buyer-2', sellerId: 'seller-1',
+      status: 'PENDING', quantity: 1, unitPrice: 2500, offerPrice: null, currency: 'INR',
+      pricingSnapshot: { category: 'EQUIPMENT' }, buyerJurisdictionCode: null,
+    });
+    txBookingRequestFindUnique.mockResolvedValue({
+      id: 'booking-2', orderId: 'order-rental-2', listingId: 'listing-rental-1', kind: 'RENTAL',
+      status: 'REQUESTED', startDate: new Date('2026-11-06T00:00:00.000Z'), endDate: new Date('2026-11-08T00:00:00.000Z'),
+    });
+    txBookingRequestFindFirst.mockResolvedValue({ id: 'booking-existing' });
+    await expect(service.acceptOrder('seller-1', UserRole.FARMER, 'order-rental-2', {}))
+      .rejects.toThrow('overlap an already confirmed reservation');
   });
 
   it('sanitizes agricultural context to allow-listed fields and records its confirmation provenance', async () => {
@@ -609,7 +682,7 @@ describe('MarketplaceService', () => {
     prisma.marketplaceOrder.findUnique.mockResolvedValue({ id: 'order-1', listingId: 'listing-1', buyerId: 'buyer-1', sellerId: 'seller-1', status: 'PENDING', quantity: 2, unitPrice: 15, offerPrice: 12, currency: 'INR' });
     const orderUpdate = jest.fn().mockResolvedValue({ id: 'order-1', status: 'PRICE_CONFIRMATION_REQUIRED' });
     prisma.$transaction.mockImplementationOnce((cb: any) => cb({
-      marketplaceListing: {}, marketplaceOrder: { update: orderUpdate }, marketplaceCommercePolicy: { findUnique: jest.fn().mockResolvedValue(null) },
+      marketplaceListing: {}, marketplaceOrder: { update: orderUpdate }, marketplaceBookingRequest: { findUnique: jest.fn().mockResolvedValue(null) }, marketplaceCommercePolicy: { findUnique: jest.fn().mockResolvedValue(null) },
       notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     const result = await service.acceptOrder('seller-1', UserRole.FARMER, 'order-1', { agreedUnitPrice: 14 });
@@ -621,6 +694,7 @@ describe('MarketplaceService', () => {
     prisma.marketplaceOrder.findUnique.mockResolvedValue({ id: 'order-1', buyerId: 'buyer-1', sellerId: 'seller-1', status: 'PRICE_CONFIRMATION_REQUIRED' });
     prisma.$transaction.mockImplementationOnce((cb: any) => cb({
       marketplaceOrder: { update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'ACCEPTED' }) },
+      marketplaceBookingRequest: { findUnique: jest.fn().mockResolvedValue(null) },
       notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
     await expect(service.confirmOrderPrice('seller-1', UserRole.FARMER, 'order-1')).rejects.toThrow('Marketplace order not found.');
@@ -634,6 +708,7 @@ describe('MarketplaceService', () => {
     const listingUpdate = jest.fn().mockResolvedValue({ id: 'listing-1', status: 'SOLD' });
     prisma.$transaction.mockImplementationOnce((cb: any) => cb({
       marketplaceListing: { findUnique: listingFindUnique, updateMany: listingUpdateMany, update: listingUpdate },
+      marketplaceBookingRequest: { findUnique: jest.fn().mockResolvedValue(null) },
       marketplaceOrder: { update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'COMPLETED' }) },
       notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
     }));
@@ -647,6 +722,7 @@ describe('MarketplaceService', () => {
     const listingFindUnique = jest.fn().mockResolvedValueOnce({ id: 'listing-inventory-1', resourceType: 'inventoryItem', resourceId: 'inventory-1', quantity: 3, status: 'PUBLISHED' }).mockResolvedValueOnce({ quantity: 0 });
     const listingUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
     const tx = {
+      marketplaceBookingRequest: { findUnique: jest.fn().mockResolvedValue(null) },
       marketplaceListing: { findUnique: listingFindUnique, updateMany: listingUpdateMany, update: jest.fn().mockResolvedValue({ id: 'listing-inventory-1', status: 'SOLD' }) },
       marketplaceOrder: { update: jest.fn().mockResolvedValue({ id: 'order-inventory-1', status: 'COMPLETED' }) },
       notification: { create: jest.fn().mockResolvedValue({ id: 'notification-1' }), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) },
@@ -770,6 +846,40 @@ describe('MarketplaceService', () => {
 
   it('reserves tax policy changes for Super Admin/God Mode', async () => {
     await expect(service.updateCommercePolicy('admin-1', UserRole.ADMIN, { taxEnabled: true, taxPercent: 18, taxReviewReference: 'reviewed-policy' } as any)).rejects.toThrow('Tax policy changes require Super Admin');
+  });
+
+  it('does not expose buyer identity in public listing Q&A', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({ id: 'listing-1', sellerId: 'seller-1' });
+    prisma.marketplaceListingQuestion.findMany.mockResolvedValue([{ id: 'question-1', listingId: 'listing-1', askerId: 'private-buyer-id', answeredById: null, questionType: 'PRODUCT_QUESTION', question: 'Is this seed certified?', answer: null, visibility: 'PUBLIC', status: 'OPEN', createdAt: new Date(), answeredAt: null }]);
+    const rows = await service.listListingQuestions('listing-1');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).not.toHaveProperty('askerId');
+    expect(rows[0].question).toBe('Is this seed certified?');
+  });
+
+  it('allows only the listing owner to answer an open buyer question', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({ id: 'listing-1', sellerId: 'seller-1' });
+    prisma.marketplaceListingQuestion.findFirst.mockResolvedValue({ id: 'question-1', listingId: 'listing-1', askerId: 'buyer-1', visibility: 'PUBLIC', status: 'OPEN' });
+    registry.validateResourceField.mockReturnValue({ valid: true, errors: [] });
+    const result = await service.answerListingQuestion('seller-1', UserRole.FARMER, 'listing-1', 'question-1', 'Yes, certification details are available.');
+    expect(result).toEqual(expect.objectContaining({ id: 'question-1', status: 'ANSWERED' }));
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: 'ANSWER_MARKETPLACE_LISTING_QUESTION' }));
+  });
+
+  it('stores sample requests as private enquiries and notifies the seller', async () => {
+    prisma.marketplaceListing.findFirst.mockResolvedValue({ id: 'listing-1', sellerId: 'seller-1', title: 'Paddy seed' });
+    prisma.marketplaceRestriction.findFirst.mockResolvedValue(null);
+    const result = await service.createListingQuestion('buyer-1', UserRole.FARMER, 'listing-1', { question: 'Can I receive a sample first?', questionType: 'SAMPLE_REQUEST' });
+    expect(result).toEqual(expect.objectContaining({ id: 'question-1', visibility: 'PRIVATE', questionType: 'SAMPLE_REQUEST' }));
+    expect(audit.createInTransaction).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: 'CREATE_MARKETPLACE_LISTING_QUESTION' }));
+  });
+
+  it('validates configurable Marketplace feature limits against central allow-lists', async () => {
+    registry.validateResourceField.mockReturnValue({ valid: true, value: true });
+    registry.validateField.mockReturnValue({ valid: true, value: {} });
+    await expect(service.updateFeatureFlag('admin-1', UserRole.ADMIN, 'marketplace.listing_qa', { enabled: true, reason: 'Set safe Q&A limits', configuration: { maxQuestionLength: 3000 } })).rejects.toThrow('between 5 and 2000');
+    await expect(service.updateFeatureFlag('admin-1', UserRole.ADMIN, 'marketplace.listing_qa', { enabled: true, reason: 'Reject unknown option', configuration: { unsupportedLimit: 3 } })).rejects.toThrow('Unsupported feature configuration key');
+    expect(prisma.marketplaceFeatureFlag.upsert).not.toHaveBeenCalled();
   });
 
   it('publishes safe default feature states without enabling payments', async () => {

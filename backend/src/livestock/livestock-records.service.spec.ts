@@ -7,12 +7,13 @@ describe('LivestockRecordsService', () => {
   const authorization: any = { assertCan: jest.fn() };
   const registry: any = { validateResourceField: jest.fn((_r: string, _f: string, value: unknown) => ({ valid: true, value })) };
   const audit: any = { createInTransaction: jest.fn() };
-  const tx: any = { livestockRecord: prisma.livestockRecord, notification: { create: jest.fn(), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) } };
+  const tx: any = { farm: { findFirst: jest.fn() }, livestockRecord: prisma.livestockRecord, notification: { create: jest.fn(), createMany: jest.fn().mockResolvedValue({ count: 1 }), findFirst: jest.fn().mockResolvedValue({ id: 'notification-1' }) } };
   let service: LivestockRecordsService;
   beforeEach(() => {
     jest.clearAllMocks();
     prisma[transactionKey].mockImplementation((callback: (tx: any) => Promise<unknown>) => callback(tx));
-    prisma.livestock.findFirst.mockResolvedValue({ id: 'animal-1', farmId: 'farm-1', farm: { id: 'farm-1', ownerId: 'farmer-1' } });
+    tx.farm.findFirst.mockResolvedValue({ id: 'farm-1' });
+    prisma.livestock.findFirst.mockResolvedValue({ id: 'animal-1', farmId: 'farm-1', farm: { id: 'farm-1', ownerId: 'farmer-1', deletedAt: null } });
     prisma.resourceRelationship.findFirst.mockResolvedValue({ userId: 'farmer-1' });
     prisma.livestockRecord.create.mockResolvedValue({ id: 'record-1', type: 'VACCINATION', description: 'FMD vaccination', recordedAt: new Date() });
     registry.validateResourceField.mockImplementation((_r: string, _f: string, value: unknown) => ({ valid: true, value }));
@@ -28,6 +29,19 @@ describe('LivestockRecordsService', () => {
     await service.create('farmer-1', UserRole.FARMER, 'animal-1', { type: LivestockRecordType.VACCINATION, description: 'Booster dose', nextDueAt: '2026-11-01T10:00:00.000Z' });
     expect(tx.notification.createMany).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'farmer-1', type: 'LIVESTOCK_FOLLOW_UP', severity: 'INFO', source: 'livestock', dedupeKey: 'livestock-follow-up:record-1', href: '/app/livestock' }), skipDuplicates: true });
   });
+  it('does not append health or production records to livestock under an archived farm', async () => {
+    prisma.livestock.findFirst.mockResolvedValueOnce({
+      id: 'animal-1', farmId: 'farm-1',
+      farm: { id: 'farm-1', ownerId: 'farmer-1', deletedAt: new Date('2026-10-01T00:00:00.000Z') },
+    });
+
+    await expect(service.create('farmer-1', UserRole.FARMER, 'animal-1', {
+      type: LivestockRecordType.HEALTH, description: 'Check-up',
+    })).rejects.toThrow('Farm not found or archived');
+
+    expect(prisma.livestockRecord.create).not.toHaveBeenCalled();
+  });
+
   it('uses the central Registry to reject invalid record descriptions', async () => {
     registry.validateResourceField.mockImplementation((_r: string, field: string) => field === 'description' ? { valid: false, errors: ['required'] } : { valid: true, value: 'x' });
     await expect(service.create('farmer-1', UserRole.FARMER, 'animal-1', { type: LivestockRecordType.HEALTH, description: '' })).rejects.toThrow(BadRequestException);

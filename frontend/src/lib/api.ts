@@ -849,14 +849,19 @@ export const api = {
   marketplaceListingViewCounts: () => request<any>('/marketplace/views/last-hour'),
   recordMarketplaceListingView: (id: string, sessionKey: string) => request<any>('/marketplace/listings/' + encodeURIComponent(id) + '/views', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionKey }) }),
   marketplaceListingViewCount: (id: string) => request<any>('/marketplace/listings/' + encodeURIComponent(id) + '/views'),
+  marketplaceListingQuestions: (id: string) => request<any[]>('/marketplace/listings/' + encodeURIComponent(id) + '/questions'),
+  marketplaceMyListingQuestions: (id: string, token: string) => request<any[]>('/marketplace/listings/' + encodeURIComponent(id) + '/questions/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  createMarketplaceListingQuestion: (id: string, data: { question: string; questionType: string }, token: string) => request<any>('/marketplace/listings/' + encodeURIComponent(id) + '/questions', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  answerMarketplaceListingQuestion: (listingId: string, questionId: string, answer: string, token: string) => request<any>('/marketplace/listings/' + encodeURIComponent(listingId) + '/questions/' + encodeURIComponent(questionId) + '/answer', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ answer }) }),
   marketplaceCommercePolicy: () => request<any>('/marketplace/commerce-policy'),
   marketplacePublicFeatureFlags: () => request<any[]>('/marketplace/features/public'),
   marketplaceFeatureFlags: (token: string) => request<any[]>('/marketplace/features', { headers: { Authorization: 'Bearer ' + token } }),
-  updateMarketplaceFeatureFlag: (key: string, enabled: boolean, reason: string, token: string) => request<any>('/marketplace/features/' + encodeURIComponent(key), { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, reason }) }),
+  updateMarketplaceFeatureFlag: (key: string, enabled: boolean, reason: string, token: string, configuration?: Record<string, unknown>) => request<any>('/marketplace/features/' + encodeURIComponent(key), { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, reason, ...(configuration ? { configuration } : {}) }) }),
   marketplaceHistory: (token: string) => request<any>('/marketplace/history/mine', { headers: { Authorization: 'Bearer ' + token } }),
   marketplaceSettlementStatement: (token: string) => request<any>('/marketplace/settlements/mine', { headers: { Authorization: 'Bearer ' + token } }),
   marketplaceTaxProfiles: (token: string) => request<any[]>('/marketplace/tax-profiles', { headers: { Authorization: 'Bearer ' + token } }),
   marketplaceSellerProfile: (token: string) => request<any>('/marketplace/profile/mine', { headers: { Authorization: 'Bearer ' + token } }),
+  marketplacePublicSellerProfile: (id: string) => request<any>('/marketplace/sellers/' + encodeURIComponent(id) + '/profile'),
   marketplaceSellerProfileVisibilityPolicy: (token: string) => request<any>('/marketplace/seller-profile-visibility', { headers: { Authorization: 'Bearer ' + token } }),
   updateMarketplaceSellerProfileVisibilityPolicy: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/seller-profile-visibility', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
   updateMarketplaceSellerProfile: (data: Record<string, unknown>, token: string) => request<any>('/marketplace/profile/mine', { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
@@ -1331,6 +1336,17 @@ export const api = {
         },
       },
     ),
+
+  archivedFarmAssets: (farmId: string, token: string) =>
+    request(`/farms/${farmId}/assets/archived`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  restoreFarmAsset: (farmId: string, assetId: string, token: string) =>
+    request(`/farms/${farmId}/assets/${assetId}/restore`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
   addFarmRecord: (
     farmId: string,

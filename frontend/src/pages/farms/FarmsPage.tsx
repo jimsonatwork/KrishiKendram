@@ -663,6 +663,88 @@ function FarmHistoryPanels({ farmId }: { farmId: string }) {
 }
 
 
+function ArchivedFarmAssetsPanel({
+  farmId,
+  token,
+  onComplete,
+  onError,
+}: {
+  farmId: string
+  token: string
+  onComplete: () => Promise<void>
+  onError: (message: string) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [assets, setAssets] = useState<FarmAsset[]>([])
+  const [restoringId, setRestoringId] = useState<string | null>(null)
+
+  const loadArchived = useCallback(async () => {
+    setLoading(true)
+    try {
+      const result = await api.archivedFarmAssets(farmId, token)
+      setAssets(Array.isArray(result) ? result as FarmAsset[] : [])
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Unable to load archived farm assets.')
+    } finally {
+      setLoading(false)
+    }
+  }, [farmId, token, onError])
+
+  const toggle = async () => {
+    const next = !expanded
+    setExpanded(next)
+    if (next) await loadArchived()
+  }
+
+  const restore = async (asset: FarmAsset) => {
+    setRestoringId(asset.id)
+    try {
+      await api.restoreFarmAsset(farmId, asset.id, token)
+      await loadArchived()
+      await onComplete()
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Unable to restore this farm asset.')
+    } finally {
+      setRestoringId(null)
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-medium text-slate-900 dark:text-white">Archived assets</h4>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Archived assets retain their history and can be restored.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={() => void toggle()}>
+          {expanded ? 'Hide archived' : 'View archived'}
+        </Button>
+      </div>
+      {expanded && (
+        <div className="mt-3 space-y-2">
+          {loading ? (
+            <p className="text-xs text-slate-500">Loading archived assets…</p>
+          ) : assets.length === 0 ? (
+            <p className="text-xs text-slate-500">No archived assets.</p>
+          ) : assets.map((asset) => (
+            <div key={asset.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-950">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{asset.name || asset.type || 'Unnamed asset'}</p>
+                <p className="text-xs text-slate-500">{asset.type || 'Asset'}{asset.quantity !== undefined ? ' · ' + asset.quantity + (asset.unit ? ' ' + asset.unit : '') : ''}</p>
+              </div>
+              <Button type="button" size="sm" variant="outline" disabled={restoringId === asset.id} onClick={() => void restore(asset)}>
+                {restoringId === asset.id ? 'Restoring…' : 'Restore'}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 function FarmSubsection({
   farm,
   crops,
@@ -991,7 +1073,7 @@ function FarmSubsection({
                       variant="ghost"
                       size="icon"
                       onClick={() => void onAssetDelete(asset)}
-                      title={`Delete ${asset.name || asset.type || 'asset'}`}
+                      title={`Archive ${asset.name || asset.type || 'asset'}`}
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
@@ -1049,6 +1131,12 @@ function FarmSubsection({
       <FarmAssetMergePanel
         farmId={farm.id}
         assets={assets}
+        token={token}
+        onComplete={onFarmReload}
+        onError={onFarmError}
+      />
+      <ArchivedFarmAssetsPanel
+        farmId={farm.id}
         token={token}
         onComplete={onFarmReload}
         onError={onFarmError}
@@ -1669,7 +1757,7 @@ export function FarmsPage() {
     const label =
       asset.name || asset.type || 'this asset'
 
-    if (!window.confirm(`Delete ${label}?`)) {
+    if (!window.confirm(`Archive ${label}? Its history will be retained and you can restore it later.`)) {
       return
     }
 
@@ -1691,7 +1779,7 @@ export function FarmsPage() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Failed to delete the farm asset.',
+          : 'Failed to archive the farm asset.',
       )
     }
   }

@@ -266,6 +266,8 @@ model User {
   marketplaceFavorites          MarketplaceFavorite[]
   marketplaceMessagesSent       MarketplaceMessage[]          @relation("MarketplaceMessageSender")
   marketplaceMessagesReceived   MarketplaceMessage[]          @relation("MarketplaceMessageRecipient")
+  marketplaceQuestionsAsked     MarketplaceListingQuestion[]  @relation("MarketplaceQuestionAsker")
+  marketplaceQuestionsAnswered  MarketplaceListingQuestion[]  @relation("MarketplaceQuestionAnswerer")
   marketplaceRFQs               MarketplaceRFQ[]              @relation("MarketplaceRFQBuyer")
   marketplaceRFQResponses       MarketplaceRFQResponse[]      @relation("MarketplaceRFQSeller")
   marketplaceOrdersAsBuyer      MarketplaceOrder[]            @relation("MarketplaceOrderBuyer")
@@ -382,11 +384,12 @@ model FarmAsset {
 
   metadata Json?
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
-  @@index([farmId, createdAt])
+  @@index([farmId, deletedAt, createdAt])
 }
 
 // ============================================================
@@ -527,11 +530,13 @@ model MarketplaceListing {
   publishedAt            DateTime?
   deletedAt              DateTime?
 
-  seller    User                  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  orders    MarketplaceOrder[]
-  favorites MarketplaceFavorite[]
-  messages  MarketplaceMessage[]
-  viewEvents MarketplaceListingViewEvent[]
+  seller          User                  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orders          MarketplaceOrder[]
+  favorites       MarketplaceFavorite[]
+  messages        MarketplaceMessage[]
+  viewEvents      MarketplaceListingViewEvent[]
+  bookingRequests MarketplaceBookingRequest[]
+  questions       MarketplaceListingQuestion[]
 
   @@index([sellerId, deletedAt, createdAt])
   @@index([resourceType, resourceId])
@@ -613,6 +618,7 @@ model MarketplaceOrder {
   buyer               User                     @relation("MarketplaceOrderBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
   seller              User                     @relation("MarketplaceOrderSeller", fields: [sellerId], references: [id], onDelete: Restrict)
   marketplaceMessages MarketplaceMessage[]
+  bookingRequest      MarketplaceBookingRequest?
   contextFarm         Farm?                    @relation("MarketplaceOrderContextFarm", fields: [contextFarmId], references: [id], onDelete: SetNull)
   contextCrop         Crop?                    @relation("MarketplaceOrderContextCrop", fields: [contextCropId], references: [id], onDelete: SetNull)
 
@@ -621,6 +627,32 @@ model MarketplaceOrder {
   @@index([buyerId, status, createdAt])
   @@index([sellerId, status, createdAt])
   @@index([listingId, status])
+}
+
+model MarketplaceBookingRequest {
+  id            String    @id @default(cuid())
+  orderId       String    @unique
+  listingId     String
+  kind          String
+  status        String    @default("REQUESTED")
+  startDate     DateTime?
+  endDate       DateTime?
+  preferredDate DateTime?
+  preferredTime String?
+  useLocation   String?
+  details       Json?
+  confirmedAt   DateTime?
+  rejectedAt    DateTime?
+  cancelledAt   DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  order   MarketplaceOrder   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  listing MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@index([listingId, kind, status, startDate, endDate])
+  @@index([status, createdAt])
 }
 
 model MarketplaceCommercePolicy {
@@ -1763,6 +1795,28 @@ model MarketplaceMessage {
   @@index([orderId, createdAt])
 }
 
+model MarketplaceListingQuestion {
+  id           String             @id @default(cuid())
+  listingId    String
+  askerId      String
+  answeredById String?
+  questionType String             @default("PRODUCT_QUESTION")
+  question     String
+  answer       String?
+  visibility   String             @default("PUBLIC")
+  status       String             @default("OPEN")
+  answeredAt   DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  listing      MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  asker        User               @relation("MarketplaceQuestionAsker", fields: [askerId], references: [id], onDelete: Restrict)
+  answeredBy   User?              @relation("MarketplaceQuestionAnswerer", fields: [answeredById], references: [id], onDelete: Restrict)
+
+  @@index([listingId, visibility, status, createdAt])
+  @@index([askerId, createdAt])
+  @@index([answeredById, answeredAt])
+}
+
 model MarketplaceRFQ {
   id              String                   @id @default(cuid())
   buyerId         String
@@ -1910,7 +1964,6 @@ model MessagingRecipientConsent {
   @@unique([ownerId, provider, recipientHash, purpose])
   @@index([ownerId, provider, purpose, revokedAt])
 }
-
 
 model MarketplaceBuyerProfile {
   id                  String   @id @default(cuid())

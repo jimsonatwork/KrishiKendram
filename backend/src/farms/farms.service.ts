@@ -235,7 +235,7 @@ export class FarmsService {
         deletedAt: null,
       },
       include: {
-        assets: true,
+        assets: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
         records: true,
       },
       orderBy: {
@@ -307,7 +307,7 @@ export class FarmsService {
         id,
       },
       include: {
-        assets: true,
+        assets: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
         records: true,
         owner: {
           select: {
@@ -668,6 +668,7 @@ export class FarmsService {
       select: {
         id: true,
         farmId: true,
+        deletedAt: true,
         farm: {
           select: {
             id: true,
@@ -678,7 +679,7 @@ export class FarmsService {
       },
     });
 
-    if (!assetContext || assetContext.farm.deletedAt) {
+    if (!assetContext || assetContext.deletedAt || assetContext.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -739,6 +740,7 @@ export class FarmsService {
       select: {
         id: true,
         farmId: true,
+        deletedAt: true,
         farm: {
           select: {
             id: true,
@@ -749,7 +751,7 @@ export class FarmsService {
       },
     });
 
-    if (!assetContext || assetContext.farm.deletedAt) {
+    if (!assetContext || assetContext.deletedAt || assetContext.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
 
@@ -782,18 +784,105 @@ export class FarmsService {
         'farmAsset',
         assetId,
         endedAt,
-        'Farm asset deleted',
+        'Farm asset archived',
       );
 
-      const deleted = await tx.farmAsset.delete({
+      const archived = await tx.farmAsset.update({
         where: { id: assetId },
+        data: { deletedAt: endedAt },
       });
       await this.audit.createInTransaction(tx, {
-        actorId: userId, action: 'DELETE', resourceType: 'farmAsset', resourceId: assetId,
-        description: 'Farm asset deleted',
-        metadata: { farmId, type: deleted.type, name: deleted.name, quantity: deleted.quantity, unit: deleted.unit },
+        actorId: userId, action: 'ARCHIVE', resourceType: 'farmAsset', resourceId: assetId,
+        description: 'Farm asset archived',
+        metadata: { farmId, type: archived.type, name: archived.name, quantity: archived.quantity, unit: archived.unit, archivedAt: endedAt.toISOString() },
       });
-      return deleted;
+      return archived;
+    });
+  }
+
+  async findArchivedFarmAssets(
+    farmId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    const farm = await this.prisma.farm.findUnique({
+      where: { id: farmId, deletedAt: null },
+      select: { id: true, ownerId: true, deletedAt: true },
+    });
+    if (!farm || farm.deletedAt) throw new NotFoundException('Farm not found');
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farm',
+      action: AuthorizationAction.READ,
+      resourceId: farm.id,
+      ownerId: await this.getCurrentFarmOwnerId(farm.id, farm.ownerId),
+    });
+
+    return this.prisma.farmAsset.findMany({
+      where: { farmId, deletedAt: { not: null } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async restoreAsset(
+    farmId: string,
+    assetId: string,
+    userId: string,
+    role: UserRole,
+  ) {
+    const asset = await this.prisma.farmAsset.findUnique({
+      where: { id: assetId },
+      select: {
+        id: true,
+        farmId: true,
+        deletedAt: true,
+        farm: { select: { id: true, ownerId: true, deletedAt: true } },
+      },
+    });
+    if (!asset || !asset.deletedAt || asset.farmId !== farmId || asset.farm.deletedAt) {
+      throw new NotFoundException('Archived asset not found');
+    }
+
+    const lastOwner = await this.prisma.resourceRelationship.findFirst({
+      where: { resourceType: 'farmAsset', resourceId: assetId, relationshipType: 'OWNER' },
+      orderBy: [{ validFrom: 'desc' }, { id: 'desc' }],
+      select: { userId: true },
+    });
+    const ownerId = lastOwner?.userId ?? asset.farm.ownerId;
+
+    await this.authorization.assertCan({
+      user: { userId, role },
+      module: 'farms',
+      resource: 'farmAsset',
+      action: AuthorizationAction.RESTORE,
+      resourceId: asset.id,
+      farmId: asset.farmId,
+      ownerId,
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      await assertFarmActive(tx, farmId);
+      const claim = await tx.farmAsset.updateMany({
+        where: { id: assetId, farmId, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      if (claim.count !== 1) throw new NotFoundException('Archived asset not found');
+
+      const restored = await tx.farmAsset.findUnique({ where: { id: assetId } });
+      if (!restored) throw new NotFoundException('Archived asset not found');
+      const restoredAt = new Date();
+      await this.relationships.createOwnerRelationship(tx, 'farmAsset', assetId, ownerId, restoredAt);
+      await this.audit.createInTransaction(tx, {
+        actorId: userId,
+        action: 'RESTORE',
+        resourceType: 'farmAsset',
+        resourceId: assetId,
+        description: 'Farm asset restored',
+        metadata: { farmId, ownerId, restoredAt: restoredAt.toISOString() },
+      });
+      return restored;
     });
   }
 

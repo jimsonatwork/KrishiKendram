@@ -87,7 +87,7 @@ export class FarmResourceLineageService {
     }
 
     const assets = await this.prisma.farmAsset.findMany({
-      where: { id: { in: sourceIds }, farmId },
+      where: { id: { in: sourceIds }, farmId, deletedAt: null },
       select: {
         id: true,
         farmId: true,
@@ -208,7 +208,7 @@ export class FarmResourceLineageService {
           dto.reason ?? 'Merged into another farm asset',
         );
         const sourceUpdate = await tx.farmAsset.updateMany({
-          where: { id: asset.id, quantity: asset.quantity },
+          where: { id: asset.id, quantity: asset.quantity, deletedAt: null },
           data: { quantity: 0 },
         });
         if (sourceUpdate.count !== 1) {
@@ -286,6 +286,7 @@ export class FarmResourceLineageService {
       select: {
         id: true,
         farmId: true,
+        deletedAt: true,
         type: true,
         name: true,
         quantity: true,
@@ -295,7 +296,7 @@ export class FarmResourceLineageService {
       },
     });
 
-    if (!asset || asset.farmId !== farmId || asset.farm.deletedAt) {
+    if (!asset || asset.deletedAt || asset.farmId !== farmId || asset.farm.deletedAt) {
       throw new NotFoundException('Asset not found');
     }
     if (asset.quantity === null || asset.quantity === undefined) {
@@ -422,7 +423,7 @@ export class FarmResourceLineageService {
       });
 
       const sourceUpdate = await tx.farmAsset.updateMany({
-        where: { id: asset.id, quantity: asset.quantity },
+        where: { id: asset.id, quantity: asset.quantity, deletedAt: null },
         data: { quantity: remainingQuantity },
       });
       if (sourceUpdate.count !== 1) {
@@ -432,7 +433,7 @@ export class FarmResourceLineageService {
       }
 
       const source = await tx.farmAsset.findUniqueOrThrow({
-        where: { id: asset.id },
+        where: { id: asset.id, deletedAt: null },
       });
 
       await this.audit.createInTransaction(tx, {

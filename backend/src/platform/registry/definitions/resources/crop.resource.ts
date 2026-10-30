@@ -11,6 +11,12 @@ export const cropResource: ResourceDefinition = {
   model: 'Crop',
 
   fields: {
+    season: {
+      definition: 'cropSeason',
+    },
+    status: {
+      definition: 'cropStatus',
+    },
     name: {
       definition: 'name',
       override: {

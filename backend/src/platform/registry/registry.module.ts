@@ -11,6 +11,7 @@ import { SystemTruthService } from './system-truth.service';
 
 import { USER_FIELD_DEFINITIONS } from './definitions/fields/user-field-definitions';
 import { FARM_FIELD_DEFINITIONS } from './definitions/fields/farm-field-definitions';
+import { CROP_FIELD_DEFINITIONS } from './definitions/fields/crop-field-definitions';
 import { FARM_ASSET_FIELD_DEFINITIONS } from './definitions/fields/farm-asset-field-definitions';
 import { LIVESTOCK_FIELD_DEFINITIONS } from './definitions/fields/livestock-field-definitions';
 import { MARKETPLACE_FIELD_DEFINITIONS } from './definitions/fields/marketplace-field-definitions';
@@ -102,6 +103,10 @@ export class RegistryModule {
     }
 
     for (const definition of FARM_FIELD_DEFINITIONS) {
+      this.registry.registerField(definition);
+    }
+
+    for (const definition of CROP_FIELD_DEFINITIONS) {
       this.registry.registerField(definition);
     }
 
